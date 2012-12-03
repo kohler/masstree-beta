@@ -20,34 +20,35 @@
 namespace Masstree {
 
 template <typename P>
-bool unlocked_tcursor<P>::find_unlocked(const node_base<P> *root,
-                                        key_type &ka, threadinfo *ti)
+bool unlocked_tcursor<P>::find_unlocked(const simple_table<P> &table,
+                                        threadinfo *ti)
 {
     leafvalue<P> entry = leafvalue<P>::make_empty();
     bool ksuf_match = false;
     int kp, keylenx = 0;
     leaf<P> *n;
     typename leaf<P>::nodeversion_type v;
+    node_base<P> *root = table.root();
 
  retry:
-    n = reach_leaf(root, ka, ti, v);
+    n = reach_leaf(root, ka_, ti, v);
 
  forward:
     if (v.deleted())
 	goto retry;
 
     n->prefetch();
-    kp = leaf<P>::bound_type::lower_check(ka, *n);
+    kp = leaf<P>::bound_type::lower_check(ka_, *n);
     if (kp >= 0) {
 	keylenx = n->keylenx_[kp];
 	fence();		// see note in check_leaf_insert()
 	entry = n->lv_[kp];
 	entry.prefetch(keylenx);
-	ksuf_match = n->ksuf_equals(kp, ka, keylenx);
+	ksuf_match = n->ksuf_equals(kp, ka_, keylenx);
     }
     if (n->has_changed(v)) {
 	ti->mark(threadcounter(tc_stable_leaf_insert + n->simple_has_split(v)));
-	n = forward_at_leaf(n, v, ka, ti);
+	n = forward_at_leaf(n, v, ka_, ti);
 	goto forward;
     }
 
@@ -55,7 +56,7 @@ bool unlocked_tcursor<P>::find_unlocked(const node_base<P> *root,
 	return false;
     else if (n->keylenx_is_node(keylenx)) {
 	if (likely(n->keylenx_is_stable_node(keylenx))) {
-	    ka.shift();
+	    ka_.shift();
 	    root = entry.node();
 	    goto retry;
 	} else
@@ -149,7 +150,6 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
 template <typename P>
 inline node_base<P> *tcursor<P>::check_leaf_locked(node_type *root,
                                                    nodeversion_type v,
-                                                   node_type **rootp,
                                                    threadinfo *ti)
 {
     if (node_type *next_root = get_leaf_locked(root, v, ti))
@@ -159,23 +159,23 @@ inline node_base<P> *tcursor<P>::check_leaf_locked(node_type *root,
 	    kp_ = -1;
     } else if (ki_ == 0 && unlikely(n_->dead())) {
 	n_->unlock();
-	return reset_retry(rootp);
+	return reset_retry();
     }
     return 0;
 }
 
 template <typename P>
-void tcursor<P>::find_locked(node_type **rootp, threadinfo *ti)
+void tcursor<P>::find_locked(threadinfo *ti)
 {
     nodeversion_type v;
-    node_type *root = *rootp;
+    node_type *root = tablep_->root_;
     while (1) {
 	n_ = reach_leaf(root, ka_, ti, v);
-	root = check_leaf_locked(root, v, rootp, ti);
+	root = check_leaf_locked(root, v, ti);
 	if (!root)
 	    return;
     }
 }
 
-}
+} // namespace Masstree
 #endif

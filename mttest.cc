@@ -546,7 +546,7 @@ struct test_thread {
 	if (!table_) {
 	    table_ = new T;
 	    table_->initialize((threadinfo *) arg);
-	    //Masstree::table::test((threadinfo *) arg);
+	    //Masstree::default_table::test((threadinfo *) arg);
 	    return 0;
 	}
         if (!arg) {
@@ -691,11 +691,11 @@ static struct {
     const char *treetype;
     void *(*func)(void *);
 } test_thread_map[] = {
-    { "masstree", test_thread<Masstree::table>::go },
-    { "mass", test_thread<Masstree::table>::go },
-    { "mbtree", test_thread<Masstree::table>::go },
-    { "mb", test_thread<Masstree::table>::go },
-    { "m", test_thread<Masstree::table>::go }
+    { "masstree", test_thread<Masstree::default_table>::go },
+    { "mass", test_thread<Masstree::default_table>::go },
+    { "mbtree", test_thread<Masstree::default_table>::go },
+    { "mb", test_thread<Masstree::default_table>::go },
+    { "m", test_thread<Masstree::default_table>::go }
 };
 
 

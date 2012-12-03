@@ -42,6 +42,34 @@ template <typename P> struct leaf;
 template <typename P> struct internode;
 template <typename P> struct leafvalue;
 template <typename P> struct key;
+template <typename P> class basic_table;
+template <typename P> class unlocked_tcursor;
+template <typename P> class tcursor;
+
+template <typename P>
+class simple_table {
+  public:
+    typedef P param_type;
+    typedef node_base<P> node_type;
+
+    simple_table()
+        : root_(0) {
+    }
+
+    void initialize(threadinfo *ti);
+    void reinitialize(threadinfo *ti);
+
+    node_type *root() const {
+        return root_;
+    }
+
+  private:
+    node_type *root_;
+
+    friend class basic_table<P>;
+    friend class unlocked_tcursor<P>;
+    friend class tcursor<P>;
+};
 
 template <typename P>
 class basic_table {
@@ -50,12 +78,15 @@ class basic_table {
     typedef P param_type;
     typedef node_base<P> node_type;
 
-    basic_table()
-	: root_(0) {
+    basic_table() {
     }
 
-    void initialize(threadinfo *ti);
-    void reinitialize(threadinfo *ti);
+    void initialize(threadinfo *ti) {
+        table_.initialize(ti);
+    }
+    void reinitialize(threadinfo *ti) {
+        table_.reinitialize(ti);
+    }
 
     bool get(query<row_type> &q, threadinfo *ti) const;
     result_t put(query<row_type> &q, threadinfo *ti);
@@ -94,7 +125,7 @@ class basic_table {
 
   private:
 
-    node_type *root_;
+    simple_table<P> table_;
 
     template <typename H, typename F>
     int scan(H helper, const str &firstkey, bool matchfirst,
@@ -102,7 +133,7 @@ class basic_table {
 
 };
 
-typedef basic_table<nodeparams<15, 15> > table;
+typedef basic_table<nodeparams<15, 15> > default_table;
 
 }
 

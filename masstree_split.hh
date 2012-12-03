@@ -172,7 +172,7 @@ static inline internode<P> *locked_parent(node_base<P> *n, threadinfo *ti)
 }
 
 template <typename P>
-node_base<P> *tcursor<P>::finish_split(node_type **rootp, threadinfo *ti)
+node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
 {
     node_type *n = n_;
     node_type *child = leaf_type::make(n_->ksuf_size(), n_->node_ts_, ti);
@@ -198,7 +198,7 @@ node_base<P> *tcursor<P>::finish_split(node_type **rootp, threadinfo *ti)
 	    fence();
 	    n->set_parent(nn);
 	    if (is_first_layer())
-		*rootp = nn;
+		tablep_->root_ = nn;
 	} else {
 	    int kp = internode_type::bound_type::upper(xikey[sense], *p);
 

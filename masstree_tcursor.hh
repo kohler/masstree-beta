@@ -21,14 +21,26 @@ namespace Masstree {
 template <typename P> struct remove_layer_rcu_callback;
 
 template <typename P>
-struct unlocked_tcursor {
+class unlocked_tcursor {
+  public:
     typedef key<typename P::ikey_type> key_type;
+
     typename P::value_type datum_;
-    bool find_unlocked(const node_base<P> *root, key_type &ka, threadinfo *ti);
+    key_type ka_;
+
+    unlocked_tcursor(const str &str)
+        : ka_(str) {
+    }
+    unlocked_tcursor(const char *s, int len)
+        : ka_(s, len) {
+    }
+
+    bool find_unlocked(const simple_table<P> &table, threadinfo *ti);
 };
 
 template <typename P>
-struct tcursor {
+class tcursor {
+  public:
     typedef node_base<P> node_type;
     typedef leaf<P> leaf_type;
     typedef internode<P> internode_type;
@@ -44,11 +56,11 @@ struct tcursor {
     int ki_;
     int kp_;
 
-    tcursor(const str &str)
-	: ka_(str) {
+    tcursor(simple_table<P> &table, const str &str)
+	: ka_(str), tablep_(&table) {
     }
-    tcursor(const char *s, int len)
-	: ka_(s, len) {
+    tcursor(simple_table<P> &table, const char *s, int len)
+	: ka_(s, len), tablep_(&table) {
     }
 
     inline bool has_value() const {
@@ -62,42 +74,42 @@ struct tcursor {
 	return !ka_.is_shifted();
     }
 
-    inline void find_locked(node_type **rootp, threadinfo *ti);
-    inline bool find_insert(node_type **rootp, threadinfo *ti);
+    inline void find_locked(threadinfo *ti);
+    inline bool find_insert(threadinfo *ti);
     inline void finish_insert();
-    inline bool finish_remove(node_type **rootp, threadinfo *ti);
+    inline bool finish_remove(threadinfo *ti);
 
+  private:
+
+    simple_table<P> *tablep_;
+
+    inline node_type *reset_retry() {
+	ka_.unshift_all();
+	return tablep_->root_;
+    }
+
+    inline node_type *get_leaf_locked(node_type *root, nodeversion_type &v, threadinfo *ti);
+    inline node_type *check_leaf_locked(node_type *root, nodeversion_type v, threadinfo *ti);
+    inline node_type *check_leaf_insert(node_type *root, nodeversion_type v, threadinfo *ti);
+    static inline node_type *insert_marker() {
+	return reinterpret_cast<node_type *>(uintptr_t(1));
+    }
+
+    node_type *finish_split(threadinfo *ti);
+
+    static void prune_twig(internode_type *p, ikey_type ikey,
+			   simple_table<P> &table, const str &prefix, threadinfo *ti);
     /** Remove @a leaf from the Masstree rooted at @a rootp.
      * @param prefix String defining the path to the tree containing this leaf.
      *   If removing a leaf in layer 0, @a prefix is empty.
      *   If removing, for example, the node containing key "01234567ABCDEF" in the layer-1 tree
      *   rooted at "01234567", then @a prefix should equal "01234567". */
-    static bool remove_leaf(leaf_type *leaf, node_type **rootp, const str &prefix, threadinfo *ti);
-
-  private:
-
-    inline node_type *reset_retry(node_type **rootp) {
-	ka_.unshift_all();
-	return *rootp;
-    }
-
-    inline node_type *get_leaf_locked(node_type *root, nodeversion_type &v, threadinfo *ti);
-    inline node_type *check_leaf_locked(node_type *root, nodeversion_type v,
-                                        node_type **rootp, threadinfo *ti);
-    inline node_type *check_leaf_insert(node_type *root, nodeversion_type v,
-                                        node_type **rootp, threadinfo *ti);
-    static inline node_type *insert_marker() {
-	return reinterpret_cast<node_type *>(uintptr_t(1));
-    }
-
-    node_type *finish_split(node_type **rootp, threadinfo *ti);
-
-    static void prune_twig(internode_type *p, ikey_type ikey,
-			   node_type **rootp, const str &prefix, threadinfo *ti);
-    bool remove_layer(node_type **rootp, threadinfo *ti);
+    static bool remove_leaf(leaf_type *leaf,
+                            simple_table<P> &table, const str &prefix, threadinfo *ti);
+    bool remove_layer(threadinfo *ti);
     friend struct remove_layer_rcu_callback<P>;
 
 };
 
-}
+} // namespace Masstree
 #endif

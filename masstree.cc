@@ -23,6 +23,7 @@
 #include "masstree_split.hh"
 #include "masstree_remove.hh"
 #include "masstree_scan.hh"
+#include "masstree_initialize.hh"
 #include "string_slice.hh"
 #include "kpermuter.hh"
 #include "ksearch.hh"
@@ -206,15 +207,13 @@ bool basic_table<P>::get(query<row_type> &q, threadinfo *ti) const
 {
 #if COMPSTATS
     {
-        typename node_type::key_type ka(q.key_);
-        unlocked_tcursor<P> lp;
-        bool found = lp.find_unlocked(root_, ka, ti);
+        unlocked_tcursor<P> lp(q.key_);
+        bool found = lp.find_unlocked(table_, ti);
     }
 #endif
     ti->pstat.mark_get_begin();
-    typename node_type::key_type ka(q.key_);
-    unlocked_tcursor<P> lp;
-    bool found = lp.find_unlocked(root_, ka, ti);
+    unlocked_tcursor<P> lp(q.key_);
+    bool found = lp.find_unlocked(table_, ti);
     if (found)
         found = q.emitrow(lp.datum_);
     ti->pstat.mark_get_end();
@@ -224,8 +223,8 @@ bool basic_table<P>::get(query<row_type> &q, threadinfo *ti) const
 template <typename P>
 result_t basic_table<P>::put(query<row_type> &q, threadinfo *ti)
 {
-    tcursor<P> lp(q.key_);
-    bool found = lp.find_insert(&root_, ti);
+    tcursor<P> lp(table_, q.key_);
+    bool found = lp.find_insert(ti);
     if (!found)
 	ti->advance_timestamp(lp.n_->node_ts_);
     result_t r = q.apply_put(lp.value(), found, ti);
@@ -252,11 +251,11 @@ void basic_table<P>::rscan(query<row_type> &q, threadinfo *ti) const
 template <typename P>
 bool basic_table<P>::remove(query<row_type> &q, threadinfo *ti)
 {
-    tcursor<P> lp(q.key_);
-    lp.find_locked(&root_, ti);
+    tcursor<P> lp(table_, q.key_);
+    lp.find_locked(ti);
     bool removed = lp.has_value()
 	&& q.apply_remove(lp.value(), true, ti, &lp.n_->node_ts_);
-    if (!removed || !lp.finish_remove(&root_, ti))
+    if (!removed || !lp.finish_remove(ti))
 	lp.n_->unlock();
     return removed;
 }
@@ -300,7 +299,7 @@ void basic_table<P>::stats(FILE *f)
 {
     memset(heightcounts, 0, sizeof(heightcounts));
     memset(fillcounts, 0, sizeof(fillcounts));
-    treestats1(root_, 0);
+    treestats1(table_.root_, 0);
     fprintf(f, "  heights:");
     for (unsigned i = 0; i < arraysize(heightcounts); ++i)
 	if (heightcounts[i])
@@ -367,25 +366,8 @@ void basic_table<P>::json_stats(Json &j, threadinfo *ti)
     j["l1_leaf_by_size"] = Json::make_array();
     j["key_by_layer"] = Json::make_array();
     j["key_by_length"] = Json::make_array();
-    json_stats1(root_, j, 0, 0, ti);
+    json_stats1(table_.root_, j, 0, 0, ti);
     j.unset("l1_size");
-}
-
-template <typename P>
-void basic_table<P>::initialize(threadinfo *ti)
-{
-    assert(!root_);
-    reinitialize(ti);
-}
-
-template <typename P>
-void basic_table<P>::reinitialize(threadinfo *ti)
-{
-    typename node_type::leaf_type *n = node_type::leaf_type::make(0, 0, ti);
-    n->next_.ptr = n->prev_ = 0;
-    n->parent_ = 0;
-    n->mark_root();
-    root_ = n;
 }
 
 template <typename N>
@@ -451,7 +433,7 @@ void basic_table<P>::findpivots(str *pv, int npv) const
     memset(cmaxk, 255, MaxKeyLen);
     pv[npv - 1].assign(cmaxk, MaxKeyLen);
     for (int i = 1; i < npv - 1; i++)
-	pv[i] = findpv(root_, i, npv - 1);
+	pv[i] = findpv(table_.root_, i, npv - 1);
 }
 
 namespace {
@@ -520,7 +502,7 @@ void basic_table<P>::test(threadinfo *ti) {
 	values_copy[x] = values_copy[i - 1];
     }
 
-    t.root_->print(stdout, "", 0, 0);
+    t.table_.root_->print(stdout, "", 0, 0);
     printf("\n");
 
     scan_tester scanner(values, values + 3);
@@ -623,11 +605,13 @@ void basic_table<P>::test(threadinfo *ti) {
 template <typename P>
 void basic_table<P>::print(FILE *f, int indent) const {
     f = f ? f : stdout;
-    root_->print(f, "", indent, 0);
+    table_.root_->print(f, "", indent, 0);
 }
 
-static kvtable_registration_adapter<table> registration(table::name(), "Masstree");
-static kvtable_registration_adapter<table> registration2("Mbtree");
-template class basic_table<table::param_type>;
+static kvtable_registration_adapter<default_table> registration(default_table::name(),
+                                                                "Masstree");
+static kvtable_registration_adapter<default_table> registration2("Mbtree");
+template class simple_table<default_table::param_type>;
+template class basic_table<default_table::param_type>;
 
 }

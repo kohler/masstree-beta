@@ -21,7 +21,6 @@ namespace Masstree {
 template <typename P>
 inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
                                                    nodeversion_type v,
-                                                   node_type **rootp,
                                                    threadinfo *ti)
 {
     if (node_type *next_root = get_leaf_locked(root, v, ti))
@@ -99,7 +98,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
     if (n_->nremoved_ > 0) {
 	if (unlikely(n_->dead())) {
 	    n_->unlock(v);
-	    return reset_retry(rootp);
+	    return reset_retry();
 	}
 	// since keysuffixes might change as we reassign keys,
 	// mark change so observers retry
@@ -118,17 +117,17 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
     }
 
     // split
-    return finish_split(rootp, ti);
+    return finish_split(ti);
 }
 
 template <typename P>
-bool tcursor<P>::find_insert(node_type **rootp, threadinfo *ti)
+bool tcursor<P>::find_insert(threadinfo *ti)
 {
-    node_type *root = *rootp;
+    node_type *root = tablep_->root_;
     nodeversion_type v;
     while (1) {
 	n_ = reach_leaf(root, ka_, ti, v);
-	root = check_leaf_insert(root, v, rootp, ti);
+	root = check_leaf_insert(root, v, ti);
 	if (reinterpret_cast<uintptr_t>(root) <= reinterpret_cast<uintptr_t>(insert_marker()))
 	    return root != insert_marker();
     }
@@ -147,13 +146,13 @@ void tcursor<N>::finish_insert()
 template <typename P> template <typename F>
 inline int basic_table<P>::modify(const str &key, F &f, threadinfo *ti)
 {
-    tcursor<node_type> lp(key);
-    bool found = lp.find_insert(&root_, ti);
+    tcursor<node_type> lp(table_, key);
+    bool found = lp.find_insert(ti);
     if (!found)
 	ti->advance_timestamp(lp.n_->node_ts_);
     int answer = f(key, found, lp.value(), ti, lp.n_->node_ts_);
     if (found && answer < 0) {
-	if (!lp.finish_remove(&root_, ti))
+	if (!lp.finish_remove(ti))
 	    lp.n_->unlock();
     } else if (!found && answer > 0) {
 	lp.finish_insert();
@@ -166,12 +165,12 @@ inline int basic_table<P>::modify(const str &key, F &f, threadinfo *ti)
 template <typename P> template <typename F>
 inline int basic_table<P>::pmodify(const str &key, F &f, threadinfo *ti)
 {
-    tcursor<node_type> lp(key);
-    lp.find_locked(&root_, ti);
+    tcursor<node_type> lp(table_, key);
+    lp.find_locked(ti);
     int answer;
     if (lp.has_value()) {
 	answer = f(key, true, lp.value(), ti, lp.n_->node_ts_);
-	if (answer >= 0 || !lp.finish_remove(&root_, ti))
+	if (answer >= 0 || !lp.finish_remove(ti))
 	    lp.n_->unlock();
     } else {
 	answer = 0;
@@ -180,5 +179,5 @@ inline int basic_table<P>::pmodify(const str &key, F &f, threadinfo *ti)
     return answer;
 }
 
-}
+} // namespace Masstree
 #endif

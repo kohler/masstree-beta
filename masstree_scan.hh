@@ -315,7 +315,7 @@ int basic_table<P>::scan(H helper,
     typedef scanstackelt<param_type> mystack_type;
     mystack_type stack[(MaxKeyLen + sizeof(ikey_type) - 1) / sizeof(ikey_type)];
     int stackpos = 0;
-    stack[0].root_ = root_;
+    stack[0].root_ = table_.root_;
     leafvalue_type entry = leafvalue_type::make_empty();
 
     int scancount = 0;

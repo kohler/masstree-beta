@@ -20,9 +20,9 @@
 namespace Masstree {
 
 template <typename P>
-bool tcursor<P>::remove_layer(node_type **rootp, threadinfo *ti)
+bool tcursor<P>::remove_layer(threadinfo *ti)
 {
-    find_locked(rootp, ti);
+    find_locked(ti);
     assert(!n_->dead() && !n_->deleted());
 
     // find_locked might return early if another remove_layer attempt has
@@ -100,41 +100,41 @@ bool tcursor<P>::remove_layer(node_type **rootp, threadinfo *ti)
 
 template <typename P>
 struct remove_layer_rcu_callback : public rcu_callback {
-    node_base<P> **rootp_;
+    simple_table<P> *tablep_;
     int len_;
     char s_[0];
     void operator()(threadinfo *ti);
     size_t size() const {
 	return len_ + sizeof(*this);
     }
-    static void make(node_base<P> **rootp, const str &prefix, threadinfo *ti);
+    static void make(simple_table<P> &table, const str &prefix, threadinfo *ti);
 };
 
 template <typename P>
 void remove_layer_rcu_callback<P>::operator()(threadinfo *ti)
 {
-    tcursor<P> lp(s_, len_);
-    bool do_remove = lp.remove_layer(rootp_, ti);
-    if (!do_remove || !lp.finish_remove(rootp_, ti))
+    tcursor<P> lp(*tablep_, s_, len_);
+    bool do_remove = lp.remove_layer(ti);
+    if (!do_remove || !lp.finish_remove(ti))
 	lp.n_->unlock();
     ti->deallocate(this, size(), ta_rcu);
 }
 
 template <typename P>
-void remove_layer_rcu_callback<P>::make(node_base<P> **rootp, const str &prefix,
+void remove_layer_rcu_callback<P>::make(simple_table<P> &table, const str &prefix,
 					threadinfo *ti)
 {
     size_t sz = prefix.len + sizeof(remove_layer_rcu_callback);
     void *data = ti->allocate(sz, ta_rcu);
     remove_layer_rcu_callback *cb = new(data) remove_layer_rcu_callback;
-    cb->rootp_ = rootp;
+    cb->tablep_ = &table;
     cb->len_ = prefix.len;
     memcpy(cb->s_, prefix.s, cb->len_);
     ti->rcu_register(cb);
 }
 
 template <typename P>
-bool tcursor<P>::finish_remove(node_base<P> **rootp, threadinfo *ti)
+bool tcursor<P>::finish_remove(threadinfo *ti)
 {
     permuter_type perm(n_->permutation_);
     perm.remove(n_->width, ki_);
@@ -143,16 +143,16 @@ bool tcursor<P>::finish_remove(node_base<P> **rootp, threadinfo *ti)
     if (perm.size())
 	return false;
     else
-	return remove_leaf(n_, rootp, ka_.prefix_string(), ti);
+	return remove_leaf(n_, *tablep_, ka_.prefix_string(), ti);
 }
 
 template <typename P>
-bool tcursor<P>::remove_leaf(leaf_type *leaf, node_type **rootp,
+bool tcursor<P>::remove_leaf(leaf_type *leaf, simple_table<P> &table,
                              const str &prefix, threadinfo *ti)
 {
     if (!leaf->prev_) {
 	if (!leaf->next_.ptr && !prefix.empty())
-	    remove_layer_rcu_callback<P>::make(rootp, prefix, ti);
+	    remove_layer_rcu_callback<P>::make(table, prefix, ti);
 	return false;
     }
 
@@ -200,7 +200,7 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, node_type **rootp,
 		p->ikey0_[kp - 1] = actikey;
 	    if (kp > 1 || p->child_[0]) {
 		if (p->size() == 0)
-		    prune_twig(p, ikey, rootp, prefix, ti);
+		    prune_twig(p, ikey, table, prefix, ti);
 		else
 		    p->unlock();
 		break;
@@ -226,7 +226,7 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, node_type **rootp,
 
 template <typename P>
 void tcursor<P>::prune_twig(internode_type *p, ikey_type ikey,
-			    node_type **rootp, const str &prefix, threadinfo *ti)
+			    simple_table<P> &table, const str &prefix, threadinfo *ti)
 {
     assert(p && p->locked());
 
@@ -234,7 +234,7 @@ void tcursor<P>::prune_twig(internode_type *p, ikey_type ikey,
 	internode_type *gp = locked_parent(p, ti);
 	if (!gp) {
 	    if (!prefix.empty())
-		remove_layer_rcu_callback<P>::make(rootp, prefix, ti);
+		remove_layer_rcu_callback<P>::make(table, prefix, ti);
 	    p->unlock();
 	    break;
 	}
