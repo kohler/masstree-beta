@@ -19,8 +19,8 @@
 #include "kvt_b_leaflink.hh"
 namespace Masstree {
 
-template <typename N>
-bool tcursor<N>::remove_layer(N **rootp, threadinfo *ti)
+template <typename P>
+bool tcursor<P>::remove_layer(node_type **rootp, threadinfo *ti)
 {
     find_locked(rootp, ti);
     assert(!n_->dead() && !n_->deleted());
@@ -45,7 +45,7 @@ bool tcursor<N>::remove_layer(N **rootp, threadinfo *ti)
 	return false;
 
     // remove redundant internode layers
-    N *layer;
+    node_type *layer;
     while (1) {
 	layer = n_->lv_[kp_].node();
 	if (layer->has_split())
@@ -64,7 +64,7 @@ bool tcursor<N>::remove_layer(N **rootp, threadinfo *ti)
 	    return false;
 	}
 
-	N *child = in->child_[0];
+	node_type *child = in->child_[0];
 	child->set_parent(0);
 	n_->lv_[kp_] = child;
 	in->mark_split();
@@ -98,30 +98,30 @@ bool tcursor<N>::remove_layer(N **rootp, threadinfo *ti)
     return true;
 }
 
-template <typename N>
+template <typename P>
 struct remove_layer_rcu_callback : public rcu_callback {
-    N **rootp_;
+    node_base<P> **rootp_;
     int len_;
     char s_[0];
     void operator()(threadinfo *ti);
     size_t size() const {
 	return len_ + sizeof(*this);
     }
-    static void make(N **rootp, const str &prefix, threadinfo *ti);
+    static void make(node_base<P> **rootp, const str &prefix, threadinfo *ti);
 };
 
-template <typename N>
-void remove_layer_rcu_callback<N>::operator()(threadinfo *ti)
+template <typename P>
+void remove_layer_rcu_callback<P>::operator()(threadinfo *ti)
 {
-    tcursor<N> lp(s_, len_);
+    tcursor<P> lp(s_, len_);
     bool do_remove = lp.remove_layer(rootp_, ti);
     if (!do_remove || !lp.finish_remove(rootp_, ti))
 	lp.n_->unlock();
     ti->deallocate(this, size(), ta_rcu);
 }
 
-template <typename N>
-void remove_layer_rcu_callback<N>::make(N **rootp, const str &prefix,
+template <typename P>
+void remove_layer_rcu_callback<P>::make(node_base<P> **rootp, const str &prefix,
 					threadinfo *ti)
 {
     size_t sz = prefix.len + sizeof(remove_layer_rcu_callback);
@@ -133,8 +133,8 @@ void remove_layer_rcu_callback<N>::make(N **rootp, const str &prefix,
     ti->rcu_register(cb);
 }
 
-template <typename N>
-bool tcursor<N>::finish_remove(N **rootp, threadinfo *ti)
+template <typename P>
+bool tcursor<P>::finish_remove(node_base<P> **rootp, threadinfo *ti)
 {
     permuter_type perm(n_->permutation_);
     perm.remove(n_->width, ki_);
@@ -146,12 +146,13 @@ bool tcursor<N>::finish_remove(N **rootp, threadinfo *ti)
 	return remove_leaf(n_, rootp, ka_.prefix_string(), ti);
 }
 
-template <typename N>
-bool tcursor<N>::remove_leaf(leaf_type *leaf, N **rootp, const str &prefix, threadinfo *ti)
+template <typename P>
+bool tcursor<P>::remove_leaf(leaf_type *leaf, node_type **rootp,
+                             const str &prefix, threadinfo *ti)
 {
     if (!leaf->prev_) {
 	if (!leaf->next_.ptr && !prefix.empty())
-	    remove_layer_rcu_callback<N>::make(rootp, prefix, ti);
+	    remove_layer_rcu_callback<P>::make(rootp, prefix, ti);
 	return false;
     }
 
@@ -178,8 +179,8 @@ bool tcursor<N>::remove_leaf(leaf_type *leaf, N **rootp, const str &prefix, thre
     // Remove leaf from tree. This is simple unless the leaf is the first
     // child of its parent, in which case we need to traverse up until we find
     // its key.
-    N *n = leaf;
-    typename N::ikey_type ikey = leaf->ikey_bound(), actikey = 0;
+    node_type *n = leaf;
+    ikey_type ikey = leaf->ikey_bound(), actikey = 0;
     bool have_actikey = false;
 
     while (1) {
@@ -223,9 +224,9 @@ bool tcursor<N>::remove_leaf(leaf_type *leaf, N **rootp, const str &prefix, thre
     return true;
 }
 
-template <typename N>
-void tcursor<N>::prune_twig(internode_type *p, typename N::ikey_type ikey,
-			    N **rootp, const str &prefix, threadinfo *ti)
+template <typename P>
+void tcursor<P>::prune_twig(internode_type *p, ikey_type ikey,
+			    node_type **rootp, const str &prefix, threadinfo *ti)
 {
     assert(p && p->locked());
 
@@ -233,7 +234,7 @@ void tcursor<N>::prune_twig(internode_type *p, typename N::ikey_type ikey,
 	internode_type *gp = locked_parent(p, ti);
 	if (!gp) {
 	    if (!prefix.empty())
-		remove_layer_rcu_callback<N>::make(rootp, prefix, ti);
+		remove_layer_rcu_callback<P>::make(rootp, prefix, ti);
 	    p->unlock();
 	    break;
 	}

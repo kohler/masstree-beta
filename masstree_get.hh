@@ -19,15 +19,15 @@
 #include "masstree_traverse.hh"
 namespace Masstree {
 
-template <typename N>
-bool unlocked_tcursor<N>::find_unlocked(N *root, typename N::key_type &ka,
-					threadinfo *ti)
+template <typename P>
+bool unlocked_tcursor<P>::find_unlocked(const node_base<P> *root,
+                                        key_type &ka, threadinfo *ti)
 {
-    typename N::leafvalue_type entry = N::leafvalue_type::make_empty();
+    leafvalue<P> entry = leafvalue<P>::make_empty();
     bool ksuf_match = false;
     int kp, keylenx = 0;
-    typename N::leaf_type *n;
-    typename N::nodeversion_type v;
+    leaf<P> *n;
+    typename leaf<P>::nodeversion_type v;
 
  retry:
     n = reach_leaf(root, ka, ti, v);
@@ -37,7 +37,7 @@ bool unlocked_tcursor<N>::find_unlocked(N *root, typename N::key_type &ka,
 	goto retry;
 
     n->prefetch();
-    kp = N::leaf_type::bound_type::lower_check(ka, *n);
+    kp = leaf<P>::bound_type::lower_check(ka, *n);
     if (kp >= 0) {
 	keylenx = n->keylenx_[kp];
 	fence();		// see note in check_leaf_insert()
@@ -67,9 +67,10 @@ bool unlocked_tcursor<N>::find_unlocked(N *root, typename N::key_type &ka,
 	return false;
 }
 
-template <typename N>
-inline N *tcursor<N>::get_leaf_locked(N *root, nodeversion_type &v,
-				      threadinfo *ti)
+template <typename P>
+inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
+                                                 nodeversion_type &v,
+                                                 threadinfo *ti)
 {
     nodeversion_type oldv = v;
     typename permuter_type::storage_type old_perm;
@@ -145,11 +146,13 @@ inline N *tcursor<N>::get_leaf_locked(N *root, nodeversion_type &v,
     }
 }
 
-template <typename N>
-inline N *tcursor<N>::check_leaf_locked(N *root, nodeversion_type v,
-					N **rootp, threadinfo *ti)
+template <typename P>
+inline node_base<P> *tcursor<P>::check_leaf_locked(node_type *root,
+                                                   nodeversion_type v,
+                                                   node_type **rootp,
+                                                   threadinfo *ti)
 {
-    if (N *next_root = get_leaf_locked(root, v, ti))
+    if (node_type *next_root = get_leaf_locked(root, v, ti))
 	return next_root;
     if (kp_ >= 0) {
 	if (!n_->ksuf_equals(kp_, ka_))
@@ -161,11 +164,11 @@ inline N *tcursor<N>::check_leaf_locked(N *root, nodeversion_type v,
     return 0;
 }
 
-template <typename N>
-void tcursor<N>::find_locked(N **rootp, threadinfo *ti)
+template <typename P>
+void tcursor<P>::find_locked(node_type **rootp, threadinfo *ti)
 {
     nodeversion_type v;
-    N *root = *rootp;
+    node_type *root = *rootp;
     while (1) {
 	n_ = reach_leaf(root, ka_, ti, v);
 	root = check_leaf_locked(root, v, rootp, ti);

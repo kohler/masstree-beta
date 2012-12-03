@@ -18,24 +18,26 @@
 #include "masstree.hh"
 #include "masstree_key.hh"
 namespace Masstree {
-template <typename N> struct remove_layer_rcu_callback;
+template <typename P> struct remove_layer_rcu_callback;
 
-template <typename N>
+template <typename P>
 struct unlocked_tcursor {
-    typename N::value_type datum_;
-    bool find_unlocked(N *root, typename N::key_type &ka, threadinfo *ti);
+    typedef key<typename P::ikey_type> key_type;
+    typename P::value_type datum_;
+    bool find_unlocked(const node_base<P> *root, key_type &ka, threadinfo *ti);
 };
 
-template <typename N>
+template <typename P>
 struct tcursor {
-    typedef typename N::internode_type internode_type;
-    typedef typename N::leaf_type leaf_type;
-    typedef typename N::value_type value_type;
-    typedef typename N::leafvalue_type leafvalue_type;
-    typedef typename N::leaf_type::permuter_type permuter_type;
-    typedef typename N::key_type key_type;
-    typedef typename N::ikey_type ikey_type;
-    typedef typename N::nodeversion_type nodeversion_type;
+    typedef node_base<P> node_type;
+    typedef leaf<P> leaf_type;
+    typedef internode<P> internode_type;
+    typedef typename P::value_type value_type;
+    typedef leafvalue<P> leafvalue_type;
+    typedef typename leaf_type::permuter_type permuter_type;
+    typedef typename P::ikey_type ikey_type;
+    typedef key<ikey_type> key_type;
+    typedef typename leaf<P>::nodeversion_type nodeversion_type;
 
     leaf_type *n_;
     key_type ka_;
@@ -60,40 +62,40 @@ struct tcursor {
 	return !ka_.is_shifted();
     }
 
-    inline void find_locked(N **rootp, threadinfo *ti);
-    inline bool find_insert(N **rootp, threadinfo *ti);
+    inline void find_locked(node_type **rootp, threadinfo *ti);
+    inline bool find_insert(node_type **rootp, threadinfo *ti);
     inline void finish_insert();
-    inline bool finish_remove(N **rootp, threadinfo *ti);
+    inline bool finish_remove(node_type **rootp, threadinfo *ti);
 
     /** Remove @a leaf from the Masstree rooted at @a rootp.
      * @param prefix String defining the path to the tree containing this leaf.
      *   If removing a leaf in layer 0, @a prefix is empty.
      *   If removing, for example, the node containing key "01234567ABCDEF" in the layer-1 tree
      *   rooted at "01234567", then @a prefix should equal "01234567". */
-    static bool remove_leaf(leaf_type *leaf, N **rootp, const str &prefix, threadinfo *ti);
+    static bool remove_leaf(leaf_type *leaf, node_type **rootp, const str &prefix, threadinfo *ti);
 
   private:
 
-    inline N *reset_retry(N **rootp) {
+    inline node_type *reset_retry(node_type **rootp) {
 	ka_.unshift_all();
 	return *rootp;
     }
 
-    inline N *get_leaf_locked(N *root, nodeversion_type &v, threadinfo *ti);
-    inline N *check_leaf_locked(N *root, nodeversion_type v,
-				N **rootp, threadinfo *ti);
-    inline N *check_leaf_insert(N *root, nodeversion_type v,
-				N **rootp, threadinfo *ti);
-    static inline N *insert_marker() {
-	return reinterpret_cast<N *>(uintptr_t(1));
+    inline node_type *get_leaf_locked(node_type *root, nodeversion_type &v, threadinfo *ti);
+    inline node_type *check_leaf_locked(node_type *root, nodeversion_type v,
+                                        node_type **rootp, threadinfo *ti);
+    inline node_type *check_leaf_insert(node_type *root, nodeversion_type v,
+                                        node_type **rootp, threadinfo *ti);
+    static inline node_type *insert_marker() {
+	return reinterpret_cast<node_type *>(uintptr_t(1));
     }
 
-    N *finish_split(N **rootp, threadinfo *ti);
+    node_type *finish_split(node_type **rootp, threadinfo *ti);
 
-    static void prune_twig(internode_type *p, typename N::ikey_type ikey,
-			   N **rootp, const str &prefix, threadinfo *ti);
-    bool remove_layer(N **rootp, threadinfo *ti);
-    friend struct remove_layer_rcu_callback<N>;
+    static void prune_twig(internode_type *p, ikey_type ikey,
+			   node_type **rootp, const str &prefix, threadinfo *ti);
+    bool remove_layer(node_type **rootp, threadinfo *ti);
+    friend struct remove_layer_rcu_callback<P>;
 
 };
 

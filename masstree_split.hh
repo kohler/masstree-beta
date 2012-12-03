@@ -171,11 +171,11 @@ static inline internode<P> *locked_parent(node_base<P> *n, threadinfo *ti)
     }
 }
 
-template <typename N>
-N *tcursor<N>::finish_split(N **rootp, threadinfo *ti)
+template <typename P>
+node_base<P> *tcursor<P>::finish_split(node_type **rootp, threadinfo *ti)
 {
-    N *n = n_;
-    N *child = leaf_type::make(n_->ksuf_size(), n_->node_ts_, ti);
+    node_type *n = n_;
+    node_type *child = leaf_type::make(n_->ksuf_size(), n_->node_ts_, ti);
     child->assign_version(*n_);
     ikey_type xikey[2];
     int split_type = leaf_split(n_, static_cast<leaf_type *>(child),

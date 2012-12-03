@@ -207,13 +207,13 @@ bool basic_table<P>::get(query<row_type> &q, threadinfo *ti) const
 #if COMPSTATS
     {
         typename node_type::key_type ka(q.key_);
-        unlocked_tcursor<node_type> lp;
+        unlocked_tcursor<P> lp;
         bool found = lp.find_unlocked(root_, ka, ti);
     }
 #endif
     ti->pstat.mark_get_begin();
     typename node_type::key_type ka(q.key_);
-    unlocked_tcursor<node_type> lp;
+    unlocked_tcursor<P> lp;
     bool found = lp.find_unlocked(root_, ka, ti);
     if (found)
         found = q.emitrow(lp.datum_);
@@ -224,7 +224,7 @@ bool basic_table<P>::get(query<row_type> &q, threadinfo *ti) const
 template <typename P>
 result_t basic_table<P>::put(query<row_type> &q, threadinfo *ti)
 {
-    tcursor<node_type> lp(q.key_);
+    tcursor<P> lp(q.key_);
     bool found = lp.find_insert(&root_, ti);
     if (!found)
 	ti->advance_timestamp(lp.n_->node_ts_);
@@ -252,7 +252,7 @@ void basic_table<P>::rscan(query<row_type> &q, threadinfo *ti) const
 template <typename P>
 bool basic_table<P>::remove(query<row_type> &q, threadinfo *ti)
 {
-    tcursor<node_type> lp(q.key_);
+    tcursor<P> lp(q.key_);
     lp.find_locked(&root_, ti);
     bool removed = lp.has_value()
 	&& q.apply_remove(lp.value(), true, ti, &lp.n_->node_ts_);

@@ -71,8 +71,8 @@ struct node_base : public make_nodeversion<P>::type {
 	else
 	    static_cast<internode_type *>(this)->parent_ = p;
     }
-    inline base_type *unsplit_ancestor() {
-	base_type *x = this, *p;
+    inline base_type *unsplit_ancestor() const {
+	base_type *x = const_cast<base_type *>(this), *p;
 	while (x->has_split() && (p = x->parent()))
 	    x = p;
 	return x;

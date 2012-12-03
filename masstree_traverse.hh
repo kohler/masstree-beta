@@ -49,12 +49,12 @@ static inline int stable_last_key_compare(const typename node_base<P>::key_type 
 }
 
 template <typename P>
-inline leaf<P> *reach_leaf(node_base<P> *root,
+inline leaf<P> *reach_leaf(const node_base<P> *root,
 			   const typename node_base<P>::key_type &ka,
 			   threadinfo *ti,
 			   typename node_base<P>::nodeversion_type &version)
 {
-    node_base<P> *n[2];
+    const node_base<P> *n[2];
     typename node_base<P>::nodeversion_type v[2];
     bool sense;
 
@@ -74,7 +74,7 @@ inline leaf<P> *reach_leaf(node_base<P> *root,
 
     // Loop over internal nodes.
     while (!v[sense].isleaf()) {
-	internode<P> *in = static_cast<internode<P> *>(n[sense]);
+	const internode<P> *in = static_cast<const internode<P> *>(n[sense]);
 	in->prefetch();
 	int kp = internode<P>::bound_type::upper(ka, *in);
 	n[!sense] = in->child_[kp];
@@ -98,11 +98,11 @@ inline leaf<P> *reach_leaf(node_base<P> *root,
     }
 
     version = v[sense];
-    return static_cast<leaf<P> *>(n[sense]);
+    return const_cast<leaf<P> *>(static_cast<const leaf<P> *>(n[sense]));
 }
 
 template <typename P>
-leaf<P> *forward_at_leaf(leaf<P> *n,
+leaf<P> *forward_at_leaf(const leaf<P> *n,
 			 typename leaf<P>::nodeversion_type &v,
 			 const typename node_base<P>::key_type &ka,
 			 threadinfo *ti)
@@ -119,7 +119,7 @@ leaf<P> *forward_at_leaf(leaf<P> *n,
 	    v = n->stable_annotated(ti->stable_fence());
 	}
     }
-    return n;
+    return const_cast<leaf<P> *>(n);
 }
 
 }

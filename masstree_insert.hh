@@ -18,11 +18,13 @@
 #include "masstree_tcursor.hh"
 namespace Masstree {
 
-template <typename N>
-inline N *tcursor<N>::check_leaf_insert(N *root, nodeversion_type v,
-					N **rootp, threadinfo *ti)
+template <typename P>
+inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
+                                                   nodeversion_type v,
+                                                   node_type **rootp,
+                                                   threadinfo *ti)
 {
-    if (N *next_root = get_leaf_locked(root, v, ti))
+    if (node_type *next_root = get_leaf_locked(root, v, ti))
 	return next_root;
 
     if (kp_ >= 0) {
@@ -119,10 +121,10 @@ inline N *tcursor<N>::check_leaf_insert(N *root, nodeversion_type v,
     return finish_split(rootp, ti);
 }
 
-template <typename N>
-bool tcursor<N>::find_insert(N **rootp, threadinfo *ti)
+template <typename P>
+bool tcursor<P>::find_insert(node_type **rootp, threadinfo *ti)
 {
-    N *root = *rootp;
+    node_type *root = *rootp;
     nodeversion_type v;
     while (1) {
 	n_ = reach_leaf(root, ka_, ti, v);
