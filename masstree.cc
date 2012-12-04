@@ -205,15 +205,9 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 template <typename P>
 bool basic_table<P>::get(query<row_type> &q, threadinfo *ti) const
 {
-#if COMPSTATS
-    {
-        unlocked_tcursor<P> lp(q.key_);
-        bool found = lp.find_unlocked(table_, ti);
-    }
-#endif
     ti->pstat.mark_get_begin();
-    unlocked_tcursor<P> lp(q.key_);
-    bool found = lp.find_unlocked(table_, ti);
+    unlocked_tcursor<P> lp(table_, q.key_);
+    bool found = lp.find_unlocked(ti);
     if (found)
         found = q.emitrow(lp.datum_);
     ti->pstat.mark_get_end();
@@ -226,11 +220,9 @@ result_t basic_table<P>::put(query<row_type> &q, threadinfo *ti)
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
     if (!found)
-	ti->advance_timestamp(lp.n_->node_ts_);
+	ti->advance_timestamp(lp.node_timestamp());
     result_t r = q.apply_put(lp.value(), found, ti);
-    if (!found)
-	lp.finish_insert();
-    lp.n_->unlock();
+    lp.finish(found, true, ti);
     return r;
 }
 
@@ -238,25 +230,24 @@ template <typename P>
 void basic_table<P>::scan(query<row_type> &q, threadinfo *ti) const
 {
     query_scanner<row_type> scanf(q);
-    scan(q.key_, true, scanf, ti);
+    table_.scan(q.key_, true, scanf, ti);
 }
 
 template <typename P>
 void basic_table<P>::rscan(query<row_type> &q, threadinfo *ti) const
 {
     query_scanner<row_type> scanf(q);
-    rscan(q.key_, true, scanf, ti);
+    table_.rscan(q.key_, true, scanf, ti);
 }
 
 template <typename P>
 bool basic_table<P>::remove(query<row_type> &q, threadinfo *ti)
 {
     tcursor<P> lp(table_, q.key_);
-    lp.find_locked(ti);
-    bool removed = lp.has_value()
-	&& q.apply_remove(lp.value(), true, ti, &lp.n_->node_ts_);
-    if (!removed || !lp.finish_remove(ti))
-	lp.n_->unlock();
+    bool found = lp.find_locked(ti);
+    bool removed = found
+	&& q.apply_remove(lp.value(), true, ti, &lp.node_timestamp());
+    lp.finish(found, !removed, ti);
     return removed;
 }
 
@@ -467,11 +458,11 @@ struct scan_tester {
     }
     template <typename T>
     int scan(T &table, threadinfo *ti) {
-	return table.scan(str(key_, keylen_), first_, *this, ti);
+	return table.table().scan(str(key_, keylen_), first_, *this, ti);
     }
     template <typename T>
     int rscan(T &table, threadinfo *ti) {
-	return table.rscan(str(key_, keylen_), first_, *this, ti);
+	return table.table().rscan(str(key_, keylen_), first_, *this, ti);
     }
 };
 }
@@ -518,27 +509,27 @@ void basic_table<P>::test(threadinfo *ti) {
     }
 
     scanner = scan_tester(values + 10, values + 11);
-    int r = t.scan(str(values[10]), true, scanner, ti);
+    int r = t.table_.scan(str(values[10]), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.scan(str(values[10] + 1), true, scanner, ti);
+    r = t.table_.scan(str(values[10] + 1), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
-    r = t.scan(str(values[10]), false, scanner, ti);
+    r = t.table_.scan(str(values[10]), false, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.scan(str("aaaaaaaaaaaaaaaaaaaaaaaaaZ"), true, scanner, ti);
+    r = t.table_.scan(str("aaaaaaaaaaaaaaaaaaaaaaaaaZ"), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
-    r = t.scan(str(values[11]), true, scanner, ti);
+    r = t.table_.scan(str(values[11]), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 12, values + 13);
-    r = t.scan(str(values[11]), false, scanner, ti);
+    r = t.table_.scan(str(values[11]), false, scanner, ti);
     mandatory_assert(r == 1);
 
 
@@ -563,27 +554,27 @@ void basic_table<P>::test(threadinfo *ti) {
     }
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.rscan(str(values[10]), true, scanner, ti);
+    r = t.table_.rscan(str(values[10]), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.rscan(str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
+    r = t.table_.rscan(str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 9, values + 10);
-    r = t.rscan(str(values[10]), false, scanner, ti);
+    r = t.table_.rscan(str(values[10]), false, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.rscan(str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
+    r = t.table_.rscan(str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
-    r = t.rscan(str(values[11]), true, scanner, ti);
+    r = t.table_.rscan(str(values[11]), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.rscan(str(values[11]), false, scanner, ti);
+    r = t.table_.rscan(str(values[11]), false, scanner, ti);
     mandatory_assert(r == 1);
 
 

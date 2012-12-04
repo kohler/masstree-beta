@@ -20,15 +20,14 @@
 namespace Masstree {
 
 template <typename P>
-bool unlocked_tcursor<P>::find_unlocked(const simple_table<P> &table,
-                                        threadinfo *ti)
+bool unlocked_tcursor<P>::find_unlocked(threadinfo *ti)
 {
     leafvalue<P> entry = leafvalue<P>::make_empty();
     bool ksuf_match = false;
     int kp, keylenx = 0;
     leaf<P> *n;
     typename leaf<P>::nodeversion_type v;
-    node_base<P> *root = table.root();
+    node_base<P> *root = tablep_->root_;
 
  retry:
     n = reach_leaf(root, ka_, ti, v);
@@ -66,6 +65,17 @@ bool unlocked_tcursor<P>::find_unlocked(const simple_table<P> &table,
 	return true;
     } else
 	return false;
+}
+
+template <typename P>
+inline bool simple_table<P>::get(const str &key, value_type &value,
+				 threadinfo *ti) const
+{
+    unlocked_tcursor<P> lp(*this, key);
+    bool found = lp.find_unlocked(ti);
+    if (found)
+	value = lp.datum_;
+    return found;
 }
 
 template <typename P>
@@ -165,7 +175,7 @@ inline node_base<P> *tcursor<P>::check_leaf_locked(node_type *root,
 }
 
 template <typename P>
-void tcursor<P>::find_locked(threadinfo *ti)
+bool tcursor<P>::find_locked(threadinfo *ti)
 {
     nodeversion_type v;
     node_type *root = tablep_->root_;
@@ -173,7 +183,7 @@ void tcursor<P>::find_locked(threadinfo *ti)
 	n_ = reach_leaf(root, ka_, ti, v);
 	root = check_leaf_locked(root, v, ti);
 	if (!root)
-	    return;
+	    return kp_ >= 0;
     }
 }
 

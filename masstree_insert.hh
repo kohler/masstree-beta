@@ -28,7 +28,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 
     if (kp_ >= 0) {
 	if (n_->ksuf_equals(kp_, ka_))
-	    return 0;
+	    return found_marker();
 	// Must create new layer
 	key_type oka(n_->ksuf(kp_));
 	ka_.shift();
@@ -129,12 +129,12 @@ bool tcursor<P>::find_insert(threadinfo *ti)
 	n_ = reach_leaf(root, ka_, ti, v);
 	root = check_leaf_insert(root, v, ti);
 	if (reinterpret_cast<uintptr_t>(root) <= reinterpret_cast<uintptr_t>(insert_marker()))
-	    return root != insert_marker();
+	    return root == found_marker();
     }
 }
 
-template <typename N>
-void tcursor<N>::finish_insert()
+template <typename P>
+void tcursor<P>::finish_insert()
 {
     permuter_type perm(n_->permutation_);
     assert(perm.back(n_->width) == kp_);
@@ -143,39 +143,42 @@ void tcursor<N>::finish_insert()
     n_->permutation_ = perm.value();
 }
 
-template <typename P> template <typename F>
-inline int basic_table<P>::modify(const str &key, F &f, threadinfo *ti)
+template <typename P>
+inline void tcursor<P>::finish(bool found, bool kept, threadinfo *ti)
 {
-    tcursor<node_type> lp(table_, key);
-    bool found = lp.find_insert(ti);
-    if (!found)
-	ti->advance_timestamp(lp.n_->node_ts_);
-    int answer = f(key, found, lp.value(), ti, lp.n_->node_ts_);
-    if (found && answer < 0) {
-	if (!lp.finish_remove(ti))
-	    lp.n_->unlock();
-    } else if (!found && answer > 0) {
-	lp.finish_insert();
-	lp.n_->unlock();
-    } else
-	lp.n_->unlock();
+    if (found != kept) {
+	if (found) {
+	    if (finish_remove(ti))
+		return;
+	} else
+	    finish_insert();
+    }
+    n_->unlock();
+}
+
+template <typename P> template <typename F>
+inline int simple_table<P>::modify(const str &key, F &f, threadinfo *ti)
+{
+    tcursor<P> lp(*this, key);
+    bool found = lp.find_locked(ti);
+    int answer;
+    if (found)
+	answer = f(key, true, lp.value(), ti, lp.node_timestamp());
+    else
+	answer = 0;
+    lp.finish(found, found && answer >= 0, ti);
     return answer;
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::pmodify(const str &key, F &f, threadinfo *ti)
+inline int simple_table<P>::modify_insert(const str &key, F &f, threadinfo *ti)
 {
-    tcursor<node_type> lp(table_, key);
-    lp.find_locked(ti);
-    int answer;
-    if (lp.has_value()) {
-	answer = f(key, true, lp.value(), ti, lp.n_->node_ts_);
-	if (answer >= 0 || !lp.finish_remove(ti))
-	    lp.n_->unlock();
-    } else {
-	answer = 0;
-	lp.n_->unlock();
-    }
+    tcursor<P> lp(*this, key);
+    bool found = lp.find_insert(ti);
+    if (!found)
+	ti->advance_timestamp(lp.node_timestamp());
+    int answer = f(key, found, lp.value(), ti, lp.node_timestamp());
+    lp.finish(found, answer >= 0, ti);
     return answer;
 }
 

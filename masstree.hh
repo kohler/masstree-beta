@@ -51,6 +51,7 @@ class simple_table {
   public:
     typedef P param_type;
     typedef node_base<P> node_type;
+    typedef typename P::value_type value_type;
 
     simple_table()
         : root_(0) {
@@ -59,12 +60,29 @@ class simple_table {
     void initialize(threadinfo *ti);
     void reinitialize(threadinfo *ti);
 
-    node_type *root() const {
-        return root_;
-    }
+    bool get(const str &key, value_type &value,
+	     threadinfo *ti) const;
+
+    template <typename F>
+    int scan(const str &firstkey, bool matchfirst, F &scanner,
+	     threadinfo *ti) const;
+    template <typename F>
+    int rscan(const str &firstkey, bool matchfirst, F &scanner,
+	      threadinfo *ti) const;
+
+    template <typename F>
+    inline int modify(const str &key, F &f,
+		      threadinfo *ti);
+    template <typename F>
+    inline int modify_insert(const str &key, F &f,
+			     threadinfo *ti);
 
   private:
     node_type *root_;
+
+    template <typename H, typename F>
+    int scan(H helper, const str &firstkey, bool matchfirst,
+	     F &scanner, threadinfo *ti) const;
 
     friend class basic_table<P>;
     friend class unlocked_tcursor<P>;
@@ -81,6 +99,10 @@ class basic_table {
     basic_table() {
     }
 
+    simple_table<P> &table() {
+	return table_;
+    }
+
     void initialize(threadinfo *ti) {
         table_.initialize(ti);
     }
@@ -89,23 +111,11 @@ class basic_table {
     }
 
     bool get(query<row_type> &q, threadinfo *ti) const;
-    result_t put(query<row_type> &q, threadinfo *ti);
-    bool remove(query<row_type> &q, threadinfo *ti);
-
-    template <typename F>
-    inline int modify(const str &key, F &f, threadinfo *ti);
-    template <typename F>
-    inline int pmodify(const str &key, F &f, threadinfo *ti);
-
-    template <typename F>
-    int scan(const str &firstkey, bool matchfirst,
-	     F &scanner, threadinfo *ti) const;
-    template <typename F>
-    int rscan(const str &firstkey, bool matchfirst,
-	      F &scanner, threadinfo *ti) const;
-
     void scan(query<row_type> &q, threadinfo *ti) const;
     void rscan(query<row_type> &q, threadinfo *ti) const;
+
+    result_t put(query<row_type> &q, threadinfo *ti);
+    bool remove(query<row_type> &q, threadinfo *ti);
 
     void findpivots(str *pv, int npv) const;
     ckptrav_order_t ckptravorder() const {
@@ -124,18 +134,13 @@ class basic_table {
     }
 
   private:
-
     simple_table<P> table_;
-
-    template <typename H, typename F>
-    int scan(H helper, const str &firstkey, bool matchfirst,
-	     F &scanner, threadinfo *ti) const;
 
 };
 
 typedef basic_table<nodeparams<15, 15> > default_table;
 
-}
+} // namespace Masstree
 
 template <typename P> struct table_has_print<Masstree::basic_table<P> > : public mass::true_type {};
 template <typename P> struct table_has_remove<Masstree::basic_table<P> > : public mass::true_type {};

@@ -23,19 +23,23 @@ template <typename P> struct remove_layer_rcu_callback;
 template <typename P>
 class unlocked_tcursor {
   public:
+    typedef typename P::value_type value_type;
     typedef key<typename P::ikey_type> key_type;
 
-    typename P::value_type datum_;
+    value_type datum_;
+
+    unlocked_tcursor(const simple_table<P> &table, const str &str)
+        : ka_(str), tablep_(&table) {
+    }
+    unlocked_tcursor(const simple_table<P> &table, const char *s, int len)
+        : ka_(s, len), tablep_(&table) {
+    }
+
+    bool find_unlocked(threadinfo *ti);
+
+  private:
     key_type ka_;
-
-    unlocked_tcursor(const str &str)
-        : ka_(str) {
-    }
-    unlocked_tcursor(const char *s, int len)
-        : ka_(s, len) {
-    }
-
-    bool find_unlocked(const simple_table<P> &table, threadinfo *ti);
+    const simple_table<P> *tablep_;
 };
 
 template <typename P>
@@ -50,11 +54,6 @@ class tcursor {
     typedef typename P::ikey_type ikey_type;
     typedef key<ikey_type> key_type;
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
-
-    leaf_type *n_;
-    key_type ka_;
-    int ki_;
-    int kp_;
 
     tcursor(simple_table<P> &table, const str &str)
 	: ka_(str), tablep_(&table) {
@@ -74,13 +73,23 @@ class tcursor {
 	return !ka_.is_shifted();
     }
 
-    inline void find_locked(threadinfo *ti);
+    inline kvtimestamp_t node_timestamp() const {
+	return n_->node_ts_;
+    }
+    inline kvtimestamp_t &node_timestamp() {
+	return n_->node_ts_;
+    }
+
+    inline bool find_locked(threadinfo *ti);
     inline bool find_insert(threadinfo *ti);
-    inline void finish_insert();
-    inline bool finish_remove(threadinfo *ti);
+
+    inline void finish(bool found, bool kept, threadinfo *ti);
 
   private:
-
+    leaf_type *n_;
+    key_type ka_;
+    int ki_;
+    int kp_;
     simple_table<P> *tablep_;
 
     inline node_type *reset_retry() {
@@ -94,8 +103,13 @@ class tcursor {
     static inline node_type *insert_marker() {
 	return reinterpret_cast<node_type *>(uintptr_t(1));
     }
+    static inline node_type *found_marker() {
+	return reinterpret_cast<node_type *>(uintptr_t(0));
+    }
 
     node_type *finish_split(threadinfo *ti);
+    inline void finish_insert();
+    inline bool finish_remove(threadinfo *ti);
 
     static void prune_twig(internode_type *p, ikey_type ikey,
 			   simple_table<P> &table, const str &prefix, threadinfo *ti);
@@ -108,7 +122,6 @@ class tcursor {
                             simple_table<P> &table, const str &prefix, threadinfo *ti);
     bool remove_layer(threadinfo *ti);
     friend struct remove_layer_rcu_callback<P>;
-
 };
 
 } // namespace Masstree
