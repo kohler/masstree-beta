@@ -893,7 +893,7 @@ template <> struct make_signed<unsigned long long> : public type_synonym<long lo
   is_trivially_copyable<T> is equivalent to true_type if T has a trivial
   copy constructor, false_type if it does not. */
 
-#if HAVE_CXX_TEMPLATE_ALIAS && HAVE_TYPE_TRAITS
+#if HAVE_CXX_TEMPLATE_ALIAS && HAVE_TYPE_TRAITS && HAVE_STD_IS_TRIVIALLY_COPYABLE
 template <typename T> using is_trivially_copyable = std::is_trivially_copyable<T>;
 #elif HAVE___HAS_TRIVIAL_COPY
 template <typename T> struct is_trivially_copyable : public integral_constant<bool, __has_trivial_copy(T)> {};
