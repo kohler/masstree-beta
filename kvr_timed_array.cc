@@ -77,7 +77,7 @@ kvr_timed_array::to_shared_row_str(str &val, kvout *buffer) const
 }
 
 kvr_timed_array *
-kvr_timed_array::from_rowstr(const str &rstr, kvtimestamp_t ts, threadinfo &ti)
+kvr_timed_array::from_rowstr(str rstr, kvtimestamp_t ts, threadinfo &ti)
 {
     struct kvin kvin;
     kvin_init(&kvin, const_cast<char *>(rstr.s), rstr.len);

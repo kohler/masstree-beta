@@ -18,7 +18,7 @@
 // add one key/value to a checkpoint.
 // called by checkpoint_tree() for each node.
 void
-checkpoint1(ckstate *c, const str &key, const row_type *v)
+checkpoint1(ckstate *c, str key, const row_type *v)
 {
     int n = std::min((int)CkpKeyPrefixLen, key.len);
     kvwrite(c->keys, key.s, n);

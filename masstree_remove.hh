@@ -107,7 +107,7 @@ struct remove_layer_rcu_callback : public rcu_callback {
     size_t size() const {
 	return len_ + sizeof(*this);
     }
-    static void make(basic_table<P> &table, const str &prefix, threadinfo *ti);
+    static void make(basic_table<P> &table, str prefix, threadinfo *ti);
 };
 
 template <typename P>
@@ -121,7 +121,7 @@ void remove_layer_rcu_callback<P>::operator()(threadinfo *ti)
 }
 
 template <typename P>
-void remove_layer_rcu_callback<P>::make(basic_table<P> &table, const str &prefix,
+void remove_layer_rcu_callback<P>::make(basic_table<P> &table, str prefix,
 					threadinfo *ti)
 {
     size_t sz = prefix.len + sizeof(remove_layer_rcu_callback);
@@ -148,7 +148,7 @@ bool tcursor<P>::finish_remove(threadinfo *ti)
 
 template <typename P>
 bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
-                             const str &prefix, threadinfo *ti)
+                             str prefix, threadinfo *ti)
 {
     if (!leaf->prev_) {
 	if (!leaf->next_.ptr && !prefix.empty())
@@ -226,7 +226,7 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
 
 template <typename P>
 void tcursor<P>::prune_twig(internode_type *p, ikey_type ikey,
-			    basic_table<P> &table, const str &prefix, threadinfo *ti)
+			    basic_table<P> &table, str prefix, threadinfo *ti)
 {
     assert(p && p->locked());
 

@@ -16,6 +16,7 @@
 #ifndef MASSTREE_STRUCT_HH
 #define MASSTREE_STRUCT_HH 1
 #include "masstree.hh"
+#include "nodeversion.hh"
 #include "stringbag.hh"
 #include "kvthread.hh"
 namespace Masstree {
@@ -376,11 +377,11 @@ struct leaf : public node_base<P> {
 	ikey0_[p] = x->ikey0_[xp];
 	keylenx_[p] = x->keylenx_[xp];
     }
-    void assign_ksuf(int p, const str &s, bool initializing, threadinfo *ti) {
+    void assign_ksuf(int p, str s, bool initializing, threadinfo *ti) {
 	if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
 	    hard_assign_ksuf(p, s, initializing, ti);
     }
-    void hard_assign_ksuf(int p, const str &s, bool initializing, threadinfo *ti);
+    void hard_assign_ksuf(int p, str s, bool initializing, threadinfo *ti);
 
     void prefetch() const {
 	for (int i = 64; i < std::min(16 * width + 1, 4 * 64); i += 64)

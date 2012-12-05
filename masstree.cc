@@ -49,7 +49,7 @@ namespace Masstree {
     positions [0,p) are ready: keysuffixes in that range are copied. In either
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
-void leaf<P>::hard_assign_ksuf(int p, const str &s, bool initializing,
+void leaf<P>::hard_assign_ksuf(int p, str s, bool initializing,
 			       threadinfo *ti)
 {
     if (ksuf_ && ksuf_->assign(p, s))
@@ -342,7 +342,7 @@ struct scan_tester {
 	    keylen_ = sizeof(key_);
 	}
     }
-    bool operator()(const str &key, row_type *, threadinfo *) {
+    bool operator()(str key, row_type *, threadinfo *) {
 	memcpy(key_, key.s, key.len);
 	keylen_ = key.len;
 	const char *pos = (reverse_ ? vend_[-1] : vbegin_[0]);

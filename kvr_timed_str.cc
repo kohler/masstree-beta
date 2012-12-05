@@ -77,7 +77,7 @@ kvr_timed_str::make_sized_row(int vlen, kvtimestamp_t ts, threadinfo &ti) {
 }
 
 kvr_timed_str *
-kvr_timed_str::from_rowstr(const str &rb, kvtimestamp_t ts, threadinfo &ti)
+kvr_timed_str::from_rowstr(str rb, kvtimestamp_t ts, threadinfo &ti)
 {
     kvr_timed_str *row = make_sized_row(rb.len, ts, ti);
     memcpy(row->s_, rb.s, rb.len);

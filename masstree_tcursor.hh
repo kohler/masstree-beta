@@ -28,7 +28,7 @@ class unlocked_tcursor {
 
     value_type datum_;
 
-    unlocked_tcursor(const basic_table<P> &table, const str &str)
+    unlocked_tcursor(const basic_table<P> &table, str str)
         : ka_(str), tablep_(&table) {
     }
     unlocked_tcursor(const basic_table<P> &table, const char *s, int len)
@@ -55,7 +55,7 @@ class tcursor {
     typedef key<ikey_type> key_type;
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
 
-    tcursor(basic_table<P> &table, const str &str)
+    tcursor(basic_table<P> &table, str str)
 	: ka_(str), tablep_(&table) {
     }
     tcursor(basic_table<P> &table, const char *s, int len)
@@ -112,14 +112,14 @@ class tcursor {
     inline bool finish_remove(threadinfo *ti);
 
     static void prune_twig(internode_type *p, ikey_type ikey,
-			   basic_table<P> &table, const str &prefix, threadinfo *ti);
+			   basic_table<P> &table, str prefix, threadinfo *ti);
     /** Remove @a leaf from the Masstree rooted at @a rootp.
      * @param prefix String defining the path to the tree containing this leaf.
      *   If removing a leaf in layer 0, @a prefix is empty.
      *   If removing, for example, the node containing key "01234567ABCDEF" in the layer-1 tree
      *   rooted at "01234567", then @a prefix should equal "01234567". */
     static bool remove_leaf(leaf_type *leaf,
-                            basic_table<P> &table, const str &prefix, threadinfo *ti);
+                            basic_table<P> &table, str prefix, threadinfo *ti);
     bool remove_layer(threadinfo *ti);
     friend struct remove_layer_rcu_callback<P>;
 };

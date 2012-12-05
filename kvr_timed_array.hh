@@ -70,7 +70,7 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
                                         kvtimestamp_t ts, threadinfo &ti);
     void filteremit(const fields_t &f, query<kvr_timed_array> &q,
 		    struct kvout *kvout) const;
-    void print(FILE *f, const char *prefix, int indent, const str &key,
+    void print(FILE *f, const char *prefix, int indent, str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "") {
 	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
 	fprintf(f, "%s%*s%.*s = ### @" PRIKVTSPARTS "%s\n", prefix, indent, "",
@@ -86,7 +86,7 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
      *    Should not use this version for timed_str.
      */
     void to_shared_row_str(str &val, kvout *buffer) const;
-    static kvr_timed_array *from_rowstr(const str &, kvtimestamp_t, threadinfo &);
+    static kvr_timed_array *from_rowstr(str, kvtimestamp_t, threadinfo &);
     kvtimestamp_t ts_;
   private:
     static int kvwrite_column(struct kvout *kvout, inline_string *c);

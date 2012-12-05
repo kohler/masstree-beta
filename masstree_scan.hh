@@ -297,7 +297,7 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 
 template <typename P> template <typename H, typename F>
 int basic_table<P>::scan(H helper,
-                         const str &firstkey, bool emit_firstkey,
+                         str firstkey, bool emit_firstkey,
                          F &scanner,
                          threadinfo *ti) const
 {
@@ -370,7 +370,7 @@ int basic_table<P>::scan(H helper,
 }
 
 template <typename P> template <typename F>
-int basic_table<P>::scan(const str &firstkey, bool emit_firstkey,
+int basic_table<P>::scan(str firstkey, bool emit_firstkey,
                          F &scanner,
                          threadinfo *ti) const
 {
@@ -378,7 +378,7 @@ int basic_table<P>::scan(const str &firstkey, bool emit_firstkey,
 }
 
 template <typename P> template <typename F>
-int basic_table<P>::rscan(const str &firstkey, bool emit_firstkey,
+int basic_table<P>::rscan(str firstkey, bool emit_firstkey,
                           F &scanner,
                           threadinfo *ti) const
 {

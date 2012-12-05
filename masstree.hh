@@ -17,7 +17,6 @@
 #define MASSTREE_HH 1
 #include "compiler.hh"
 #include "str.hh"
-#include "nodeversion.hh"
 #include "ksearch.hh"
 class threadinfo;
 
@@ -64,22 +63,20 @@ class basic_table {
         return root_;
     }
 
-    bool get(const str &key, value_type &value,
+    bool get(str key, value_type &value,
 	     threadinfo *ti) const;
 
     template <typename F>
-    int scan(const str &firstkey, bool matchfirst, F &scanner,
+    int scan(str firstkey, bool matchfirst, F &scanner,
 	     threadinfo *ti) const;
     template <typename F>
-    int rscan(const str &firstkey, bool matchfirst, F &scanner,
+    int rscan(str firstkey, bool matchfirst, F &scanner,
 	      threadinfo *ti) const;
 
     template <typename F>
-    inline int modify(const str &key, F &f,
-		      threadinfo *ti);
+    inline int modify(str key, F &f, threadinfo *ti);
     template <typename F>
-    inline int modify_insert(const str &key, F &f,
-			     threadinfo *ti);
+    inline int modify_insert(str key, F &f, threadinfo *ti);
 
     inline void print(FILE *f = 0, int indent = 0) const;
 
@@ -87,7 +84,7 @@ class basic_table {
     node_type *root_;
 
     template <typename H, typename F>
-    int scan(H helper, const str &firstkey, bool matchfirst,
+    int scan(H helper, str firstkey, bool matchfirst,
 	     F &scanner, threadinfo *ti) const;
 
     friend class unlocked_tcursor<P>;

@@ -106,7 +106,7 @@ inline int kvread_str(struct kvin *kvin, char *buf, int max, int &vlen)
     return sizeof(vlen) + vlen;
 }
 
-inline int kvwrite_str(struct kvout *kvout, const str &v)
+inline int kvwrite_str(struct kvout *kvout, str v)
 {
     KVW(kvout, (int)v.len);
     kvwrite(kvout, v.s, v.len);

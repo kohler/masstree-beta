@@ -34,12 +34,12 @@ struct row_base {
     };
     typedef KUtil::vec<cell_t> change_t;
     typedef KUtil::vec<typename IDX::field_t> fields_t;
-    static int parse_change(const str &v, change_t &c) {
+    static int parse_change(str v, change_t &c) {
         struct kvin kvin;
         kvin_init(&kvin, const_cast<char *>(v.s), v.len);
         return kvread_change(&kvin, c);
     }
-    static int parse_fields(const str &v, fields_t &f) {
+    static int parse_fields(str v, fields_t &f) {
         struct kvin kvin;
         kvin_init(&kvin, const_cast<char *>(v.s), v.len);
         return kvread_fields(&kvin, f);
@@ -95,7 +95,7 @@ struct row_base {
         return 0;
     }
 
-    static cell_t make_cell(typename IDX::field_t fid, const str &value) {
+    static cell_t make_cell(typename IDX::field_t fid, str value) {
 	cell_t c;
 	c.c_fid = fid;
 	c.c_value = value;
@@ -107,14 +107,14 @@ struct row_base {
         f.resize(1);
         IDX::make_full_field(f[0]);
     }
-    static void make_put1_change(change_t &c, const str &val) {
+    static void make_put1_change(change_t &c, str val) {
         c.resize(1);
         IDX::make_full_field(c[0].c_fid);
         c[0].c_value = val;
     }
     static str make_put_col_request(struct kvout *kvout,
 				    typename IDX::field_t fid,
-				    const str &value) {
+				    str value) {
 	kvout_reset(kvout);
 	KVW(kvout, short(1));
 	IDX::kvwrite_field(kvout, fid);
@@ -192,33 +192,33 @@ struct query {
 	QT_Replay_Modify = 10
     };
 
-    void begin_get(const str &key, const str &req, struct kvout *kvout);
-    void begin_put(const str &key, const str &req);
-    void begin_replay_put(const str &key, const str &req, kvtimestamp_t ts);
-    void begin_replay_modify(const str &key, const str &req, kvtimestamp_t ts,
+    void begin_get(str key, str req, struct kvout *kvout);
+    void begin_put(str key, str req);
+    void begin_replay_put(str key, str req, kvtimestamp_t ts);
+    void begin_replay_modify(str key, str req, kvtimestamp_t ts,
 			     kvtimestamp_t prev_ts);
-    void begin_scan(const str &startkey, int npairs, const str &req,
+    void begin_scan(str startkey, int npairs, str req,
 		    struct kvout *kvout);
-    void begin_checkpoint(ckstate *ck, const str &startkey, const str &endkey);
-    void begin_remove(const str &key);
-    void begin_replay_remove(const str &key, kvtimestamp_t ts, threadinfo *ti);
+    void begin_checkpoint(ckstate *ck, str startkey, str endkey);
+    void begin_remove(str key);
+    void begin_replay_remove(str key, kvtimestamp_t ts, threadinfo *ti);
     /** @brief Insert the string representation of a row from checkpoint.
      */
-    void begin_ckp_put(const str &key, const str &ckv, kvtimestamp_t ts);
+    void begin_ckp_put(str key, str ckv, kvtimestamp_t ts);
 
     /** @brief interfaces where the value is a single column,
      *    and where "get" does not emit but save a copy locally.
      */
-    void begin_get1(const str &key, int col = 0) {
+    void begin_get1(str key, int col = 0) {
 	qt_ = QT_Get1_Col0 + col;
 	key_ = key;
     }
     str get1_value() const {
 	return val_;
     }
-    void begin_scan1(const str &startkey, int npairs, struct kvout *kvout);
-    void begin_put1(const str &key, const str &value);
-    void begin_replay_put1(const str &key, const str &value, kvtimestamp_t ts);
+    void begin_scan1(str startkey, int npairs, struct kvout *kvout);
+    void begin_put1(str key, str value);
+    void begin_replay_put1(str key, str value, kvtimestamp_t ts);
 
     int query_type() const {
 	return qt_;
@@ -236,7 +236,7 @@ struct query {
     inline bool emitrow(const R *v);
     /** @return whether the scan should continue or not
      */
-    bool scanemit(const str &k, const R *v);
+    bool scanemit(str k, const R *v);
 
     inline result_t apply_put(R *&value, bool has_value, threadinfo *ti);
     inline result_t apply_put_cmpxchg(R *&value, bool has_value, threadinfo *ti);
@@ -264,7 +264,7 @@ struct query {
 
 template <typename R>
 void
-query<R>::begin_get(const str &key, const str &req, struct kvout *kvout)
+query<R>::begin_get(str key, str req, struct kvout *kvout)
 {
     qt_ = QT_Get;
     key_ = key;
@@ -274,7 +274,7 @@ query<R>::begin_get(const str &key, const str &req, struct kvout *kvout)
 
 template <typename R>
 void
-query<R>::begin_put(const str &key, const str &req)
+query<R>::begin_put(str key, str req)
 {
     qt_ = QT_Put;
     key_ = key;
@@ -283,7 +283,7 @@ query<R>::begin_put(const str &key, const str &req)
 
 template <typename R>
 void
-query<R>::begin_replay_put(const str &key, const str &req, kvtimestamp_t ts)
+query<R>::begin_replay_put(str key, str req, kvtimestamp_t ts)
 {
     qt_ = QT_Replay_Put;
     key_ = key;
@@ -293,7 +293,7 @@ query<R>::begin_replay_put(const str &key, const str &req, kvtimestamp_t ts)
 
 template <typename R>
 void
-query<R>::begin_put1(const str &key, const str &val)
+query<R>::begin_put1(str key, str val)
 {
     qt_ = QT_Put;
     key_ = key;
@@ -302,7 +302,7 @@ query<R>::begin_put1(const str &key, const str &val)
 
 template <typename R>
 void
-query<R>::begin_replay_put1(const str &key, const str &value, kvtimestamp_t ts)
+query<R>::begin_replay_put1(str key, str value, kvtimestamp_t ts)
 {
     qt_ = QT_Replay_Put;
     key_ = key;
@@ -312,7 +312,7 @@ query<R>::begin_replay_put1(const str &key, const str &value, kvtimestamp_t ts)
 
 template <typename R>
 void
-query<R>::begin_replay_modify(const str &key, const str &req,
+query<R>::begin_replay_modify(str key, str req,
 			      kvtimestamp_t ts, kvtimestamp_t prev_ts)
 {
     // XXX We assume that sizeof(row_delta_marker<R>) memory exists before
@@ -329,7 +329,7 @@ query<R>::begin_replay_modify(const str &key, const str &req,
 
 template <typename R>
 void
-query<R>::begin_scan(const str &startkey, int npairs, const str &req,
+query<R>::begin_scan(str startkey, int npairs, str req,
 		     struct kvout *kvout)
 {
     assert(npairs > 0);
@@ -342,7 +342,7 @@ query<R>::begin_scan(const str &startkey, int npairs, const str &req,
 
 template <typename R>
 void
-query<R>::begin_scan1(const str &startkey, int npairs, struct kvout *kvout)
+query<R>::begin_scan1(str startkey, int npairs, struct kvout *kvout)
 {
     assert(npairs > 0);
     qt_ = QT_Scan;
@@ -354,7 +354,7 @@ query<R>::begin_scan1(const str &startkey, int npairs, struct kvout *kvout)
 
 template <typename R>
 void
-query<R>::begin_checkpoint(ckstate *ck, const str &startkey, const str &endkey)
+query<R>::begin_checkpoint(ckstate *ck, str startkey, str endkey)
 {
     qt_ = QT_Ckp_Scan;
     key_ = startkey;
@@ -364,7 +364,7 @@ query<R>::begin_checkpoint(ckstate *ck, const str &startkey, const str &endkey)
 
 template <typename R>
 void
-query<R>::begin_remove(const str &key)
+query<R>::begin_remove(str key)
 {
     qt_ = QT_Remove;
     key_ = key;
@@ -372,7 +372,7 @@ query<R>::begin_remove(const str &key)
 
 template <typename R>
 void
-query<R>::begin_replay_remove(const str &key, kvtimestamp_t ts, threadinfo *ti)
+query<R>::begin_replay_remove(str key, kvtimestamp_t ts, threadinfo *ti)
 {
     qt_ = QT_Replay_Remove;
     key_ = key;
@@ -384,7 +384,7 @@ query<R>::begin_replay_remove(const str &key, kvtimestamp_t ts, threadinfo *ti)
 
 template <typename R>
 void
-query<R>::begin_ckp_put(const str &key, const str &val, kvtimestamp_t ts)
+query<R>::begin_ckp_put(str key, str val, kvtimestamp_t ts)
 {
     qt_ = QT_Ckp_Put;
     key_ = key;
@@ -394,7 +394,7 @@ query<R>::begin_ckp_put(const str &key, const str &val, kvtimestamp_t ts)
 
 template <typename R>
 bool
-query<R>::scanemit(const str &k, const R *v)
+query<R>::scanemit(str k, const R *v)
 {
     if (row_is_marker(v))
 	return true;
@@ -635,7 +635,7 @@ struct query_scanner {
     query_scanner(query<R> &q)
 	: q_(q) {
     }
-    bool operator()(const str &key, R *value, threadinfo *) {
+    bool operator()(str key, R *value, threadinfo *) {
 	return q_.scanemit(key, value);
     }
 };

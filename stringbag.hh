@@ -57,7 +57,7 @@ class stringbag {
 	else
 	    return string_slice<uintptr_t>::equals_sloppy(s, s_ + info_pos(info), len);
     }
-    bool equals_sloppy(int p, const str &s) const {
+    bool equals_sloppy(int p, str s) const {
 	return equals_sloppy(p, s.s, s.len);
     }
     bool equals(int p, const char *s, int len) const {
@@ -65,7 +65,7 @@ class stringbag {
 	return info_len(info) == len
 	    && memcmp(s_ + info_pos(info), s, len) == 0;
     }
-    bool equals(int p, const str &s) const {
+    bool equals(int p, str s) const {
 	return equals(p, s.s, s.len);
     }
 
@@ -75,7 +75,7 @@ class stringbag {
 	int cmp = memcmp(s_ + info_pos(info), s, minlen);
 	return cmp ? cmp : ::compare(info_len(info), len);
     }
-    int compare(int p, const str &s) const {
+    int compare(int p, str s) const {
 	return compare(p, s.s, s.len);
     }
 
@@ -92,7 +92,7 @@ class stringbag {
 	info_[p] = make_info(pos, len);
 	return true;
     }
-    bool assign(int p, const str &s) {
+    bool assign(int p, str s) {
 	return assign(p, s.s, s.len);
     }
 

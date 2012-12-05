@@ -157,7 +157,7 @@ inline void tcursor<P>::finish(bool found, bool kept, threadinfo *ti)
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::modify(const str &key, F &f, threadinfo *ti)
+inline int basic_table<P>::modify(str key, F &f, threadinfo *ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_locked(ti);
@@ -171,7 +171,7 @@ inline int basic_table<P>::modify(const str &key, F &f, threadinfo *ti)
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::modify_insert(const str &key, F &f, threadinfo *ti)
+inline int basic_table<P>::modify_insert(str key, F &f, threadinfo *ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_insert(ti);

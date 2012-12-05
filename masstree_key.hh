@@ -44,7 +44,7 @@ struct key {
     key() {
     }
     /** @brief Construct a key for string @a s. */
-    key(const str &s)
+    key(str s)
 	: ikey0_(string_slice<ikey_type>::make_comparable(s.s, s.len)),
 	  len_(s.len), s_(s.s), first_(s.s) {
     }
@@ -70,7 +70,7 @@ struct key {
 	  len_(std::min(len, ikey_size)), s_(0), first_(0) {
     }
     /** @brief Construct a key with ikey @a ikey and suffix @a suf. */
-    key(ikey_type ikey, const str &suf)
+    key(ikey_type ikey, str suf)
 	: ikey0_(ikey),
 	  len_(ikey_size + suf.len), s_(suf.s - ikey_size), first_(s_) {
     }
@@ -177,7 +177,7 @@ struct key {
 	ikey0_ = ikey;
 	*reinterpret_cast<ikey_type *>(const_cast<char *>(s_)) = host_to_net_order(ikey);
     }
-    int assign_store_suffix(const str &s) {
+    int assign_store_suffix(str s) {
 	memcpy(const_cast<char *>(s_ + ikey_size), s.s, s.len);
 	return ikey_size + s.len;
     }

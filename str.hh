@@ -136,7 +136,7 @@ struct inline_string : public String_base<inline_string> {
 	return r;
     }
     template <typename ALLOC>
-    static inline_string *allocate(const str &s, ALLOC &ti) {
+    static inline_string *allocate(str s, ALLOC &ti) {
 	return allocate(s.s, s.len, ti);
     }
     template <typename ALLOC>

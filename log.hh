@@ -183,7 +183,7 @@ struct logrec_kv {
 	return sizeof(logrec_kv) + keylen + vallen;
     }
     static size_t store(char *buf, uint32_t command,
-			const str &key, const str &val,
+			str key, str val,
 			kvtimestamp_t ts) {
 	// XXX check alignment on some architectures
 	logrec_kv *lr = reinterpret_cast<logrec_kv *>(buf);

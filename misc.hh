@@ -148,11 +148,11 @@ struct quick_istr {
 	buf_[sizeof(buf_) - 1] = 0;
 	return bbuf_;
     }
-    bool operator==(const str &s) const {
+    bool operator==(str s) const {
 	return s.len == (buf_ + sizeof(buf_) - 1) - bbuf_
 	    && memcmp(s.s, bbuf_, s.len) == 0;
     }
-    bool operator!=(const str &s) const {
+    bool operator!=(str s) const {
 	return !(*this == s);
     }
 };
@@ -161,7 +161,7 @@ size_t get_hugepage_size();
 
 struct ckstate;
 class threadinfo;
-void checkpoint1(ckstate *c, const str &key, const row_type *row);
+void checkpoint1(ckstate *c, str key, const row_type *row);
 
 struct Clp_Parser;
 int clp_parse_suffixdouble(struct Clp_Parser *clp, const char *vstr,

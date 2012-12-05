@@ -102,7 +102,7 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
     kvr_timed_bag<O> *update(const change_t &c, kvtimestamp_t ts,
 			     ALLOC &ti) const;
     template <typename ALLOC>
-    inline kvr_timed_bag<O> *update(int col, const str &value,
+    inline kvr_timed_bag<O> *update(int col, str value,
 				    kvtimestamp_t ts, ALLOC &ti) const {
 	change_t c;
 	c.push_back(this->make_cell(col, value));
@@ -118,7 +118,7 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
     }
     void filteremit(const fields_t &f, query<kvr_timed_bag<O> > &q,
 		    struct kvout *kvout) const;
-    void print(FILE *f, const char *prefix, int indent, const str &key,
+    void print(FILE *f, const char *prefix, int indent, str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "");
     void to_priv_row_str(str &val) const {
         val.assign(d_.s_, d_.pos_[d_.ncol_]);
@@ -133,7 +133,7 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
      *    or to_sharedstr.
      */
     template <typename ALLOC>
-    static kvr_timed_bag<O> *from_rowstr(const str &, kvtimestamp_t,
+    static kvr_timed_bag<O> *from_rowstr(str, kvtimestamp_t,
 					 ALLOC &);
     kvtimestamp_t ts_;
   private:
@@ -226,7 +226,7 @@ void kvr_timed_bag<O>::filteremit(const fields_t &f, query<kvr_timed_bag<O> > &,
 }
 
 template <typename O> template <typename ALLOC>
-kvr_timed_bag<O> *kvr_timed_bag<O>::from_rowstr(const str &rb, kvtimestamp_t ts,
+kvr_timed_bag<O> *kvr_timed_bag<O>::from_rowstr(str rb, kvtimestamp_t ts,
 						ALLOC &ti)
 {
     kvr_timed_bag<O> *row = (kvr_timed_bag<O> *) ti.allocate(sizeof(kvtimestamp_t) + rb.len);
@@ -237,7 +237,7 @@ kvr_timed_bag<O> *kvr_timed_bag<O>::from_rowstr(const str &rb, kvtimestamp_t ts,
 
 template <typename O>
 void kvr_timed_bag<O>::print(FILE *f, const char *prefix, int indent,
-			     const str &key, kvtimestamp_t initial_ts,
+			     str key, kvtimestamp_t initial_ts,
 			     const char *suffix)
 {
     kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
