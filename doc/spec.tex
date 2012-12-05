@@ -65,16 +65,29 @@
 \section{Definitions}
 
 A Masstree maps \emph{keys} to \emph{values}. Keys are variable-length strings. Values are arbitrary.
-
 Let \Keyset\ be the set of keys and \Valueset\ the set of values.
 
-Masstree's operations are \sysput, \sysget, and \sysscan. \sysPut\ stores a value at a given key. \sysGet\ returns the value for a given key (or \NONE\ if there is no value). \sysScan\ fetches multiple keys and values. It takes an initial key $k_0$ and a function $f$. The function is called for every key $k \geq k_0$ in the Masstree, once per key, in increasing order by key. Its arguments are a key and the corresponding value. The scan stops when the Masstree runs out of values or the function returns false, whichever happens first.
+Masstree's operations are \sysput, \sysget, and \sysscan.
 
 \begin{itemize}
 \item \(\sysput : \Keyset \times \Valueset \mapsto \None\)
 \item \(\sysget : \Keyset \mapsto (\Valueset \cup \None)\)
 \item \(\sysscan : \Keyset \times (\Keyset \times \Valueset \mapsto \Bool) \mapsto \None\)
 \end{itemize}
+
+\noindent%
+\sysPut\
+stores a value at a given key. \sysGet\ returns the value for a given
+key (or \NONE\ if there is no value). \sysScan\ fetches multiple keys
+and values. It takes an initial key $k_0$ and a function object $f$.
+The function object is called for every key $k \geq k_0$ in the
+Masstree, once per key, in increasing order by key. Its arguments are
+a key and the corresponding value. We expect the scan function will
+save copies of the keys and values in the object, or count them, or
+whatever is appropriate, and that scan's caller will extract those
+values once the scan returns. The scan stops when the Masstree
+runs out of values or the function object returns false, whichever
+happens first.
 
 Masstree can support other operations, such as remove and a compare-and-swap-style atomic put, but these three suffice to discuss correctness.
 
@@ -320,10 +333,10 @@ However, this code \emph{must} read \(n.\V{version}\) twice, and write
 \end{programtabbing}
 
 We occasionally use a superscript O notation, as in
-\(\readnow{n.\V{version}}\), to indicate for clarity that a value is
-read directly from main memory at that point (i.e., no previously cached
-value allowed). We use this notation sporadically; fences require other
-reads to complete from main memory.
+\(\readnow{n.\V{version}}\), to indicate that a value is
+read from main memory at that point (i.e., no previously cached
+value allowed). Some unmarked reads must also complete from main
+memory, specifically those after fences.
 
 All reads and writes of individual variables are assumed to be atomic.
 We also assume one atomic compare-and-swap operation, cmpxchg, which has
@@ -368,7 +381,7 @@ The dirty bits alert readers of potentially unstable states that require
 retry. Masstree updates generally involve multiple writes that should be
 considered atomic (for example, inserting a new child into an interior
 node, or updating the various parts of a key in a leaf). In some cases
-Masstree can arrange for these updates to be ``published'' atomically,
+Masstree can arrange to ``publish'' an update atomically,
 but this is not always possible. Thus,
 before changing a node in a dangerous way, Masstree writers must mark
 the node as dirty by changing its version. Masstree readers execute
@@ -699,7 +712,7 @@ insert:~
 \>\> unlock(\(n\));~ return \\
 \> if \(n.\V{nremoved} > 0\): \\
 \>\> \(\N{clean}(n)\);~ goto insert \\
-\> \(\N{split}(n, i, k, \V{value})\) \\
+\> \(\N{split}(n, k, \V{value})\) \\
 \programtabskip
 %
 \textbf{new\_layer}(leaf \(n\), int \(\pi\)): \\
@@ -950,7 +963,7 @@ wasting space and traversal time.
 \includegraphics[scale=.8]{remove1_8}
 \end{figure}
 
-Masstree detects such trivial nodes and deletes them in the \N{collapse}
+Masstree detects trivial nodes and deletes them in the \N{collapse}
 function. \N{Collapse} marks trivial nodes' versions as \V{deleted} and
 frees them after the usual reader delay. It also walks up the tree, with
 hand-over-hand locking, and adjusts parent nodes' pointers to hop over
@@ -1015,8 +1028,8 @@ than \ITEM{m}---we don't bother to clean it up yet.
 
 \subsection{Root trimming}
 
-Now consider what happens when the \ITEM{mno} leaf is deleted. This
-makes the entire right-hand subtree redundant.
+When the \ITEM{mno} leaf is deleted,
+the entire right-hand subtree becomes redundant.
 
 \begin{figure}[H]
 \includegraphics[scale=.8]{remove2_5}
@@ -1054,7 +1067,7 @@ And any change to that higher layer's values requires locking the
 corresponding leaf.
 
 We solve this problem by registering a callback to trim the layer,
-called \N{gclayer}. Logically \N{gclayer} is simple: it locks the
+called \N{gclayer}. This function locks the
 relevant leaf in the higher layer
 
 \begin{figure}[H]
@@ -1062,15 +1075,15 @@ relevant leaf in the higher layer
 \end{figure}
 
 \noindent%
-and then cleans up the lower layer as appropriate. It locks the root
+locks the lower layer's root
 
 \begin{figure}[H]
 \includegraphics[scale=.8]{remove2_11}
 \end{figure}
 
 \noindent%
-and then marks the child as the new root, switching the higher layer's
-value pointer to it.
+and then marks its single child as the new root, switching the higher
+layer's value pointer to it.
 
 \begin{figure}[H]
 \includegraphics[scale=.8]{remove2_12}
@@ -1078,11 +1091,11 @@ value pointer to it.
 
 The original root is now garbage and can be reclaimed.
 
-When Masstree encounters a deleted node, it tries again from the current
-layer's root. But here, \emph{the root itself} was deleted. We therefore
-hook up the \emph{old} root to look to concurrent readers like a child of the
-\emph{new} root. This will help concurrent readers find the right children,
-even if the root disappeared after concurrent splits.
+But what about concurrent readers? The root reachability invariant
+requires that the true root of a layer always be reachable from any
+prior root. We therefore set the \emph{old} root's parent pointer to
+point to the \emph{new} root. This can cause an apparent anomaly: an
+internal node can have a leaf as its parent!
 
 \subsection{Deleting a layer}
 
