@@ -369,7 +369,7 @@ retry. Masstree updates generally involve multiple writes that should be
 considered atomic (for example, inserting a new child into an interior
 node, or updating the various parts of a key in a leaf). In some cases
 Masstree can arrange for these updates to be ``published'' atomically,
-as enabled by leaf permutations, but this is not always possible. Thus,
+but this is not always possible. Thus,
 before changing a node in a dangerous way, Masstree writers must mark
 the node as dirty by changing its version. Masstree readers execute
 \emph{read transactions} that are \emph{validated} using versions. First
@@ -457,9 +457,9 @@ and \(t'\).
 
 \paragraph{Root reachability}
 
-Assume that at time \(T\), the true root of a layer is node \(n\), and
+Assume that at time \(t\), the true root of a layer is node \(n\), and
 \(n\) is unlocked. Let \(x\) be the root of that layer as observed by
-a concurrent reader active at time \(T\). Then either \(x=n\), or
+a concurrent reader active at time \(t\). Then either \(x=n\), or
 \(x.\V{isroot} = \FALSE\) and \(n\) is reachable from \(x\) by a chain
 of \V{parent} pointers.
 
@@ -468,18 +468,16 @@ of \V{parent} pointers.
 If \(n\) is reachable, then \(n.\V{parent}\) is either another
 reachable node or \NIL.
 
-\paragraph{Value stability}
+\paragraph{Key stability}
 
 Let \(n\) be a reachable leaf, and consider two times \(t<t'\) where
 \(n.\V{version}\) is the same at both times, and not dirty. Consider a
-slot \(\pi\) reachable via \(n.\V{permutation}\) at time \(t\). Then
+slot \(\pi\) reachable via \(\AT{n.\V{permutation}}{t}\). Then
 slot \(\pi\) is also reachable via \(\AT{n.\V{permutation}}{t'}\), and
-all the values in slot \(\pi\) are unchanged from their values at time
-\(t\). (That is, \(\AT{n.\V{value}[\pi]}{t} =
-\AT{n.\V{value}[\pi]}{t'}\), \(\AT{n.\V{type}[\pi]}{t} =
-\AT{n.\V{type}[\pi]}{t'}\), \(\AT{n.\V{ksuffix}[\pi]}{t} =
-\AT{n.\V{ksuffix}[\pi]}{t'}\), \(\AT{n.\V{kslice}[\pi]}{t} =
-\AT{n.\V{kslice}[\pi]}{t'}\), and \(\AT{n.\V{klength}[\pi]}{t} =
+all key information in slot \(\pi\) is unchanged from the corresponding values at time
+\(t\). (That is, \(\AT{n.\V{kslice}[\pi]}{t} =
+\AT{n.\V{kslice}[\pi]}{t'}\), \(\AT{n.\V{ksuffix}[\pi]}{t} =
+\AT{n.\V{ksuffix}[\pi]}{t'}\),  and \(\AT{n.\V{klength}[\pi]}{t} =
 \AT{n.\V{klength}[\pi]}{t'}\).)
 
 \paragraph{Interior node validity}
@@ -874,8 +872,8 @@ have completed.
 We next remove the node from the leaf linked list. Logical ``locks''
 protect against neighbors' concurrent removes and splits, but to prevent
 deadlock, these per-node locks are different from the main per-node
-locks. The lock is a bit stolen from node \V{next} pointers. The mark
-part of \(n.\V{next}\) protects the setting of \(n.\V{next}\), and the
+locks. The lock is a mark bit stolen from node \V{next} pointers. The mark
+bit in \(n.\V{next}\) protects the setting of \(n.\V{next}\), and the
 setting of \(n.\V{next}.\V{prev}\).
 
 The \N{unlink\_leaf} function contains the code. (The code for inserting
@@ -975,8 +973,8 @@ We return to the original example and, this time, remove leaf \ITEM{jkl}.
 \end{figure}
 
 Now, \ITEM{jkl} is the \emph{first} child of its parent. This requires
-special handling. To see why, check out what would happen if we executed
-the usual removal procedure on the parent interior node:
+special handling. To see why, note that
+the usual removal procedure would create this state:
 
 \begin{figure}[H]
 \includegraphics[scale=.8]{remove2_2}
@@ -1247,7 +1245,7 @@ have this slice.
 %
 This isn't a problem unless the value in position 0 is removed.
 %
-To guard against inappropriate reuse, the \N{insert} procedure's code
+To guard against inappropriate reuse, the \N{insert} procedure
 ensures that position 0 is only reused by a key with the right slice.
 
 In the implementation, \(n.\V{type}\) is stored implicitly; its values
