@@ -63,15 +63,12 @@ class basic_table {
         return root_;
     }
 
-    bool get(str key, value_type &value,
-	     threadinfo *ti) const;
+    bool get(str key, value_type &value, threadinfo *ti) const;
 
     template <typename F>
-    int scan(str firstkey, bool matchfirst, F &scanner,
-	     threadinfo *ti) const;
+    int scan(str firstkey, bool matchfirst, F &scanner, threadinfo *ti) const;
     template <typename F>
-    int rscan(str firstkey, bool matchfirst, F &scanner,
-	      threadinfo *ti) const;
+    int rscan(str firstkey, bool matchfirst, F &scanner, threadinfo *ti) const;
 
     template <typename F>
     inline int modify(str key, F &f, threadinfo *ti);
