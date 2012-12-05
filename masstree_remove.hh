@@ -16,7 +16,7 @@
 #ifndef MASSTREE_REMOVE_HH
 #define MASSTREE_REMOVE_HH 1
 #include "masstree_tcursor.hh"
-#include "kvt_b_leaflink.hh"
+#include "btree_leaflink.hh"
 namespace Masstree {
 
 template <typename P>
@@ -100,14 +100,14 @@ bool tcursor<P>::remove_layer(threadinfo *ti)
 
 template <typename P>
 struct remove_layer_rcu_callback : public rcu_callback {
-    simple_table<P> *tablep_;
+    basic_table<P> *tablep_;
     int len_;
     char s_[0];
     void operator()(threadinfo *ti);
     size_t size() const {
 	return len_ + sizeof(*this);
     }
-    static void make(simple_table<P> &table, const str &prefix, threadinfo *ti);
+    static void make(basic_table<P> &table, const str &prefix, threadinfo *ti);
 };
 
 template <typename P>
@@ -121,7 +121,7 @@ void remove_layer_rcu_callback<P>::operator()(threadinfo *ti)
 }
 
 template <typename P>
-void remove_layer_rcu_callback<P>::make(simple_table<P> &table, const str &prefix,
+void remove_layer_rcu_callback<P>::make(basic_table<P> &table, const str &prefix,
 					threadinfo *ti)
 {
     size_t sz = prefix.len + sizeof(remove_layer_rcu_callback);
@@ -147,7 +147,7 @@ bool tcursor<P>::finish_remove(threadinfo *ti)
 }
 
 template <typename P>
-bool tcursor<P>::remove_leaf(leaf_type *leaf, simple_table<P> &table,
+bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
                              const str &prefix, threadinfo *ti)
 {
     if (!leaf->prev_) {
@@ -184,7 +184,7 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, simple_table<P> &table,
     bool have_actikey = false;
 
     while (1) {
-	internode_type *p = locked_parent(n, ti);
+	internode_type *p = n->locked_parent(ti);
 	assert(p);
 	n->unlock();
 
@@ -226,12 +226,12 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, simple_table<P> &table,
 
 template <typename P>
 void tcursor<P>::prune_twig(internode_type *p, ikey_type ikey,
-			    simple_table<P> &table, const str &prefix, threadinfo *ti)
+			    basic_table<P> &table, const str &prefix, threadinfo *ti)
 {
     assert(p && p->locked());
 
     while (1) {
-	internode_type *gp = locked_parent(p, ti);
+	internode_type *gp = p->locked_parent(ti);
 	if (!gp) {
 	    if (!prefix.empty())
 		remove_layer_rcu_callback<P>::make(table, prefix, ti);
@@ -256,5 +256,5 @@ void tcursor<P>::prune_twig(internode_type *p, ikey_type ikey,
     }
 }
 
-}
+} // namespace Masstree
 #endif

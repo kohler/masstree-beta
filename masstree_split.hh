@@ -16,7 +16,7 @@
 #ifndef MASSTREE_SPLIT_HH
 #define MASSTREE_SPLIT_HH 1
 #include "masstree_tcursor.hh"
-#include "kvt_b_leaflink.hh"
+#include "btree_leaflink.hh"
 namespace Masstree {
 
 template <typename P>
@@ -76,7 +76,8 @@ int internode_split(internode<P> *nl, internode<P> *nr,
 }
 
 template <typename P>
-typename P::ikey_type leaf_ikey(leaf<P> *nl, const typename leaf<P>::permuter_type &perml,
+typename P::ikey_type leaf_ikey(leaf<P> *nl,
+                                const typename leaf<P>::permuter_type &perml,
 				const typename leaf<P>::key_type &ka,
 				int ka_i, int i)
 {
@@ -154,24 +155,6 @@ int leaf_split(leaf<P> *nl, leaf<P> *nr,
 
 
 template <typename P>
-static inline internode<P> *locked_parent(node_base<P> *n, threadinfo *ti)
-{
-    assert(!n->concurrent || n->locked());
-    while (1) {
-	node_base<P> *p = n->parent();
-	if (!p)
-	    return 0;
-	typename node_base<P>::nodeversion_type pv = p->lock(*p, ti->accounting_relax_fence(tc_internode_lock));
-	if (p == n->parent()) {
-	    assert(!p->isleaf());
-	    return static_cast<internode<P> *>(p);
-	}
-	p->unlock(pv);
-	relax_fence();
-    }
-}
-
-template <typename P>
 node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
 {
     node_type *n = n_;
@@ -186,7 +169,7 @@ node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
 	assert(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
 	internode_type *next_child = 0;
 
-	internode_type *p = locked_parent(n, ti);
+	internode_type *p = n->locked_parent(ti);
 
 	if (!p) {
 	    internode_type *nn = internode_type::make(ti);
@@ -258,5 +241,5 @@ node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
     return insert_marker();
 }
 
-}
+} // namespace Masstree
 #endif

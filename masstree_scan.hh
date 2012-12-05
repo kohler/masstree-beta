@@ -296,10 +296,10 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 }
 
 template <typename P> template <typename H, typename F>
-int simple_table<P>::scan(H helper,
-			  const str &firstkey, bool emit_firstkey,
-			  F &scanner,
-			  threadinfo *ti) const
+int basic_table<P>::scan(H helper,
+                         const str &firstkey, bool emit_firstkey,
+                         F &scanner,
+                         threadinfo *ti) const
 {
     typedef typename P::ikey_type ikey_type;
     typedef typename node_type::key_type key_type;
@@ -370,17 +370,17 @@ int simple_table<P>::scan(H helper,
 }
 
 template <typename P> template <typename F>
-int simple_table<P>::scan(const str &firstkey, bool emit_firstkey,
-			  F &scanner,
-			  threadinfo *ti) const
+int basic_table<P>::scan(const str &firstkey, bool emit_firstkey,
+                         F &scanner,
+                         threadinfo *ti) const
 {
     return scan(forward_scan_helper(), firstkey, emit_firstkey, scanner, ti);
 }
 
 template <typename P> template <typename F>
-int simple_table<P>::rscan(const str &firstkey, bool emit_firstkey,
-			   F &scanner,
-			   threadinfo *ti) const
+int basic_table<P>::rscan(const str &firstkey, bool emit_firstkey,
+                          F &scanner,
+                          threadinfo *ti) const
 {
     return scan(reverse_scan_helper(), firstkey, emit_firstkey, scanner, ti);
 }

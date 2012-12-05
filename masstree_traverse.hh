@@ -122,5 +122,24 @@ leaf<P> *forward_at_leaf(const leaf<P> *n,
     return const_cast<leaf<P> *>(n);
 }
 
+template <typename P>
+internode<P> *node_base<P>::locked_parent(threadinfo *ti) const
+{
+    const node_base<P> *n = this;
+    assert(!n->concurrent || n->locked());
+    while (1) {
+	node_base<P> *p = n->parent();
+	if (!p)
+	    return 0;
+	nodeversion_type pv = p->lock(*p, ti->accounting_relax_fence(tc_internode_lock));
+	if (p == n->parent()) {
+	    assert(!p->isleaf());
+	    return static_cast<internode<P> *>(p);
+	}
+	p->unlock(pv);
+	relax_fence();
+    }
 }
+
+} // namespace Masstree
 #endif

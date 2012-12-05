@@ -51,7 +51,7 @@
 #include <malloc.h>
 #endif
 #include "kvstats.hh"
-#include "masstree.hh"
+#include "masstree_query.hh"
 #include "json.hh"
 #include "kvtest.hh"
 #include "kvrandom.hh"

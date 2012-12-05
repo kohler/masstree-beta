@@ -23,12 +23,12 @@
 #include "masstree_split.hh"
 #include "masstree_remove.hh"
 #include "masstree_scan.hh"
-#include "masstree_initialize.hh"
+#include "masstree_print.hh"
+#include "masstree_query.hh"
 #include "string_slice.hh"
 #include "kpermuter.hh"
 #include "ksearch.hh"
 #include "stringbag.hh"
-#include "kvt_b_leaflink.hh"
 #include "json.hh"
 #include "kvrow.hh"
 
@@ -100,110 +100,9 @@ void leaf<P>::hard_assign_ksuf(int p, const str &s, bool initializing,
 			   memtag_masstree_ksuffixes, ta_tree, 0);
 }
 
-template <typename P>
-void node_base<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
-{
-    if (this->isleaf())
-	((leaf<P> *) this)->print(f, prefix, indent, kdepth);
-    else
-	((internode<P> *) this)->print(f, prefix, indent, kdepth);
-}
 
 template <typename P>
-void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
-{
-    f = f ? f : stderr;
-    prefix = prefix ? prefix : "";
-    typename node_base<P>::nodeversion_type v;
-    permuter_type perm;
-    do {
-	v = *this;
-	fence();
-	perm = permutation_;
-    } while (this->has_changed(v));
-
-    char keybuf[MaxKeyLen];
-    fprintf(f, "%s%*sleaf %p: %d keys, version %x, permutation %s, ",
-	    prefix, indent, "", this, perm.size(), v.version_value(),
-	    perm.unparse(this->width).c_str());
-    if (nremoved_)
-	fprintf(f, "removed %d, ", nremoved_);
-    fprintf(f, "parent %p, prev %p, next %p ", parent_, prev_, next_.ptr);
-    if (ksuf_ && extrasize64_ < -1)
-	fprintf(f, "[ksuf i%dx%d] ", -extrasize64_ - 1, ksuf_->allocated_size() / 64);
-    else if (ksuf_)
-	fprintf(f, "[ksuf x%d] ", ksuf_->allocated_size() / 64);
-    else if (extrasize64_)
-	fprintf(f, "[ksuf i%d] ", extrasize64_);
-    if (P::debug_level > 0) {
-	kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
-	fprintf(f, "@" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
-    }
-    fputc('\n', f);
-
-    if (v.deleted() || (perm[0] != 0 && prev_))
-	fprintf(f, "%s%*s%s = [] #0\n", prefix, indent + 2, "", key_type(ikey_bound()).unparse().c_str());
-
-    char xbuf[15];
-    for (int idx = 0; idx < perm.size(); ++idx) {
-	int p = perm[idx];
-	int l = this->get_key(p).unparse(keybuf, sizeof(keybuf));
-	sprintf(xbuf, " #%x/%d", p, keylenx_[p]);
-	leafvalue_type lv = lv_[p];
-	if (this->has_changed(v)) {
-	    fprintf(f, "%s%*s[NODE CHANGED]\n", prefix, indent + 2, "");
-	    break;
-	} else if (!lv)
-	    fprintf(f, "%s%*s%.*s = []%s\n", prefix, indent + 2, "", l, keybuf, xbuf);
-	else if (is_node(p)) {
-	    fprintf(f, "%s%*s%.*s = SUBTREE%s\n", prefix, indent + 2, "", l, keybuf, xbuf);
-	    node_base<P> *n = lv.node()->unsplit_ancestor();
-	    n->print(f, prefix, indent + 4, kdepth + key_type::ikey_size);
-	} else {
-	    typename P::value_type tvx = lv.value();
-            tvx->print(f, prefix, indent + 2, str(keybuf, l), initial_timestamp, xbuf);
-	}
-    }
-
-    if (v.deleted())
-	fprintf(f, "%s%*s[DELETED]\n", prefix, indent + 2, "");
-}
-
-template <typename P>
-void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
-{
-    f = f ? f : stderr;
-    prefix = prefix ? prefix : "";
-    internode<P> copy(*this);
-    for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i)
-	memcpy(&copy, this, sizeof(copy));
-
-    char keybuf[MaxKeyLen];
-    fprintf(f, "%s%*sinternode %p%s: %d keys, version %x, parent %p",
-	    prefix, indent, "", this, this->deleted() ? " [DELETED]" : "",
-	    copy.size(), copy.version_value(), copy.parent_);
-    if (P::debug_level > 0) {
-	kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
-	fprintf(f, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
-    }
-    fputc('\n', f);
-    for (int p = 0; p < copy.size(); ++p) {
-	if (copy.child_[p])
-	    copy.child_[p]->print(f, prefix, indent + 4, kdepth);
-	else
-	    fprintf(f, "%s%*s[]\n", prefix, indent + 4, "");
-	int l = copy.get_key(p).unparse(keybuf, sizeof(keybuf));
-	fprintf(f, "%s%*s%.*s\n", prefix, indent + 2, "", l, keybuf);
-    }
-    if (copy.child_[copy.size()])
-	copy.child_[copy.size()]->print(f, prefix, indent + 4, kdepth);
-    else
-	fprintf(f, "%s%*s[]\n", prefix, indent + 4, "");
-}
-
-
-template <typename P>
-bool basic_table<P>::get(query<row_type> &q, threadinfo *ti) const
+bool query_table<P>::get(query<row_type> &q, threadinfo *ti) const
 {
     ti->pstat.mark_get_begin();
     unlocked_tcursor<P> lp(table_, q.key_);
@@ -215,7 +114,7 @@ bool basic_table<P>::get(query<row_type> &q, threadinfo *ti) const
 }
 
 template <typename P>
-result_t basic_table<P>::put(query<row_type> &q, threadinfo *ti)
+result_t query_table<P>::put(query<row_type> &q, threadinfo *ti)
 {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
@@ -227,21 +126,21 @@ result_t basic_table<P>::put(query<row_type> &q, threadinfo *ti)
 }
 
 template <typename P>
-void basic_table<P>::scan(query<row_type> &q, threadinfo *ti) const
+void query_table<P>::scan(query<row_type> &q, threadinfo *ti) const
 {
     query_scanner<row_type> scanf(q);
     table_.scan(q.key_, true, scanf, ti);
 }
 
 template <typename P>
-void basic_table<P>::rscan(query<row_type> &q, threadinfo *ti) const
+void query_table<P>::rscan(query<row_type> &q, threadinfo *ti) const
 {
     query_scanner<row_type> scanf(q);
     table_.rscan(q.key_, true, scanf, ti);
 }
 
 template <typename P>
-bool basic_table<P>::remove(query<row_type> &q, threadinfo *ti)
+bool query_table<P>::remove(query<row_type> &q, threadinfo *ti)
 {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_locked(ti);
@@ -286,11 +185,11 @@ static void treestats1(node_base<P> *n, unsigned height)
 }
 
 template <typename P>
-void basic_table<P>::stats(FILE *f)
+void query_table<P>::stats(FILE *f)
 {
     memset(heightcounts, 0, sizeof(heightcounts));
     memset(fillcounts, 0, sizeof(fillcounts));
-    treestats1(table_.root_, 0);
+    treestats1(table_.root(), 0);
     fprintf(f, "  heights:");
     for (unsigned i = 0; i < arraysize(heightcounts); ++i)
 	if (heightcounts[i])
@@ -344,7 +243,7 @@ static void json_stats1(node_base<P> *n, Json &j, int layer, int depth,
 }
 
 template <typename P>
-void basic_table<P>::json_stats(Json &j, threadinfo *ti)
+void query_table<P>::json_stats(Json &j, threadinfo *ti)
 {
     j["size"] = 0.0;
     j["l1_count"] = 0;
@@ -357,7 +256,7 @@ void basic_table<P>::json_stats(Json &j, threadinfo *ti)
     j["l1_leaf_by_size"] = Json::make_array();
     j["key_by_layer"] = Json::make_array();
     j["key_by_length"] = Json::make_array();
-    json_stats1(table_.root_, j, 0, 0, ti);
+    json_stats1(table_.root(), j, 0, 0, ti);
     j.unset("l1_size");
 }
 
@@ -417,14 +316,14 @@ static str findpv(N *n, int pvi, int npv)
 // findpivots should allocate memory for pv[i]->s, which will be
 // freed by the caller.
 template <typename P>
-void basic_table<P>::findpivots(str *pv, int npv) const
+void query_table<P>::findpivots(str *pv, int npv) const
 {
     pv[0].assign(NULL, 0);
     char *cmaxk = (char *)malloc(MaxKeyLen);
     memset(cmaxk, 255, MaxKeyLen);
     pv[npv - 1].assign(cmaxk, MaxKeyLen);
     for (int i = 1; i < npv - 1; i++)
-	pv[i] = findpv(table_.root_, i, npv - 1);
+	pv[i] = findpv(table_.root(), i, npv - 1);
 }
 
 namespace {
@@ -468,8 +367,8 @@ struct scan_tester {
 }
 
 template <typename P>
-void basic_table<P>::test(threadinfo *ti) {
-    basic_table<P> t;
+void query_table<P>::test(threadinfo *ti) {
+    query_table<P> t;
     t.initialize(ti);
     query<row_type> q;
 
@@ -493,7 +392,7 @@ void basic_table<P>::test(threadinfo *ti) {
 	values_copy[x] = values_copy[i - 1];
     }
 
-    t.table_.root_->print(stdout, "", 0, 0);
+    t.table_.print();
     printf("\n");
 
     scan_tester scanner(values, values + 3);
@@ -594,15 +493,14 @@ void basic_table<P>::test(threadinfo *ti) {
 }
 
 template <typename P>
-void basic_table<P>::print(FILE *f, int indent) const {
-    f = f ? f : stdout;
-    table_.root_->print(f, "", indent, 0);
+void query_table<P>::print(FILE *f, int indent) const {
+    table_.print(f, indent);
 }
 
 static kvtable_registration_adapter<default_table> registration(default_table::name(),
                                                                 "Masstree");
 static kvtable_registration_adapter<default_table> registration2("Mbtree");
-template class simple_table<default_table::param_type>;
 template class basic_table<default_table::param_type>;
+template class query_table<default_table::param_type>;
 
 }

@@ -13,8 +13,8 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file is
  * legally binding.
  */
-#ifndef KVT_B_LEAFLINK_HH
-#define KVT_B_LEAFLINK_HH 1
+#ifndef BTREE_LEAFLINK_HH
+#define BTREE_LEAFLINK_HH 1
 #include "compiler.hh"
 
 /** @brief Operations to manage linked lists of B+tree leaves.

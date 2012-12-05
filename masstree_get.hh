@@ -68,8 +68,8 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo *ti)
 }
 
 template <typename P>
-inline bool simple_table<P>::get(const str &key, value_type &value,
-				 threadinfo *ti) const
+inline bool basic_table<P>::get(const str &key, value_type &value,
+                                threadinfo *ti) const
 {
     unlocked_tcursor<P> lp(*this, key);
     bool found = lp.find_unlocked(ti);

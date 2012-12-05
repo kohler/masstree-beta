@@ -16,13 +16,14 @@
 #ifndef MASSTREE_HH
 #define MASSTREE_HH 1
 #include "compiler.hh"
-#include "kvtable.hh"
+#include "str.hh"
 #include "nodeversion.hh"
 #include "ksearch.hh"
+class threadinfo;
 
 namespace Masstree {
 
-template <int LW, int IW = LW> struct nodeparams {
+template <int LW = 15, int IW = LW> struct nodeparams {
     static constexpr int leaf_width = LW;
     static constexpr int internode_width = IW;
     static constexpr bool concurrent = true;
@@ -30,7 +31,6 @@ template <int LW, int IW = LW> struct nodeparams {
     static constexpr int bound_method = bound_method_binary;
     static constexpr int debug_level = 0;
     typedef uint64_t ikey_type;
-    typedef row_type *value_type;
 };
 
 template <int LW, int IW> constexpr int nodeparams<LW, IW>::leaf_width;
@@ -47,18 +47,22 @@ template <typename P> class unlocked_tcursor;
 template <typename P> class tcursor;
 
 template <typename P>
-class simple_table {
+class basic_table {
   public:
     typedef P param_type;
     typedef node_base<P> node_type;
     typedef typename P::value_type value_type;
 
-    simple_table()
+    basic_table()
         : root_(0) {
     }
 
     void initialize(threadinfo *ti);
     void reinitialize(threadinfo *ti);
+
+    inline node_type *root() const {
+        return root_;
+    }
 
     bool get(const str &key, value_type &value,
 	     threadinfo *ti) const;
@@ -77,6 +81,8 @@ class simple_table {
     inline int modify_insert(const str &key, F &f,
 			     threadinfo *ti);
 
+    inline void print(FILE *f = 0, int indent = 0) const;
+
   private:
     node_type *root_;
 
@@ -84,67 +90,9 @@ class simple_table {
     int scan(H helper, const str &firstkey, bool matchfirst,
 	     F &scanner, threadinfo *ti) const;
 
-    friend class basic_table<P>;
     friend class unlocked_tcursor<P>;
     friend class tcursor<P>;
 };
 
-template <typename P>
-class basic_table {
-  public:
-
-    typedef P param_type;
-    typedef node_base<P> node_type;
-
-    basic_table() {
-    }
-
-    simple_table<P> &table() {
-	return table_;
-    }
-
-    void initialize(threadinfo *ti) {
-        table_.initialize(ti);
-    }
-    void reinitialize(threadinfo *ti) {
-        table_.reinitialize(ti);
-    }
-
-    bool get(query<row_type> &q, threadinfo *ti) const;
-    void scan(query<row_type> &q, threadinfo *ti) const;
-    void rscan(query<row_type> &q, threadinfo *ti) const;
-
-    result_t put(query<row_type> &q, threadinfo *ti);
-    bool remove(query<row_type> &q, threadinfo *ti);
-
-    void findpivots(str *pv, int npv) const;
-    ckptrav_order_t ckptravorder() const {
-        return ckptrav_inorder;
-    }
-
-    void stats(FILE *f);
-    void json_stats(Json &j, threadinfo *ti);
-
-    void print(FILE *f, int indent) const;
-
-    static void test(threadinfo *ti);
-
-    static const char *name() {
-	return "mb";
-    }
-
-  private:
-    simple_table<P> table_;
-
-};
-
-typedef basic_table<nodeparams<15, 15> > default_table;
-
 } // namespace Masstree
-
-template <typename P> struct table_has_print<Masstree::basic_table<P> > : public mass::true_type {};
-template <typename P> struct table_has_remove<Masstree::basic_table<P> > : public mass::true_type {};
-template <typename P> struct table_has_rscan<Masstree::basic_table<P> > : public mass::true_type {};
-template <typename P> struct table_has_json_stats<Masstree::basic_table<P> > : public mass::true_type {};
-
 #endif
