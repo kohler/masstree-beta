@@ -1,3 +1,4 @@
+% -*- tex-command: "pdflatex" -*-
 \documentclass[11pt]{article}
 \usepackage{times,mathptmx,amsmath,amssymb,graphicx,float}
 \usepackage[tmargin=1in,hmargin=.75in,height=9in,columnsep=2pc,letterpaper]{geometry}
@@ -27,7 +28,7 @@
 \newcommand{\PrecedesK}[1]{\ensuremath{\mathrel{<_{#1}}}}
 \newcommand{\PrecedesEqK}[1]{\ensuremath{\mathrel{\leq_{#1}}}}
 \newcommand{\V}[1]{\textit{#1}}
-\newcommand{\N}[1]{\text{#1}}
+\newcommand{\N}[1]{\text{\upshape{#1}}}
 \newcommand{\NIL}{\textsc{nil}}
 \newcommand{\NOTFOUND}{\textsc{notfound}}
 \newcommand{\VALUE}{\textsc{value}}
@@ -50,7 +51,8 @@
 \newcommand{\Blink}{B\(^{\text{link}}\)}
 \newcommand{\LEAFWIDTH}{\ensuremath{W_\text{leaf}}}
 \newcommand{\INTERIORWIDTH}{\ensuremath{W_\text{interior}}}
-\newcommand{\C}[1]{\unskip\qquad\small{\textit{// #1}}}
+\newcommand{\CX}[1]{\small{\textit{// #1}}}
+\newcommand{\C}[1]{\unskip\qquad\CX{#1}}
 \newcommand{\ITEM}[1]{\textsc{#1}}
 \newcommand{\AT}[2]{\ensuremath{#1_{@#2}}}
 \newenvironment{programtabbing}%
@@ -463,9 +465,8 @@ retry:~
 \section{Invariants}
 
 We write \(\AT{x}{t}\) for the value of \(x\) at time \(t\).
-
-We say two times \(t\) and \(t'\) are \emph{RCU-overlapping} if a
-single reader could be active over the entire interval between \(t\)
+Times \(t\) and \(t'\) are \emph{RCU-overlapping} if a
+single reader could be active over some interval including both \(t\)
 and \(t'\).
 
 \paragraph{Root reachability}
@@ -510,7 +511,7 @@ If node \(n\) is dirty at time \(t\), then \(n\) is locked at time \(t\).
 If a Masstree interface function (such as get, put, or remove) locks a
 node, then it unlocks that node before returning to the user.
 
-Node locks are obtained in order \emph{down} from layer to layer, but
+Node locks are obtained sequentially \emph{down} from layer to layer, but
 within a layer, they are obtained \emph{up} from leaves toward the root.
 
 \paragraph{Leaf linkage}
@@ -528,19 +529,42 @@ Leaf values are accessed in read transactions validated by version.
 
 Node modifications use transactions protected by locks.
 
-Traversal to leaves \emph{could} use read transactions validated by
-version, but in fact they don't. (The interior node validity
-constraint, plus hand-over-hand locking, makes read transactions
-unnecessary.)
+Internal nodes are accessed during descent using hand-over-hand
+validation by version.
 
 Obtaining a locked pointer to a parent node requires hand-over-hand
 locking with validation.
 
-\section{Traversing interior nodes}
+\section{Get}
+
+Get has two phases: first, it descends to the leaf responsible for a key;
+then, it finds the key in that leaf.
+
+Two related procedures, \N{descend} and \N{advance}, find within a layer
+the leaf node responsible for key $k$. \N{Descend} is more fundamental:
+every lookup involves one or more calls to \N{descend}. \N{Advance} is
+used occasionally to fix lookups that happened concurrently with splits.
+
+Both procedures return a leaf node $n$ and corresponding version $v$.
+The version is never dirty (it was obtained by \N{stable\_version}).
+Version $v$ of leaf $n$ is guaranteed to be responsible for $k$.
+However, neither \N{descend} nor \N{advance} lock nodes or perform any
+writes to shared memory, so $n$ may not \emph{remain} responsible for
+$k$. $n$ could split, moving responsibility for $k$ to the right; or $n$
+could be deleted, moving responsibility for $k$ to the left. Users of
+\N{descend} must detect these situations using read transactions
+validated by a check of $n.\V{version}$. If $n.\V{version}$ indicates a
+split, the user should call \N{advance} to find the leaf truly
+responsible for $k$; if $n.\V{version}$ indicates a deletion, the user
+must call \N{descend} again.
 
 \begin{figure}[H]
 \begin{programtabbing}
-\textbf{find\_leaf}(node \V{root}, key $k$): \\
+\textbf{descend}(node \V{root}, key $k$) \Returns{\(\langle
+  \N{leaf \V{n}, version \V{v}}\rangle\)}: \\
+\CX{postcondition: either \(v.\V{deleted}\), or version \V{v} of leaf
+\V{n} is responsible for key $k$: \(\N{lowkey}(n) \leq k.\V{slice} <
+\N{highkey}(n_{@v})\)} \\
 retry:
 \> $n \gets \V{root}$;~ $v \gets \text{stable\_version}(n)$ \\
 \> if \(!v.\V{isroot}\): \\
@@ -549,44 +573,27 @@ descend:~
 if $v.\V{isleaf}$: \\
 \>\> return $\langle n, v\rangle$ \\
 \> $n_c \gets \text{child of \(n\) containing \(k\)}$ \\
-\> if $n_c = \NIL$: \C{caused by concurrent remove} \\
+\> if $n_c = \NIL$: \C{retry from root if concurrent remove reshaped tree} \\
 \>\> goto retry \\
 \> $v_c \gets \text{stable\_version}(n_c)$ \C{hand-over-hand validation} \\
 \> \fence \\
 \> if $v \oplus \readnow{n.\V{version}} > \V{locked}$: \C{$n$ changed, must retry} \\
 \>\> $\V{oldv} \gets v$;~ $v \gets \text{stable\_version}(n)$ \\
-\>\> if $v.\V{vsplit} \neq \V{oldv}.\V{vsplit}$: \C{\(n\) split, retry from root} \\
+\>\> if $v.\V{vsplit} \neq \V{oldv}.\V{vsplit}$: \C{retry from root when internal node splits} \\
 \>\>\> goto retry \\
 \> else: \\
 \>\> $n \gets n_c$;~ $v \gets v_c$ \\
 \> goto descend
 \end{programtabbing}
-\caption{Find the border node containing a key.}
 \label{fig:nlookup}
 \end{figure}
 
-
 \begin{figure}[H]
 \begin{programtabbing}
-\textbf{find\_key}(leaf $n$, key $k$, permutation \V{perm})
-\Returns{\(\langle \N{int \V{index}}, \N{int \V{position}} \rangle\)}: \\
-\> // In practice we implement this with binary search \\
-\> $i \gets 0$;~ $\V{klength} = \min(k.\V{length}, 9)$ \\
-\> while $i < \V{perm}.\V{size}$: \\
-\>\> $\pi \gets \V{perm}.\V{pos}[i]$ \\
-\>\> if $n.\V{kslice}[\pi] < k.\V{slice}$ or ($n.\V{kslice}[\pi] =
-k.\V{slice}$ and $n.\V{klength}[\pi] < \V{klength}$): \\
-\>\>\> $++i$ \\
-\>\> else if $n.\V{kslice}[\pi] = k.\V{slice}$ and $n.\V{klength}[\pi] =
-\V{klength}$: \\
-\>\>\> return $\langle i, \pi \rangle$ \\
-\>\> else: \\
-\>\>\> break \\
-\> return $\langle i, \NONE \rangle$ \\
-\programtabskip
-%
-\textbf{forward\_to\_key}(leaf $n$, key $k$) \Returns{\(\langle
-  \N{leaf, version}\rangle\)}: \\
+\textbf{advance}(leaf $n$, key $k$) \Returns{\(\langle
+  \N{leaf $n'$, version $v$}\rangle\)}: \\
+\CX{precondition: \(\N{lowkey}(n) \leq k.\V{slice}\)} \\
+\CX{postcondition: either $v.\V{deleted}$ (caller should rerun \N{descend}), or version $v$ of leaf $n'$ is responsible for $k$} \\
 \> $v \gets \text{stable\_version}(n)$;~ $\V{next} \gets n.\V{next}$ \\
 \> while $!v.\V{deleted}$ and $\V{next} \neq \NIL$ and
 	$k \geq \text{lowkey}(\V{next})$: \\
@@ -596,30 +603,85 @@ k.\V{slice}$ and $n.\V{klength}[\pi] < \V{klength}$): \\
 \end{programtabbing}
 \end{figure}
 
+
+\begin{figure}[H]
+\begin{programtabbing}
+\textbf{find\_key}(leaf $n$, key $k$, permutation \V{perm})
+\Returns{\(\langle \N{int \V{index}}, \N{int \V{position}} \rangle\)}: \\
+\> $i \gets 0$;~ $\V{klength} = \min(k.\V{length}, 9)$ \\
+\> while $i < \V{perm}.\V{size}$: \C{linear search; we use binary search in practice} \\
+\>\> $\pi \gets \V{perm}.\V{pos}[i]$ \\
+\>\> if $n.\V{kslice}[\pi] < k.\V{slice}$ or ($n.\V{kslice}[\pi] =
+k.\V{slice}$ and $n.\V{klength}[\pi] < \V{klength}$): \\
+\>\>\> $++i$ \\
+\>\> else if $n.\V{kslice}[\pi] = k.\V{slice}$ and $n.\V{klength}[\pi] =
+\V{klength}$: \\
+\>\>\> return $\langle i, \pi \rangle$ \\
+\>\> else: \\
+\>\>\> break \\
+\> return $\langle i, \NONE \rangle$
+\end{programtabbing}
+\end{figure}
+
+\begin{figure}[H]
+\begin{programtabbing}
+\textbf{get}(node \V{root}, key $k$): \\
+descend:~
+ $\langle n, v \rangle \gets \text{descend}(\V{root}, k)$ \\
+retry:~
+\> if $v.\V{deleted}$: \\
+\>\> goto descend \\
+\> \(\langle i, \pi \rangle \gets \text{find\_key}(n, k,
+n.\V{permutation})\) \\
+\> if \(\pi \neq \NONE\): \\
+\>\> \(t \gets n.\V{type}[\pi]\) \\
+\>\> \fence \\
+\>\> \(\V{suffix} \gets n.\V{ksuffix}[\pi]\);~ \(\V{value} \gets n.\V{value}[\pi]\) \\
+\> \fence \\
+\> if \(v \oplus \readnow{n.\V{version}} > \V{locked}\): \\
+\>\> $\langle n, v \rangle \gets \text{advance}(n, k)$ \\
+\>\> goto retry \\
+\> else if \(\pi \neq \NONE\) and \(t = \LAYER\): \\
+\>\> \(root \gets \V{value}\);~ \(k \gets \N{shift\_key}(k)\) \\
+\>\> goto descend \\
+\> else if \(\pi \neq \NONE\) and \(t = \UNSTABLE\): \\
+\>\> goto retry \\
+\> else if \(\pi = \NONE\) or \(\V{suffix} \neq k.\V{suffix}\): \\
+\>\> return \NONE \\
+\> else: \\
+\>\> return \V{value}
+\end{programtabbing}
+\caption{Find the value for a key.}
+\label{fig:nget}
+\end{figure}
+
+
+\section{Put}
+
 \begin{figure}[H]
 \begin{programtabbing}
 \textbf{lock\_leaf}(node \V{toproot}, key \(k\)): \\
-retryroot:~
+retrytop:~
    $\V{root} \gets \V{toproot}$;~ \(k \gets \N{reset\_key}(k)\) \\
-retry:~ \> $\langle n, v \rangle \gets \text{find\_leaf}(\V{root}, k)$ \\
+descend:~  $\langle n, v \rangle \gets \text{descend}(\V{root}, k)$ \\
 \> if $k$ has suffix: \C{optimization} \\
 \>\> \(x \gets \text{check\_next\_layer}(n, v, k)\) \\
 \>\> if \(x \neq \NONE\): \\
 \>\>\> \(\V{root} \gets x\);~ \(k \gets \N{shift\_key}(k)\) \\
-\>\>\> goto retry \\
+\>\>\> goto descend \\
 %
-forward:~
-   \(\N{lock}(n)\);~ \(v' \gets n.\V{version}\) \\
+retry:~
+\> \(\N{lock}(n)\);~ \(v' \gets n.\V{version}\) \\
 \> if \(v'.\V{deleted}\): \\
-\>\> unlock(\(n\));~ goto retry \\
+\>\> unlock(\(n\));~ goto descend \\
 \> else if \(n.\V{deletedlayer}\): \C{an entire layer has been
   deleted, start over}\\
-\>\> unlock(\(n\));~ goto retryroot \\
+\>\> unlock(\(n\));~ goto retrytop \\
 \> else if \(v'.\V{vsplit} \neq v.\V{vsplit}\) and \(n.\V{next} \neq
 \NIL\) and \(k \geq \N{lowkey}(n.\V{next})\): \\
 \>\> \(\V{next} \gets n.\V{next}\);~ unlock(\(n\)) \\
-\>\> \(\langle n, v \rangle \gets \N{forward\_to\_key}(\V{next}, k)\) \\
-\>\> goto forward \\
+\>\> \(\langle n, v \rangle \gets \N{advance}(\V{next}, k)\) \\
+\>\> goto retry \\
 \> else: \\
 \>\> \(\langle i, \pi \rangle \gets \N{find\_key}(n, k, n.\V{permutation})\)
 \\
@@ -627,7 +689,7 @@ forward:~
 \>\>\> \(\V{root} \gets n.\V{value}[\pi]\);~ \(k \gets \N{shift\_key}(k)\) \\
 \>\>\> if \(!\V{root}.\V{isroot}\): \\
 \>\>\>\> \(\V{root} \gets n.\V{value}[\pi] \gets \N{true\_root}(\V{root})\) \\
-\>\>\> unlock(\(n\));~ goto retry \\
+\>\>\> unlock(\(n\));~ goto descend \\
 \>\> else: \\
 \>\>\> return \(\langle n, i, \pi, k \rangle\) \\
 \programtabskip
@@ -645,40 +707,6 @@ and \(\V{value}.\V{isroot}\): \\
 \> return \NONE
 \end{programtabbing}
 \caption{Lock and return the leaf that would contain a key.}
-\end{figure}
-
-\section{Get}
-
-\begin{figure}[H]
-\begin{programtabbing}
-\textbf{get}(node \V{root}, key $k$): \\
-retry:
-\> $\langle n, v \rangle \gets \text{find\_leaf}(\V{root}, k)$ \\
-forward:~
-if $v.\V{deleted}$: \\
-\>\> goto retry \\
-\> \(\langle i, \pi \rangle \gets \text{find\_key}(n, k,
-n.\V{permutation})\) \\
-\> if \(\pi \neq \NONE\): \\
-\>\> \(t \gets n.\V{type}[\pi]\) \\
-\>\> \fence \\
-\>\> \(\V{suffix} \gets n.\V{ksuffix}[\pi]\);~ \(\V{value} \gets n.\V{value}[\pi]\) \\
-\> \fence \\
-\> if \(v \oplus \readnow{n.\V{version}} > \V{locked}\): \\
-\>\> $\langle n, v \rangle \gets \text{forward\_to\_key}(n, k)$ \\
-\>\> goto forward \\
-\> else if \(\pi \neq \NONE\) and \(t = \LAYER\): \\
-\>\> \(root \gets \V{value}\);~ \(k \gets \N{shift\_key}(k)\) \\
-\>\> goto retry \\
-\> else if \(\pi \neq \NONE\) and \(t = \UNSTABLE\): \\
-\>\> goto forward \\
-\> else if \(\pi = \NONE\) or \(\V{suffix} \neq k.\V{suffix}\): \\
-\>\> return \NONE \\
-\> else: \\
-\>\> return \V{value}
-\end{programtabbing}
-\caption{Find the value for a key.}
-\label{fig:nget}
 \end{figure}
 
 
@@ -841,13 +869,12 @@ correct---an overlapping reader can return the old value. Alternatively,
 \N{remove} could dirty the node, but this would force readers to retry,
 something we aim to avoid.
 
-However, there is a wrinkle. It is OK to leave the item's state in the
-leaf, in a position unreferenced by the permutation, \emph{only} as long
-as that state \emph{remains self-consistent}: corresponding to the old
-value. Thus, before the slot can be reused, Masstree must dirty the
-node. We keep track of this through permutation manipulations and a
-per-node \(\V{nremoved}\) counter. The \N{put} function detects when a
-removed slot is reused and dirties the node by calling \N{clean}.
+However, there is a wrinkle. We must ensure that the node is dirtied
+before the slot is reused, or a concurrent reader might see an
+inconsistent state. We keep track of this through permutation
+manipulations and a per-node \(\V{nremoved}\) counter. The \N{put}
+function detects when a removed slot is reused and dirties the node by
+calling \N{clean}.
 
 \subsection{Removing a leaf}
 
@@ -974,10 +1001,14 @@ the deleted trivial node.
 \end{figure}
 
 \noindent%
-Note that the \N{collapse} function will never try to delete the root
-node. A trivial root requires more work to fix, as we'll see.
+This deletion procedure leaves the tree funnily shaped: leaves are at
+different heights. It's this property that prevents us from storing
+links on interior nodes.
 
-\subsection{Patching holes}
+The \N{collapse} function won't ever delete the root node. A trivial
+root requires more work to fix, as we'll see.
+
+\subsection{Reshaping the tree}
 
 We return to the original example and, this time, remove leaf \ITEM{jkl}.
 
@@ -999,12 +1030,11 @@ reach leaf \ITEM{ghi}, which has inherited responsibility for
 the \ITEM{jkl} range. But the \Bplus\ tree structure will direct the
 \N{put} to leaf \ITEM{mno}!
 
-Although such mistakes could potentially be detected at \N{put} time
-using \N{lowkey} comparisons, extra comparisons are unnecessary in the
-common case. We prefer to avoid the problem
-in a different way, by inducing retry until the tree is fixed. When
+Although such mistakes might be detectable at the leaves
+using \N{lowkey} comparisons, we prefer to avoid the problem
+in a different way. When
 a subtree's leftmost leaf is deleted, Masstree detects the issue and
-switches to a special \N{patch} procedure. This procedure first sets
+switches to a special \N{reshape} procedure. This procedure first sets
 the subtree's leftmost child pointer to \(\NIL\), causing concurrent
 gets and puts that would hit that node to retry from the root.
 
@@ -1099,7 +1129,32 @@ internal node can have a leaf as its parent!
 
 \subsection{Deleting a layer}
 
-TBA
+After the last item in a layer is removed, Masstree can remove the
+entire layer. This starts out like any gclayer call: the relevant leaf
+in the higher layer is locked
+
+\begin{figure}[H]
+\includegraphics[scale=.8]{remove2_15}
+\end{figure}
+
+\noindent
+and so is the empty root in the lower layer.
+
+\begin{figure}[H]
+\includegraphics[scale=.8]{remove2_16}
+\end{figure}
+
+\noindent%
+But the empty root is not deleted in the conventional way. We mark it
+not as deleted, but as a \emph{deleted layer}, using
+a flag that's checked only by concurrent \emph{writers}. Why?
+Normally, a lookup encountering a deleted node retries from the root of
+the current layer. Marking a layer's only node as deleted would cause a
+retry loop! Instead, concurrent readers that reach a deleted layer see a
+normal empty leaf and return ``not found.'' (This is correct: the
+deleted layer contains no keys.) Concurrent writers, however, must not
+write into a deleted layer, lest their updates be lost. On encountering
+a deleted layer, writers retry from the layer-0 root.
 
 \begin{figure}[H]
 \begin{programtabbing}
@@ -1149,7 +1204,7 @@ ascend:~
 \> if \(p.\V{size} = 0\): \\
 \>\> \(p.\V{version}.\V{deleted} \gets 1\);~ fork \(\N{free\_node}(p)\) \\
 \> else: \\
-\>\> \(\N{patch}(p, k, \V{toproot}, \V{layerkey})\) \\
+\>\> \(\N{reshape}(p, k, \V{toproot}, \V{layerkey})\) \\
 \>\> return \\
 \> \(n \gets p\);~ goto ascend
 \end{programtabbing}
@@ -1175,7 +1230,7 @@ ascend:~
 
 \begin{figure}[H]
 \begin{programtabbing}
-\textbf{patch}(interiornode \(n\), key \V{k}, node \V{toproot}, key \V{layerkey}): \\
+\textbf{reshape}(interiornode \(n\), key \V{k}, node \V{toproot}, key \V{layerkey}): \\
 \> \(n.\V{child}[0] \gets \NIL\) \\
 \> \(\V{patchkey} \gets n.\V{kslice}[0]\) \\
  ascend:~
@@ -1263,6 +1318,7 @@ ensures that position 0 is only reused by a key with the right slice.
 
 In the implementation, \(n.\V{type}\) is stored implicitly; its values
 are inferred from \(n.\V{klength}\).
+
 
 node\_ts
 

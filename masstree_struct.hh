@@ -349,10 +349,10 @@ struct leaf : public node_base<P> {
 	    return ksuf_->compare(p, ka.suffix());
     }
 
-    bool dead() const {
+    bool deleted_layer() const {
 	return nremoved_ > width;
     }
-    void mark_dead() {
+    void mark_deleted_layer() {
 	nremoved_ = width + 1;
     }
 

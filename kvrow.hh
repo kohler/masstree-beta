@@ -239,7 +239,6 @@ struct query {
     bool scanemit(str k, const R *v);
 
     inline result_t apply_put(R *&value, bool has_value, threadinfo *ti);
-    inline result_t apply_put_cmpxchg(R *&value, bool has_value, threadinfo *ti);
     inline bool apply_remove(R *&value, bool has_value, threadinfo *ti, kvtimestamp_t *node_ts = 0);
   private:
     typename R::change_t c_;
@@ -563,49 +562,6 @@ query<R>::apply_put(R *&value, bool has_value, threadinfo *ti)
 	old_value->deallocate_rcu_after_update(c_, *ti);
     }
     return Updated;
-}
-
-template <typename R>
-inline result_t query<R>::apply_put_cmpxchg(R *&value, bool has_value,
-					    threadinfo *ti)
-{
-    // XXX Trees that use cmpxchg (namely, binary) do not actually provide all
-    // the log replay guarantees we want. Specifically, can have updates u1,
-    // u2 with timestamp(u1) >= timestamp(u2) but epoch(u1) < epoch(u2).
-    // Who cares? Those trees suck anyway.
-    if (qt_ < QT_MinReplay)
-	if (struct log *log = ti->ti_log) {
-	    log->acquire();
-	    epoch_ = global_log_epoch;
-	}
-
-    if (!has_value) {
-	assign_timestamp(ti);
-	if (qt_ == QT_Ckp_Put)
-	    value = R::from_rowstr(val_, ts_, *ti);
-	else
-	    value = R::from_change(c_, ts_, *ti);
-	return Inserted;
-    }
-
-    while (1) {
-	R *old_value = value;
-	assert(!row_is_marker(old_value)); // XXX: let's not care about
-				// recovery for cmpxchg
-	assign_timestamp(ti, old_value->ts_);
-	if (old_value->ts_ > ts_)
-	    return OutOfDate;
-
-	R *updated = old_value->update(c_, ts_, *ti);
-	assert(updated != old_value);
-	if (bool_cmpxchg(&value, old_value, updated)) {
-	    old_value->deallocate_rcu_after_update(c_, *ti);
-	    return Updated;
-	}
-
-	updated->deallocate_after_failed_update(c_, *ti);
-	relax_fence();
-    }
 }
 
 template <typename R>

@@ -167,7 +167,7 @@ inline node_base<P> *tcursor<P>::check_leaf_locked(node_type *root,
     if (kp_ >= 0) {
 	if (!n_->ksuf_equals(kp_, ka_))
 	    kp_ = -1;
-    } else if (ki_ == 0 && unlikely(n_->dead())) {
+    } else if (ki_ == 0 && unlikely(n_->deleted_layer())) {
 	n_->unlock();
 	return reset_retry();
     }

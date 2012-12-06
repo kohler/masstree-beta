@@ -96,7 +96,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 
     // if there have been removals, reuse their space
     if (n_->nremoved_ > 0) {
-	if (unlikely(n_->dead())) {
+	if (unlikely(n_->deleted_layer())) {
 	    n_->unlock(v);
 	    return reset_retry();
 	}

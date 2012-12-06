@@ -23,7 +23,7 @@ template <typename P>
 bool tcursor<P>::remove_layer(threadinfo *ti)
 {
     find_locked(ti);
-    assert(!n_->dead() && !n_->deleted());
+    assert(!n_->deleted() && !n_->deleted_layer());
 
     // find_locked might return early if another remove_layer attempt has
     // succeeded at removing multiple tree layers. So check that the whole
@@ -88,11 +88,11 @@ bool tcursor<P>::remove_layer(threadinfo *ti)
 
     // child is an empty leaf: kill it
     assert(!lf->prev_ && !lf->next_.ptr);
-    assert(!lf->dead());
     assert(!lf->deleted());
+    assert(!lf->deleted_layer());
     if (circular_int<kvtimestamp_t>::less(n_->node_ts_, lf->node_ts_))
 	n_->node_ts_ = lf->node_ts_;
-    lf->mark_dead();		// NB DO NOT mark as deleted (see above)
+    lf->mark_deleted_layer();	// NB DO NOT mark as deleted (see above)
     lf->unlock();
     lf->deallocate_rcu(ti);
     return true;

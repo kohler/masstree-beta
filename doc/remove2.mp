@@ -355,4 +355,43 @@ beginfig(12);
   internalnodeconnect(root,ina);
 endfig;
 
+beginfig(15);
+  % tree with MNO removed, gclayer begin
+  leafit.a(nullpicture, nullpicture, nullpicture);
+  boxjoin();
+  leafit.x(dotdata, dotdata, dotdata, dotdata);
+  x.locked = true;
+  x.nextpath = x.prevpath = emptypath;
+  .5[x.sw,x.se] = a.n + (0,24);
+  fixelement(a,x);
+  leafconnect(a);
+  drawelement(a,x);
+  fillelement(x)(upperlayerfill); drawelement(x) withcolor upperlayer;
+  begingroup
+    interim linecap := butt;
+    draw (x.sw - (5,10)) -- (x.se + (40,-10)) withpen pencircle scaled 5 dashed evenly scaled 3 withcolor upperlayerfill;
+  endgroup;
+  drawconnarrow x.value[1] {down} .. tension 2 .. {down} a.n withpen connectionpen scaled 2 withcolor upperlayer;
+endfig;
+
+beginfig(16);
+  % tree with MNO removed, gclayer begin
+  leafit.a(nullpicture, nullpicture, nullpicture);
+  a.locked = true;
+  boxjoin();
+  leafit.x(dotdata, dotdata, dotdata, dotdata);
+  x.locked = true;
+  x.nextpath = x.prevpath = emptypath;
+  .5[x.sw,x.se] = a.n + (0,24);
+  fixelement(a,x);
+  leafconnect(a);
+  drawelement(a,x);
+  fillelement(x)(upperlayerfill); drawelement(x) withcolor upperlayer;
+  begingroup
+    interim linecap := butt;
+    draw (x.sw - (5,10)) -- (x.se + (40,-10)) withpen pencircle scaled 5 dashed evenly scaled 3 withcolor upperlayerfill;
+  endgroup;
+  drawconnarrow x.value[1] {down} .. tension 2 .. {down} a.n withpen connectionpen scaled 2 withcolor upperlayer;
+endfig;
+
 end
