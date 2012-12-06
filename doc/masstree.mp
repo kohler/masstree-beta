@@ -16,7 +16,7 @@ vardef clearnode_(suffix $) =
     generic_redeclare(numeric) _n;
   fi
   _n_ := str $;
-  generic_redeclare(numeric) _n.linkwidth, _n.nkeys, _n.deleted, _n.isleaf, _n.locked, _n.keywidth;
+  generic_redeclare(numeric) _n.linkwidth, _n.nkeys, _n.deleted, _n.isleaf, _n.locked, _n.keywidth, _n.connectin;
   _n_ := str $ & ".keypic0";
   generic_redeclare(numeric) _n;
 enddef;
@@ -86,7 +86,7 @@ vardef leafit@#(text components) =
   _n_ := str @#;
   generic_declare(numeric) _n.linkwidth, _n.nkeys, _n.keywidth;
   generic_declare(boolean) _n.deleted, _n.isleaf, _n.locked;
-  generic_declare(pair) _n.prev, _n.previn, _n.next, _n.nextin;
+  generic_declare(pair) _n.prev, _n.previn, _n.next, _n.nextin, _n.connectin;
   generic_declare(path) _n.prevpath, _n.nextpath, _n.nextbpath, _n.prevbpath;
   _n_ := str @# & ".keypic0";
   generic_declare(picture) _n;
@@ -143,7 +143,11 @@ def nodecellbpath(suffix $)(expr i) =
 enddef;
 
 def internalnodeconnectone(suffix $,$$)(expr i) =
-  drawconnarrow $.child[i] {down} .. tension 4 .. {down} $$.n
+  if known $$.connectin:
+    drawconnarrow $.child[i] {down} .. tension 4 .. {down} $$.connectin
+  else:
+    drawconnarrow $.child[i] {down} .. tension 4 .. {down} $$.n
+  fi
 enddef;
 vardef internalnodeconnect(text suffixes) =
   save _fart_, _i_; string _fart_; _i_ = 0;
@@ -164,6 +168,7 @@ vardef internalnodeit@#(text components) =
   _n_ := str @#;
   generic_declare(numeric) _n.linkwidth, _n.nkeys;
   generic_declare(boolean) _n.deleted, _n.isleaf, _n.locked;
+  generic_declare(pair) _n.connectin;
   _n_ := str @# & ".keypic0";
   generic_declare(picture) _n;
   _n_ := str @# & ".child0";
@@ -175,6 +180,7 @@ vardef internalnodeit@#(text components) =
     @#.child[_nk_] = @#.sw + (@#.linkwidth + _nk_*@#.keywidth,0);
     _nk_ := _nk_ + 1;
   endfor
+  @#.child[_nk_] = @#.sw + (@#.linkwidth + _nk_*@#.keywidth,0);
   elemdraw_@# := "drawnode_";
   sproc_@# := "sizenode_";
   @#.nkeys = _nk_;

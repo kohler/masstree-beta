@@ -18,7 +18,7 @@
 #include "masstree.hh"
 #include "masstree_key.hh"
 namespace Masstree {
-template <typename P> struct remove_layer_rcu_callback;
+template <typename P> struct gc_layer_rcu_callback;
 
 template <typename P>
 class unlocked_tcursor {
@@ -111,8 +111,8 @@ class tcursor {
     inline void finish_insert();
     inline bool finish_remove(threadinfo *ti);
 
-    static void prune_twig(internode_type *p, ikey_type ikey,
-			   basic_table<P> &table, str prefix, threadinfo *ti);
+    static void collapse(internode_type *p, ikey_type ikey,
+                         basic_table<P> &table, str prefix, threadinfo *ti);
     /** Remove @a leaf from the Masstree rooted at @a rootp.
      * @param prefix String defining the path to the tree containing this leaf.
      *   If removing a leaf in layer 0, @a prefix is empty.
@@ -120,8 +120,9 @@ class tcursor {
      *   rooted at "01234567", then @a prefix should equal "01234567". */
     static bool remove_leaf(leaf_type *leaf,
                             basic_table<P> &table, str prefix, threadinfo *ti);
-    bool remove_layer(threadinfo *ti);
-    friend struct remove_layer_rcu_callback<P>;
+
+    bool gc_layer(threadinfo *ti);
+    friend struct gc_layer_rcu_callback<P>;
 };
 
 } // namespace Masstree

@@ -20,12 +20,12 @@
 namespace Masstree {
 
 template <typename P>
-bool tcursor<P>::remove_layer(threadinfo *ti)
+bool tcursor<P>::gc_layer(threadinfo *ti)
 {
     find_locked(ti);
     assert(!n_->deleted() && !n_->deleted_layer());
 
-    // find_locked might return early if another remove_layer attempt has
+    // find_locked might return early if another gc_layer attempt has
     // succeeded at removing multiple tree layers. So check that the whole
     // key has been consumed
     if (ka_.has_suffix())
@@ -99,7 +99,7 @@ bool tcursor<P>::remove_layer(threadinfo *ti)
 }
 
 template <typename P>
-struct remove_layer_rcu_callback : public rcu_callback {
+struct gc_layer_rcu_callback : public rcu_callback {
     basic_table<P> *tablep_;
     int len_;
     char s_[0];
@@ -111,22 +111,22 @@ struct remove_layer_rcu_callback : public rcu_callback {
 };
 
 template <typename P>
-void remove_layer_rcu_callback<P>::operator()(threadinfo *ti)
+void gc_layer_rcu_callback<P>::operator()(threadinfo *ti)
 {
     tcursor<P> lp(*tablep_, s_, len_);
-    bool do_remove = lp.remove_layer(ti);
+    bool do_remove = lp.gc_layer(ti);
     if (!do_remove || !lp.finish_remove(ti))
 	lp.n_->unlock();
     ti->deallocate(this, size(), ta_rcu);
 }
 
 template <typename P>
-void remove_layer_rcu_callback<P>::make(basic_table<P> &table, str prefix,
+void gc_layer_rcu_callback<P>::make(basic_table<P> &table, str prefix,
 					threadinfo *ti)
 {
-    size_t sz = prefix.len + sizeof(remove_layer_rcu_callback);
+    size_t sz = prefix.len + sizeof(gc_layer_rcu_callback);
     void *data = ti->allocate(sz, ta_rcu);
-    remove_layer_rcu_callback *cb = new(data) remove_layer_rcu_callback;
+    gc_layer_rcu_callback *cb = new(data) gc_layer_rcu_callback;
     cb->tablep_ = &table;
     cb->len_ = prefix.len;
     memcpy(cb->s_, prefix.s, cb->len_);
@@ -152,7 +152,7 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
 {
     if (!leaf->prev_) {
 	if (!leaf->next_.ptr && !prefix.empty())
-	    remove_layer_rcu_callback<P>::make(table, prefix, ti);
+	    gc_layer_rcu_callback<P>::make(table, prefix, ti);
 	return false;
     }
 
@@ -180,8 +180,8 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
     // child of its parent, in which case we need to traverse up until we find
     // its key.
     node_type *n = leaf;
-    ikey_type ikey = leaf->ikey_bound(), actikey = 0;
-    bool have_actikey = false;
+    ikey_type ikey = leaf->ikey_bound(), reshape_ikey = 0;
+    bool reshaping = false;
 
     while (1) {
 	internode_type *p = n->locked_parent(ti);
@@ -193,27 +193,27 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
 
 	if (kp > 0) {
 	    p->mark_insert();
-	    if (!have_actikey) {
+	    if (!reshaping) {
 		p->shift_down(kp - 1, kp, p->nkeys_ - kp);
 		--p->nkeys_;
 	    } else
-		p->ikey0_[kp - 1] = actikey;
+		p->ikey0_[kp - 1] = reshape_ikey;
 	    if (kp > 1 || p->child_[0]) {
 		if (p->size() == 0)
-		    prune_twig(p, ikey, table, prefix, ti);
+		    collapse(p, ikey, table, prefix, ti);
 		else
 		    p->unlock();
 		break;
 	    }
 	}
 
-	if (!have_actikey) {
+	if (!reshaping) {
 	    if (p->size() == 0) {
 		p->mark_deleted();
 		p->deallocate_rcu(ti);
 	    } else {
-		have_actikey = true;
-		actikey = p->ikey0_[0];
+		reshaping = true;
+		reshape_ikey = p->ikey0_[0];
 		p->child_[0] = 0;
 	    }
 	}
@@ -225,8 +225,8 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
 }
 
 template <typename P>
-void tcursor<P>::prune_twig(internode_type *p, ikey_type ikey,
-			    basic_table<P> &table, str prefix, threadinfo *ti)
+void tcursor<P>::collapse(internode_type *p, ikey_type ikey,
+                          basic_table<P> &table, str prefix, threadinfo *ti)
 {
     assert(p && p->locked());
 
@@ -234,7 +234,7 @@ void tcursor<P>::prune_twig(internode_type *p, ikey_type ikey,
 	internode_type *gp = p->locked_parent(ti);
 	if (!gp) {
 	    if (!prefix.empty())
-		remove_layer_rcu_callback<P>::make(table, prefix, ti);
+		gc_layer_rcu_callback<P>::make(table, prefix, ti);
 	    p->unlock();
 	    break;
 	}

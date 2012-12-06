@@ -390,10 +390,10 @@ the node as dirty by changing its version. Masstree readers execute
 \emph{read transactions} that are \emph{validated} using versions. First
 they snapshot the node's version, then they snapshot the relevant
 portion of its contents, and finally they compare the node's new version
-to its snapshot. If the versions differ in more than the \V{locked} bit,
+to its snapshot. If the versions differ in more than the \V{locked}
+bit (that is, if \(v \oplus \readnow{n.\V{version}} > \V{locked}\)),
 then the node changed in some potentially invalidating way during the
-read operation, and the reader must retry the read transaction, taking
-new snapshots.
+read operation, and the reader must retry the read transaction.
 
 Masstree's lock and unlock functions are as follows. Note that they
 contain fences.
@@ -537,8 +537,8 @@ locking with validation.
 
 \section{Get}
 
-Get has two phases: first, it descends to the leaf responsible for a key;
-then, it finds the key in that leaf.
+Get first descends to the leaf responsible for a key,
+then finds the key in that leaf. This proceeds a layer at a time.
 
 Two related procedures, \N{descend} and \N{advance}, find within a layer
 the leaf node responsible for key $k$. \N{Descend} is more fundamental:
@@ -547,7 +547,8 @@ used occasionally to fix lookups that happened concurrently with splits.
 
 Both procedures return a leaf node $n$ and corresponding version $v$.
 The version is never dirty (it was obtained by \N{stable\_version}).
-Version $v$ of leaf $n$ is guaranteed to be responsible for $k$.
+Either version $v$ of leaf $n$ is responsible for $k$, or
+$v.\V{deleted}$ is true.
 However, neither \N{descend} nor \N{advance} lock nodes or perform any
 writes to shared memory, so $n$ may not \emph{remain} responsible for
 $k$. $n$ could split, moving responsibility for $k$ to the right; or $n$
@@ -607,7 +608,11 @@ if $v.\V{isleaf}$: \\
 \begin{figure}[H]
 \begin{programtabbing}
 \textbf{find\_key}(leaf $n$, key $k$, permutation \V{perm})
-\Returns{\(\langle \N{int \V{index}}, \N{int \V{position}} \rangle\)}: \\
+\Returns{\(\langle \N{int \V{i}}, \N{int \(\pi\)} \rangle\)}: \\
+\CX{Returns the insertion index and position of \(k\) in \(n\),
+  considering only key slice and length.} \\
+\CX{postcondition: \(0 \leq i \leq \V{perm}.\V{size}\)} \\
+\CX{postcondition: \(\pi = \NONE\) iff \(k\) is not contained in \(n\)} \\
 \> $i \gets 0$;~ $\V{klength} = \min(k.\V{length}, 9)$ \\
 \> while $i < \V{perm}.\V{size}$: \C{linear search; we use binary search in practice} \\
 \>\> $\pi \gets \V{perm}.\V{pos}[i]$ \\
@@ -658,14 +663,36 @@ n.\V{permutation})\) \\
 
 \section{Put}
 
+Put and remove, unlike get, must lock the leaf containing a key. The
+\N{descend\_and\_lock} function performs this traversal. Unlike
+\N{descend}, \N{descend\_and\_lock} descends across multiple layers.
+It returns the unique node that would contain the value for \(k\) if
+\(k\) were in the current tree.
+
+A natural implementation of \N{descend\_and\_lock} might lock a
+leaf node per layer. When encountering a pointer to a lower layer,
+\N{descend\_and\_lock} would unlock the leaf from the higher layer and
+then recurse into the lower. This, however, would perform far more
+locking operations than required. A goal of Masstree is to perform no
+memory writes for common-case tree traversal. Therefore,
+\N{descend\_and\_lock} includes an optimization that, in the common
+case, recurses into a lower layer without obtaining a lock.
+
 \begin{figure}[H]
 \begin{programtabbing}
-\textbf{lock\_leaf}(node \V{toproot}, key \(k\)): \\
+\textbf{descend\_and\_lock}(node \V{toproot}, key \(k\))
+  \Returns{\(\langle \N{leaf \V{n}}, \N{int \V{i}}, \N{int
+      \(\pi\)}, \N{key \(k'\)}\rangle\)}: \\
+\CX{Find, lock, and return the node into which \(k\) would be inserted.} \\
+\CX{postcondition: \(k' = \N{shift\_key}^m(k)\) for some \(m \geq 0\)}\\
+\CX{postcondition: \(n\) is locked and \(n\) is responsible for \(k'\)}\\
+\CX{postcondition: \(i\) is the insertion index for \(k'\) in \(n\)}\\
+\CX{postcondition: \(\pi = \NONE\) iff \(k'\) is not present in \(n\)}\\
 retrytop:~
    $\V{root} \gets \V{toproot}$;~ \(k \gets \N{reset\_key}(k)\) \\
 descend:~  $\langle n, v \rangle \gets \text{descend}(\V{root}, k)$ \\
-\> if $k$ has suffix: \C{optimization} \\
-\>\> \(x \gets \text{check\_next\_layer}(n, v, k)\) \\
+\> if $k$ has suffix: \C{optimization: avoid some unnecessary traversal locks} \\
+\>\> \(x \gets \text{try\_descend\_layer}(n, v, k)\) \\
 \>\> if \(x \neq \NONE\): \\
 \>\>\> \(\V{root} \gets x\);~ \(k \gets \N{shift\_key}(k)\) \\
 \>\>\> goto descend \\
@@ -694,7 +721,7 @@ retry:~
 \>\>\> return \(\langle n, i, \pi, k \rangle\) \\
 \programtabskip
 %
-\textbf{check\_next\_layer}(node \(n\), version \(v\), key \(k\)): \\
+\textbf{try\_descend\_layer}(node \(n\), version \(v\), key \(k\)): \\
 \> \(\langle i, \pi \rangle \gets \text{find\_key}(n, k, n.\V{permutation})\) \\
 \> if \(\pi \neq \NONE\): \\
 \>\> \(t \gets n.\V{type}[\pi]\) \\
@@ -709,13 +736,10 @@ and \(\V{value}.\V{isroot}\): \\
 \caption{Lock and return the leaf that would contain a key.}
 \end{figure}
 
-
-\section{Put}
-
 \begin{figure}[H]
 \begin{programtabbing}
 \textbf{put}(node \V{root}, key \(k\), value \(\V{value}\)): \\
-\> \(\langle n, i, \pi, k \rangle \gets \N{lock\_leaf}(\V{toproot}, k)\) \\
+\> \(\langle n, i, \pi, k \rangle \gets \N{descend\_and\_lock}(\V{toproot}, k)\) \\
 retry:~
 \> if \(\pi \neq \NONE\) and \(n.\V{ksuffix}[\pi] = k.\V{suffix}\): \\
 \>\> fork \(\N{free\_value}(n.\V{value}[\pi])\) \\
@@ -765,6 +789,7 @@ n.\V{value}[\pi]\) \\
 \end{programtabbing}
 \caption{Put implementation (except for split).}
 \end{figure}
+
 
 \begin{figure}[H]
 \begin{programtabbing}
@@ -848,7 +873,7 @@ We start with a simple example tree.
 
 Removing a single item---say, \ITEM{e}---is relatively simple: all code
 is in two short functions, \N{remove} and \N{remove\_item}. We first use
-\N{lock\_leaf} to locate and lock the leaf containing the item, then pop
+\N{descend\_and\_lock} to locate and lock the leaf containing the item, then pop
 the item out of the relevant leaf's permutation.
 
 \begin{figure}[H]
@@ -1159,7 +1184,7 @@ a deleted layer, writers retry from the layer-0 root.
 \begin{figure}[H]
 \begin{programtabbing}
 \textbf{remove}(node \V{toproot}, key \(k\)): \\
-\> \(\langle n, i, \pi, k \rangle \gets \N{lock\_leaf}(\V{toproot}, k)\) \\
+\> \(\langle n, i, \pi, k \rangle \gets \N{descend\_and\_lock}(\V{toproot}, k)\) \\
 \> if \(\pi = \NONE\) or \(n.\V{ksuffix}[\pi] \neq k.\V{suffix}\): \\
 \>\> return \FALSE \\
 \> \(\N{remove\_item}(n, i, \pi, k, \V{toproot})\) \\
@@ -1271,7 +1296,7 @@ ascend:~
 \begin{programtabbing}
 \textbf{gclayer}(node \V{toproot}, key \V{layerkey}): \\
 \> \rcufence \\
-\> \(\langle n, i, \pi, \N{\_} \rangle \gets \N{lock\_leaf}(\V{toproot}, \V{layerkey})\) \\
+\> \(\langle n, i, \pi, \N{\_} \rangle \gets \N{descend\_and\_lock}(\V{toproot}, \V{layerkey})\) \\
 \> if \(\pi = \NONE\) or \(n.\V{type}[\pi] \neq \LAYER\): \\
 \>\> \(\N{unlock}(n)\);~ return \\
 retry:~

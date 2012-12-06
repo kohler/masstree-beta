@@ -24,7 +24,8 @@ MPFIGBASE = examples_1 \
 	remove1_6 remove1_7 remove1_8 remove1_9 \
 	remove2_1 remove2_2 remove2_3 remove2_4 remove2_5 \
 	remove2_6 remove2_7 remove2_8 remove2_9 \
-	remove2_11 remove2_12 remove2_15 remove2_16
+	remove2_11 remove2_12 remove2_15 remove2_16 \
+	insert1_1 insert1_2
 PDFFIGS += $(addsuffix .pdf,$(MPFIGBASE))
 EPSFIGS += $(addsuffix .eps,$(MPFIGBASE))
 
