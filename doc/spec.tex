@@ -664,10 +664,10 @@ n.\V{permutation})\) \\
 \section{Put}
 
 Put and remove, unlike get, must lock the leaf containing a key. The
-\N{descend\_and\_lock} function performs this traversal. Unlike
-\N{descend}, \N{descend\_and\_lock} descends across multiple layers.
-It returns the unique node that would contain the value for \(k\) if
-\(k\) were in the current tree.
+\N{descend\_and\_lock} function performs a combined traversal and lock.
+Unlike \N{descend}, \N{descend\_and\_lock} descends across multiple
+layers. It returns the unique node that would contain the value for
+\(k\) if \(k\) were in the Masstree.
 
 A natural implementation of \N{descend\_and\_lock} might lock a
 leaf node per layer. When encountering a pointer to a lower layer,
@@ -677,6 +677,51 @@ locking operations than required. A goal of Masstree is to perform no
 memory writes for common-case tree traversal. Therefore,
 \N{descend\_and\_lock} includes an optimization that, in the common
 case, recurses into a lower layer without obtaining a lock.
+
+\N{Descend\_and\_lock} also performs a tree cleanup task. Consider a
+full lower-layer tree (linked from a higher layer, which we display
+above the dashed line):
+
+\begin{figure}[H]
+\includegraphics[scale=.8]{insert1_1}
+\end{figure}
+
+\noindent%
+Inserting a new item into this lower layer will cause a split. A new
+leaf node is created,
+
+\begin{figure}[H]
+\includegraphics[scale=.8]{insert1_2}
+\end{figure}
+
+\noindent%
+then a new internal node
+
+\begin{figure}[H]
+\includegraphics[scale=.8]{insert1_3}
+\end{figure}
+
+\noindent%
+and finally a new root.
+
+\begin{figure}[H]
+\includegraphics[scale=.8]{insert1_4}
+\end{figure}
+
+\noindent%
+But the higher layer connects to the \emph{old} root, not the new root.
+Correcting this would more work: modifications to the higher layer
+require locking the higher-layer node. We choose to delay that work.
+There's no \emph{correctness} problem with leaving the tree this
+way---thanks to the root reachability invariant, the new root will be
+found by traversing parent pointers from the old. So we leave the tree
+this way until the next put or remove, which will retarget the higher
+layer's pointer.
+
+\begin{figure}[H]
+\includegraphics[scale=.8]{insert1_5}
+\end{figure}
+
 
 \begin{figure}[H]
 \begin{programtabbing}
