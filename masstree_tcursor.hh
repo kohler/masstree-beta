@@ -109,6 +109,8 @@ class tcursor {
     }
 
     node_type *finish_split(threadinfo *ti);
+    void split_ascend(node_type *nl, node_type *nr, ikey_type ikey_bound,
+                      int split_type, threadinfo *ti);
     inline void finish_insert();
     inline bool finish_remove(threadinfo *ti);
 

@@ -20,11 +20,9 @@
 namespace Masstree {
 
 template <typename P>
-int internode_split(internode<P> *nl, internode<P> *nr,
-		    int p, typename internode<P>::ikey_type ka,
-		    node_base<P> *value,
-		    typename internode<P>::ikey_type &split_ikey,
-		    int split_type)
+typename P::ikey_type internode_split(internode<P> *nl, internode<P> *nr,
+                                      int p, typename P::ikey_type ka,
+                                      node_base<P> *value, int split_type)
 {
     // B+tree internal node insertion.
     // Split nl, with items [0,T::width), into nl + nr, simultaneously
@@ -40,11 +38,14 @@ int internode_split(internode<P> *nl, internode<P> *nr,
     //   nr is pre-insertion item mid.
     // If p > mid, then x goes into nr, pre-insertion item mid goes into
     //   split_ikey, and the first element of nr is post-insertion item mid+1.
-    assert(!nl->concurrent || (nl->locked() && nr->locked()));
+    assert(!nl->concurrent || nl->locked());
 
+    nr->assign_version(*nl);
+    nr->mark_nonroot();
     int mid = (split_type == 2 ? nl->width : (nl->width + 1) / 2);
-    nr->nkeys_ = nl->width + 1 - (mid + 1);
+    nr->nkeys_ = nl->width + 1 - (mid + 1); // == nl->width - mid
 
+    typename internode<P>::ikey_type split_ikey;
     if (p < mid) {
 	nr->child_[0] = nl->child_[mid];
 	nr->shift_from(0, nl, mid, nl->width - mid);
@@ -64,15 +65,9 @@ int internode_split(internode<P> *nl, internode<P> *nr,
     for (int i = 0; i <= nr->nkeys_; ++i)
 	nr->child_[i]->set_parent(nr);
 
-    nl->mark_split();
-    if (p < mid) {
-	nl->nkeys_ = mid - 1;
-	return p;
-    } else {
-	nl->nkeys_ = mid;
-	return -1;
-    }
+    return split_ikey;
 }
+
 
 template <typename P>
 typename P::ikey_type leaf_ikey(leaf<P> *nl,
@@ -91,8 +86,7 @@ typename P::ikey_type leaf_ikey(leaf<P> *nl,
 template <typename P>
 int leaf_split(leaf<P> *nl, leaf<P> *nr,
 	       int p, const typename leaf<P>::key_type &ka,
-	       threadinfo *ti,
-	       typename P::ikey_type &split_ikey)
+	       threadinfo *ti)
 {
     // B+tree leaf insertion.
     // Split nl, with items [0,T::width), into nl + nr, simultaneously
@@ -148,7 +142,6 @@ int leaf_split(leaf<P> *nl, leaf<P> *nr,
 
     btree_leaflink<leaf<P> >::link_split(nl, nr);
 
-    split_ikey = nr->ikey0_[0];
     return p >= mid ? 1 + (mid == width) : 0;
 }
 
@@ -156,88 +149,79 @@ int leaf_split(leaf<P> *nl, leaf<P> *nr,
 template <typename P>
 node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
 {
-    node_type *n = n_;
-    node_type *child = leaf_type::make(n_->ksuf_size(), n_->node_ts_, ti);
-    child->assign_version(*n_);
-    ikey_type xikey[2];
-    int split_type = leaf_split(n_, static_cast<leaf_type *>(child),
-				ki_, ka_, ti, xikey[0]);
-    bool sense = false;
+    // create and populate new leaf, then insert it into the tree
+    leaf_type *nr = leaf_type::make(n_->ksuf_size(), n_->node_ts_, ti);
+    nr->assign_version(*n_);
+    int split_type = leaf_split(n_, nr, ki_, ka_, ti);
+    split_ascend(n_, nr, nr->ikey_bound(), split_type, ti);
 
-    while (1) {
-	assert(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
-	internode_type *next_child = 0;
-
-	internode_type *p = n->locked_parent(ti);
-
-	if (!p) {
-	    internode_type *nn = internode_type::make(ti);
-	    nn->child_[0] = n;
-	    nn->assign(0, xikey[sense], child);
-	    nn->nkeys_ = 1;
-	    nn->parent_ = 0;
-	    nn->mark_root();
-	    fence();
-	    n->set_parent(nn);
-	    if (is_first_layer())
-		tablep_->root_ = nn;
-	} else {
-	    int kp = internode_type::bound_type::upper(xikey[sense], *p);
-
-	    if (p->size() < p->width)
-		p->mark_insert();
-	    else {
-		next_child = internode_type::make(ti);
-		next_child->assign_version(*p);
-		next_child->mark_nonroot();
-		kp = internode_split(p, next_child, kp, xikey[sense],
-				     child, xikey[!sense], split_type);
-	    }
-
-	    if (kp >= 0) {
-		p->shift_up(kp + 1, kp, p->size() - kp);
-		p->assign(kp, xikey[sense], child);
-		fence();
-		++p->nkeys_;
-	    }
-	}
-
-	if (n->isleaf()) {
-	    leaf_type *nl = static_cast<leaf_type *>(n);
-	    leaf_type *nr = static_cast<leaf_type *>(child);
-	    permuter_type perml(nl->permutation_);
-	    int width = perml.size();
-	    perml.set_size(width - nr->size());
-	    // removed item, if any, must be @ perml.size()
-	    if (width != nl->width)
-		perml.exchange(nl->width, perml.size(), nl->width - 1);
-	    nl->mark_split();
-	    nl->permutation_ = perml.value();
-	    if (split_type == 0) {
-		kp_ = perml.back(nl->width);
-		nl->assign(kp_, ka_, ti);
-	    } else {
-		ki_ = kp_ = ki_ - perml.size();
-		n_ = nr;
-	    }
-	}
-
-	if (n != n_)
-	    n->unlock();
-	if (child != n_)
-	    child->unlock();
-	if (next_child) {
-	    n = p;
-	    child = next_child;
-	    sense = !sense;
-	} else if (p) {
-	    p->unlock();
-	    break;
-	} else
-	    break;
+    // update old leaf
+    permuter_type perml(n_->permutation_);
+    int old_size = perml.size();
+    perml.set_size(old_size - nr->size());
+    // removed item, if any, must be @ perml.size()
+    if (old_size != n_->width)
+        perml.exchange(n_->width, perml.size(), n_->width - 1);
+    n_->mark_split();
+    n_->permutation_ = perml.value();
+    if (split_type == 0) {
+        kp_ = perml.back(n_->width);
+        n_->assign(kp_, ka_, ti);
+        nr->unlock();
+    } else {
+        ki_ = kp_ = ki_ - perml.size();
+        n_->unlock();
+        n_ = nr;
     }
 
     return insert_marker();
+}
+
+template <typename P>
+void tcursor<P>::split_ascend(node_type *nl, node_type *nr,
+                              ikey_type ikey_bound, int split_type,
+                              threadinfo *ti)
+{
+    internode_type *p = nl->locked_parent(ti);
+    if (!p) {
+        internode_type *nn = internode_type::make(ti);
+        nn->child_[0] = nl;
+        nn->assign(0, ikey_bound, nr);
+        nn->nkeys_ = 1;
+        nn->parent_ = 0;
+        nn->mark_root();
+        fence();
+        nl->set_parent(nn);
+        if (is_first_layer())
+            tablep_->root_ = nn;
+    } else {
+        int kp = internode_type::bound_type::upper(ikey_bound, *p);
+
+        if (p->size() < p->width)
+            p->mark_insert();
+        else {
+            internode_type *pr = internode_type::make(ti);
+            ikey_type split_ikey = internode_split(p, pr, kp, ikey_bound, nr,
+                                                   split_type);
+            split_ascend(p, pr, split_ikey, split_type, ti);
+
+            pr->unlock();
+            p->mark_split();
+            p->nkeys_ = p->width - pr->nkeys_;
+            if (kp < p->nkeys_)
+                --p->nkeys_;
+            else
+                goto after_insert;
+        }
+
+        p->shift_up(kp + 1, kp, p->size() - kp);
+        p->assign(kp, ikey_bound, nr);
+        fence();
+        ++p->nkeys_;
+
+    after_insert:
+        p->unlock();
+    }
 }
 
 } // namespace Masstree
