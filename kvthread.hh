@@ -388,6 +388,10 @@ class threadinfo {
 	return stable_accounting_relax_fence_function(this);
     }
 
+    accounting_relax_fence_function lock_fence(threadcounter ci) {
+	return accounting_relax_fence_function(this, ci);
+    }
+
     void *trysuperalloc(size_t sz, allocationtag ta) {
 #if SUPERPAGE && defined(MADV_HUGEPAGE)
         static const size_t HugePageSize = get_hugepage_size();

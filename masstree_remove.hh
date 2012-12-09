@@ -56,7 +56,7 @@ bool tcursor<P>::gc_layer(threadinfo *ti)
 	internode_type *in = static_cast<internode_type *>(layer);
 	if (in->size() > 0 && !in->has_split())
 	    return false;
-	in->lock();
+	in->lock(*in, ti->lock_fence(tc_internode_lock));
 	if (in->has_split() && !in->parent())
 	    in->mark_root();
 	if (in->size() > 0 || in->has_split()) {
@@ -78,7 +78,7 @@ bool tcursor<P>::gc_layer(threadinfo *ti)
     leaf_type *lf = static_cast<leaf_type *>(layer);
     if (lf->size() > 0 && !lf->has_split())
 	return false;
-    lf->lock();
+    lf->lock(*lf, ti->lock_fence(tc_leaf_lock));
     if (lf->has_split() && !lf->parent())
 	lf->mark_root();
     if (lf->size() > 0 || lf->has_split()) {

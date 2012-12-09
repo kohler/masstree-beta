@@ -131,7 +131,7 @@ internode<P> *node_base<P>::locked_parent(threadinfo *ti) const
 	node_base<P> *p = n->parent();
 	if (!p)
 	    return 0;
-	nodeversion_type pv = p->lock(*p, ti->accounting_relax_fence(tc_internode_lock));
+	nodeversion_type pv = p->lock(*p, ti->lock_fence(tc_internode_lock));
 	if (p == n->parent()) {
 	    assert(!p->isleaf());
 	    return static_cast<internode<P> *>(p);

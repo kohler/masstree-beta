@@ -50,7 +50,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 	    nl->assign_initialize(1, kc <= 0 ? ka_ : oka, ti);
 	nl->lv_[kc > 0] = n_->lv_[kp_];
 	if (kc != 0) {
-	    nl->lock();
+	    nl->lock(*nl, ti->lock_fence(tc_leaf_lock));
 	    nl->lv_[kc < 0] = leafvalue_type::make_empty();
 	}
 	if (kc <= 0)

@@ -90,7 +90,7 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
     n_->prefetch();
 
     if (!ka_.has_suffix())
-	v = n_->lock(oldv, ti->accounting_relax_fence(tc_leaf_lock));
+	v = n_->lock(oldv, ti->lock_fence(tc_leaf_lock));
     else {
 	// First, look up without locking.
 	// The goal is to avoid dirtying cache lines on upper layers of a long
@@ -111,7 +111,7 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
 	}
 
 	// Otherwise lock.
-	v = n_->lock(oldv, ti->accounting_relax_fence(tc_leaf_lock));
+	v = n_->lock(oldv, ti->lock_fence(tc_leaf_lock));
 
 	// Maybe the old position works.
 	if (likely(!v.deleted()) && !n_->has_changed(oldv)
@@ -153,7 +153,7 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
 	} while (!unlikely(oldv.deleted()) && (next = n_->safe_next())
 		 && compare(ka_.ikey(), next->ikey_bound()) >= 0);
 	n_->prefetch();
-	v = n_->lock(oldv, ti->accounting_relax_fence(tc_leaf_lock));
+	v = n_->lock(oldv, ti->lock_fence(tc_leaf_lock));
     }
 }
 
