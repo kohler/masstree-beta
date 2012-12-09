@@ -41,7 +41,6 @@ int internode_split(internode<P> *nl, internode<P> *nr,
     // If p > mid, then x goes into nr, pre-insertion item mid goes into
     //   split_ikey, and the first element of nr is post-insertion item mid+1.
     assert(!nl->concurrent || (nl->locked() && nr->locked()));
-    assert(split_type != 2 || (p == nl->width && nl->size() == nl->width));
 
     int mid = (split_type == 2 ? nl->width : (nl->width + 1) / 2);
     nr->nkeys_ = nl->width + 1 - (mid + 1);
