@@ -81,8 +81,8 @@ threadinfo *threadinfo::make(int purpose, int index)
     ti->allthreads = ti;
     ti->pstat.initialize(index);
     ti->ts_ = 2;
-    ti->limbo_head_ = ti->limbo_tail_ =
-	(limbo_group *) ti->allocate(sizeof(limbo_group), memtag_limbo, ta_rcu);
+    void *limbo_space = ti->allocate(sizeof(limbo_group), memtag_limbo, ta_rcu);
+    ti->limbo_head_ = ti->limbo_tail_ = new(limbo_space) limbo_group;
     ti->pstat.mark_gc_alloc(ti->limbo_tail_->capacity);
 
     return ti;
@@ -94,8 +94,9 @@ void threadinfo::refill_rcu()
 	&& limbo_tail_->head_ == limbo_tail_->tail_)
 	limbo_tail_->head_ = limbo_tail_->tail_ = 0;
     else if (!limbo_tail_->next_) {
-	limbo_tail_ = limbo_tail_->next_ =
-	    (limbo_group *) allocate(sizeof(limbo_group), memtag_limbo, ta_rcu);
+	void *limbo_space = allocate(sizeof(limbo_group), memtag_limbo, ta_rcu);
+	limbo_tail_->next_ = new(limbo_space) limbo_group;
+	limbo_tail_ = limbo_tail_->next_;
 	pstat.mark_gc_alloc(limbo_tail_->capacity);
     } else
 	limbo_tail_ = limbo_tail_->next_;
