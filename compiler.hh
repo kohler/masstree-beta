@@ -135,6 +135,20 @@ struct relax_fence_function {
     }
 };
 
+/** @brief Function object that calls relax_fence() with backoff. */
+struct backoff_fence_function {
+    backoff_fence_function()
+	: count_(0) {
+    }
+    void operator()() {
+	for (int i = count_; i >= 0; --i)
+	    relax_fence();
+	count_ = ((count_ << 1) | 1) & 15;
+    }
+  private:
+    int count_;
+};
+
 
 template <int SIZE, typename BARRIER> struct sized_compiler_operations;
 
