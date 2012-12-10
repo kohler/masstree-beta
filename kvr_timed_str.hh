@@ -18,8 +18,6 @@
 #include "compiler.hh"
 #include "kvrow.hh"
 
-class threadinfo;
-
 struct kvr_str_index {
     struct field_t {
         short f_off;

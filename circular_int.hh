@@ -13,8 +13,8 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file is
  * legally binding.
  */
-#ifndef KVDB_TIME_HH
-#define KVDB_TIME_HH 1
+#ifndef KVDB_CIRCULAR_INT_HH
+#define KVDB_CIRCULAR_INT_HH 1
 
 template <typename T>
 class circular_int {

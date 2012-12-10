@@ -122,7 +122,7 @@ void gc_layer_rcu_callback<P>::operator()(threadinfo *ti)
 
 template <typename P>
 void gc_layer_rcu_callback<P>::make(basic_table<P> &table, str prefix,
-					threadinfo *ti)
+                                    threadinfo *ti)
 {
     size_t sz = prefix.len + sizeof(gc_layer_rcu_callback);
     void *data = ti->allocate(sz, ta_rcu);

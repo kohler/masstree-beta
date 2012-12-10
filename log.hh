@@ -214,7 +214,7 @@ struct logrec_kvdelta {
 	return sizeof(logrec_kvdelta) + keylen + vallen;
     }
     static size_t store(char *buf, uint32_t command,
-			const str &key, const str &val,
+			str key, str val,
 			kvtimestamp_t prev_ts, kvtimestamp_t ts) {
 	// XXX check alignment on some architectures
 	logrec_kvdelta *lr = reinterpret_cast<logrec_kvdelta *>(buf);

@@ -19,7 +19,6 @@
 #include <assert.h>
 #include <stdarg.h>
 #include "string.hh"
-//#include "encoding.hh"
 #if __GNUC__ > 4
 # define LCDF_SNPRINTF_ATTR __attribute__((__format__(__printf__, 3, 4)))
 #else

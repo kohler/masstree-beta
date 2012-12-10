@@ -18,8 +18,6 @@
 #include "compiler.hh"
 #include "kvrow.hh"
 
-class threadinfo;
-
 struct kvr_array_index {
     typedef short field_t;
     static int kvread_field(struct kvin *kvin, field_t &f) {

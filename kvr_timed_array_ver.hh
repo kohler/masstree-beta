@@ -18,8 +18,6 @@
 #include "compiler.hh"
 #include "kvr_timed_array.hh"
 
-class threadinfo;
-
 struct rowversion {
     rowversion() {
 	v_.u = 0;
