@@ -146,7 +146,7 @@ bool query_table<P>::remove(query<row_type> &q, threadinfo *ti)
     bool found = lp.find_locked(ti);
     bool removed = found
 	&& q.apply_remove(lp.value(), true, ti, &lp.node_timestamp());
-    lp.finish(found, !removed, ti);
+    lp.finish(found, found && !removed, ti);
     return removed;
 }
 
