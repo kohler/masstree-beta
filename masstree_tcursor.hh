@@ -83,7 +83,7 @@ class tcursor {
     inline bool find_locked(threadinfo *ti);
     inline bool find_insert(threadinfo *ti);
 
-    inline void finish(bool found, bool kept, threadinfo *ti);
+    inline void finish(int answer, threadinfo *ti);
 
   private:
     leaf_type *n_;
@@ -91,6 +91,7 @@ class tcursor {
     int ki_;
     int kp_;
     basic_table<P> *tablep_;
+    int state_;
 
     inline node_type *reset_retry() {
 	ka_.unshift_all();

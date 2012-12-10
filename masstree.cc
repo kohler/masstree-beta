@@ -121,7 +121,7 @@ result_t query_table<P>::put(query<row_type> &q, threadinfo *ti)
     if (!found)
 	ti->advance_timestamp(lp.node_timestamp());
     result_t r = q.apply_put(lp.value(), found, ti);
-    lp.finish(found, true, ti);
+    lp.finish(1, ti);
     return r;
 }
 
@@ -146,7 +146,7 @@ bool query_table<P>::remove(query<row_type> &q, threadinfo *ti)
     bool found = lp.find_locked(ti);
     bool removed = found
 	&& q.apply_remove(lp.value(), true, ti, &lp.node_timestamp());
-    lp.finish(found, found && !removed, ti);
+    lp.finish(removed ? -1 : 0, ti);
     return removed;
 }
 

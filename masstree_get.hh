@@ -182,8 +182,10 @@ bool tcursor<P>::find_locked(threadinfo *ti)
     while (1) {
 	n_ = reach_leaf(root, ka_, ti, v);
 	root = check_leaf_locked(root, v, ti);
-	if (!root)
+	if (!root) {
+            state_ = kp_ >= 0;
 	    return kp_ >= 0;
+        }
     }
 }
 

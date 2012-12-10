@@ -128,8 +128,10 @@ bool tcursor<P>::find_insert(threadinfo *ti)
     while (1) {
 	n_ = reach_leaf(root, ka_, ti, v);
 	root = check_leaf_insert(root, v, ti);
-	if (reinterpret_cast<uintptr_t>(root) <= reinterpret_cast<uintptr_t>(insert_marker()))
+	if (reinterpret_cast<uintptr_t>(root) <= reinterpret_cast<uintptr_t>(insert_marker())) {
+            state_ = 2 + (root == found_marker());
 	    return root == found_marker();
+        }
     }
 }
 
@@ -144,15 +146,13 @@ void tcursor<P>::finish_insert()
 }
 
 template <typename P>
-inline void tcursor<P>::finish(bool found, bool kept, threadinfo *ti)
+inline void tcursor<P>::finish(int state, threadinfo *ti)
 {
-    if (found != kept) {
-	if (found) {
-	    if (finish_remove(ti))
-		return;
-	} else
-	    finish_insert();
-    }
+    if (state < 0 && (state_ & 1)) {
+        if (finish_remove(ti))
+            return;
+    } else if (state > 0 && state_ == 2)
+        finish_insert();
     n_->unlock();
 }
 
@@ -166,7 +166,7 @@ inline int basic_table<P>::modify(str key, F &f, threadinfo *ti)
 	answer = f(key, true, lp.value(), ti, lp.node_timestamp());
     else
 	answer = 0;
-    lp.finish(found, found && answer >= 0, ti);
+    lp.finish(answer, ti);
     return answer;
 }
 
@@ -178,7 +178,7 @@ inline int basic_table<P>::modify_insert(str key, F &f, threadinfo *ti)
     if (!found)
 	ti->advance_timestamp(lp.node_timestamp());
     int answer = f(key, found, lp.value(), ti, lp.node_timestamp());
-    lp.finish(found, answer >= 0, ti);
+    lp.finish(answer, ti);
     return answer;
 }
 
