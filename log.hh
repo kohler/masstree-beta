@@ -246,7 +246,7 @@ extern kvepoch_t rec_ckp_min_epoch;
 extern kvepoch_t rec_ckp_max_epoch;
 extern kvepoch_t rec_replay_min_epoch;
 extern kvepoch_t rec_replay_max_epoch;
-extern kvepoch_t rec_replay_min_quiescent_epoch;
+extern kvepoch_t rec_replay_min_quiescent_last_epoch;
 
 extern kvtable *tree;
 

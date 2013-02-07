@@ -32,7 +32,7 @@ kvepoch_t rec_ckp_max_epoch;
 logreplay::info_type *rec_log_infos;
 kvepoch_t rec_replay_min_epoch;
 kvepoch_t rec_replay_max_epoch;
-kvepoch_t rec_replay_min_quiescent_epoch;
+kvepoch_t rec_replay_min_quiescent_last_epoch;
 
 static void *logger(void *);
 
@@ -522,10 +522,10 @@ logreplay::replay(int which, threadinfo *ti)
     inactive();
 
     waituntilphase(REC_LOG_ANALYZE_WAKE);
-    if (buf_ && rec_replay_min_quiescent_epoch
-	&& rec_replay_min_quiescent_epoch <= rec_log_infos[which].wake_epoch)
+    if (buf_ && rec_replay_min_quiescent_last_epoch
+	&& rec_replay_min_quiescent_last_epoch <= rec_log_infos[which].wake_epoch)
 	rec_log_infos[which].min_post_quiescent_wake_epoch =
-	    min_post_quiescent_wake_epoch(rec_replay_min_quiescent_epoch);
+	    min_post_quiescent_wake_epoch(rec_replay_min_quiescent_last_epoch);
     inactive();
 
     waituntilphase(REC_LOG_REPLAY);

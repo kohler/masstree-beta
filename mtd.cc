@@ -1531,81 +1531,102 @@ recover(threadinfo *)
 
   // calculate log range
 
-  // This is the last epoch recorded in the union of the logs and the
-  // checkpoint. A quiescent log is considered to go up to last_epoch. This
-  // is OK because we don't commit a checkpoint until all logs are flushed
-  // past the checkpoint's max_epoch.
-  kvepoch_t last_epoch = rec_ckp_max_epoch;
-  if (last_epoch)
-      last_epoch = last_epoch.next_nonzero();
-
-  kvepoch_t max_wake_epoch = 0;
-  kvepoch_t max_min_epoch = 0;
-  kvepoch_t min_quiescent_epoch = 0;
-
+  // Maximum epoch seen in the union of the logs and the checkpoint. (We
+  // don't commit a checkpoint until all logs are flushed past the
+  // checkpoint's max_epoch.)
+  kvepoch_t max_epoch = rec_ckp_max_epoch;
+  if (max_epoch)
+      max_epoch = max_epoch.next_nonzero();
   for (logreplay::info_type *it = rec_log_infos;
-       it != rec_log_infos + nlogger; ++it) {
+       it != rec_log_infos + nlogger; ++it)
+      if (it->last_epoch
+	  && (!max_epoch || max_epoch < it->last_epoch))
+	  max_epoch = it->last_epoch;
+
+  // Maximum first_epoch seen in the logs. Full log information is not
+  // available for epochs before max_first_epoch.
+  kvepoch_t max_first_epoch = 0;
+  for (logreplay::info_type *it = rec_log_infos;
+       it != rec_log_infos + nlogger; ++it)
+      if (it->first_epoch
+	  && (!max_first_epoch || max_first_epoch < it->first_epoch))
+	  max_first_epoch = it->first_epoch;
+
+  // Maximum epoch of all logged wake commands.
+  kvepoch_t max_wake_epoch = 0;
+  for (logreplay::info_type *it = rec_log_infos;
+       it != rec_log_infos + nlogger; ++it)
       if (it->wake_epoch
 	  && (!max_wake_epoch || max_wake_epoch < it->wake_epoch))
 	  max_wake_epoch = it->wake_epoch;
-      if (it->last_epoch
-	  && (!last_epoch || last_epoch < it->last_epoch))
-	  last_epoch = it->last_epoch;
-      if (it->first_epoch
-	  && (!max_min_epoch || max_min_epoch < it->first_epoch))
-	  max_min_epoch = it->first_epoch;
-      if (it->quiescent
-	  && (!min_quiescent_epoch || min_quiescent_epoch > it->last_epoch))
-	  min_quiescent_epoch = it->last_epoch;
-  }
 
-  // If a quiescent log missed a wake command, figure out how long the
-  // quiescence actually lasted.
-  if (max_wake_epoch && min_quiescent_epoch <= max_wake_epoch)
-      rec_replay_min_quiescent_epoch = min_quiescent_epoch;
+  // Minimum last_epoch seen in QUIESCENT logs.
+  kvepoch_t min_quiescent_last_epoch = 0;
+  for (logreplay::info_type *it = rec_log_infos;
+       it != rec_log_infos + nlogger; ++it)
+      if (it->quiescent
+	  && (!min_quiescent_last_epoch || min_quiescent_last_epoch > it->last_epoch))
+	  min_quiescent_last_epoch = it->last_epoch;
+
+  // If max_wake_epoch && min_quiescent_last_epoch <= max_wake_epoch, then a
+  // wake command was missed by at least one quiescent log. We can't replay
+  // anything at or beyond the minimum missed wake epoch.
+  if (max_wake_epoch && min_quiescent_last_epoch <= max_wake_epoch)
+      rec_replay_min_quiescent_last_epoch = min_quiescent_last_epoch;
   else
-      rec_replay_min_quiescent_epoch = 0;
+      rec_replay_min_quiescent_last_epoch = 0;
   recphase(nlogger, REC_LOG_ANALYZE_WAKE);
+
+  // Minimum wake_epoch that at least one quiescent log missed (i.e. that is
+  // greater than or equal to min_quiescent_last_epoch).
   kvepoch_t min_post_quiescent_wake_epoch = 0;
   for (logreplay::info_type *it = rec_log_infos;
        it != rec_log_infos + nlogger; ++it)
       if (it->wake_epoch
-	  && min_quiescent_epoch <= it->wake_epoch
+	  && min_quiescent_last_epoch <= it->wake_epoch
 	  && it->min_post_quiescent_wake_epoch
 	  && (!min_post_quiescent_wake_epoch
 	      || min_post_quiescent_wake_epoch > it->min_post_quiescent_wake_epoch))
 	  min_post_quiescent_wake_epoch = it->min_post_quiescent_wake_epoch;
 
-  // Analyze log bounds.
-  rec_replay_min_epoch = rec_replay_max_epoch = 0;
+  // Patch last_epoch for quiescent logs.
   for (logreplay::info_type *it = rec_log_infos;
-       it != rec_log_infos + nlogger; ++it) {
+       it != rec_log_infos + nlogger; ++it)
       if (it->quiescent) {
-	  if (!it->last_epoch
-	      || !max_wake_epoch
-	      || it->last_epoch > max_wake_epoch)
-	      it->last_epoch = last_epoch;
-	  else if (min_post_quiescent_wake_epoch
-		   && it->last_epoch < min_post_quiescent_wake_epoch)
-	      it->last_epoch = min_post_quiescent_wake_epoch;
+          if (!it->last_epoch
+              || !max_wake_epoch
+              || it->last_epoch > max_wake_epoch)
+              it->last_epoch = max_epoch;
+          else if (min_post_quiescent_wake_epoch
+                   && it->last_epoch < min_post_quiescent_wake_epoch)
+              it->last_epoch = min_post_quiescent_wake_epoch;
       }
+
+  // Calculate upper bound of epochs to replay, which is the maximum epoch
+  // in all logs.
+  rec_replay_max_epoch = 0;
+  for (logreplay::info_type *it = rec_log_infos;
+       it != rec_log_infos + nlogger; ++it)
       if (it->last_epoch
 	  && (!rec_replay_max_epoch || rec_replay_max_epoch > it->last_epoch))
 	  rec_replay_max_epoch = it->last_epoch;
-  }
 
+  // Calculate lower bound of epochs to replay.
+  rec_replay_min_epoch = rec_ckp_min_epoch;
+  // XXX what about max_first_epoch?
+
+  // Checks.
   if (rec_ckp_min_epoch) {
-      mandatory_assert(rec_ckp_min_epoch > max_min_epoch);
-      mandatory_assert(rec_replay_max_epoch > rec_ckp_min_epoch);
-      rec_replay_min_epoch = rec_ckp_min_epoch;
+      mandatory_assert(rec_ckp_min_epoch > max_first_epoch);
+      mandatory_assert(rec_ckp_min_epoch < rec_replay_max_epoch);
+      mandatory_assert(rec_ckp_max_epoch < rec_replay_max_epoch);
       fprintf(stderr, "replay [%" PRIu64 ",%" PRIu64 ") from [%" PRIu64 ",%" PRIu64 ") into ckp [%" PRIu64 ",%" PRIu64 "]\n",
 	      rec_replay_min_epoch.value(), rec_replay_max_epoch.value(),
-	      max_min_epoch.value(), last_epoch.value(),
+	      max_first_epoch.value(), max_epoch.value(),
 	      rec_ckp_min_epoch.value(), rec_ckp_max_epoch.value());
-      mandatory_assert(rec_ckp_max_epoch < rec_replay_max_epoch);
-  } else
-      rec_replay_min_epoch = 0;
+  }
 
+  // Actually replay.
   delete[] rec_log_infos;
   rec_log_infos = 0;
   recphase(nlogger, REC_LOG_REPLAY);
