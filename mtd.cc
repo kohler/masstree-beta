@@ -1101,7 +1101,8 @@ class tcpfds {
     typedef fd_set eventset;
     int wait(eventset &es) {
 	es = rfds_;
-	return select(nfds_, &es, 0, 0, 0);
+	int r = select(nfds_, &es, 0, 0, 0);
+        return r > 0 ? nfds_ : r;
     }
 
     conn *event_conn(eventset &es, int i) const {
