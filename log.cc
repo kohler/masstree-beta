@@ -138,6 +138,8 @@ log::logger()
 	    quiescent_epoch_ = log_epoch_ = ge;
 	    char *p = buf_;
 	    p += logrec_epoch::store(p, logcmd_epoch, log_epoch_);
+            if (log_epoch_ == wake_epoch_)
+                p += logrec_base::store(p, logcmd_wake);
 	    p += logrec_base::store(p, logcmd_quiesce);
 	    pos_ = p - buf_;
 	}

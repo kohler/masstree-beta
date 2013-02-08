@@ -45,7 +45,7 @@ struct log {
 
     kvepoch_t log_epoch_;	// epoch written to log (non-quiescent)
     kvepoch_t quiescent_epoch_;	// epoch we went quiescent
-    kvepoch_t wake_epoch_;	// epoch we recorded that another log woke up
+    kvepoch_t wake_epoch_;	// epoch for which we recorded a wake command
     kvepoch_t flushed_epoch_;	// epoch fsync()ed to disk
     // We have logged all writes up to, but not including, flushed_epoch_.
     // Log is quiesced to disk if quiescent_epoch_ != 0

@@ -1274,30 +1274,44 @@ logone(threadinfo *ti, int command, const query<row_type> &q,
 {
     assert(logging && !recovering);
     struct log *l = ti->ti_log;
-    size_t n = logrec_kvdelta::size(key.len, val.len) + logrec_epoch::size()
-	+ logrec_base::size();
+    size_t n = logrec_kvdelta::size(key.len, val.len)
+        + logrec_epoch::size() + logrec_base::size();
     bool any_paused = false;
     int stalls = 0;
     while (1) {
 	if (l->len_ - l->pos_ >= n
 	    && (!any_paused || l->log_is_ready(ti))) {
-	    kvepoch_t qe = q.query_epoch(), we = global_wake_epoch;
+            kvepoch_t qe = q.query_epoch(), we = global_wake_epoch;
+
+            // Potentially record a new epoch.
 	    if (qe != l->log_epoch_) {
 		l->log_epoch_ = qe;
 		l->pos_ += logrec_epoch::store(l->buf_ + l->pos_, logcmd_epoch, qe);
 	    }
-	    if (l->quiescent_epoch_) {
-		// The log has been quiescent for a while. If the quiescence
-		// marker has been flushed, then all timestamps less than
-		// e are effectively on disk.
+
+            if (l->quiescent_epoch_) {
+		// We're recording a new log record on a log that's been
+		// quiescent for a while. If the quiescence marker has been
+		// flushed, then all epochs less than the query epoch are
+		// effectively on disk.
 		if (l->flushed_epoch_ == l->quiescent_epoch_)
 		    l->flushed_epoch_ = qe;
 		l->quiescent_epoch_ = 0;
-		l->wake_epoch_ = global_wake_epoch = we = qe;
-		l->pos_ += logrec_base::store(l->buf_ + l->pos_, logcmd_wake);
-	    }
-	    if (we != l->wake_epoch_)
-		l->wake_epoch_ = qe;
+                while (we < qe)
+                    we = cmpxchg(&global_wake_epoch, we, qe);
+            }
+
+            // Log epochs should be recorded in monotonically increasing
+            // order, but the wake epoch may be ahead of the query epoch (if
+            // the query took a while). So potentially record an EARLIER
+            // wake_epoch. This will get fixed shortly by the next log
+            // record.
+            if (we != l->wake_epoch_ && qe < we)
+                we = qe;
+            if (we != l->wake_epoch_) {
+                l->wake_epoch_ = we;
+                l->pos_ += logrec_base::store(l->buf_ + l->pos_, logcmd_wake);
+            }
 
 	    kvtimestamp_t prev_ts = q.query_prev_timestamp();
 	    kvtimestamp_t ts = q.query_timestamp();
