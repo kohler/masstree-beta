@@ -529,7 +529,6 @@ static const Clp_Option options[] = {
 int
 main(int argc, char *argv[])
 {
-  struct sockaddr_in sin;
   int s, ret, yes = 1, i = 1, firstcore = -1, corestride = 1;
   const char *dotest = 0;
   nlogger = tcpthreads = udpthreads = nckthreads = sysconf(_SC_NPROCESSORS_ONLN);
@@ -704,12 +703,13 @@ main(int argc, char *argv[])
     printf("logging disabled\n");
   }
 
-  bzero(&sin, sizeof(sin));
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons(port);
-
   // UDP threads, each with its own port.
-  printf("%d udp threads\n", udpthreads);
+  if (udpthreads == 0)
+      printf("0 udp threads\n");
+  else if (udpthreads == 1)
+      printf("1 udp thread (port %d)\n", port);
+  else
+      printf("%d udp threads (ports %d-%d)\n", udpthreads, port, port + udpthreads - 1);
   for(i = 0; i < udpthreads; i++){
     threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
     ret = pthread_create(&ti->ti_threadid, 0, udpgo, ti);
@@ -736,15 +736,24 @@ main(int argc, char *argv[])
   setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
   setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
 
+  struct sockaddr_in sin;
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = INADDR_ANY;
+  sin.sin_port = htons(port);
   ret = bind(s, (struct sockaddr *) &sin, sizeof(sin));
-  if(ret < 0){
-    perror("bind");
-    exit(EXIT_FAILURE);
+  if (ret < 0) {
+      perror("bind");
+      exit(EXIT_FAILURE);
   }
 
-  listen(s, 100);
+  ret = listen(s, 100);
+  if (ret < 0) {
+      perror("listen");
+      exit(EXIT_FAILURE);
+  }
+
   threadinfo **tcpti = new threadinfo *[tcpthreads];
-  printf("%d tcp threads\n", tcpthreads);
+  printf("%d tcp threads (port %d)\n", tcpthreads, port);
   for(i = 0; i < tcpthreads; i++){
     threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
     ret = pipe(ti->ti_pipe);
@@ -779,7 +788,7 @@ main(int argc, char *argv[])
     threadinfo *ti;
     if (target_core == -1) {
         ti = tcpti[next % tcpthreads];
-        ++ next;
+        ++next;
     } else {
         assert(pinthreads && target_core < tcpthreads);
         ti = tcpti[target_core];
@@ -1073,48 +1082,48 @@ struct tcpfds {
     }
 };
 #else
-struct tcpfds {
-    int pipefd;
-    int nfds;
-    fd_set rfds;
-    std::vector<conn *> conns;
+class tcpfds {
+    int pipefd_;
+    int nfds_;
+    fd_set rfds_;
+    std::vector<conn *> conns_;
 
-    tcpfds(int pipefd_) {
+  public:
+    tcpfds(int pipefd)
+        : pipefd_(pipefd), nfds_(pipefd + 1) {
 	mandatory_assert(pipefd < FD_SETSIZE);
-	FD_ZERO(&rfds);
-	FD_SET(pipefd_, &rfds);
-	pipefd = pipefd_;
-	nfds = pipefd + 1;
-	conns.resize(nfds, 0);
-	conns[pipefd] = (conn *) 1;
+	FD_ZERO(&rfds_);
+	FD_SET(pipefd, &rfds_);
+	conns_.resize(nfds_, 0);
+	conns_[pipefd] = (conn *) 1;
     }
 
     typedef fd_set eventset;
     int wait(eventset &es) {
-	es = rfds;
-	return select(nfds, &es, 0, 0, 0);
+	es = rfds_;
+	return select(nfds_, &es, 0, 0, 0);
     }
 
     conn *event_conn(eventset &es, int i) const {
-	return FD_ISSET(i, &es) ? conns[i] : 0;
+	return FD_ISSET(i, &es) ? conns_[i] : 0;
     }
 
     void add(int fd, conn *c) {
 	mandatory_assert(fd < FD_SETSIZE);
-	FD_SET(fd, &rfds);
-	if (fd >= nfds) {
-	    nfds = fd + 1;
-	    conns.resize(nfds, 0);
+	FD_SET(fd, &rfds_);
+	if (fd >= nfds_) {
+	    nfds_ = fd + 1;
+	    conns_.resize(nfds_, 0);
 	}
-	conns[fd] = c;
+	conns_[fd] = c;
     }
 
     void remove(int fd) {
 	mandatory_assert(fd < FD_SETSIZE);
-	FD_CLR(fd, &rfds);
-	if (fd == nfds - 1) {
-	    while (nfds > 0 && !FD_ISSET(nfds - 1, &rfds))
-		--nfds;
+	FD_CLR(fd, &rfds_);
+	if (fd == nfds_ - 1) {
+	    while (nfds_ > 0 && !FD_ISSET(nfds_ - 1, &rfds_))
+		--nfds_;
 	}
     }
 };
@@ -1148,7 +1157,7 @@ tcpgo(void *xarg)
   tcpfds::eventset events;
   query<row_type> q;
 
-  while(1){
+  while (1) {
     int nev = sloop.wait(events);
     for (int i = 0; i < nev; i++) {
       conn *c = sloop.event_conn(events, i);
@@ -1157,8 +1166,8 @@ tcpgo(void *xarg)
 #define MAX_NEWCONN 100
         int ss[MAX_NEWCONN];
         ssize_t len = read(ti->ti_pipe[0], ss, sizeof(ss));
-        mandatory_assert(len > 0 && len % 4 == 0);
-        for (int j = 0; j < len / 4; j++){
+        mandatory_assert(len > 0 && len % sizeof(int) == 0);
+        for (int j = 0; j * sizeof(int) < (size_t) len; ++j){
           struct conn *c = new conn(ss[j]);
           c->kvin = new_kvin(ss[j], 20*1024);
           c->kvout = new_kvout(ss[j], 20*1024);
