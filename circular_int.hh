@@ -15,6 +15,7 @@
  */
 #ifndef KVDB_CIRCULAR_INT_HH
 #define KVDB_CIRCULAR_INT_HH 1
+#include "compiler.hh"
 
 template <typename T>
 class circular_int {
@@ -64,6 +65,13 @@ class circular_int {
     circular_int<T> &operator-=(int x) {
 	v_ -= x;
 	return *this;
+    }
+
+    circular_int<T> cmpxchg(circular_int<T> expected, circular_int<T> desired) {
+        return ::cmpxchg(&v_, expected.v_, desired.v_);
+    }
+    circular_int<T> cmpxchg(T expected, T desired) {
+        return ::cmpxchg(&v_, expected, desired);
     }
 
     typedef value_type (circular_int<T>::*unspecified_bool_type)() const;
@@ -128,5 +136,11 @@ class circular_int {
 };
 
 typedef circular_int<uint64_t> kvepoch_t;
+
+template <typename T>
+inline circular_int<T> cmpxchg(circular_int<T> *object, circular_int<T> expected,
+                               circular_int<T> desired) {
+    return object->cmpxchg(expected, desired);
+}
 
 #endif
