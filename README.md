@@ -34,7 +34,7 @@ See `./configure --help` for more configure options.
 The quickiest and simpliest way to trying out Masstree is (**note that this test doesn't
 involve disk or network overhead.**):
 <pre>
-$ ./kvtest 
+$ ./mttest
 1/1 rw1/m
 0: now getting
 1: now getting
@@ -71,11 +71,11 @@ The test starts a process which hosts a Masstree, generates and execute queries
 over the tree. It uses all available cores (two in the above example). The test
 lasts for 20 seconds. It populates the key-value store with `put` queries
 during first 10 seconds, and then issues `get` queries over the tree during the
-second10 seconds, i.e. the getting phase. See `kvtest_rw1_seed` in `kvtest.hh`
-for more details about the workload and other workloads that `kvtest` supports. 
+second10 seconds, i.e. the getting phase. See `kvtest_rw1_seed` in `mttest.hh`
+for more details about the workload and other workloads that `mttest` supports.
 
 The output summarizes the throughput of each core. The `1/1 rw1/m` line says
-that `kvtest` is running the first trial (out of one trials), of the `rw1`
+that `mttest` is running the first trial (out of one trials), of the `rw1`
 workload using Masstree (`m` for short) as the internal data structure.
 
 The rest of the result mainly consists of two parts. First is the per-core
@@ -85,9 +85,9 @@ plot it, each candlestick has five points, each represents the
 min,20%,50%,70%,max of the corresponding metric among all threads.
 
 ##Output format##
- 
-`kvtest` can also write the output as JSON into file for further analysis. For
-example, `./kvtest -b notebook.json` will create `notebook.json` containing:
+
+`mttest` can also write the output as JSON into file for further analysis. For
+example, `./mttest -b notebook.json` will create `notebook.json` containing:
 
 <pre>
 {
@@ -133,10 +133,10 @@ example, `./kvtest -b notebook.json` will create `notebook.json` containing:
 
 ##Test Masstree with `mtclient`##
 
-`mtclient` supports almost the same set of workloads that `kvtest` does, but it
+`mtclient` supports almost the same set of workloads that `mttest` does, but it
 sends queries to the Masstree deamon over network.
 
-To start Masstree deamon, run:
+To start Masstree daemon, run:
 
 <pre>
 $ ./mtd --logdir=[LOG_DIRS]  --ckdir=[CHECKPOINT_DIRS]
@@ -172,10 +172,11 @@ gets/s: n 2, total 2523396, average 1261698, min 1259847, max 1263548, stddev 26
 
 
 ##Factor Analysis##
-We have included the script that allows you to reproduce the *factory analysis*
-graph in Masstree paper.  To run the factory analysis, simply:
+
+We have included the script that allows you to reproduce the factor analysis
+graph in Masstree paper. Run:
 
     $ ./script/factor.py
 
-Then you can use `./script/factorgraph.py` to convert the result into plotable
+Then you can use `./script/factorgraph.py` to convert the result into plottable
 gnuplot data.
