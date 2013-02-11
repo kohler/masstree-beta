@@ -274,7 +274,7 @@ logreplay::info_type
 logreplay::info() const
 {
     info_type x;
-    x.first_epoch = x.last_epoch = x.wake_epoch = 0;
+    x.first_epoch = x.last_epoch = x.wake_epoch = x.min_post_quiescent_wake_epoch = 0;
     x.quiescent = true;
 
     const char *buf = buf_, *end = buf_ + size_;
@@ -524,10 +524,12 @@ logreplay::replay(int which, threadinfo *ti)
     inactive();
 
     waituntilphase(REC_LOG_ANALYZE_WAKE);
-    if (buf_ && rec_replay_min_quiescent_last_epoch
-	&& rec_replay_min_quiescent_last_epoch <= rec_log_infos[which].wake_epoch)
-	rec_log_infos[which].min_post_quiescent_wake_epoch =
-	    min_post_quiescent_wake_epoch(rec_replay_min_quiescent_last_epoch);
+    if (buf_) {
+        if (rec_replay_min_quiescent_last_epoch
+            && rec_replay_min_quiescent_last_epoch <= rec_log_infos[which].wake_epoch)
+            rec_log_infos[which].min_post_quiescent_wake_epoch =
+                min_post_quiescent_wake_epoch(rec_replay_min_quiescent_last_epoch);
+    }
     inactive();
 
     waituntilphase(REC_LOG_REPLAY);

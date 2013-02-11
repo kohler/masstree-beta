@@ -1594,46 +1594,29 @@ recover(threadinfo *)
 
   // If max_wake_epoch && min_quiescent_last_epoch <= max_wake_epoch, then a
   // wake command was missed by at least one quiescent log. We can't replay
-  // anything at or beyond the minimum missed wake epoch.
+  // anything at or beyond the minimum missed wake epoch. So record, for
+  // each log, the minimum wake command that at least one quiescent thread
+  // missed.
   if (max_wake_epoch && min_quiescent_last_epoch <= max_wake_epoch)
       rec_replay_min_quiescent_last_epoch = min_quiescent_last_epoch;
   else
       rec_replay_min_quiescent_last_epoch = 0;
   recphase(nlogger, REC_LOG_ANALYZE_WAKE);
 
-  // Minimum wake_epoch that at least one quiescent log missed (i.e. that is
-  // greater than or equal to min_quiescent_last_epoch).
-  kvepoch_t min_post_quiescent_wake_epoch = 0;
+  // Calculate upper bound of epochs to replay.
+  // This is the minimum of min_post_quiescent_wake_epoch (if any) and the
+  // last_epoch of all non-quiescent logs.
+  rec_replay_max_epoch = max_epoch;
   for (logreplay::info_type *it = rec_log_infos;
-       it != rec_log_infos + nlogger; ++it)
-      if (it->wake_epoch
-	  && min_quiescent_last_epoch <= it->wake_epoch
-	  && it->min_post_quiescent_wake_epoch
-	  && (!min_post_quiescent_wake_epoch
-	      || min_post_quiescent_wake_epoch > it->min_post_quiescent_wake_epoch))
-	  min_post_quiescent_wake_epoch = it->min_post_quiescent_wake_epoch;
-
-  // Patch last_epoch for quiescent logs.
-  for (logreplay::info_type *it = rec_log_infos;
-       it != rec_log_infos + nlogger; ++it)
-      if (it->quiescent) {
-          if (!it->last_epoch
-              || !max_wake_epoch
-              || it->last_epoch > max_wake_epoch)
-              it->last_epoch = max_epoch;
-          else if (min_post_quiescent_wake_epoch
-                   && it->last_epoch < min_post_quiescent_wake_epoch)
-              it->last_epoch = min_post_quiescent_wake_epoch;
-      }
-
-  // Calculate upper bound of epochs to replay, which is the maximum epoch
-  // in all logs.
-  rec_replay_max_epoch = 0;
-  for (logreplay::info_type *it = rec_log_infos;
-       it != rec_log_infos + nlogger; ++it)
-      if (it->last_epoch
-	  && (!rec_replay_max_epoch || rec_replay_max_epoch > it->last_epoch))
+       it != rec_log_infos + nlogger; ++it) {
+      if (!it->quiescent
+          && it->last_epoch
+	  && it->last_epoch < rec_replay_max_epoch)
 	  rec_replay_max_epoch = it->last_epoch;
+      if (it->min_post_quiescent_wake_epoch
+          && it->min_post_quiescent_wake_epoch < rec_replay_max_epoch)
+          rec_replay_max_epoch = it->min_post_quiescent_wake_epoch;
+  }
 
   // Calculate lower bound of epochs to replay.
   rec_replay_min_epoch = rec_ckp_min_epoch;
