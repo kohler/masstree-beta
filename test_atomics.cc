@@ -162,6 +162,16 @@ void test_kpermuter() {
     assert(find_lowest_zero_nibble(0x0120U) == 0);
     assert(find_lowest_zero_nibble(0x0123U) == 3);
     assert(find_lowest_zero_nibble(0x12345678U) == -1);
+
+    kpermuter<14> ka = kpermuter<14>::make_empty();
+    i = ka.insert_from_back(0);
+    assert(ka.size() == 1 && i == 0 && ka[0] == 0);
+    i = ka.insert_from_back(0);
+    assert(ka.size() == 2 && i == 1 && ka[0] == 1 && ka[1] == 0);
+    i = ka.insert_from_back(2);
+    assert(ka.size() == 3 && i == 2 && ka[0] == 1 && ka[1] == 0 && ka[2] == 2);
+    ka.remove_to_back(1);
+    assert(ka.size() == 2 && ka[0] == 1 && ka[1] == 2 && ka.back() == 0);
 }
 
 void test_string_slice() {

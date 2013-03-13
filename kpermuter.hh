@@ -204,12 +204,14 @@ template <int width> class kpermuter {
 	</ul> */
     void remove_to_back(int i) {
 	value_type mask = ~(((value_type) 16 << (i << 2)) - 1);
+        // clear unused slots
+        value_type x = x_ & (((value_type) 16 << (width << 2)) - 1);
 	// decrement size, leave lower slots unchanged
-	x_ = ((x_ - 1) & ~mask)
+	x_ = ((x - 1) & ~mask)
 	    // shift higher entries down
-	    | ((x_ >> 4) & mask)
+	    | ((x >> 4) & mask)
 	    // shift removed element up
-	    | ((x_ & mask) << ((width - i - 1) << 2));
+	    | ((x & mask) << ((width - i - 1) << 2));
     }
     /** @brief Rotate the permuter's elements between @a i and size().
 	@pre 0 <= @a i <= @a j <= size()
@@ -228,9 +230,11 @@ template <int width> class kpermuter {
 	</ul> */
     void rotate(int i, int j) {
 	value_type mask = (i == width ? (value_type) 0 : (value_type) 16 << (i << 2)) - 1;
-	x_ = (x_ & mask)
-	    | ((x_ >> ((j - i) << 2)) & ~mask)
-	    | ((x_ & ~mask) << ((width - j) << 2));
+        // clear unused slots
+        value_type x = x_ & (((value_type) 16 << (width << 2)) - 1);
+	x_ = (x & mask)
+	    | ((x >> ((j - i) << 2)) & ~mask)
+	    | ((x & ~mask) << ((width - j) << 2));
     }
     /** @brief Exchange the elements at positions @a i and @a j. */
     void exchange(int i, int j) {
@@ -259,8 +263,9 @@ template <int width> class kpermuter {
 template <int width>
 String kpermuter<width>::unparse() const
 {
-    char buf[max_width + 1], *s = buf;
+    char buf[max_width + 3], *s = buf;
     value_type p(x_);
+    value_type seen(0);
     int n = p & 15;
     p >>= 4;
     for (int i = 0; true; ++i) {
@@ -272,9 +277,14 @@ String kpermuter<width>::unparse() const
 	    *s++ = '0' + (p & 15);
 	else
 	    *s++ = 'a' + (p & 15) - 10;
+        seen |= 1 << (p & 15);
 	p >>= 4;
     }
-    return String(buf, width + 1);
+    if (seen != (1 << width) - 1) {
+        *s++ = '?';
+        *s++ = '!';
+    }
+    return String(buf, s);
 }
 
 
