@@ -69,7 +69,7 @@ void leaf<P>::hard_assign_ksuf(int p, str s, bool initializing,
 	csz = oksuf->allocated_size() - oksuf->overhead(width);
     else
 	csz = 0;
-    size_t sz = iceil_log2(std::max(csz, size_t(32)) * 2);
+    size_t sz = iceil_log2(std::max(csz, size_t(4 * width)) * 2);
     while (sz < csz + stringbag<uint32_t>::overhead(width) + s.len)
 	sz *= 2;
 
@@ -79,10 +79,13 @@ void leaf<P>::hard_assign_ksuf(int p, str s, bool initializing,
     int n = initializing ? p : perm.size();
     for (int i = 0; i < n; ++i) {
 	int mp = initializing ? i : perm[i];
-	if (mp != p && has_ksuf(mp))
-	    nksuf->assign(mp, ksuf(mp));
+	if (mp != p && has_ksuf(mp)) {
+	    bool ok = nksuf->assign(mp, ksuf(mp));
+            assert(ok);
+        }
     }
-    nksuf->assign(p, s);
+    bool ok = nksuf->assign(p, s);
+    assert(ok);
     fence();
 
     if (nremoved_ > 0)		// removed ksufs are not copied to the new ksuf,
