@@ -83,7 +83,7 @@ class stringbag {
 	int pos, mylen = info_len(info_[p]);
 	if (mylen >= len)
 	    pos = info_pos(info_[p]);
-	else if (size() + len + sizeof(*this) <= (size_t) allocated_size()) {
+	else if (size() + len <= (size_t) allocated_size()) {
 	    pos = size();
 	    main_ = make_info(pos + len, allocated_size());
 	} else
