@@ -240,4 +240,10 @@ inline int key_compare(const Masstree::key<I> &a,
     return a.compare(b.ikey(), b.length());
 }
 
+template <typename I>
+inline std::ostream& operator<<(std::ostream& stream,
+                                const Masstree::key<I>& x) {
+    return stream << x.unparse();
+}
+
 #endif
