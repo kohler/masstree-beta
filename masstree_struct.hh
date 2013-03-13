@@ -1,6 +1,6 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
  * Copyright (c) 2012 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef MASSTREE_STRUCT_HH
-#define MASSTREE_STRUCT_HH 1
+#define MASSTREE_STRUCT_HH
 #include "masstree.hh"
 #include "nodeversion.hh"
 #include "stringbag.hh"
@@ -227,7 +227,7 @@ struct leaf : public node_base<P> {
     static constexpr int width = P::leaf_width;
     typedef key<typename P::ikey_type> key_type;
     typedef typename node_base<P>::leafvalue_type leafvalue_type;
-    typedef typename kpermuter<P::leaf_width>::type permuter_type;
+    typedef kpermuter<P::leaf_width> permuter_type;
     typedef typename P::ikey_type ikey_type;
     typedef typename key_bound<width, P::bound_method>::type bound_type;
 
@@ -251,7 +251,7 @@ struct leaf : public node_base<P> {
 
     leaf(size_t sz, kvtimestamp_t node_ts)
 	: node_base<P>(true), nremoved_(0),
-	  permutation_(permuter_type::make_empty(width)),
+	  permutation_(permuter_type::make_empty()),
 	  ksuf_(), parent_(), node_ts_(node_ts) {
 	assert(sz % 64 == 0 && sz / 64 < 128);
 	extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);

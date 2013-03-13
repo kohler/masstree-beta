@@ -1,6 +1,6 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
  * Copyright (c) 2012 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef MASSTREE_INSERT_HH
-#define MASSTREE_INSERT_HH 1
+#define MASSTREE_INSERT_HH
 #include "masstree_tcursor.hh"
 namespace Masstree {
 
@@ -54,10 +54,10 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 	    nl->lv_[kc < 0] = leafvalue_type::make_empty();
 	}
 	if (kc <= 0)
-	    nl->permutation_ = permuter_type::make_sorted(nl->width, 1);
+	    nl->permutation_ = permuter_type::make_sorted(1);
 	else {
-	    permuter_type permnl = permuter_type::make_sorted(nl->width, 2);
-	    permnl.remove_to_back(nl->width, 0);
+	    permuter_type permnl = permuter_type::make_sorted(2);
+	    permnl.remove_to_back(0);
 	    nl->permutation_ = permnl.value();
 	}
 	// In a prior version, recursive tree levels and true values were
@@ -86,7 +86,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
     // insert
  do_insert:
     if (n_->size() + n_->nremoved_ < n_->width) {
-	kp_ = permuter_type(n_->permutation_).back(n_->width);
+	kp_ = permuter_type(n_->permutation_).back();
 	// watch out for attempting to use position 0
 	if (likely(kp_ != 0) || !n_->prev_ || n_->ikey_bound() == ka_.ikey()) {
 	    n_->assign(kp_, ka_, ti);
@@ -109,7 +109,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 	int zeroidx = find_lowest_zero_nibble(perm.value_from(0));
 	assert(perm[zeroidx] == 0);
 	if (zeroidx > perm.size() && n_->prev_) {
-	    perm.exchange(n_->width, perm.size(), zeroidx);
+	    perm.exchange(perm.size(), zeroidx);
 	    n_->permutation_ = perm.value();
 	    fence();
 	}
@@ -139,8 +139,8 @@ template <typename P>
 void tcursor<P>::finish_insert()
 {
     permuter_type perm(n_->permutation_);
-    assert(perm.back(n_->width) == kp_);
-    perm.insert_from_back(n_->width, ki_);
+    assert(perm.back() == kp_);
+    perm.insert_from_back(ki_);
     fence();
     n_->permutation_ = perm.value();
 }

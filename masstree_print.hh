@@ -1,6 +1,6 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
  * Copyright (c) 2012 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef MASSTREE_PRINT_HH
-#define MASSTREE_PRINT_HH 1
+#define MASSTREE_PRINT_HH
 #include "masstree_struct.hh"
 #include <stdio.h>
 class threadinfo;
@@ -46,7 +46,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
     char keybuf[MaxKeyLen];
     fprintf(f, "%s%*sleaf %p: %d keys, version %x, permutation %s, ",
 	    prefix, indent, "", this, perm.size(), v.version_value(),
-	    perm.unparse(this->width).c_str());
+	    perm.unparse().c_str());
     if (nremoved_)
 	fprintf(f, "removed %d, ", nremoved_);
     fprintf(f, "parent %p, prev %p, next %p ", parent_, prev_, next_.ptr);

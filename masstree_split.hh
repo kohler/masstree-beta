@@ -141,9 +141,9 @@ int leaf_split(leaf<P> *nl, leaf<P> *nr,
 	    nr->assign_initialize(x - mid, nl, pv & 15, ti);
 	    pv >>= 4;
 	}
-    typename leaf<P>::permuter_type permr = leaf<P>::permuter_type::make_sorted(nr->width, width + 1 - mid);
+    typename leaf<P>::permuter_type permr = leaf<P>::permuter_type::make_sorted(width + 1 - mid);
     if (p >= mid)
-	permr.remove_to_back(nr->width, p - mid);
+	permr.remove_to_back(p - mid);
     nr->permutation_ = permr.value();
 
     btree_leaflink<leaf<P> >::link_split(nl, nr);
@@ -210,11 +210,11 @@ node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
 	    perml.set_size(width - nr->size());
 	    // removed item, if any, must be @ perml.size()
 	    if (width != nl->width)
-		perml.exchange(nl->width, perml.size(), nl->width - 1);
+		perml.exchange(perml.size(), nl->width - 1);
 	    nl->mark_split();
 	    nl->permutation_ = perml.value();
 	    if (split_type == 0) {
-		kp_ = perml.back(nl->width);
+		kp_ = perml.back();
 		nl->assign(kp_, ka_, ti);
 	    } else {
 		ki_ = kp_ = ki_ - perml.size();

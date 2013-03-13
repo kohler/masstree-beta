@@ -1,6 +1,6 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
  * Copyright (c) 2012 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef MASSTREE_REMOVE_HH
-#define MASSTREE_REMOVE_HH 1
+#define MASSTREE_REMOVE_HH
 #include "masstree_tcursor.hh"
 #include "btree_leaflink.hh"
 namespace Masstree {
@@ -137,7 +137,7 @@ template <typename P>
 bool tcursor<P>::finish_remove(threadinfo *ti)
 {
     permuter_type perm(n_->permutation_);
-    perm.remove(n_->width, ki_);
+    perm.remove(ki_);
     n_->permutation_ = perm.value();
     ++n_->nremoved_;
     if (perm.size())

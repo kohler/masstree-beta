@@ -1,6 +1,6 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
  * Copyright (c) 2012 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -123,39 +123,39 @@ void time_keyslice() {
 }
 
 void test_kpermuter() {
-    typedef kpermuter<15>::type kpermuter_type;
-    kpermuter_type k = kpermuter_type::make_empty(15);
-    int i = k.insert_from_back(15, 0);
+    typedef kpermuter<15> kpermuter_type;
+    kpermuter_type k = kpermuter_type::make_empty();
+    int i = k.insert_from_back(0);
     assert(k.size() == 1 && i == 0 && k[0] == 0);
-    i = k.insert_from_back(15, 0);
+    i = k.insert_from_back(0);
     assert(k.size() == 2 && i == 1 && k[0] == 1 && k[1] == 0);
-    i = k.insert_from_back(15, 2);
+    i = k.insert_from_back(2);
     assert(k.size() == 3 && i == 2 && k[0] == 1 && k[1] == 0 && k[2] == 2);
-    k.remove(15, 1);
+    k.remove(1);
     assert(k.size() == 2 && k[0] == 1 && k[1] == 2 && k[2] == 0);
-    k.remove(15, 1);
+    k.remove(1);
     assert(k.size() == 1 && k[0] == 1 && k[1] == 2 && k[2] == 0 && k[3] == 14);
-    i = k.insert_from_back(15, 0);
+    i = k.insert_from_back(0);
     assert(k.size() == 2 && i == 3 && k[0] == 3 && k[1] == 1 && k[2] == 2 && k[3] == 0 && k[4] == 14);
-    k.insert_selected(15, 0, 3);
+    k.insert_selected(0, 3);
     assert(k.size() == 3 && k[0] == 0 && k[1] == 3 && k[2] == 1 && k[3] == 2 && k[4] == 14);
-    k.insert_selected(15, 2, 11);
+    k.insert_selected(2, 11);
     assert(k.size() == 4 && k[0] == 0 && k[1] == 3 && k[2] == 7 && k[3] == 1 && k[4] == 2
 	   && k[5] == 14 && k[11] == 8 && k[12] == 6);
-    k.insert_selected(15, 2, 14);
+    k.insert_selected(2, 14);
     assert(k.size() == 5 && k[0] == 0 && k[1] == 3 && k[2] == 4 && k[3] == 7 && k[4] == 1 && k[5] == 2
 	   && k[6] == 14 && k[12] == 8 && k[13] == 6);
-    k.exchange(15, 0, 1);
+    k.exchange(0, 1);
     assert(k.size() == 5 && k[0] == 3 && k[1] == 0 && k[2] == 4 && k[3] == 7 && k[4] == 1 && k[5] == 2
 	   && k[6] == 14 && k[12] == 8 && k[13] == 6);
-    k.remove_to_back(15, 2);
+    k.remove_to_back(2);
     assert(k.size() == 4 && k[0] == 3 && k[1] == 0 && k[2] == 7 && k[3] == 1 && k[4] == 2
 	   && k[5] == 14 && k[11] == 8 && k[12] == 6 && k[14] == 4);
-    assert(k.back(15) == 4);
-    i = k.insert_from_back(15, 2);
+    assert(k.back() == 4);
+    i = k.insert_from_back(2);
     assert(k.size() == 5 && k[0] == 3 && k[1] == 0 && k[2] == 4 && k[3] == 7 && k[4] == 1 && k[5] == 2
 	   && k[6] == 14 && k[12] == 8 && k[13] == 6 && i == 4);
-    k.exchange(15, 0, 0);
+    k.exchange(0, 0);
     assert(k.size() == 5 && k[0] == 3 && k[1] == 0 && k[2] == 4 && k[3] == 7 && k[4] == 1 && k[5] == 2
 	   && k[6] == 14 && k[12] == 8 && k[13] == 6 && i == 4);
 
