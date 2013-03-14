@@ -4197,11 +4197,11 @@ if ${ac_cv_have___builtin_clz+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-unsigned x = 11;
+unsigned f(unsigned x) { return __builtin_clz(x); }
 int
 main ()
 {
-unsigned y = __builtin_clz(x);
+
   ;
   return 0;
 }
@@ -4231,11 +4231,11 @@ if ${ac_cv_have___builtin_clzl+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-unsigned long x = 11;
+unsigned long f(unsigned long x) { return __builtin_clzl(x); }
 int
 main ()
 {
-unsigned long y = __builtin_clzl(x);
+
   ;
   return 0;
 }
@@ -4265,11 +4265,11 @@ if ${ac_cv_have___builtin_clzll+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-unsigned long long x = 11;
+unsigned long long f(unsigned long long x) { return __builtin_clzll(x); }
 int
 main ()
 {
-unsigned long long y = __builtin_clzll(x);
+
   ;
   return 0;
 }
@@ -4299,11 +4299,11 @@ if ${ac_cv_have___builtin_ctz+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-unsigned x = 11;
+unsigned f(unsigned x) { return __builtin_ctz(x); }
 int
 main ()
 {
-unsigned y = __builtin_ctz(x);
+
   ;
   return 0;
 }
@@ -4333,11 +4333,11 @@ if ${ac_cv_have___builtin_ctzl+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-unsigned long x = 11;
+unsigned long f(unsigned long x) { return __builtin_ctzl(x); }
 int
 main ()
 {
-unsigned long y = __builtin_ctzl(x);
+
   ;
   return 0;
 }
@@ -4367,11 +4367,11 @@ if ${ac_cv_have___builtin_ctzll+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-unsigned long long x = 11;
+unsigned long long f(unsigned long long x) { return __builtin_ctzll(x); }
 int
 main ()
 {
-unsigned long long y = __builtin_ctzll(x);
+
   ;
   return 0;
 }
@@ -4402,10 +4402,11 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 long x = 11;
+    void f(long i) { long* y = &x; __sync_synchronize(); *y = i; }
 int
 main ()
 {
-long *y = &x; __sync_synchronize();
+
   ;
   return 0;
 }
@@ -4435,11 +4436,11 @@ if ${ac_cv_have___sync_fetch_and_add+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-long x = 11;
+long f(long* x) { return __sync_fetch_and_add(x, 2L); }
 int
 main ()
 {
-long y = __sync_fetch_and_add(&x, 2L);
+
   ;
   return 0;
 }
@@ -4470,11 +4471,11 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdint.h>
-int64_t x = 11;
+    int64_t f(int64_t* x) { return __sync_fetch_and_add(x, (int64_t) 2); }
 int
 main ()
 {
-int64_t y = __sync_fetch_and_add(&x, (int64_t) 2);
+
   ;
   return 0;
 }
@@ -4504,11 +4505,11 @@ if ${ac_cv_have___sync_bool_compare_and_swap+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-long x = 11, y = 12;
+bool f(long* x, long y, long z) { return __sync_bool_compare_and_swap(x, y, z); }
 int
 main ()
 {
-__sync_bool_compare_and_swap(&x, y, 13L);
+
   ;
   return 0;
 }
@@ -4539,11 +4540,11 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdint.h>
-int64_t x = 11, y = 12;
+    bool f(int64_t* x, int64_t y, int64_t z) { return __sync_bool_compare_and_swap(x, y, z); }
 int
 main ()
 {
-__sync_bool_compare_and_swap(&x, y, (int64_t) 13);
+
   ;
   return 0;
 }
@@ -4573,11 +4574,11 @@ if ${ac_cv_have___sync_val_compare_and_swap+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-long x = 11, y = 12;
+long f(long* x, long y, long z) { return __sync_val_compare_and_swap(x, y, z); }
 int
 main ()
 {
-__sync_val_compare_and_swap(&x, y, 13L);
+
   ;
   return 0;
 }
@@ -4608,11 +4609,11 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdint.h>
-int64_t x = 11, y = 12;
+    int64_t f(int64_t* x, int64_t y, int64_t z) { return __sync_val_compare_and_swap(x, y, z); }
 int
 main ()
 {
-__sync_val_compare_and_swap(&x, y, (int64_t) 13);
+
   ;
   return 0;
 }
@@ -4642,11 +4643,11 @@ if ${ac_cv_have___sync_lock_test_and_set+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-long x = 0;
+long f(long* x) { return __sync_lock_test_and_set(x, 1); }
 int
 main ()
 {
-long y = __sync_lock_test_and_set(&x, 1);
+
   ;
   return 0;
 }
@@ -4676,11 +4677,11 @@ if ${ac_cv_have___sync_lock_test_and_set_val+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-long x = 0, y = 2;
+long f(long* x, long y) { return __sync_lock_test_and_set(x, y); }
 int
 main ()
 {
-long z = __sync_lock_test_and_set(&x, y);
+
   ;
   return 0;
 }
@@ -4703,35 +4704,35 @@ $as_echo "#define HAVE___SYNC_LOCK_TEST_AND_SET_VAL 1" >>confdefs.h
 
 
 
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_lock_release builtin" >&5
-$as_echo_n "checking for __sync_lock_release builtin... " >&6; }
-if ${ac_cv_have___sync_lock_release+:} false; then :
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_lock_release_set builtin" >&5
+$as_echo_n "checking for __sync_lock_release_set builtin... " >&6; }
+if ${ac_cv_have___sync_lock_release_set+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-long x = 1;
+void f(long* x) { __sync_lock_release(x); }
 int
 main ()
 {
-__sync_lock_release(&x);
+
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_cxx_try_link "$LINENO"; then :
-  ac_cv_have___sync_lock_release=yes
+  ac_cv_have___sync_lock_release_set=yes
 else
-  ac_cv_have___sync_lock_release=no
+  ac_cv_have___sync_lock_release_set=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_lock_release" >&5
-$as_echo "$ac_cv_have___sync_lock_release" >&6; }
-    if test $ac_cv_have___sync_lock_release = yes; then
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_lock_release_set" >&5
+$as_echo "$ac_cv_have___sync_lock_release_set" >&6; }
+    if test $ac_cv_have___sync_lock_release_set = yes; then
 
-$as_echo "#define HAVE___SYNC_LOCK_RELEASE 1" >>confdefs.h
+$as_echo "#define HAVE___SYNC_LOCK_RELEASE_SET 1" >>confdefs.h
 
     fi
 
@@ -5508,6 +5509,39 @@ _ACEOF
 
 
 fi
+
+# The cast to long int works around a bug in the HP C Compiler
+# version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
+# declarations like `int a3[[(sizeof (unsigned char)) >= 0]];'.
+# This bug is HP SR number 8606223364.
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking size of short" >&5
+$as_echo_n "checking size of short... " >&6; }
+if ${ac_cv_sizeof_short+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if ac_fn_cxx_compute_int "$LINENO" "(long int) (sizeof (short))" "ac_cv_sizeof_short"        "$ac_includes_default"; then :
+
+else
+  if test "$ac_cv_type_short" = yes; then
+     { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error 77 "cannot compute sizeof (short)
+See \`config.log' for more details" "$LINENO" 5; }
+   else
+     ac_cv_sizeof_short=0
+   fi
+fi
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sizeof_short" >&5
+$as_echo "$ac_cv_sizeof_short" >&6; }
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_SHORT $ac_cv_sizeof_short
+_ACEOF
+
 
 # The cast to long int works around a bug in the HP C Compiler
 # version HP92453-01 B.11.11.23709.GP, which incorrectly rejects

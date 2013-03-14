@@ -155,8 +155,8 @@
 /* Define if you have the __sync_fetch_and_add_8 builtin. */
 #undef HAVE___SYNC_FETCH_AND_ADD_8
 
-/* Define if you have the __sync_lock_release builtin. */
-#undef HAVE___SYNC_LOCK_RELEASE
+/* Define if you have the __sync_lock_release_set builtin. */
+#undef HAVE___SYNC_LOCK_RELEASE_SET
 
 /* Define if you have the __sync_lock_test_and_set builtin. */
 #undef HAVE___SYNC_LOCK_TEST_AND_SET
@@ -220,6 +220,9 @@
 
 /* The size of `long long', as computed by sizeof. */
 #undef SIZEOF_LONG_LONG
+
+/* The size of `short', as computed by sizeof. */
+#undef SIZEOF_SHORT
 
 /* The size of `void *', as computed by sizeof. */
 #undef SIZEOF_VOID_P

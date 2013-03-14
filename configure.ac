@@ -26,63 +26,63 @@ dnl Builtins
 
 AC_DEFUN([KVDB_CHECK_BUILTIN], [
     AC_CACHE_CHECK([for $1 builtin], [ac_cv_have_$1],
-	[AC_LINK_IFELSE([AC_LANG_PROGRAM([$2], [$3])],
+	[AC_LINK_IFELSE([AC_LANG_PROGRAM([$2], [])],
 	    [ac_cv_have_$1=yes], [ac_cv_have_$1=no])])
     if test $ac_cv_have_$1 = yes; then
 	AC_DEFINE(AS_TR_CPP([HAVE_$1]), [1], [Define if you have the $1 builtin.])
     fi
 ])
 
-KVDB_CHECK_BUILTIN([__builtin_clz], [[unsigned x = 11;]],
-    [[unsigned y = __builtin_clz(x);]])
+KVDB_CHECK_BUILTIN([__builtin_clz],
+    [[unsigned f(unsigned x) { return __builtin_clz(x); }]])
 
-KVDB_CHECK_BUILTIN([__builtin_clzl], [[unsigned long x = 11;]],
-    [[unsigned long y = __builtin_clzl(x);]])
+KVDB_CHECK_BUILTIN([__builtin_clzl],
+    [[unsigned long f(unsigned long x) { return __builtin_clzl(x); }]])
 
-KVDB_CHECK_BUILTIN([__builtin_clzll], [[unsigned long long x = 11;]],
-    [[unsigned long long y = __builtin_clzll(x);]])
+KVDB_CHECK_BUILTIN([__builtin_clzll],
+    [[unsigned long long f(unsigned long long x) { return __builtin_clzll(x); }]])
 
-KVDB_CHECK_BUILTIN([__builtin_ctz], [[unsigned x = 11;]],
-    [[unsigned y = __builtin_ctz(x);]])
+KVDB_CHECK_BUILTIN([__builtin_ctz],
+    [[unsigned f(unsigned x) { return __builtin_ctz(x); }]])
 
-KVDB_CHECK_BUILTIN([__builtin_ctzl], [[unsigned long x = 11;]],
-    [[unsigned long y = __builtin_ctzl(x);]])
+KVDB_CHECK_BUILTIN([__builtin_ctzl],
+    [[unsigned long f(unsigned long x) { return __builtin_ctzl(x); }]])
 
-KVDB_CHECK_BUILTIN([__builtin_ctzll], [[unsigned long long x = 11;]],
-    [[unsigned long long y = __builtin_ctzll(x);]])
+KVDB_CHECK_BUILTIN([__builtin_ctzll],
+    [[unsigned long long f(unsigned long long x) { return __builtin_ctzll(x); }]])
 
-KVDB_CHECK_BUILTIN([__sync_synchronize], [[long x = 11;]],
-    [[long *y = &x; __sync_synchronize();]])
+KVDB_CHECK_BUILTIN([__sync_synchronize], [[long x = 11;
+    void f(long i) { long* y = &x; __sync_synchronize(); *y = i; }]])
 
-KVDB_CHECK_BUILTIN([__sync_fetch_and_add], [[long x = 11;]],
-    [[long y = __sync_fetch_and_add(&x, 2L);]])
+KVDB_CHECK_BUILTIN([__sync_fetch_and_add],
+    [[long f(long* x) { return __sync_fetch_and_add(x, 2L); }]])
 
-KVDB_CHECK_BUILTIN([__sync_fetch_and_add_8], [[#include <stdint.h>
-int64_t x = 11;]],
-    [[int64_t y = __sync_fetch_and_add(&x, (int64_t) 2);]])
+KVDB_CHECK_BUILTIN([__sync_fetch_and_add_8],
+    [[#include <stdint.h>
+    int64_t f(int64_t* x) { return __sync_fetch_and_add(x, (int64_t) 2); }]])
 
-KVDB_CHECK_BUILTIN([__sync_bool_compare_and_swap], [[long x = 11, y = 12;]],
-    [[__sync_bool_compare_and_swap(&x, y, 13L);]])
+KVDB_CHECK_BUILTIN([__sync_bool_compare_and_swap],
+    [[bool f(long* x, long y, long z) { return __sync_bool_compare_and_swap(x, y, z); }]])
 
-KVDB_CHECK_BUILTIN([__sync_bool_compare_and_swap_8], [[#include <stdint.h>
-int64_t x = 11, y = 12;]],
-    [[__sync_bool_compare_and_swap(&x, y, (int64_t) 13);]])
+KVDB_CHECK_BUILTIN([__sync_bool_compare_and_swap_8],
+    [[#include <stdint.h>
+    bool f(int64_t* x, int64_t y, int64_t z) { return __sync_bool_compare_and_swap(x, y, z); }]])
 
-KVDB_CHECK_BUILTIN([__sync_val_compare_and_swap], [[long x = 11, y = 12;]],
-    [[__sync_val_compare_and_swap(&x, y, 13L);]])
+KVDB_CHECK_BUILTIN([__sync_val_compare_and_swap],
+    [[long f(long* x, long y, long z) { return __sync_val_compare_and_swap(x, y, z); }]])
 
-KVDB_CHECK_BUILTIN([__sync_val_compare_and_swap_8], [[#include <stdint.h>
-int64_t x = 11, y = 12;]],
-    [[__sync_val_compare_and_swap(&x, y, (int64_t) 13);]])
+KVDB_CHECK_BUILTIN([__sync_val_compare_and_swap_8],
+    [[#include <stdint.h>
+    int64_t f(int64_t* x, int64_t y, int64_t z) { return __sync_val_compare_and_swap(x, y, z); }]])
 
-KVDB_CHECK_BUILTIN([__sync_lock_test_and_set], [[long x = 0;]],
-    [[long y = __sync_lock_test_and_set(&x, 1);]])
+KVDB_CHECK_BUILTIN([__sync_lock_test_and_set],
+    [[long f(long* x) { return __sync_lock_test_and_set(x, 1); }]])
 
-KVDB_CHECK_BUILTIN([__sync_lock_test_and_set_val], [[long x = 0, y = 2;]],
-    [[long z = __sync_lock_test_and_set(&x, y);]])
+KVDB_CHECK_BUILTIN([__sync_lock_test_and_set_val],
+    [[long f(long* x, long y) { return __sync_lock_test_and_set(x, y); }]])
 
-KVDB_CHECK_BUILTIN([__sync_lock_release], [[long x = 1;]],
-    [[__sync_lock_release(&x);]])
+KVDB_CHECK_BUILTIN([__sync_lock_release_set],
+    [[void f(long* x) { __sync_lock_release(x); }]])
 
 
 dnl C++ features
@@ -239,6 +239,7 @@ KVDB_CHECK_SAME_TYPE([size_t], [unsigned long], [#include <stdio.h>])
 KVDB_CHECK_SAME_TYPE([size_t], [unsigned long long], [#include <stdio.h>])
 
 AC_CHECK_TYPES([long long])
+AC_CHECK_SIZEOF([short])
 AC_CHECK_SIZEOF([int])
 AC_CHECK_SIZEOF([long])
 AC_CHECK_SIZEOF([long long])

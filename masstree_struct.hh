@@ -252,7 +252,7 @@ struct leaf : public node_base<P> {
     leaf(size_t sz, kvtimestamp_t node_ts)
 	: node_base<P>(true), nremoved_(0),
 	  permutation_(permuter_type::make_empty()),
-	  ksuf_(), parent_(), node_ts_(node_ts) {
+	  ksuf_(), parent_(), node_ts_(node_ts), iksuf_{} {
 	assert(sz % 64 == 0 && sz / 64 < 128);
 	extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
 	if (extrasize64_ > 0)
