@@ -5116,9 +5116,9 @@ else
   have_flow=
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for malloc in -ljemalloc" >&5
-$as_echo_n "checking for malloc in -ljemalloc... " >&6; }
-if ${ac_cv_lib_jemalloc_malloc+:} false; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mallctl in -ljemalloc" >&5
+$as_echo_n "checking for mallctl in -ljemalloc... " >&6; }
+if ${ac_cv_lib_jemalloc_mallctl+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -5132,35 +5132,35 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char malloc ();
+char mallctl ();
 int
 main ()
 {
-return malloc ();
+return mallctl ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_cxx_try_link "$LINENO"; then :
-  ac_cv_lib_jemalloc_malloc=yes
+  ac_cv_lib_jemalloc_mallctl=yes
 else
-  ac_cv_lib_jemalloc_malloc=no
+  ac_cv_lib_jemalloc_mallctl=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_jemalloc_malloc" >&5
-$as_echo "$ac_cv_lib_jemalloc_malloc" >&6; }
-if test "x$ac_cv_lib_jemalloc_malloc" = xyes; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_jemalloc_mallctl" >&5
+$as_echo "$ac_cv_lib_jemalloc_mallctl" >&6; }
+if test "x$ac_cv_lib_jemalloc_mallctl" = xyes; then :
   have_jemalloc=true
 else
   have_jemalloc=
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for malloc in -ltcmalloc_minimal" >&5
-$as_echo_n "checking for malloc in -ltcmalloc_minimal... " >&6; }
-if ${ac_cv_lib_tcmalloc_minimal_malloc+:} false; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for tc_malloc in -ltcmalloc_minimal" >&5
+$as_echo_n "checking for tc_malloc in -ltcmalloc_minimal... " >&6; }
+if ${ac_cv_lib_tcmalloc_minimal_tc_malloc+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -5174,27 +5174,27 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char malloc ();
+char tc_malloc ();
 int
 main ()
 {
-return malloc ();
+return tc_malloc ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_cxx_try_link "$LINENO"; then :
-  ac_cv_lib_tcmalloc_minimal_malloc=yes
+  ac_cv_lib_tcmalloc_minimal_tc_malloc=yes
 else
-  ac_cv_lib_tcmalloc_minimal_malloc=no
+  ac_cv_lib_tcmalloc_minimal_tc_malloc=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_tcmalloc_minimal_malloc" >&5
-$as_echo "$ac_cv_lib_tcmalloc_minimal_malloc" >&6; }
-if test "x$ac_cv_lib_tcmalloc_minimal_malloc" = xyes; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_tcmalloc_minimal_tc_malloc" >&5
+$as_echo "$ac_cv_lib_tcmalloc_minimal_tc_malloc" >&6; }
+if test "x$ac_cv_lib_tcmalloc_minimal_tc_malloc" = xyes; then :
   have_tcmalloc_minimal=true
 else
   have_tcmalloc_minimal=

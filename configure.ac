@@ -176,8 +176,8 @@ fi
 dnl Memory allocator
 
 AC_CHECK_LIB([flow], [malloc], [have_flow=true], [have_flow=])
-AC_CHECK_LIB([jemalloc], [malloc], [have_jemalloc=true], [have_jemalloc=])
-AC_CHECK_LIB([tcmalloc_minimal], [malloc], [have_tcmalloc_minimal=true], [have_tcmalloc_minimal=])
+AC_CHECK_LIB([jemalloc], [mallctl], [have_jemalloc=true], [have_jemalloc=])
+AC_CHECK_LIB([tcmalloc_minimal], [tc_malloc], [have_tcmalloc_minimal=true], [have_tcmalloc_minimal=])
 
 AC_ARG_WITH([malloc],
     [AS_HELP_STRING([--with-malloc=TYPE],
