@@ -23,7 +23,7 @@
 #include <pthread.h>
 #include <sys/mman.h>
 
-struct log;
+class loginfo;
 extern uint64_t initial_timestamp;
 
 extern volatile uint64_t globalepoch;    // global epoch, updated regularly
@@ -283,7 +283,7 @@ class threadinfo {
 	    int ti_index;	    // the index of a udp, logging, tcp,
 				    // checkpoint or recover thread
 	    int ti_pipe[2];         // the pipe used to communicate with the thread
-	    struct log *ti_log;
+	    loginfo *ti_log;
 	    uint64_t gc_epoch;
 	    uint64_t limbo_epoch_;
 	};
@@ -558,7 +558,7 @@ class threadinfo {
     }
 
     void hard_rcu_quiesce();
-    friend struct log;
+    friend class loginfo;
 
 };
 

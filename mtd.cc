@@ -89,7 +89,7 @@ static const char *ckpdir[MaxCores];
 static int nlogdir = 0;
 static int nckpdir = 0;
 
-static struct log logs[MaxCores];
+static loginfo logs[MaxCores];
 volatile bool recovering = false; // so don't add log entries, and free old value immediately
 
 static double checkpoint_interval = 1000000;
@@ -1679,9 +1679,7 @@ max_flushed_epoch()
 {
     kvepoch_t mfe = 0, ge = global_log_epoch;
     for (int i = 0; i < nlogger; ++i) {
-	kvepoch_t fe = logs[i].flushed_epoch_;
-	if (fe && fe == logs[i].quiescent_epoch_)
-	    fe = ge;
+	kvepoch_t fe = logs[i].quiescent() ? ge : logs[i].flushed_epoch();
 	if (!mfe || fe < mfe)
 	    mfe = fe;
     }

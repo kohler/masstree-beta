@@ -36,9 +36,7 @@ kvepoch_t rec_replay_min_quiescent_last_epoch;
 
 static void *logger(void *);
 
-void
-log::initialize(int i, const char *logdir)
-{
+void loginfo::initialize(int i, const char *logdir) {
     f_.lock_ = 0;
 
     struct stat sb;
@@ -68,9 +66,7 @@ log::initialize(int i, const char *logdir)
     mandatory_assert(r == 0);
 }
 
-void
-log::add_log_pending(threadinfo *ti)
-{
+inline void loginfo::add_log_pending(threadinfo *ti) {
     if (f_.ti_tail_)
 	f_.ti_tail_->log_pending_list_ = ti;
     else
@@ -78,9 +74,7 @@ log::add_log_pending(threadinfo *ti)
     f_.ti_tail_ = ti;
 }
 
-void
-log::remove_log_pending(threadinfo *ti)
-{
+inline void loginfo::remove_log_pending(threadinfo *ti) {
     assert(f_.ti_head_ == ti);
     if (!(f_.ti_head_ = ti->log_pending_list_))
 	f_.ti_tail_ = 0;
@@ -91,7 +85,7 @@ log::remove_log_pending(threadinfo *ti)
 void *
 logger(void *xarg)
 {
-    struct log *l = static_cast<struct log *>(xarg);
+    loginfo *l = static_cast<loginfo*>(xarg);
     l->logger();
     return 0;
 }
@@ -108,9 +102,7 @@ check_epoch()
     }
 }
 
-void
-log::logger()
-{
+void loginfo::logger() {
     ti_->enter();
     {
 	logreplay replayer(filename_);
@@ -167,8 +159,8 @@ log::logger()
 
 
 // log entry format: see log.hh
-void log::log_query(threadinfo* ti, int command, const query_times& qtimes,
-                    Str key, Str value) {
+void loginfo::log_query(threadinfo* ti, int command, const query_times& qtimes,
+                        Str key, Str value) {
     assert(!recovering);
     size_t n = logrec_kvdelta::size(key.len, value.len)
         + logrec_epoch::size() + logrec_base::size();
@@ -176,7 +168,7 @@ void log::log_query(threadinfo* ti, int command, const query_times& qtimes,
     int stalls = 0;
     while (1) {
 	if (len_ - pos_ >= n
-	    && (!any_paused || log_is_ready(ti))) {
+	    && (!any_paused || f_.ti_head_ == ti)) {
             kvepoch_t we = global_wake_epoch;
 
             // Potentially record a new epoch.

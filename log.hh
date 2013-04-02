@@ -26,7 +26,34 @@ template <typename R> struct query;
 
 // in-memory log.
 // more than one, to reduce contention on the lock.
-struct log {
+class loginfo {
+  public:
+    void initialize(int i, const char *logdir);
+    void logger();
+
+    void acquire() {
+	test_and_set_acquire(&f_.lock_);
+    }
+    void release() {
+	test_and_set_release(&f_.lock_);
+    }
+
+    kvepoch_t flushed_epoch() const {
+        return flushed_epoch_;
+    }
+    bool quiescent() const {
+        return quiescent_epoch_ && quiescent_epoch_ == flushed_epoch_;
+    }
+
+    // logging
+    struct query_times {
+        kvepoch_t epoch;
+        kvtimestamp_t ts;
+        kvtimestamp_t prev_ts;
+    };
+    void log_query(threadinfo* ti, int command, const query_times& qt,
+                   Str key, Str value);
+
   private:
     struct front {
 	uint32_t lock_;
@@ -38,7 +65,6 @@ struct log {
 	char cache_line_[CacheLineSize];
     };
 
-  public:
     char *buf_;
     uint32_t pos_;
     uint32_t len_;
@@ -54,37 +80,12 @@ struct log {
     // other threads must record a logcmd_wake in their logs.
     // Invariant: log_epoch_ != quiescent_epoch_ (unless both are 0).
 
-    char filename_[128];
-
-    void initialize(int i, const char *logdir);
-    void logger();
-
-    void acquire() {
-	test_and_set_acquire(&f_.lock_);
-    }
-    void release() {
-	test_and_set_release(&f_.lock_);
-    }
-
-    // logging
-    void add_log_pending(threadinfo *ti);
-    void remove_log_pending(threadinfo *ti);
-    bool log_is_ready(threadinfo *ti) const {
-	return f_.ti_head_ == ti;
-    }
-
-    struct query_times {
-        kvepoch_t epoch;
-        kvtimestamp_t ts;
-        kvtimestamp_t prev_ts;
-    };
-    void log_query(threadinfo* ti, int command, const query_times& qt,
-                   Str key, Str value);
-
-  private:
     threadinfo *ti_;
 
-    friend class threadinfo;
+    char filename_[128];
+
+    inline void add_log_pending(threadinfo *ti);
+    inline void remove_log_pending(threadinfo *ti);
 };
 
 class logreplay {

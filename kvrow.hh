@@ -223,7 +223,7 @@ struct query {
     int query_type() const {
 	return qt_;
     }
-    const log::query_times& query_times() const {
+    const loginfo::query_times& query_times() const {
         return qtimes_;
     }
 
@@ -238,7 +238,7 @@ struct query {
     typename R::change_t c_;
     typename R::fields_t f_;
     unsigned long scan_npairs_;
-    log::query_times qtimes_;
+    loginfo::query_times qtimes_;
   public:
     Str key_;   // startkey for scan; key for others
     kvout *kvout_;
@@ -527,7 +527,7 @@ query<R>::apply_put(R *&value, bool has_value, threadinfo *ti)
     if (qt_ >= QT_MinReplay)
 	return apply_replay(value, has_value, ti);
 
-    if (struct log *log = ti->ti_log) {
+    if (loginfo *log = ti->ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
@@ -561,7 +561,7 @@ inline bool query<R>::apply_remove(R *&value, bool has_value, threadinfo *ti,
     if (!has_value)
 	return false;
 
-    if (struct log *log = ti->ti_log) {
+    if (loginfo *log = ti->ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
