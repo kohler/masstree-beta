@@ -44,7 +44,7 @@ class StringAccum { public:
     inline StringAccum(const String_base<T> &str);
     inline StringAccum(const StringAccum &x);
 #if HAVE_CXX_RVALUE_REFERENCES
-    inline StringAccum(StringAccum &&x);
+    inline StringAccum(StringAccum&& x);
 #endif
     inline ~StringAccum();
 
@@ -53,8 +53,10 @@ class StringAccum { public:
     inline StringAccum &operator=(StringAccum &&x);
 #endif
 
-    inline const char *data() const;
-    inline char *data();
+    inline const char* data() const;
+    inline char* data();
+    inline const unsigned char* udata() const;
+    inline unsigned char* udata();
     inline int length() const;
     inline int capacity() const;
 
@@ -111,6 +113,10 @@ class StringAccum { public:
     inline void append_encoded(const char *first, const char *last);
 
     // word joining
+    template <typename I>
+    inline void append_join(const String &joiner, I first, I last);
+    template <typename T>
+    inline void append_join(const String &joiner, const T &x);
     void append_break_lines(const String &text, int linelen, const String &leftmargin = String());
 
     StringAccum &snprintf(int n, const char *format, ...) LCDF_SNPRINTF_ATTR;
@@ -161,9 +167,11 @@ inline StringAccum &operator<<(StringAccum &sa, short x);
 inline StringAccum &operator<<(StringAccum &sa, unsigned short x);
 inline StringAccum &operator<<(StringAccum &sa, int x);
 inline StringAccum &operator<<(StringAccum &sa, unsigned x);
-StringAccum &operator<<(StringAccum &sa, long x);
-StringAccum &operator<<(StringAccum &sa, unsigned long x);
-StringAccum &operator<<(StringAccum &sa, double x);
+StringAccum& operator<<(StringAccum& sa, long x);
+StringAccum& operator<<(StringAccum& sa, unsigned long x);
+StringAccum& operator<<(StringAccum& sa, long long x);
+StringAccum& operator<<(StringAccum& sa, unsigned long long x);
+StringAccum& operator<<(StringAccum& sa, double x);
 
 /** @brief Construct an empty StringAccum (with length 0). */
 inline StringAccum::StringAccum() {
@@ -209,9 +217,9 @@ inline StringAccum::StringAccum(const StringAccum &x) {
 
 #if HAVE_CXX_RVALUE_REFERENCES
 /** @brief Move-construct a StringAccum from @a x. */
-inline StringAccum::StringAccum(StringAccum &&x)
-    : r_(x.r_) {
-    x.r_.cap = 0;
+inline StringAccum::StringAccum(StringAccum&& x) {
+    using std::swap;
+    swap(r_, x.r_);
 }
 #endif
 
@@ -222,17 +230,27 @@ inline StringAccum::~StringAccum() {
 }
 
 /** @brief Return the contents of the StringAccum.
-    @return The StringAccum's contents.
 
-    The returned data() value points to length() bytes of writable memory
-    (unless the StringAccum itself is const). */
-inline const char *StringAccum::data() const {
-    return reinterpret_cast<const char *>(r_.s);
+    The returned data() value points to length() bytes of memory. */
+inline const char* StringAccum::data() const {
+    return reinterpret_cast<const char*>(r_.s);
 }
 
 /** @overload */
-inline char *StringAccum::data() {
-    return reinterpret_cast<char *>(r_.s);
+inline char* StringAccum::data() {
+    return reinterpret_cast<char*>(r_.s);
+}
+
+/** @brief Return the contents of the StringAccum.
+
+    The returned data() value points to length() bytes of writable memory. */
+inline const unsigned char* StringAccum::udata() const {
+    return r_.s;
+}
+
+/** @overload */
+inline unsigned char* StringAccum::udata() {
+    return r_.s;
 }
 
 /** @brief Return the length of the StringAccum. */
@@ -565,6 +583,23 @@ inline void StringAccum::append_encoded(const unsigned char *first,
 	append_encoded(encoder);
 }
 
+template <typename I>
+inline void StringAccum::append_join(const String &joiner, I first, I last) {
+    bool later = false;
+    while (first != last) {
+	if (later)
+	    *this << joiner;
+	later = true;
+	*this << *first;
+	++first;
+    }
+}
+
+template <typename T>
+inline void StringAccum::append_join(const String &joiner, const T &x) {
+    append_join(joiner, x.begin(), x.end());
+}
+
 /** @brief Assign this StringAccum to @a x. */
 inline StringAccum &StringAccum::operator=(const StringAccum &x) {
     if (&x != this) {
@@ -650,6 +685,11 @@ inline StringAccum &operator<<(StringAccum &sa, const String_base<T> &str) {
     return sa;
 }
 
+inline StringAccum &operator<<(StringAccum &sa, const std::string &str) {
+    sa.append(str.data(), str.length());
+    return sa;
+}
+
 /** @relates StringAccum
     @brief Append the contents of @a x to @a sa.
     @return @a sa */
@@ -664,6 +704,10 @@ inline bool operator==(StringAccum &sa, const char *cstr) {
 
 inline bool operator!=(StringAccum &sa, const char *cstr) {
     return strcmp(sa.c_str(), cstr) != 0;
+}
+
+inline void swap(StringAccum& a, StringAccum& b) {
+    a.swap(b);
 }
 
 #undef LCDF_SNPRINTF_ATTR

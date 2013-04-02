@@ -270,6 +270,32 @@ operator<<(StringAccum &sa, unsigned long u)
     return sa;
 }
 
+/** @relates StringAccum
+    @brief Append decimal representation of @a i to @a sa.
+    @return @a sa */
+StringAccum &
+operator<<(StringAccum &sa, long long i)
+{
+    if (char *x = sa.reserve(24)) {
+	int len = sprintf(x, "%lld", i);
+	sa.adjust_length(len);
+    }
+    return sa;
+}
+
+/** @relates StringAccum
+    @brief Append decimal representation of @a u to @a sa.
+    @return @a sa */
+StringAccum &
+operator<<(StringAccum &sa, unsigned long long u)
+{
+    if (char *x = sa.reserve(24)) {
+	int len = sprintf(x, "%llu", u);
+	sa.adjust_length(len);
+    }
+    return sa;
+}
+
 StringAccum &
 operator<<(StringAccum &sa, double d)
 {
