@@ -51,14 +51,16 @@ class loginfo {
         kvtimestamp_t ts;
         kvtimestamp_t prev_ts;
     };
-    void log_query(threadinfo* ti, int command, const query_times& qt,
-                   Str key, Str value);
+    // NB may block!
+    void log_query(int command, const query_times& qt, Str key, Str value);
 
   private:
+    struct waitlist {
+        waitlist* next;
+    };
     struct front {
 	uint32_t lock_;
-	threadinfo *ti_head_;
-	threadinfo *ti_tail_;
+	waitlist* waiting_;
     };
     union {
 	front f_;
@@ -83,9 +85,6 @@ class loginfo {
     threadinfo *ti_;
 
     char filename_[128];
-
-    inline void add_log_pending(threadinfo *ti);
-    inline void remove_log_pending(threadinfo *ti);
 };
 
 class logreplay {

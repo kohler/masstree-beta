@@ -299,7 +299,6 @@ class threadinfo {
     int64_t n_delta_markers_;
 
   private:
-    threadinfo *log_pending_list_;
     limbo_group *limbo_head_;
     limbo_group *limbo_tail_;
     mutable kvtimestamp_t ts_;

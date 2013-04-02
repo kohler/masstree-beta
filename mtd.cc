@@ -333,9 +333,8 @@ void kvtest_client::put(const Str &key, const Str &value) {
 	/* do nothing */;
     q_[0].begin_put1(key, value);
     (void) tree->put(q_[0], ti_);
-    if (ti_->ti_log)
-	ti_->ti_log->log_query(ti_, logcmd_put1, q_[0].query_times(),
-                               key, value);
+    if (ti_->ti_log) // NB may block
+	ti_->ti_log->log_query(logcmd_put1, q_[0].query_times(), key, value);
 }
 
 void kvtest_client::put_col(const Str &key, int col, const Str &value) {
@@ -347,8 +346,8 @@ void kvtest_client::put_col(const Str &key, int col, const Str &value) {
     Str req = row_type::make_put_col_request(kvo_, col, value);
     q_[0].begin_put(key, req);
     (void) tree->put(q_[0], ti_);
-    if (ti_->ti_log)
-	ti_->ti_log->log_query(ti_, logcmd_put, q_[0].query_times(), key, req);
+    if (ti_->ti_log) // NB may block
+	ti_->ti_log->log_query(logcmd_put, q_[0].query_times(), key, req);
 #else
     (void) key, (void) col, (void) value;
     assert(0);
@@ -359,8 +358,8 @@ bool kvtest_client::remove_sync(long ikey) {
     quick_istr key(ikey);
     q_[0].begin_remove(key.string());
     bool removed = tree->remove(q_[0], ti_);
-    if (removed && ti_->ti_log)
-	ti_->ti_log->log_query(ti_, logcmd_remove, q_[0].query_times(), key.string(), Str());
+    if (removed && ti_->ti_log) // NB may block
+	ti_->ti_log->log_query(logcmd_remove, q_[0].query_times(), key.string(), Str());
     return removed;
 }
 
@@ -1013,8 +1012,8 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
       Str key(rsm.key, rsm.keylen), req(rsm.req, rsm.reqlen);
       q.begin_put(key, req);
       int status = tree->put(q, ti);
-      if (ti->ti_log)
-	  ti->ti_log->log_query(ti, logcmd_put, q.query_times(), key, req);
+      if (ti->ti_log) // NB may block
+	  ti->ti_log->log_query(logcmd_put, q.query_times(), key, req);
       KVW(kvout, rsm.seq);
       if (rsm.cmd == Cmd_Put_Status)
 	  KVW(kvout, status);
@@ -1022,8 +1021,8 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
       Str key(rsm.key, rsm.keylen);
       q.begin_remove(key);
       bool removed = tree->remove(q, ti);
-      if (removed && ti->ti_log)
-	  ti->ti_log->log_query(ti, logcmd_remove, q.query_times(), key, Str());
+      if (removed && ti->ti_log) // NB may block
+	  ti->ti_log->log_query(logcmd_remove, q.query_times(), key, Str());
       KVW(kvout, rsm.seq);
       KVW(kvout, (int) removed);
   } else {

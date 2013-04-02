@@ -38,6 +38,7 @@ static void *logger(void *);
 
 void loginfo::initialize(int i, const char *logdir) {
     f_.lock_ = 0;
+    f_.waiting_ = 0;
 
     struct stat sb;
     int r = stat(logdir, &sb);
@@ -66,33 +67,14 @@ void loginfo::initialize(int i, const char *logdir) {
     mandatory_assert(r == 0);
 }
 
-inline void loginfo::add_log_pending(threadinfo *ti) {
-    if (f_.ti_tail_)
-	f_.ti_tail_->log_pending_list_ = ti;
-    else
-	f_.ti_head_ = ti;
-    f_.ti_tail_ = ti;
-}
-
-inline void loginfo::remove_log_pending(threadinfo *ti) {
-    assert(f_.ti_head_ == ti);
-    if (!(f_.ti_head_ = ti->log_pending_list_))
-	f_.ti_tail_ = 0;
-    ti->log_pending_list_ = 0;
-}
-
 // one logger thread per logs[].
-void *
-logger(void *xarg)
-{
+void *logger(void *xarg) {
     loginfo *l = static_cast<loginfo*>(xarg);
     l->logger();
     return 0;
 }
 
-static void
-check_epoch()
-{
+static void check_epoch() {
     struct timeval tv;
     gettimeofday(&tv, 0);
     if (timercmp(&tv, &log_epoch_time, >)) {
@@ -123,10 +105,10 @@ void loginfo::logger() {
 	    quiescent_epoch_ = 0;
 	}
 	// If the writing threads appear quiescent, and aren't about to write
-	// to the log (f_.ti_head_ != 0), then write a quiescence
+	// to the log (f_.waiting_ != 0), then write a quiescence
 	// notification.
 	if (!recovering && pos_ == 0 && !quiescent_epoch_
-	    && ge != log_epoch_ && ge != we && !f_.ti_head_) {
+	    && ge != log_epoch_ && ge != we && !f_.waiting_) {
 	    quiescent_epoch_ = log_epoch_ = ge;
 	    char *p = buf_;
 	    p += logrec_epoch::store(p, logcmd_epoch, log_epoch_);
@@ -159,16 +141,16 @@ void loginfo::logger() {
 
 
 // log entry format: see log.hh
-void loginfo::log_query(threadinfo* ti, int command, const query_times& qtimes,
+void loginfo::log_query(int command, const query_times& qtimes,
                         Str key, Str value) {
     assert(!recovering);
     size_t n = logrec_kvdelta::size(key.len, value.len)
         + logrec_epoch::size() + logrec_base::size();
-    bool any_paused = false;
+    waitlist wait = { &wait };
     int stalls = 0;
     while (1) {
 	if (len_ - pos_ >= n
-	    && (!any_paused || f_.ti_head_ == ti)) {
+	    && (wait.next == &wait || f_.waiting_ == &wait)) {
             kvepoch_t we = global_wake_epoch;
 
             // Potentially record a new epoch.
@@ -209,16 +191,19 @@ void loginfo::log_query(threadinfo* ti, int command, const query_times& qtimes,
 		pos_ += logrec_kv::store(buf_ + pos_,
                                          command, key, value, qtimes.ts);
 
-	    if (any_paused)
-		remove_log_pending(ti);
+	    if (f_.waiting_ == &wait)
+                f_.waiting_ = wait.next;
 	    release();
 	    return;
 	}
 
 	// Otherwise must spin
-	if (!any_paused) {
-	    add_log_pending(ti);
-	    any_paused = true;
+	if (wait.next == &wait) {
+            waitlist** p = &f_.waiting_;
+            while (*p)
+                p = &(*p)->next;
+            *p = &wait;
+            wait.next = 0;
 	}
 	release();
 	if (stalls == 0)
