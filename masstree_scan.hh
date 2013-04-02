@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef MASSTREE_SCAN_HH
-#define MASSTREE_SCAN_HH 1
+#define MASSTREE_SCAN_HH
 #include "masstree_tcursor.hh"
 #include "masstree_struct.hh"
 #include "masstree_traverse.hh"
@@ -171,7 +171,7 @@ int scanstackelt<P>::find_initial(H &helper, key_type &ka, bool emit_equal,
 {
     int kp, keylenx = 0;
     char suffixbuf[MaxKeyLen];
-    str suffix;
+    Str suffix;
 
  retry_root:
     n_ = Masstree::reach_leaf(root_, ka, ti, v_);
@@ -297,7 +297,7 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 
 template <typename P> template <typename H, typename F>
 int basic_table<P>::scan(H helper,
-                         str firstkey, bool emit_firstkey,
+                         Str firstkey, bool emit_firstkey,
                          F &scanner,
                          threadinfo *ti) const
 {
@@ -370,7 +370,7 @@ int basic_table<P>::scan(H helper,
 }
 
 template <typename P> template <typename F>
-int basic_table<P>::scan(str firstkey, bool emit_firstkey,
+int basic_table<P>::scan(Str firstkey, bool emit_firstkey,
                          F &scanner,
                          threadinfo *ti) const
 {
@@ -378,7 +378,7 @@ int basic_table<P>::scan(str firstkey, bool emit_firstkey,
 }
 
 template <typename P> template <typename F>
-int basic_table<P>::rscan(str firstkey, bool emit_firstkey,
+int basic_table<P>::rscan(Str firstkey, bool emit_firstkey,
                           F &scanner,
                           threadinfo *ti) const
 {

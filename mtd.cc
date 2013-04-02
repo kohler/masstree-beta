@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -125,7 +125,7 @@ static uint64_t traverse_checkpoint_preorder(query<row_type> &q,
                                              uint64_t max, threadinfo *ti);
 
 static void logone(threadinfo *ti, int command, const query<row_type> &q,
-		   const str &key, const str &val);
+		   const Str &key, const Str &val);
 
 static void *conc_checkpointer(void *);
 static void recovercheckpoint(threadinfo *ti);
@@ -180,15 +180,15 @@ struct kvtest_client {
 	return ::now();
     }
 
-    void get(long ikey, str *value);
-    void get(const str &key);
+    void get(long ikey, Str *value);
+    void get(const Str &key);
     void get(long ikey) {
 	quick_istr key(ikey);
 	get(key.string());
     }
-    void get_check(const str &key, const str &expected);
+    void get_check(const Str &key, const Str &expected);
     void get_check(const char *key, const char *expected) {
-        get_check(str(key, strlen(key)), str(expected, strlen(expected)));
+        get_check(Str(key, strlen(key)), Str(expected, strlen(expected)));
     }
     void get_check(long ikey, long iexpected) {
 	quick_istr key(ikey), expected(iexpected);
@@ -202,7 +202,7 @@ struct kvtest_client {
 	quick_istr key(ikey, 10), expected(iexpected);
 	get_check(key.string(), expected.string());
     }
-    void get_col_check(const str &key, int col, const str &expected);
+    void get_col_check(const Str &key, int col, const Str &expected);
     void get_col_check_key10(long ikey, int col, long iexpected) {
 	quick_istr key(ikey, 10), expected(iexpected);
 	get_col_check(key.string(), col, expected.string());
@@ -210,9 +210,9 @@ struct kvtest_client {
     void many_get_check(int, long [], long []);
     bool get_sync(long ikey);
 
-    void put(const str &key, const str &value);
+    void put(const Str &key, const Str &value);
     void put(const char *key, const char *val) {
-        put(str(key, strlen(key)), str(val, strlen(val)));
+        put(Str(key, strlen(key)), Str(val, strlen(val)));
     }
     void put(long ikey, long ivalue) {
 	quick_istr key(ikey), value(ivalue);
@@ -226,7 +226,7 @@ struct kvtest_client {
 	quick_istr key(ikey, 10), value(ivalue);
 	put(key.string(), value.string());
     }
-    void put_col(const str &key, int col, const str &value);
+    void put_col(const Str &key, int col, const Str &value);
     void put_col_key10(long ikey, int col, long ivalue) {
 	quick_istr key(ikey, 10), value(ivalue);
 	put_col(key.string(), col, value.string());
@@ -259,30 +259,30 @@ struct kvtest_client {
 
 volatile int kvtest_client::failing;
 
-void kvtest_client::get(long ikey, str *value)
+void kvtest_client::get(long ikey, Str *value)
 {
     quick_istr key(ikey);
     q_[0].begin_get1(key.string());
     if (tree->get(q_[0], ti_))
 	*value = q_[0].get1_value();
     else
-	*value = str();
+	*value = Str();
 }
 
-void kvtest_client::get(const str &key)
+void kvtest_client::get(const Str &key)
 {
     q_[0].begin_get1(key);
     (void) tree->get(q_[0], ti_);
 }
 
-void kvtest_client::get_check(const str &key, const str &expected)
+void kvtest_client::get_check(const Str &key, const Str &expected)
 {
     q_[0].begin_get1(key);
     if (!tree->get(q_[0], ti_)) {
 	fail("get(%.*s) failed (expected %.*s)\n", key.len, key.s, expected.len, expected.s);
         return;
     }
-    str val = q_[0].get1_value();
+    Str val = q_[0].get1_value();
     if (val.len != expected.len || memcmp(val.s, expected.s, val.len) != 0)
 	fail("get(%.*s) returned unexpected value %.*s (expected %.*s)\n", key.len, key.s,
 	     std::min(val.len, 40), val.s, std::min(expected.len, 40), expected.s);
@@ -290,7 +290,7 @@ void kvtest_client::get_check(const str &key, const str &expected)
 	++checks_;
 }
 
-void kvtest_client::get_col_check(const str &key, int col, const str &expected)
+void kvtest_client::get_col_check(const Str &key, int col, const Str &expected)
 {
     q_[0].begin_get1(key, col);
     if (!tree->get(q_[0], ti_)) {
@@ -298,7 +298,7 @@ void kvtest_client::get_col_check(const str &key, int col, const str &expected)
 	     expected.len, expected.s);
         return;
     }
-    str val = q_[0].get1_value();
+    Str val = q_[0].get1_value();
     if (val.len != expected.len || memcmp(val.s, expected.s, val.len) != 0)
 	fail("get.%d(%.*s) returned unexpected value %.*s (expected %.*s)\n",
 	     col, key.len, key.s, std::min(val.len, 40), val.s,
@@ -316,7 +316,7 @@ void kvtest_client::many_get_check(int nk, long ikey[], long iexpected[]) {
     }
     tree->many_get(q_, nk, ti_);
     for(int i = 0; i < nk; i++){
-      str val = q_[i].get1_value();
+      Str val = q_[i].get1_value();
       if (ka[i+nk] != val){
         printf("get(%ld) returned unexpected value %.*s (expected %ld)\n",
              ikey[i], std::min(val.len, 40), val.s, iexpected[i]);
@@ -331,7 +331,7 @@ bool kvtest_client::get_sync(long ikey) {
     return tree->get(q_[0], ti_);
 }
 
-void kvtest_client::put(const str &key, const str &value) {
+void kvtest_client::put(const Str &key, const Str &value) {
     while (failing)
 	/* do nothing */;
     q_[0].begin_put1(key, value);
@@ -340,13 +340,13 @@ void kvtest_client::put(const str &key, const str &value) {
 	logone(ti_, logcmd_put1, q_[0], key, value);
 }
 
-void kvtest_client::put_col(const str &key, int col, const str &value) {
+void kvtest_client::put_col(const Str &key, int col, const Str &value) {
     while (failing)
 	/* do nothing */;
 #if !KVDB_ROW_TYPE_STR
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
-    str req = row_type::make_put_col_request(kvo_, col, value);
+    Str req = row_type::make_put_col_request(kvo_, col, value);
     q_[0].begin_put(key, req);
     (void) tree->put(q_[0], ti_);
     if (ti_->ti_log)
@@ -362,7 +362,7 @@ bool kvtest_client::remove_sync(long ikey) {
     q_[0].begin_remove(key.string());
     bool removed = tree->remove(q_[0], ti_);
     if (removed && ti_->ti_log)
-	logone(ti_, logcmd_remove, q_[0], key.string(), str());
+	logone(ti_, logcmd_remove, q_[0], key.string(), Str());
     return removed;
 }
 
@@ -885,7 +885,7 @@ epochinc(int)
 // this turns out to be slower than THREEWIDETREE,
 // presumably since the latter has half as many levels.
 bool
-table_lookup(const str &key, str &val)
+table_lookup(const Str &key, Str &val)
 {
   if(cktable == 0)
     return false;
@@ -1004,7 +1004,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
   }
   else if(rsm.cmd == Cmd_Get){
     KVW(kvout, rsm.seq);
-    q.begin_get(str(rsm.key, rsm.keylen), str(rsm.req, rsm.reqlen), kvout);
+    q.begin_get(Str(rsm.key, rsm.keylen), Str(rsm.req, rsm.reqlen), kvout);
     // XXX: fix table_lookup, which should have its own row_type
     bool val_exists = tree->get(q, ti);
     if(!val_exists){
@@ -1012,7 +1012,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
       KVW(kvout, (short)-1);
     }
   } else if (rsm.cmd == Cmd_Put || rsm.cmd == Cmd_Put_Status) { // insert or update
-      str key(rsm.key, rsm.keylen), req(rsm.req, rsm.reqlen);
+      Str key(rsm.key, rsm.keylen), req(rsm.req, rsm.reqlen);
       q.begin_put(key, req);
       int status = tree->put(q, ti);
       if (ti->ti_log)
@@ -1021,18 +1021,18 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
       if (rsm.cmd == Cmd_Put_Status)
 	  KVW(kvout, status);
   } else if(rsm.cmd == Cmd_Remove){ // remove
-      str key(rsm.key, rsm.keylen);
+      Str key(rsm.key, rsm.keylen);
       q.begin_remove(key);
       bool removed = tree->remove(q, ti);
       if (removed && ti->ti_log)
-	  logone(ti, logcmd_remove, q, key, str());
+	  logone(ti, logcmd_remove, q, key, Str());
       KVW(kvout, rsm.seq);
       KVW(kvout, (int) removed);
   } else {
     assert(rsm.cmd == Cmd_Scan);
     KVW(kvout, rsm.seq);
     if (rsm.numpairs > 0) {
-      q.begin_scan(str(rsm.key, rsm.keylen), rsm.numpairs, str(rsm.req, rsm.reqlen), kvout);
+      q.begin_scan(Str(rsm.key, rsm.keylen), rsm.numpairs, Str(rsm.req, rsm.reqlen), kvout);
       tree->scan(q, ti);
     }
     KVW(kvout, (int)0);
@@ -1270,7 +1270,7 @@ udpgo(void *xarg)
 // log entry format: see log.hh
 void
 logone(threadinfo *ti, int command, const query<row_type> &q,
-       const str &key, const str &val)
+       const Str &key, const Str &val)
 {
     assert(logging && !recovering);
     struct log *l = ti->ti_log;
@@ -1373,8 +1373,8 @@ insert_from_checkpoint(query<row_type> &q, char *p, threadinfo *ti)
   mandatory_assert(keylen >= 0 && keylen < MaxKeyLen);
   kvtimestamp_t ts = *(kvtimestamp_t*)(p + keylen + 1);
   int vlen = *(int *)(p + keylen + 1 + sizeof(ts));
-  q.begin_ckp_put(str(p, keylen),
-		  str(p + keylen + 1 + sizeof(ts) + sizeof(vlen), vlen),
+  q.begin_ckp_put(Str(p, keylen),
+		  Str(p + keylen + 1 + sizeof(ts) + sizeof(vlen), vlen),
 		  ts);
   tree->put(q, ti);
 }
@@ -1717,7 +1717,7 @@ conc_filecheckpoint(threadinfo *ti)
 }
 
 static Json
-prepare_checkpoint(kvepoch_t min_epoch, int nckthreads, const str *pv)
+prepare_checkpoint(kvepoch_t min_epoch, int nckthreads, const Str *pv)
 {
     Json j;
     j.set("kvdb_checkpoint", true)
@@ -1789,7 +1789,7 @@ conc_checkpointer(void *xarg)
     for (int i = 1; i < nckthreads; i++)
       while (cks[i].state != CKState_Ready)
         ;
-    str *pv = new str[nckthreads + 1];
+    Str *pv = new Str[nckthreads + 1];
     Json uncommitted_ckp;
 
     while (1) {
@@ -1829,7 +1829,7 @@ conc_checkpointer(void *xarg)
       pthread_mutex_lock(&checkpoint_mu);
       ckp_gen = ckp_gen.next_nonzero();
       for (int i = 0; i < nckthreads; i++) {
-	  str endkey = (i == nckthreads - 1 ? str() : pv[i + 1]);
+	  Str endkey = (i == nckthreads - 1 ? Str() : pv[i + 1]);
 	  cks[i].q.begin_checkpoint(&cks[i], pv[i], endkey);
 	  cks[i].state = CKState_Go;
 	  pthread_cond_signal(&cks[i].state_cond);

@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -217,8 +217,8 @@ logreplay::unmap()
 
 struct logrecord {
     uint32_t command;
-    str key;
-    str val;
+    Str key;
+    Str val;
     kvtimestamp_t ts;
     kvtimestamp_t prev_ts;
     kvepoch_t epoch;

@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -118,55 +118,55 @@ class Json { public:
     inline bool as_b() const;
 
     inline const String &to_s() const;
-    inline bool to_s(str &x) const;
+    inline bool to_s(Str &x) const;
     inline bool to_s(String &x) const;
     inline const String &as_s() const;
     inline const char *c_str() const;
 
     // Object methods
-    inline size_type count(str key) const;
-    inline const Json &get(str key) const;
+    inline size_type count(Str key) const;
+    inline const Json &get(Str key) const;
     inline Json &get_insert(const String &key);
-    inline Json &get_insert(str key);
+    inline Json &get_insert(Str key);
     inline Json &get_insert(const char *key);
 
-    inline long get_i(str key) const;
-    inline double get_d(str key) const;
-    inline bool get_b(str key) const;
-    inline const String &get_s(str key) const;
+    inline long get_i(Str key) const;
+    inline double get_d(Str key) const;
+    inline bool get_b(Str key) const;
+    inline const String &get_s(Str key) const;
 
-    inline const Json_get_proxy get(str key, Json &x) const;
-    inline const Json_get_proxy get(str key, int &x) const;
-    inline const Json_get_proxy get(str key, unsigned &x) const;
-    inline const Json_get_proxy get(str key, long &x) const;
-    inline const Json_get_proxy get(str key, unsigned long &x) const;
-    inline const Json_get_proxy get(str key, long long &x) const;
-    inline const Json_get_proxy get(str key, unsigned long long &x) const;
-    inline const Json_get_proxy get(str key, double &x) const;
-    inline const Json_get_proxy get(str key, bool &x) const;
-    inline const Json_get_proxy get(str key, str &x) const;
-    inline const Json_get_proxy get(str key, String &x) const;
+    inline const Json_get_proxy get(Str key, Json &x) const;
+    inline const Json_get_proxy get(Str key, int &x) const;
+    inline const Json_get_proxy get(Str key, unsigned &x) const;
+    inline const Json_get_proxy get(Str key, long &x) const;
+    inline const Json_get_proxy get(Str key, unsigned long &x) const;
+    inline const Json_get_proxy get(Str key, long long &x) const;
+    inline const Json_get_proxy get(Str key, unsigned long long &x) const;
+    inline const Json_get_proxy get(Str key, double &x) const;
+    inline const Json_get_proxy get(Str key, bool &x) const;
+    inline const Json_get_proxy get(Str key, Str &x) const;
+    inline const Json_get_proxy get(Str key, String &x) const;
 
-    const Json &operator[](str key) const;
+    const Json &operator[](Str key) const;
     inline Json_object_proxy<Json> operator[](const String &key);
-    inline Json_object_str_proxy<Json> operator[](str key);
+    inline Json_object_str_proxy<Json> operator[](Str key);
     inline Json_object_str_proxy<Json> operator[](const char *key);
 
-    inline const Json &at(str key) const;
+    inline const Json &at(Str key) const;
     inline Json &at_insert(const String &key);
-    inline Json &at_insert(str key);
+    inline Json &at_insert(Str key);
     inline Json &at_insert(const char *key);
 
     template <typename T> inline Json &set(const String &key, T value);
 #if HAVE_CXX_RVALUE_REFERENCES
     inline Json &set(const String &key, Json &&x);
 #endif
-    inline Json &unset(str key);
+    inline Json &unset(Str key);
 
     inline std::pair<object_iterator, bool> insert(const object_value_type &x);
     inline object_iterator insert(object_iterator position,
 				  const object_value_type &x);
-    inline size_type erase(str key);
+    inline size_type erase(Str key);
 
     inline Json &merge(const Json &x);
     template <typename P> inline Json &merge(const Json_proxy_base<P> &x);
@@ -289,7 +289,7 @@ class Json { public:
     const String &hard_to_s() const;
     inline void force_number();
 
-    const Json &hard_get(str key) const;
+    const Json &hard_get(Str key) const;
     const Json &hard_get(size_type x) const;
     Json &hard_get_insert(size_type x);
 
@@ -367,8 +367,8 @@ struct Json::ObjectJson : public ComplexJson {
 	int i = find_insert(key, make_null());
 	return item(i).v_.second;
     }
-    Json &get_insert(str key);
-    size_type erase(str key);
+    Json &get_insert(Str key);
+    size_type erase(Str key);
     void rehash();
 };
 
@@ -840,7 +840,7 @@ class Json_proxy_base {
     const String &to_s() const {
 	return cvalue().to_s();
     }
-    bool to_s(str &x) const {
+    bool to_s(Str &x) const {
 	return cvalue().to_s(x);
     }
     bool to_s(String &x) const {
@@ -852,63 +852,63 @@ class Json_proxy_base {
     const char *c_str() const {
 	return cvalue().c_str();
     }
-    Json::size_type count(str key) const {
+    Json::size_type count(Str key) const {
 	return cvalue().count(key);
     }
-    const Json &get(str key) const {
+    const Json &get(Str key) const {
 	return cvalue().get(key);
     }
     Json &get_insert(const String &key) {
 	return value().get_insert(key);
     }
-    Json &get_insert(str key) {
+    Json &get_insert(Str key) {
 	return value().get_insert(key);
     }
     Json &get_insert(const char *key) {
 	return value().get_insert(key);
     }
-    long get_i(str key) const {
+    long get_i(Str key) const {
 	return cvalue().get_i(key);
     }
-    double get_d(str key) const {
+    double get_d(Str key) const {
 	return cvalue().get_d(key);
     }
-    bool get_b(str key) const {
+    bool get_b(Str key) const {
 	return cvalue().get_b(key);
     }
-    const String &get_s(str key) const {
+    const String &get_s(Str key) const {
 	return cvalue().get_s(key);
     }
-    inline const Json_get_proxy get(str key, Json &x) const;
-    inline const Json_get_proxy get(str key, int &x) const;
-    inline const Json_get_proxy get(str key, unsigned &x) const;
-    inline const Json_get_proxy get(str key, long &x) const;
-    inline const Json_get_proxy get(str key, unsigned long &x) const;
-    inline const Json_get_proxy get(str key, long long &x) const;
-    inline const Json_get_proxy get(str key, unsigned long long &x) const;
-    inline const Json_get_proxy get(str key, double &x) const;
-    inline const Json_get_proxy get(str key, bool &x) const;
-    inline const Json_get_proxy get(str key, str &x) const;
-    inline const Json_get_proxy get(str key, String &x) const;
-    const Json &operator[](str key) const {
+    inline const Json_get_proxy get(Str key, Json &x) const;
+    inline const Json_get_proxy get(Str key, int &x) const;
+    inline const Json_get_proxy get(Str key, unsigned &x) const;
+    inline const Json_get_proxy get(Str key, long &x) const;
+    inline const Json_get_proxy get(Str key, unsigned long &x) const;
+    inline const Json_get_proxy get(Str key, long long &x) const;
+    inline const Json_get_proxy get(Str key, unsigned long long &x) const;
+    inline const Json_get_proxy get(Str key, double &x) const;
+    inline const Json_get_proxy get(Str key, bool &x) const;
+    inline const Json_get_proxy get(Str key, Str &x) const;
+    inline const Json_get_proxy get(Str key, String &x) const;
+    const Json &operator[](Str key) const {
 	return cvalue().get(key);
     }
     Json_object_proxy<P> operator[](const String &key) {
 	return Json_object_proxy<P>(*static_cast<P *>(this), key);
     }
-    Json_object_str_proxy<P> operator[](str key) {
+    Json_object_str_proxy<P> operator[](Str key) {
 	return Json_object_str_proxy<P>(*static_cast<P *>(this), key);
     }
     Json_object_str_proxy<P> operator[](const char *key) {
 	return Json_object_str_proxy<P>(*static_cast<P *>(this), key);
     }
-    const Json &at(str key) const {
+    const Json &at(Str key) const {
 	return cvalue().at(key);
     }
     Json &at_insert(const String &key) {
 	return value().at_insert(key);
     }
-    Json &at_insert(str key) {
+    Json &at_insert(Str key) {
 	return value().at_insert(key);
     }
     Json &at_insert(const char *key) {
@@ -922,7 +922,7 @@ class Json_proxy_base {
 	return this->value().set(key, std::move(value));
     }
 #endif
-    Json &unset(str key) {
+    Json &unset(Str key) {
 	return value().unset(key);
     }
     std::pair<Json::object_iterator, bool> insert(const Json::object_value_type &x) {
@@ -931,7 +931,7 @@ class Json_proxy_base {
     Json::object_iterator insert(Json::object_iterator position, const Json::object_value_type &x) {
 	return value().insert(position, x);
     }
-    Json::size_type erase(str key) {
+    Json::size_type erase(Str key) {
 	return value().erase(key);
     }
     Json &merge(const Json &x) {
@@ -1126,11 +1126,11 @@ class Json_object_str_proxy : public Json_proxy_base<Json_object_str_proxy<T> > 
     template <typename P> Json &operator=(const Json_proxy_base<P> &x) {
 	return value() = x.cvalue();
     }
-    Json_object_str_proxy(T &ref, str key)
+    Json_object_str_proxy(T &ref, Str key)
 	: base_(ref), key_(key) {
     }
     T &base_;
-    str key_;
+    Str key_;
 };
 
 template <typename T>
@@ -1191,47 +1191,47 @@ class Json_get_proxy : public Json_proxy_base<Json_get_proxy> {
 };
 
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, Json &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, Json &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, int &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, int &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, unsigned &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, unsigned &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, long &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, long &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, unsigned long &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, unsigned long &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, long long &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, long long &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, unsigned long long &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, unsigned long long &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, double &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, double &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, bool &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, bool &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, str &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, Str &x) const {
     return cvalue().get(key, x);
 }
 template <typename T>
-inline const Json_get_proxy Json_proxy_base<T>::get(str key, String &x) const {
+inline const Json_get_proxy Json_proxy_base<T>::get(Str key, String &x) const {
     return cvalue().get(key, x);
 }
 
@@ -1512,7 +1512,7 @@ inline const String &Json::to_s() const {
     @return True iff is_string().
 
     If !is_string(), @a x remains unchanged. */
-inline bool Json::to_s(str &x) const {
+inline bool Json::to_s(Str &x) const {
     if (_type == j_string) {
 	x.assign(_str.data(), _str.length());
 	return true;
@@ -1560,7 +1560,7 @@ inline void Json::force_number() {
 /** @brief Return 1 if this object Json contains @a key, 0 otherwise.
 
     Returns 0 if this is not an object Json. */
-inline Json::size_type Json::count(str key) const {
+inline Json::size_type Json::count(Str key) const {
     assert(_type == j_null || _type == j_object);
     return _cjson ? ojson()->find(key.data(), key.length()) >= 0 : 0;
 }
@@ -1570,7 +1570,7 @@ inline Json::size_type Json::count(str key) const {
     If this is an array Json, and @a key is the simplest base-10
     representation of an integer <em>i</em>, then returns get(<em>i</em>). If
     this is neither an array nor an object, returns a null Json. */
-inline const Json &Json::get(str key) const {
+inline const Json &Json::get(Str key) const {
     int i;
     ObjectJson *oj;
     if (_type == j_object && (oj = ojson())
@@ -1591,7 +1591,7 @@ inline Json &Json::get_insert(const String &key) {
 }
 
 /** @overload */
-inline Json &Json::get_insert(str key) {
+inline Json &Json::get_insert(Str key) {
     uniqueify_object(true);
     return ojson()->get_insert(key);
 }
@@ -1599,26 +1599,26 @@ inline Json &Json::get_insert(str key) {
 /** @overload */
 inline Json &Json::get_insert(const char *key) {
     uniqueify_object(true);
-    return ojson()->get_insert(str(key));
+    return ojson()->get_insert(Str(key));
 }
 
 /** @brief Return get(@a key).to_i(). */
-inline long Json::get_i(str key) const {
+inline long Json::get_i(Str key) const {
     return get(key).to_i();
 }
 
 /** @brief Return get(@a key).to_d(). */
-inline double Json::get_d(str key) const {
+inline double Json::get_d(Str key) const {
     return get(key).to_d();
 }
 
 /** @brief Return get(@a key).to_b(). */
-inline bool Json::get_b(str key) const {
+inline bool Json::get_b(Str key) const {
     return get(key).to_b();
 }
 
 /** @brief Return get(@a key).to_s(). */
-inline const String &Json::get_s(str key) const {
+inline const String &Json::get_s(Str key) const {
     return get(key).to_s();
 }
 
@@ -1664,7 +1664,7 @@ inline const String &Json::get_s(str key) const {
     j.get("a", a).status(a_status).get("b", b).status(b_status);
     assert(a_status && a == 1 && !b_status);
     </code> */
-inline const Json_get_proxy Json::get(str key, Json &x) const {
+inline const Json_get_proxy Json::get(Str key, Json &x) const {
     int i;
     ObjectJson *oj;
     if (_type == j_object && (oj = ojson())
@@ -1676,59 +1676,59 @@ inline const Json_get_proxy Json::get(str key, Json &x) const {
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, int &x) const {
+inline const Json_get_proxy Json::get(Str key, int &x) const {
     return Json_get_proxy(*this, get(key).to_i(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, unsigned &x) const {
+inline const Json_get_proxy Json::get(Str key, unsigned &x) const {
     return Json_get_proxy(*this, get(key).to_i(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, long &x) const {
+inline const Json_get_proxy Json::get(Str key, long &x) const {
     return Json_get_proxy(*this, get(key).to_i(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, unsigned long &x) const {
+inline const Json_get_proxy Json::get(Str key, unsigned long &x) const {
     return Json_get_proxy(*this, get(key).to_i(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, long long &x) const {
+inline const Json_get_proxy Json::get(Str key, long long &x) const {
     return Json_get_proxy(*this, get(key).to_i(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, unsigned long long &x) const {
+inline const Json_get_proxy Json::get(Str key, unsigned long long &x) const {
     return Json_get_proxy(*this, get(key).to_i(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, double &x) const {
+inline const Json_get_proxy Json::get(Str key, double &x) const {
     return Json_get_proxy(*this, get(key).to_d(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, bool &x) const {
+inline const Json_get_proxy Json::get(Str key, bool &x) const {
     return Json_get_proxy(*this, get(key).to_b(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, str &x) const {
+inline const Json_get_proxy Json::get(Str key, Str &x) const {
     return Json_get_proxy(*this, get(key).to_s(x));
 }
 
 /** @overload */
-inline const Json_get_proxy Json::get(str key, String &x) const {
+inline const Json_get_proxy Json::get(Str key, String &x) const {
     return Json_get_proxy(*this, get(key).to_s(x));
 }
 
 
 /** @brief Return the value at @a key in an object or array Json.
     @sa Json::get() */
-inline const Json &Json::operator[](str key) const {
+inline const Json &Json::operator[](Str key) const {
     return get(key);
 }
 
@@ -1743,7 +1743,7 @@ inline Json_object_proxy<Json> Json::operator[](const String &key) {
 }
 
 /** @overload */
-inline Json_object_str_proxy<Json> Json::operator[](str key) {
+inline Json_object_str_proxy<Json> Json::operator[](Str key) {
     return Json_object_str_proxy<Json>(*this, key);
 }
 
@@ -1754,7 +1754,7 @@ inline Json_object_str_proxy<Json> Json::operator[](const char *key) {
 
 /** @brief Return the value at @a key in an object Json.
     @pre is_object() && count(@a key) */
-inline const Json &Json::at(str key) const {
+inline const Json &Json::at(Str key) const {
     assert(_type == j_object && _cjson);
     ObjectJson *oj = ojson();
     int i = oj->find(key.data(), key.length());
@@ -1772,7 +1772,7 @@ inline Json &Json::at_insert(const String &key) {
 }
 
 /** @overload */
-inline Json &Json::at_insert(str key) {
+inline Json &Json::at_insert(Str key) {
     assert(_type == j_object);
     return get_insert(key);
 }
@@ -1780,7 +1780,7 @@ inline Json &Json::at_insert(str key) {
 /** @overload */
 inline Json &Json::at_insert(const char *key) {
     assert(_type == j_object);
-    return get_insert(str(key));
+    return get_insert(Str(key));
 }
 
 /** @brief Set the value of @a key to @a value in this object Json.
@@ -1806,7 +1806,7 @@ inline Json &Json::set(const String &key, Json &&value) {
 /** @brief Remove the value of @a key from an object Json.
     @return this Json
     @sa erase() */
-inline Json &Json::unset(str key) {
+inline Json &Json::unset(Str key) {
     if (_type == j_object) {
 	uniqueify_object(true);
 	ojson()->erase(key);
@@ -1845,7 +1845,7 @@ inline Json::object_iterator Json::insert(object_iterator position, const object
 /** @brief Remove the value of @a key from an object Json.
     @pre is_object()
     @return Number of items removed */
-inline Json::size_type Json::erase(str key) {
+inline Json::size_type Json::erase(Str key) {
     assert(_type == j_object);
     uniqueify_object(false);
     return ojson()->erase(key);

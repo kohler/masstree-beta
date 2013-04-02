@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -67,7 +67,7 @@ kvr_timed_array::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti)
 }
 
 void
-kvr_timed_array::to_shared_row_str(str &val, kvout *buffer) const
+kvr_timed_array::to_shared_row_str(Str &val, kvout *buffer) const
 {
     kvout_reset(buffer);
     KVW(buffer, ncol_);
@@ -77,7 +77,7 @@ kvr_timed_array::to_shared_row_str(str &val, kvout *buffer) const
 }
 
 kvr_timed_array *
-kvr_timed_array::from_rowstr(str rstr, kvtimestamp_t ts, threadinfo &ti)
+kvr_timed_array::from_rowstr(Str rstr, kvtimestamp_t ts, threadinfo &ti)
 {
     struct kvin kvin;
     kvin_init(&kvin, const_cast<char *>(rstr.s), rstr.len);

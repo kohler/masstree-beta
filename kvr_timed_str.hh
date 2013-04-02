@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef KVR_TIMED_STR_HH
-#define KVR_TIMED_STR_HH 1
+#define KVR_TIMED_STR_HH
 #include "compiler.hh"
 #include "kvrow.hh"
 
@@ -62,10 +62,10 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
     inline size_t size() const {
         return sizeof(kvr_timed_str) + vallen_;
     }
-    inline str col(int i) const {
+    inline Str col(int i) const {
 	assert(i == 0);
 	(void) i;
-	return str(s_, vallen_);
+	return Str(s_, vallen_);
     }
 
     inline void deallocate(threadinfo &ti) {
@@ -91,23 +91,23 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
                                       kvtimestamp_t ts, threadinfo &ti);
     void filteremit(const fields_t &f, query<kvr_timed_str> &q,
 		    struct kvout *kvout) const;
-    void print(FILE *f, const char *prefix, int indent, str key,
+    void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "") {
 	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
 	fprintf(f, "%s%*s%.*s = %.*s @" PRIKVTSPARTS "%s\n", prefix, indent, "",
 		key.len, key.s, std::min(40, vallen_), s_,
 		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
-    void to_priv_row_str(str &val) const {
+    void to_priv_row_str(Str &val) const {
         val.assign(s_, vallen_);
     }
-    void to_shared_row_str(str &, kvout *) const {
+    void to_shared_row_str(Str &, kvout *) const {
         assert(0 && "Use to_priv_rowstr for performance!");
     }
     /** @brief Return a row object from a string that is created by to_privstr
      *    or to_sharedstr.
      */
-    static kvr_timed_str *from_rowstr(str, kvtimestamp_t, threadinfo &);
+    static kvr_timed_str *from_rowstr(Str, kvtimestamp_t, threadinfo &);
     kvtimestamp_t ts_;
   private:
     int vallen_;

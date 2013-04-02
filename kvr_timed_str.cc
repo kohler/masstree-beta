@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -55,14 +55,14 @@ kvr_timed_str::filteremit(const fields_t &f, query<kvr_timed_str> &, struct kvou
 {
     if (f.size() == 0) {
         KVW(kvout, (short)1);
-        kvwrite_str(kvout, str(s_, vallen_));
+        kvwrite_str(kvout, Str(s_, vallen_));
     } else {
         short n = f.size();
         KVW(kvout, n);
         for (int i = 0; i < n; i++) {
             int len = (f[i].f_len == -1) ? (vallen_ - f[i].f_off) : f[i].f_len;
             assert(len > 0);
-            kvwrite_str(kvout, str(s_ + f[i].f_off, len));
+            kvwrite_str(kvout, Str(s_ + f[i].f_off, len));
         }
     }
 }
@@ -77,7 +77,7 @@ kvr_timed_str::make_sized_row(int vlen, kvtimestamp_t ts, threadinfo &ti) {
 }
 
 kvr_timed_str *
-kvr_timed_str::from_rowstr(str rb, kvtimestamp_t ts, threadinfo &ti)
+kvr_timed_str::from_rowstr(Str rb, kvtimestamp_t ts, threadinfo &ti)
 {
     kvr_timed_str *row = make_sized_row(rb.len, ts, ti);
     memcpy(row->s_, rb.s, rb.len);

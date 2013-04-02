@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef KVTEST_HH
-#define KVTEST_HH 1
+#define KVTEST_HH
 #include "json.hh"
 #include "misc.hh"
 #include "kvproto.hh"
@@ -151,7 +151,7 @@ void kvtest_rw1long_seed(C &client, int seed)
     for (n = 0; !client.timeout(0) && n <= client.limit(); ++n) {
 	unsigned fmt = client.rand.next();
 	int32_t x = (int32_t) client.rand.next();
-	client.put(str::snprintf(buf, sizeof(buf), formats[fmt % 4], x), x + 1);
+	client.put(Str::snprintf(buf, sizeof(buf), formats[fmt % 4], x), x + 1);
     }
     client.wait_all();
     double tp1 = client.now();
@@ -174,7 +174,7 @@ void kvtest_rw1long_seed(C &client, int seed)
     for (g = 0; g < n && !client.timeout(1); ++g) {
 	unsigned fmt = a[2 * g];
 	int32_t x = (int32_t) a[2 * g + 1];
-	client.get_check(str::snprintf(buf, sizeof(buf), formats[fmt % 4], x), x + 1);
+	client.get_check(Str::snprintf(buf, sizeof(buf), formats[fmt % 4], x), x + 1);
     }
     client.wait_all();
     double tg1 = client.now();
@@ -640,7 +640,7 @@ void kvtest_wd1_check(unsigned initial_pos, int incr, C &client)
 	unsigned bugs = 0;
 	bool found_putpos = false;
 	constexpr int nbatch = 20;
-	str gotten[nbatch];
+	Str gotten[nbatch];
 	char gottenbuf[nbatch * 16];
 	for (int i = 0; i < nbatch; ++i)
 	    gotten[i].s = &gottenbuf[i * 16];
@@ -691,24 +691,24 @@ void kvtest_wd2(C &client)
     int x = 0;
     quick_istr xstr(0);
 
-    client.put(str("n"), client.nthreads());
+    client.put(Str("n"), client.nthreads());
     mandatory_assert(client.nthreads() > 1);
 
     // set up status keys
     snprintf(sbuf, sizeof(sbuf), "s%03d", client.id());
     for (int i = 0; i < sep; ++i) {
 	sbuf[4] = 'A' + i;
-	client.put(str(sbuf, 5), str());
+	client.put(Str(sbuf, 5), Str());
     }
-    client.put(str(sbuf, 4), xstr.string());
+    client.put(Str(sbuf, 4), xstr.string());
 
     // set up main keys
     snprintf(kbuf, sizeof(kbuf), "k%03d", client.id());
     for (int i = 0; i < sep; ++i) {
 	kbuf[4] = 'A' + i;
-	client.put(str(kbuf, 5), str());
+	client.put(Str(kbuf, 5), Str());
     }
-    client.put(str(kbuf, 4), str());
+    client.put(Str(kbuf, 4), Str());
 
     snprintf(next_kbuf, sizeof(next_kbuf), "k%03d", (client.id() + 1) % client.nthreads());
 
@@ -718,20 +718,20 @@ void kvtest_wd2(C &client)
     long nrounds = 0;
     while (!client.timeout(0)) {
 	++nrounds;
-	client.put(str(kbuf, 4), xstr.string(), &put_status);
+	client.put(Str(kbuf, 4), xstr.string(), &put_status);
 	if ((client.rand.next() % 65536) < p_remove)
-	    client.remove(str(next_kbuf, 4));
+	    client.remove(Str(next_kbuf, 4));
 
 	int rand = client.rand.next() % 65536;
 	if (rand < p_put2) {
 	    for (int i = sep - 1; i >= 0; --i) {
 		next_kbuf[4] = 'A' + i;
-		client.put(str(next_kbuf, 5), str());
+		client.put(Str(next_kbuf, 5), Str());
 	    }
 	} else if (rand < p_remove2) {
 	    for (int i = sep - 1; i >= 0; --i) {
 		next_kbuf[4] = 'A' + i;
-		client.remove(str(next_kbuf, 5));
+		client.remove(Str(next_kbuf, 5));
 	    }
 	} else {
 	    /* do nothing */
@@ -742,7 +742,7 @@ void kvtest_wd2(C &client)
 	if (put_status == Inserted) {
 	    ++x;
 	    xstr.set(x);
-	    client.put(str(sbuf, 4), xstr.string());
+	    client.put(Str(sbuf, 4), xstr.string());
 	}
     }
     double t1 = client.now();
@@ -759,7 +759,7 @@ void kvtest_wd2_check(C &client)
 	return;
 
     int n;
-    client.get(str("n"), &n);
+    client.get(Str("n"), &n);
     client.wait_all();
     mandatory_assert(n > 1);
     Json result;
@@ -768,9 +768,9 @@ void kvtest_wd2_check(C &client)
     for (int i = 0; i < n; ++i) {
 	int s, k;
 	snprintf(buf, sizeof(buf), "k%03d", i);
-	client.get(str(buf, 4), &k);
+	client.get(Str(buf, 4), &k);
 	snprintf(buf, sizeof(buf), "s%03d", i);
-	client.get(str(buf, 4), &s);
+	client.get(Str(buf, 4), &s);
 	client.wait_all();
 	if (!(s >= 0 && (s == k || s == k + 1 || k == -1)))
 	    fprintf(stderr, "problem: s%03d=%d vs. k%03d=%d\n",
@@ -899,7 +899,7 @@ void kvtest_ycsbk_seed(C &client, int seed)
         key[p] = 0;
 	int32_t v = (int32_t) client.rand.next();
         sprintf(val, "%d", v);
-	client.put(str(key, strlen(key)), str(val, strlen(val)));
+	client.put(Str(key, strlen(key)), Str(val, strlen(val)));
     }
     client.wait_all();
     double tp1 = client.now();
@@ -917,7 +917,7 @@ void kvtest_ycsbk_seed(C &client, int seed)
         key[p] = 0;
 	int32_t v = (int32_t) client.rand.next();
         sprintf(val, "%d", v);
-	client.get_check(str(key, strlen(key)), str(val, strlen(val)));
+	client.get_check(Str(key, strlen(key)), Str(val, strlen(val)));
     }
     client.wait_all();
     double tg1 = client.now();
@@ -1318,7 +1318,7 @@ void kvtest_scan1(C &client, double writer_quiet)
 
 	int pos = 0, mypos = 0, scansteps = 0;
 	quick_istr key;
-	std::vector<str> keys, values;
+	std::vector<Str> keys, values;
 	Json errj;
 	while (!client.timeout(0) && errj.size() < 1000) {
 	    key.set(pos, 8);
@@ -1396,7 +1396,7 @@ void kvtest_rscan1(C &client, double writer_quiet)
 
 	int pos = (n + 1) * 1024, mypos = n * 1024, scansteps = 0;
 	quick_istr key;
-	std::vector<str> keys, values;
+	std::vector<Str> keys, values;
 	Json errj;
 	while (!client.timeout(0) && errj.size() < 1000) {
 	    key.set(pos, 8);

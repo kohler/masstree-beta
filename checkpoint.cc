@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -18,7 +18,7 @@
 // add one key/value to a checkpoint.
 // called by checkpoint_tree() for each node.
 void
-checkpoint1(ckstate *c, str key, const row_type *v)
+checkpoint1(ckstate *c, Str key, const row_type *v)
 {
     int n = std::min((int)CkpKeyPrefixLen, key.len);
     kvwrite(c->keys, key.s, n);
@@ -28,7 +28,7 @@ checkpoint1(ckstate *c, str key, const row_type *v)
     kvwrite(c->vals, key.s, key.len);
     KVW(c->vals, (char)0);
     KVW(c->vals, v->ts_);
-    str val;
+    Str val;
     if (row_type::has_priv_row_str)
 	v->to_priv_row_str(val);
     else

@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -44,7 +44,7 @@ struct key {
     key() {
     }
     /** @brief Construct a key for string @a s. */
-    key(str s)
+    key(Str s)
 	: ikey0_(string_slice<ikey_type>::make_comparable(s.s, s.len)),
 	  len_(s.len), s_(s.s), first_(s.s) {
     }
@@ -70,7 +70,7 @@ struct key {
 	  len_(std::min(len, ikey_size)), s_(0), first_(0) {
     }
     /** @brief Construct a key with ikey @a ikey and suffix @a suf. */
-    key(ikey_type ikey, str suf)
+    key(ikey_type ikey, Str suf)
 	: ikey0_(ikey),
 	  len_(ikey_size + suf.len), s_(suf.s - ikey_size), first_(s_) {
     }
@@ -97,8 +97,8 @@ struct key {
     }
     /** @brief Return this key's suffix.
 	@pre has_suffix() */
-    str suffix() const {
-	return str(s_ + ikey_size, len_ - ikey_size);
+    Str suffix() const {
+	return Str(s_ + ikey_size, len_ - ikey_size);
     }
     /** @brief Return the length of this key's suffix.
 	@pre has_suffix() */
@@ -156,11 +156,11 @@ struct key {
     }
 
     // used during scan
-    str prefix_string() const {
-	return str(first_, s_);
+    Str prefix_string() const {
+	return Str(first_, s_);
     }
-    str full_string() const {
-	return str(first_, s_ + len_);
+    Str full_string() const {
+	return Str(first_, s_ + len_);
     }
     bool increment() {
 	// Return true iff wrapped.
@@ -177,7 +177,7 @@ struct key {
 	ikey0_ = ikey;
 	*reinterpret_cast<ikey_type *>(const_cast<char *>(s_)) = host_to_net_order(ikey);
     }
-    int assign_store_suffix(str s) {
+    int assign_store_suffix(Str s) {
 	memcpy(const_cast<char *>(s_ + ikey_size), s.s, s.len);
 	return ikey_size + s.len;
     }

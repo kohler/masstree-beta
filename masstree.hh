@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -63,17 +63,17 @@ class basic_table {
         return root_;
     }
 
-    bool get(str key, value_type &value, threadinfo *ti) const;
+    bool get(Str key, value_type &value, threadinfo *ti) const;
 
     template <typename F>
-    int scan(str firstkey, bool matchfirst, F &scanner, threadinfo *ti) const;
+    int scan(Str firstkey, bool matchfirst, F &scanner, threadinfo *ti) const;
     template <typename F>
-    int rscan(str firstkey, bool matchfirst, F &scanner, threadinfo *ti) const;
+    int rscan(Str firstkey, bool matchfirst, F &scanner, threadinfo *ti) const;
 
     template <typename F>
-    inline int modify(str key, F &f, threadinfo *ti);
+    inline int modify(Str key, F &f, threadinfo *ti);
     template <typename F>
-    inline int modify_insert(str key, F &f, threadinfo *ti);
+    inline int modify_insert(Str key, F &f, threadinfo *ti);
 
     inline void print(FILE *f = 0, int indent = 0) const;
 
@@ -81,7 +81,7 @@ class basic_table {
     node_type *root_;
 
     template <typename H, typename F>
-    int scan(H helper, str firstkey, bool matchfirst,
+    int scan(H helper, Str firstkey, bool matchfirst,
 	     F &scanner, threadinfo *ti) const;
 
     friend class unlocked_tcursor<P>;

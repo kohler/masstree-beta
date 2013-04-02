@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -28,7 +28,7 @@ class unlocked_tcursor {
 
     value_type datum_;
 
-    unlocked_tcursor(const basic_table<P> &table, str str)
+    unlocked_tcursor(const basic_table<P> &table, Str str)
         : ka_(str), tablep_(&table) {
     }
     unlocked_tcursor(const basic_table<P> &table, const char *s, int len)
@@ -55,7 +55,7 @@ class tcursor {
     typedef key<ikey_type> key_type;
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
 
-    tcursor(basic_table<P> &table, str str)
+    tcursor(basic_table<P> &table, Str str)
 	: ka_(str), tablep_(&table) {
     }
     tcursor(basic_table<P> &table, const char *s, int len)
@@ -113,14 +113,14 @@ class tcursor {
     inline bool finish_remove(threadinfo *ti);
 
     static void collapse(internode_type *p, ikey_type ikey,
-                         basic_table<P> &table, str prefix, threadinfo *ti);
+                         basic_table<P> &table, Str prefix, threadinfo *ti);
     /** Remove @a leaf from the Masstree rooted at @a rootp.
      * @param prefix String defining the path to the tree containing this leaf.
      *   If removing a leaf in layer 0, @a prefix is empty.
      *   If removing, for example, the node containing key "01234567ABCDEF" in the layer-1 tree
      *   rooted at "01234567", then @a prefix should equal "01234567". */
     static bool remove_leaf(leaf_type *leaf,
-                            basic_table<P> &table, str prefix, threadinfo *ti);
+                            basic_table<P> &table, Str prefix, threadinfo *ti);
 
     bool gc_layer(threadinfo *ti);
     friend struct gc_layer_rcu_callback<P>;

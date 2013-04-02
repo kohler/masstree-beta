@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -82,14 +82,14 @@ KVW(struct kvout *kvout, const volatile T &x)
     return KVW(kvout, (const T &)x);
 }
 
-inline int kvread_str_inplace(struct kvin *kvin, str &v)
+inline int kvread_str_inplace(struct kvin *kvin, Str &v)
 {
     KVR(kvin, v.len);
     v.s = kvin_skip(kvin, v.len);
     return sizeof(v.len) + v.len;
 }
 
-inline int kvread_str_alloc(struct kvin *kvin, str &v)
+inline int kvread_str_alloc(struct kvin *kvin, Str &v)
 {
     KVR(kvin, v.len);
     char *buf = (char *)malloc(v.len);
@@ -106,7 +106,7 @@ inline int kvread_str(struct kvin *kvin, char *buf, int max, int &vlen)
     return sizeof(vlen) + vlen;
 }
 
-inline int kvwrite_str(struct kvout *kvout, str v)
+inline int kvwrite_str(struct kvout *kvout, Str v)
 {
     KVW(kvout, (int)v.len);
     kvwrite(kvout, v.s, v.len);
@@ -116,9 +116,9 @@ inline int kvwrite_str(struct kvout *kvout, str v)
 inline int kvwrite_inline_string(struct kvout *kvout, inline_string *s)
 {
     if (!s)
-        return kvwrite_str(kvout, str(NULL, 0));
+        return kvwrite_str(kvout, Str());
     else
-        return kvwrite_str(kvout, str(s->s, s->len));
+        return kvwrite_str(kvout, Str(s->s, s->len));
 }
 
 /** @brief Read a row from kvin. The row is serialized by row_type::filteremit.

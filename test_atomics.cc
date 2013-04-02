@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
  * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -198,68 +198,68 @@ void test_string_bag() {
     if (eb.size() > sizeof(bag_t))
 	fprintf(stderr, "sizes are off: %zu vs. %zu\n", eb.size(), sizeof(bag_t));
     assert(eb.size() <= sizeof(bag_t));
-    bag_t *b = eb.update(0, str("A", 1), 1, ti);
-    assert(b->row_string() == str("\001\000\006\000\007\000A", 7));
+    bag_t *b = eb.update(0, Str("A", 1), 1, ti);
+    assert(b->row_string() == Str("\001\000\006\000\007\000A", 7));
     assert(b->ncol() == 1);
-    assert(b->col(0) == str("A", 1));
+    assert(b->col(0) == Str("A", 1));
 
-    bag_t *bb = b->update(1, str("BB", 2), 2, ti);
+    bag_t *bb = b->update(1, Str("BB", 2), 2, ti);
     b->deallocate(ti);
     b = bb;
-    assert(b->row_string() == str("\002\000"
+    assert(b->row_string() == Str("\002\000"
 				  "\010\000\011\000\013\000"
 				  "ABB", 013));
     assert(b->ncol() == 2);
-    assert(b->col(0) == str("A", 1));
-    assert(b->col(1) == str("BB", 2));
+    assert(b->col(0) == Str("A", 1));
+    assert(b->col(1) == Str("BB", 2));
 
-    bb = b->update(3, str("CCC", 3), 3, ti);
+    bb = b->update(3, Str("CCC", 3), 3, ti);
     b->deallocate(ti);
     b = bb;
-    assert(b->row_string() == str("\004\000"
+    assert(b->row_string() == Str("\004\000"
 				  "\014\000\015\000\017\000\017\000\022\000"
 				  "ABBCCC", 022));
     assert(b->ncol() == 4);
-    assert(b->col(0) == str("A", 1));
-    assert(b->col(1) == str("BB", 2));
-    assert(b->col(2) == str("", 0));
-    assert(b->col(3) == str("CCC", 3));
+    assert(b->col(0) == Str("A", 1));
+    assert(b->col(1) == Str("BB", 2));
+    assert(b->col(2) == Str("", 0));
+    assert(b->col(3) == Str("CCC", 3));
 
-    bb = b->update(1, str("bbb", 3), 4, ti);
+    bb = b->update(1, Str("bbb", 3), 4, ti);
     b->deallocate(ti);
     b = bb;
-    assert(b->row_string() == str("\004\000"
+    assert(b->row_string() == Str("\004\000"
 				  "\014\000\015\000\020\000\020\000\023\000"
 				  "AbbbCCC", 023));
     assert(b->ncol() == 4);
-    assert(b->col(0) == str("A", 1));
-    assert(b->col(1) == str("bbb", 3));
-    assert(b->col(2) == str("", 0));
-    assert(b->col(3) == str("CCC", 3));
+    assert(b->col(0) == Str("A", 1));
+    assert(b->col(1) == Str("bbb", 3));
+    assert(b->col(2) == Str("", 0));
+    assert(b->col(3) == Str("CCC", 3));
 
-    bb = b->update(0, str("a", 1), 4, ti);
+    bb = b->update(0, Str("a", 1), 4, ti);
     b->deallocate(ti);
     b = bb;
-    assert(b->row_string() == str("\004\000"
+    assert(b->row_string() == Str("\004\000"
 				  "\014\000\015\000\020\000\020\000\023\000"
 				  "abbbCCC", 023));
     assert(b->ncol() == 4);
-    assert(b->col(0) == str("a", 1));
-    assert(b->col(1) == str("bbb", 3));
-    assert(b->col(2) == str("", 0));
-    assert(b->col(3) == str("CCC", 3));
+    assert(b->col(0) == Str("a", 1));
+    assert(b->col(1) == Str("bbb", 3));
+    assert(b->col(2) == Str("", 0));
+    assert(b->col(3) == Str("CCC", 3));
 
-    bb = b->update(1, str("", 0), 4, ti);
+    bb = b->update(1, Str("", 0), 4, ti);
     b->deallocate(ti);
     b = bb;
-    assert(b->row_string() == str("\004\000"
+    assert(b->row_string() == Str("\004\000"
 				  "\014\000\015\000\015\000\015\000\020\000"
 				  "aCCC", 020));
     assert(b->ncol() == 4);
-    assert(b->col(0) == str("a", 1));
-    assert(b->col(1) == str("", 0));
-    assert(b->col(2) == str("", 0));
-    assert(b->col(3) == str("CCC", 3));
+    assert(b->col(0) == Str("a", 1));
+    assert(b->col(1) == Str("", 0));
+    assert(b->col(2) == Str("", 0));
+    assert(b->col(3) == Str("CCC", 3));
 
     b->deallocate(ti);
 }

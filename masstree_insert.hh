@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
  * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -157,7 +157,7 @@ inline void tcursor<P>::finish(int state, threadinfo *ti)
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::modify(str key, F &f, threadinfo *ti)
+inline int basic_table<P>::modify(Str key, F &f, threadinfo *ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_locked(ti);
@@ -171,7 +171,7 @@ inline int basic_table<P>::modify(str key, F &f, threadinfo *ti)
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::modify_insert(str key, F &f, threadinfo *ti)
+inline int basic_table<P>::modify_insert(Str key, F &f, threadinfo *ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_insert(ti);

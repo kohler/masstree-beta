@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef STRING_BASE_HH
-#define STRING_BASE_HH 1
+#define STRING_BASE_HH
 #include "compiler.hh"
 #include "hashcode.hh"
 #include <assert.h>
@@ -31,14 +31,19 @@ class String_generic {
     static const char bool_data[11]; // "false\0true\0"
     static const char out_of_memory_data[15];
     enum { out_of_memory_length = 14 };
-    static bool out_of_memory(const char *s) {
+    static bool out_of_memory(const char* s) {
 	return unlikely(s >= out_of_memory_data
 			&& s <= out_of_memory_data + out_of_memory_length);
     }
-    static bool equals(const char *a, int a_len, const char *b, int b_len) {
+    static bool equals(const char* a, int a_len, const char* b, int b_len) {
 	return a_len == b_len && memcmp(a, b, a_len) == 0;
     }
-    static int compare(const char *a, int a_len, const char *b, int b_len);
+    static int compare(const char* a, int a_len, const char* b, int b_len);
+    static inline int compare(const unsigned char* a, int a_len,
+                              const unsigned char* b, int b_len) {
+        return compare(reinterpret_cast<const char*>(a), a_len,
+                       reinterpret_cast<const char*>(b), b_len);
+    }
     static bool starts_with(const char *a, int a_len, const char *b, int b_len) {
 	return a_len >= b_len && memcmp(a, b, b_len) == 0;
     }
@@ -50,33 +55,35 @@ class String_generic {
     template <typename T> static inline typename T::substring_type rtrim(const T &str);
     template <typename T> static inline typename T::substring_type trim(const T &str);
     static hashcode_t hashcode(const char *s, int len);
-    static hashcode_t hashcode(const char *begin, const char *end) {
-	return hashcode(begin, end - begin);
+    static hashcode_t hashcode(const char *first, const char *last) {
+	return hashcode(first, last - first);
     }
+    static long to_i(const char* first, const char* last);
 };
 
 template <typename T>
 class String_base {
   public:
-    typedef const char *const_iterator;
+    typedef T type;
+    typedef const char* const_iterator;
     typedef const_iterator iterator;
-    typedef const unsigned char *const_unsigned_iterator;
+    typedef const unsigned char* const_unsigned_iterator;
     typedef const_unsigned_iterator unsigned_iterator;
     typedef int (String_base<T>::*unspecified_bool_type)() const;
 
-    const char *data() const {
-	return static_cast<const T *>(this)->data();
+    const char* data() const {
+	return static_cast<const T*>(this)->data();
     }
     int length() const {
-	return static_cast<const T *>(this)->length();
+	return static_cast<const T*>(this)->length();
     }
 
     /** @brief Return a pointer to the string's data as unsigned chars.
 
 	Only the first length() characters are valid, and the string data
 	might not be null-terminated. @sa data() */
-    const unsigned char *udata() const {
-	return reinterpret_cast<const unsigned char *>(data());
+    const unsigned char* udata() const {
+	return reinterpret_cast<const unsigned char*>(data());
     }
     /** @brief Return an iterator for the beginning of the string.
 
@@ -125,27 +132,27 @@ class String_base {
     /** @brief Return the @a i th character in the string.
 
 	Does not check bounds. @sa at() */
-    char operator[](int i) const {
+    const char& operator[](int i) const {
 	return data()[i];
     }
     /** @brief Return the @a i th character in the string.
 
 	Checks bounds: an assertion will fail if @a i is less than 0 or not
 	less than length(). @sa operator[] */
-    char at(int i) const {
+    const char& at(int i) const {
 	assert(unsigned(i) < unsigned(length()));
 	return data()[i];
     }
     /** @brief Return the first character in the string.
 
 	Does not check bounds. Same as (*this)[0]. */
-    char front() const {
+    const char& front() const {
 	return data()[0];
     }
     /** @brief Return the last character in the string.
 
 	Does not check bounds. Same as (*this)[length() - 1]. */
-    char back() const {
+    const char& back() const {
 	return data()[length() - 1];
     }
     /** @brief Test if this string is equal to the C string @a c_str. */
@@ -180,6 +187,11 @@ class String_base {
     template <typename TT>
     int compare(const String_base<TT> &x) const {
 	return String_generic::compare(data(), length(), x.data(), x.length());
+    }
+    /** @brief Compare strings @a a and @a b. */
+    template <typename TT, typename UU>
+    static int compare(const String_base<TT> &a, const String_base<UU> &b) {
+        return String_generic::compare(a.data(), a.length(), b.data(), b.length());
     }
     /** @brief Test if this string begins with the C string @a c_str. */
     bool starts_with(const char *c_str) const {
@@ -242,27 +254,44 @@ class String_base {
     int find_right(const String_base<TT> &x, int start = INT_MAX) const {
 	return String_generic::find_right(data(), length(), start, x.data(), x.length());
     }
-    /** @brief Return a 32-bit hash function of the characters in [@a begin, @a end).
+    /** @brief Return a 32-bit hash function of the characters in [@a first, @a last).
 
 	Uses Paul Hsieh's "SuperFastHash" algorithm, described at
 	http://www.azillionmonkeys.com/qed/hash.html
 	This hash function uses all characters in the string.
 
-	@invariant If end1 - begin1 == end2 - begin2 and memcmp(begin1,
-	begin2, end1 - begin1) == 0, then hashcode(begin1, end1) ==
-	hashcode(begin2, end2). */
-    static hashcode_t hashcode(const char *begin, const char *end) {
-	return String_generic::hashcode(begin, end);
+	@invariant If last1 - first1 == last2 - first2 and memcmp(first1,
+	first2, last1 - first1) == 0, then hashcode(first1, last1) ==
+	hashcode(first2, last2). */
+    static hashcode_t hashcode(const char *first, const char *last) {
+	return String_generic::hashcode(first, last);
     }
     /** @brief Return a 32-bit hash function of the characters in this string. */
     hashcode_t hashcode() const {
 	return String_generic::hashcode(data(), length());
     }
+
+    /** @brief Return the integer value of this string. */
+    long to_i() const {
+        return String_generic::to_i(begin(), end());
+    }
+  protected:
+    String_base() = default;
 };
 
 template <typename T, typename U>
 inline bool operator==(const String_base<T> &a, const String_base<U> &b) {
     return a.equals(b);
+}
+
+template <typename T>
+inline bool operator==(const String_base<T> &a, const std::string &b) {
+    return a.equals(b.data(), b.length());
+}
+
+template <typename T>
+inline bool operator==(const std::string &a, const String_base<T> &b) {
+    return b.equals(a.data(), a.length());
 }
 
 template <typename T>
@@ -277,6 +306,16 @@ inline bool operator==(const char *a, const String_base<T> &b) {
 
 template <typename T, typename U>
 inline bool operator!=(const String_base<T> &a, const String_base<U> &b) {
+    return !(a == b);
+}
+
+template <typename T>
+inline bool operator!=(const String_base<T> &a, const std::string &b) {
+    return !(a == b);
+}
+
+template <typename T>
+inline bool operator!=(const std::string &a, const String_base<T> &b) {
     return !(a == b);
 }
 
@@ -317,6 +356,12 @@ inline std::ostream &operator<<(std::ostream &f, const String_base<T> &str) {
 
 template <typename T>
 inline hashcode_t hashcode(const String_base<T> &x) {
+    return String_generic::hashcode(x.data(), x.length());
+}
+
+// boost's spelling
+template <typename T>
+inline size_t hash_value(const String_base<T>& x) {
     return String_generic::hashcode(x.data(), x.length());
 }
 

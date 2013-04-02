@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -50,7 +50,7 @@
 const char *serverip = "127.0.0.1";
 
 typedef void (*get_async_cb)(struct child *c, struct async *a,
-			     bool has_val, const str &val);
+			     bool has_val, const Str &val);
 typedef void (*put_async_cb)(struct child *c, struct async *a,
 			     int status);
 typedef void (*remove_async_cb)(struct child *c, struct async *a,
@@ -84,7 +84,7 @@ struct child {
   long long nr; // # we're seen replies for
   int childno;
 };
-void aget(struct child *, const str &key, const str &wanted, get_async_cb fn);
+void aget(struct child *, const Str &key, const Str &wanted, get_async_cb fn);
 void ascan(struct child *c, int numpairs, const char *key);
 void child(void (*fn)(struct child *), int childno);
 void checkasync(struct child *c, int force);
@@ -498,7 +498,7 @@ child(void (*fn)(struct child *), int childno)
 }
 
 int
-get(struct child *c, const str &key, char *val, int max)
+get(struct child *c, const Str &key, char *val, int max)
 {
   assert(c->nr == c->nw);
 
@@ -523,24 +523,24 @@ get(struct child *c, const str &key, char *val, int max)
 
 // builtin aget callback: no check
 void
-nocheck(struct child *, struct async *, bool, const str &)
+nocheck(struct child *, struct async *, bool, const Str &)
 {
 }
 
 // builtin aget callback: store string
 void
-asyncgetcb(struct child *, struct async *a, bool, const str &val)
+asyncgetcb(struct child *, struct async *a, bool, const Str &val)
 {
-    str *sptr;
-    assert(a->wantedlen == sizeof(str *));
-    memcpy(&sptr, a->wanted, sizeof(str *));
+    Str *sptr;
+    assert(a->wantedlen == sizeof(Str *));
+    memcpy(&sptr, a->wanted, sizeof(Str *));
     sptr->len = std::min(sptr->len, val.len);
     memcpy(const_cast<char *>(sptr->s), val.s, sptr->len);
 }
 
 // builtin aget callback: store string
 void
-asyncgetcb_int(struct child *, struct async *a, bool, const str &val)
+asyncgetcb_int(struct child *, struct async *a, bool, const Str &val)
 {
     int *vptr;
     assert(a->wantedlen == sizeof(int *));
@@ -561,7 +561,7 @@ asyncgetcb_int(struct child *, struct async *a, bool, const str &val)
 
 // default aget callback: check val against wanted
 void
-defaultget(struct child *, struct async *a, bool have_val, const str &val)
+defaultget(struct child *, struct async *a, bool have_val, const Str &val)
 {
     // check that we got the expected value
     int wanted_avail = std::min(a->wantedlen, int(sizeof(a->wanted)));
@@ -627,7 +627,7 @@ checkasync(struct child *c, int force)
         vector<string> row;
 	int r = c->conn->recvget(row, NULL, true);
 	mandatory_assert(r == 0);
-	str s = (row.size() ? str(row[0].data(), row[0].length()) : str());
+	Str s = (row.size() ? Str(row[0].data(), row[0].length()) : Str());
 	if (tmpa.get_fn)
 	    (tmpa.get_fn)(c, &tmpa, row.size(), s);
       } else if(tmpa.cmd == Cmd_Put){
@@ -670,7 +670,7 @@ checkasync(struct child *c, int force)
 // async get, checkasync() will eventually check reply
 // against wanted.
 void
-aget(struct child *c, const str &key, const str &wanted, get_async_cb fn)
+aget(struct child *c, const Str &key, const Str &wanted, get_async_cb fn)
 {
   if((c->nw % (window/2)) == 0)
     c->conn->flush();
@@ -704,7 +704,7 @@ aget(struct child *c, long ikey, long iwanted, get_async_cb fn)
 }
 
 int
-put(struct child *c, const str &key, const str &val)
+put(struct child *c, const Str &key, const Str &val)
 {
   mandatory_assert(c->nw == c->nr);
 
@@ -721,8 +721,8 @@ put(struct child *c, const str &key, const str &val)
 }
 
 void
-aput(struct child *c, const str &key, const str &val,
-     put_async_cb fn = 0, const str &wanted = str())
+aput(struct child *c, const Str &key, const Str &val,
+     put_async_cb fn = 0, const Str &wanted = Str())
 {
   if((c->nw % (window/2)) == 0)
     c->conn->flush();
@@ -754,7 +754,7 @@ aput(struct child *c, const str &key, const str &val,
 }
 
 bool
-remove(struct child *c, const str &key)
+remove(struct child *c, const Str &key)
 {
   mandatory_assert(c->nw == c->nr);
 
@@ -772,7 +772,7 @@ remove(struct child *c, const str &key)
 }
 
 void
-aremove(struct child *c, const str &key, remove_async_cb fn)
+aremove(struct child *c, const Str &key, remove_async_cb fn)
 {
   if((c->nw % (window/2)) == 0)
     c->conn->flush();
@@ -859,15 +859,15 @@ struct kvtest_client {
 	return ::now();
     }
 
-    void get(long ikey, str *value) {
+    void get(long ikey, Str *value) {
 	quick_istr key(ikey);
 	aget(c_, key.string(),
-	     str(reinterpret_cast<const char *>(&value), sizeof(value)),
+	     Str(reinterpret_cast<const char *>(&value), sizeof(value)),
 	     asyncgetcb);
     }
-    void get(const str &key, int *ivalue) {
+    void get(const Str &key, int *ivalue) {
 	aget(c_, key,
-	     str(reinterpret_cast<const char *>(&ivalue), sizeof(ivalue)),
+	     Str(reinterpret_cast<const char *>(&ivalue), sizeof(ivalue)),
 	     asyncgetcb_int);
     }
     bool get_sync(long ikey) {
@@ -879,9 +879,9 @@ struct kvtest_client {
 	aget(c_, ikey, iexpected, 0);
     }
     void get_check(const char *key, const char *val) {
-	aget(c_, str(key), str(val), 0);
+	aget(c_, Str(key), Str(val), 0);
     }
-    void get_check(const str &key, const str &val) {
+    void get_check(const Str &key, const Str &val) {
 	aget(c_, key, val, 0);
     }
     void get_check_key8(long ikey, long iexpected) {
@@ -900,25 +900,25 @@ struct kvtest_client {
         sprintf(key, "%010ld", ikey);
         sprintf(val, "%ld", iexpected);
         memset(got, 0, sizeof(got));
-	::get(c_, str(key), got, sizeof(got));
+	::get(c_, Str(key), got, sizeof(got));
         if (strcmp(val, got)) {
             fprintf(stderr, "key %s, expected %s, got %s\n", key, val, got);
             mandatory_assert(0);
         }
     }
 
-    void put(const str &key, const str &value) {
+    void put(const Str &key, const Str &value) {
 	aput(c_, key, value);
     }
-    void put(const str &key, const str &value, int *status) {
+    void put(const Str &key, const Str &value, int *status) {
 	aput(c_, key, value,
 	     asyncputcb,
-	     str(reinterpret_cast<const char *>(&status), sizeof(status)));
+	     Str(reinterpret_cast<const char *>(&status), sizeof(status)));
     }
     void put(const char *key, const char *value) {
-	aput(c_, str(key), str(value));
+	aput(c_, Str(key), Str(value));
     }
-    void put(const str &key, long ivalue) {
+    void put(const Str &key, long ivalue) {
 	quick_istr value(ivalue);
 	aput(c_, key, value.string());
     }
@@ -939,7 +939,7 @@ struct kvtest_client {
 	::put(c_, key.string(), value.string());
     }
 
-    void remove(const str &key) {
+    void remove(const Str &key) {
 	aremove(c_, key, 0);
     }
     void remove(long ikey) {
@@ -1187,7 +1187,7 @@ w1b(struct child *c)
         char key[512], val[512];
         sprintf(key, "%010ld", a[i]);
         sprintf(val, "%ld", a[i] + 1);
-        aput(c, str(key), str(val));
+        aput(c, Str(key), Str(val));
       }
     }
   }
@@ -1197,7 +1197,7 @@ w1b(struct child *c)
       char key[512], val[512];
       sprintf(key, "%010ld", a[i]);
       sprintf(val, "%ld", a[i] + 1);
-      aput(c, str(key), str(val));
+      aput(c, Str(key), Str(val));
     }
   }
 
@@ -1248,7 +1248,7 @@ u1(struct child *c)
     long x = random() % 10000000;
     sprintf(key, "%ld", x);
     sprintf(val, "%ld", x + 1);
-    aput(c, str(key), str(val));
+    aput(c, Str(key), Str(val));
   }
   n = i;
 
@@ -1276,7 +1276,7 @@ cpa(struct child *c)
     long x = random();
     sprintf(key, "%ld", x);
     sprintf(val, "%ld", x + 1);
-    aput(c, str(key), str(val));
+    aput(c, Str(key), Str(val));
   }
   n = i;
 
@@ -1305,7 +1305,7 @@ cpc(struct child *c)
     long x = random();
     sprintf(key, "%ld", x);
     sprintf(val, "%ld", x + 1);
-    aget(c, str(key), str(val), NULL);
+    aget(c, Str(key), Str(val), NULL);
   }
   n = i;
 
@@ -1333,7 +1333,7 @@ cpd(struct child *c)
     long x = random();
     sprintf(key, "%ld", x);
     sprintf(val, "%ld", x + 1);
-    aput(c, str(key), str(val));
+    aput(c, Str(key), Str(val));
   }
   n = i;
 
@@ -1364,12 +1364,12 @@ over1(struct child *c)
       ;
     sprintf(key1, "%d", iter);
     sprintf(val1, "%ld", random());
-    put(c, str(key1), str(val1));
+    put(c, Str(key1), Str(val1));
     napms(500);
-    ret = get(c, str(key1), val2, sizeof(val2));
+    ret = get(c, Str(key1), val2, sizeof(val2));
     mandatory_assert(ret > 0);
     sprintf(key2, "%d-%d", iter, c->childno);
-    put(c, str(key2), str(val2));
+    put(c, Str(key2), Str(val2));
     if(c->childno == 0)
       printf("%d: %s\n", iter, val2);
     iter++;
@@ -1388,11 +1388,11 @@ over2(struct child *c)
     char key1[64], key2[64], val1[64], val2[64];
     int ret;
     sprintf(key1, "%d", iter);
-    ret = get(c, str(key1), val1, sizeof(val1));
+    ret = get(c, Str(key1), val1, sizeof(val1));
     if(ret == -1)
       break;
     sprintf(key2, "%d-%d", iter, c->childno);
-    ret = get(c, str(key2), val2, sizeof(val2));
+    ret = get(c, Str(key2), val2, sizeof(val2));
     if(ret == -1)
       break;
     if(c->childno == 0)
@@ -1421,7 +1421,7 @@ rec1(struct child *c)
     long x = random();
     sprintf(key, "%ld-%d-%d", x, i, c->childno);
     sprintf(val, "%ld", x);
-    aput(c, str(key), str(val));
+    aput(c, Str(key), Str(val));
   }
   checkasync(c, 2);
   t1 = now();
@@ -1445,7 +1445,7 @@ rec2(struct child *c)
     long x = random();
     sprintf(key, "%ld-%d-%d", x, i, c->childno);
     sprintf(wanted, "%ld", x);
-    int ret = get(c, str(key), val, sizeof(val));
+    int ret = get(c, Str(key), val, sizeof(val));
     if(ret == -1)
       break;
     val[ret] = 0;
@@ -1461,7 +1461,7 @@ rec2(struct child *c)
     long x = random();
     sprintf(key, "%ld-%d-%d", x, i, c->childno);
     val[0] = 0;
-    int ret = get(c, str(key), val, sizeof(val));
+    int ret = get(c, Str(key), val, sizeof(val));
     if(ret != -1){
       printf("child %d: oops first missing %d but %d present\n",
              c->childno, i0, i);
@@ -1529,7 +1529,7 @@ volt1a(struct child *c)
     mandatory_assert(strlen(val) == VOLT1SIZE);
     mandatory_assert(strlen(key) == 50);
     mandatory_assert(isdigit(key[0]));
-    aput(c, str(key), str(val));
+    aput(c, Str(key), Str(val));
   }
   checkasync(c, 2);
   t1 = now();
@@ -1574,9 +1574,9 @@ volt1b(struct child *c)
     if(i > 1)
       checkasync(c, 1); // try to avoid deadlock, only 2 reqs outstanding
     if((random() % 2) == 0)
-	aget(c, str(key, 50), str(wanted, VOLT1SIZE), 0);
+	aget(c, Str(key, 50), Str(wanted, VOLT1SIZE), 0);
     else
-	aput(c, str(key, 50), str(wanted, VOLT1SIZE));
+	aput(c, Str(key, 50), Str(wanted, VOLT1SIZE));
   }
   n = i;
 
@@ -1636,7 +1636,7 @@ volt2a(struct child *c)
         key[k] = ' ';
       key[50] = '\0';
       sprintf(val, "%ld", random());
-      aput(c, str(key), str(val));
+      aput(c, Str(key), Str(val));
       n++;
     }
   }
@@ -1650,7 +1650,7 @@ volt2a(struct child *c)
 
 // get callback
 void
-volt2b1(struct child *c, struct async *a, bool, const str &val)
+volt2b1(struct child *c, struct async *a, bool, const Str &val)
 {
   int k = atoi(a->key);
   int v = atoi(val.s);
@@ -1660,7 +1660,7 @@ volt2b1(struct child *c, struct async *a, bool, const str &val)
     for (int i = strlen(key); i < 50; i++)
       key[i] = ' ';
     sprintf(val, "%ld", random());
-    aput(c, str(key, 50), str(val));
+    aput(c, Str(key, 50), Str(val));
   }
 }
 
@@ -1678,7 +1678,7 @@ volt2b(struct child *c)
     int j;
     for(j = strlen(key); j < 50; j++)
       key[j] = ' ';
-    aget(c, str(key, 50), str(), volt2b1);
+    aget(c, Str(key, 50), Str(), volt2b1);
   }
   n = i;
 
@@ -1700,7 +1700,7 @@ scantest(struct child *c)
     char key[32], val[32];
     int kl = sprintf(key, "k%04d", i);
     sprintf(val, "v%04d", i);
-    aput(c, str(key, kl), str(val));
+    aput(c, Str(key, kl), Str(val));
   }
 
   checkasync(c, 2);

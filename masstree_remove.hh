@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
  * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -107,7 +107,7 @@ struct gc_layer_rcu_callback : public rcu_callback {
     size_t size() const {
 	return len_ + sizeof(*this);
     }
-    static void make(basic_table<P> &table, str prefix, threadinfo *ti);
+    static void make(basic_table<P> &table, Str prefix, threadinfo *ti);
 };
 
 template <typename P>
@@ -121,7 +121,7 @@ void gc_layer_rcu_callback<P>::operator()(threadinfo *ti)
 }
 
 template <typename P>
-void gc_layer_rcu_callback<P>::make(basic_table<P> &table, str prefix,
+void gc_layer_rcu_callback<P>::make(basic_table<P> &table, Str prefix,
                                     threadinfo *ti)
 {
     size_t sz = prefix.len + sizeof(gc_layer_rcu_callback);
@@ -148,7 +148,7 @@ bool tcursor<P>::finish_remove(threadinfo *ti)
 
 template <typename P>
 bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
-                             str prefix, threadinfo *ti)
+                             Str prefix, threadinfo *ti)
 {
     if (!leaf->prev_) {
 	if (!leaf->next_.ptr && !prefix.empty())
@@ -226,7 +226,7 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
 
 template <typename P>
 void tcursor<P>::collapse(internode_type *p, ikey_type ikey,
-                          basic_table<P> &table, str prefix, threadinfo *ti)
+                          basic_table<P> &table, Str prefix, threadinfo *ti)
 {
     assert(p && p->locked());
 

@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef KVTABLE_HH
-#define KVTABLE_HH 1
+#define KVTABLE_HH
 #include "kvdconfig.hh"
 #include "str.hh"
 #include "kvproto.hh"
@@ -62,7 +62,7 @@ class kvtable { public:
 	return false;
     }
     virtual void many_get(query<row_type> *qs, int nqs, threadinfo *ti) const = 0;
-    virtual void findpivots(str *pv, int npv) const = 0;
+    virtual void findpivots(Str *pv, int npv) const = 0;
 
     virtual void stats(FILE *) = 0;
     virtual void json_stats(Json &j, threadinfo *ti) = 0;
@@ -122,7 +122,7 @@ template <> struct kvtable_checkpoint_helper<true> {
     template <typename T> static ckptrav_order_t ckptravorder(const T &table) {
 	return table.ckptravorder();
     }
-    template <typename T> static void findpivots(const T &table, str *pv, int npv) {
+    template <typename T> static void findpivots(const T &table, Str *pv, int npv) {
         table.findpivots(pv, npv);
     }
 };
@@ -130,7 +130,7 @@ template <> struct kvtable_checkpoint_helper<false> {
     template <typename T> static ckptrav_order_t ckptravorder(const T &) {
 	return ckptrav_preorder;
     }
-    template <typename T> static void findpivots(const T &, str *, int) {
+    template <typename T> static void findpivots(const T &, Str *, int) {
 	mandatory_assert(0 && "checkpoint not supported here");
     }
 };
@@ -173,7 +173,7 @@ template <typename T> class kvtable_adapter : public kvtable { public:
     virtual ckptrav_order_t ckptravorder() const {
 	return kvtable_checkpoint_helper<table_has_checkpoint<T>::value>::ckptravorder(t_);
     }
-    virtual void findpivots(str *pv, int npv) const {
+    virtual void findpivots(Str *pv, int npv) const {
 	kvtable_checkpoint_helper<table_has_checkpoint<T>::value>::findpivots(t_, pv, npv);
     }
 

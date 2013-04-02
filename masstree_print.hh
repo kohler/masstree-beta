@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
  * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -82,7 +82,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 	    n->print(f, prefix, indent + 4, kdepth + key_type::ikey_size);
 	} else {
 	    typename P::value_type tvx = lv.value();
-            tvx->print(f, prefix, indent + 2, str(keybuf, l), initial_timestamp, xbuf);
+            tvx->print(f, prefix, indent + 2, Str(keybuf, l), initial_timestamp, xbuf);
 	}
     }
 

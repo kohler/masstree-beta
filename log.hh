@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef KVDB_LOG_HH
-#define KVDB_LOG_HH 1
+#define KVDB_LOG_HH
 #include "kvdconfig.hh"
 #include "str.hh"
 #include "string.hh"
@@ -183,7 +183,7 @@ struct logrec_kv {
 	return sizeof(logrec_kv) + keylen + vallen;
     }
     static size_t store(char *buf, uint32_t command,
-			str key, str val,
+			Str key, Str val,
 			kvtimestamp_t ts) {
 	// XXX check alignment on some architectures
 	logrec_kv *lr = reinterpret_cast<logrec_kv *>(buf);
@@ -214,7 +214,7 @@ struct logrec_kvdelta {
 	return sizeof(logrec_kvdelta) + keylen + vallen;
     }
     static size_t store(char *buf, uint32_t command,
-			str key, str val,
+			Str key, Str val,
 			kvtimestamp_t prev_ts, kvtimestamp_t ts) {
 	// XXX check alignment on some architectures
 	logrec_kvdelta *lr = reinterpret_cast<logrec_kvdelta *>(buf);

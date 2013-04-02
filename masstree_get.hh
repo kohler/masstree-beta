@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright-2013 (c) 2012 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -68,7 +68,7 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo *ti)
 }
 
 template <typename P>
-inline bool basic_table<P>::get(str key, value_type &value,
+inline bool basic_table<P>::get(Str key, value_type &value,
                                 threadinfo *ti) const
 {
     unlocked_tcursor<P> lp(*this, key);

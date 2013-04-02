@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -49,7 +49,7 @@ namespace Masstree {
     positions [0,p) are ready: keysuffixes in that range are copied. In either
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
-void leaf<P>::hard_assign_ksuf(int p, str s, bool initializing,
+void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
 			       threadinfo *ti)
 {
     if (ksuf_ && ksuf_->assign(p, s))
@@ -264,7 +264,7 @@ void query_table<P>::json_stats(Json &j, threadinfo *ti)
 }
 
 template <typename N>
-static str findpv(N *n, int pvi, int npv)
+static Str findpv(N *n, int pvi, int npv)
 {
     // XXX assumes that most keys differ in the low bytes
     // XXX will fail badly if all keys have the same prefix
@@ -279,7 +279,7 @@ static str findpv(N *n, int pvi, int npv)
 	typename N::nodeversion_type v = n->stable();
 	int size = n->size() + !n->isleaf();
 	if (size == 0)
-	    return str(NULL, 0);
+	    return Str();
 
 	int total_nkeys_estimate = nbranch * size;
 	int first_pv_in_node = branchid * size;
@@ -311,7 +311,7 @@ static str findpv(N *n, int pvi, int npv)
 	if (!n->has_changed(v)) {
 	    char *x = (char *) malloc(sizeof(ikey0));
 	    int len = string_slice<typename N::ikey_type>::unparse_comparable(x, sizeof(ikey0), ikey0);
-	    return str(x, len);
+	    return Str(x, len);
 	}
     }
 }
@@ -319,7 +319,7 @@ static str findpv(N *n, int pvi, int npv)
 // findpivots should allocate memory for pv[i]->s, which will be
 // freed by the caller.
 template <typename P>
-void query_table<P>::findpivots(str *pv, int npv) const
+void query_table<P>::findpivots(Str *pv, int npv) const
 {
     pv[0].assign(NULL, 0);
     char *cmaxk = (char *)malloc(MaxKeyLen);
@@ -345,7 +345,7 @@ struct scan_tester {
 	    keylen_ = sizeof(key_);
 	}
     }
-    bool operator()(str key, row_type *, threadinfo *) {
+    bool operator()(Str key, row_type *, threadinfo *) {
 	memcpy(key_, key.s, key.len);
 	keylen_ = key.len;
 	const char *pos = (reverse_ ? vend_[-1] : vbegin_[0]);
@@ -360,11 +360,11 @@ struct scan_tester {
     }
     template <typename T>
     int scan(T &table, threadinfo *ti) {
-	return table.table().scan(str(key_, keylen_), first_, *this, ti);
+	return table.table().scan(Str(key_, keylen_), first_, *this, ti);
     }
     template <typename T>
     int rscan(T &table, threadinfo *ti) {
-	return table.table().rscan(str(key_, keylen_), first_, *this, ti);
+	return table.table().rscan(Str(key_, keylen_), first_, *this, ti);
     }
 };
 }
@@ -390,7 +390,7 @@ void query_table<P>::test(threadinfo *ti) {
 
     for (int i = arraysize(values); i > 0; --i) {
 	int x = rand() % i;
-        q.begin_put1(str(values_copy[x]), str(values_copy[x]));
+        q.begin_put1(Str(values_copy[x]), Str(values_copy[x]));
 	t.put(q, ti);
 	values_copy[x] = values_copy[i - 1];
     }
@@ -411,27 +411,27 @@ void query_table<P>::test(threadinfo *ti) {
     }
 
     scanner = scan_tester(values + 10, values + 11);
-    int r = t.table_.scan(str(values[10]), true, scanner, ti);
+    int r = t.table_.scan(Str(values[10]), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.table_.scan(str(values[10] + 1), true, scanner, ti);
+    r = t.table_.scan(Str(values[10] + 1), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
-    r = t.table_.scan(str(values[10]), false, scanner, ti);
+    r = t.table_.scan(Str(values[10]), false, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.table_.scan(str("aaaaaaaaaaaaaaaaaaaaaaaaaZ"), true, scanner, ti);
+    r = t.table_.scan(Str("aaaaaaaaaaaaaaaaaaaaaaaaaZ"), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
-    r = t.table_.scan(str(values[11]), true, scanner, ti);
+    r = t.table_.scan(Str(values[11]), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 12, values + 13);
-    r = t.table_.scan(str(values[11]), false, scanner, ti);
+    r = t.table_.scan(Str(values[11]), false, scanner, ti);
     mandatory_assert(r == 1);
 
 
@@ -456,31 +456,31 @@ void query_table<P>::test(threadinfo *ti) {
     }
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.table_.rscan(str(values[10]), true, scanner, ti);
+    r = t.table_.rscan(Str(values[10]), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.table_.rscan(str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
+    r = t.table_.rscan(Str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 9, values + 10);
-    r = t.table_.rscan(str(values[10]), false, scanner, ti);
+    r = t.table_.rscan(Str(values[10]), false, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.table_.rscan(str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
+    r = t.table_.rscan(Str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
-    r = t.table_.rscan(str(values[11]), true, scanner, ti);
+    r = t.table_.rscan(Str(values[11]), true, scanner, ti);
     mandatory_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
-    r = t.table_.rscan(str(values[11]), false, scanner, ti);
+    r = t.table_.rscan(Str(values[11]), false, scanner, ti);
     mandatory_assert(r == 1);
 
 
-    str pv[10];
+    Str pv[10];
     t.findpivots(pv, 10);
     for (int i = 0; i < 10; ++i) {
 	fprintf(stderr, "%d >%.*s<\n", i, std::min(pv[i].len, 10), pv[i].s);

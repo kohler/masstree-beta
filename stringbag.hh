@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -45,9 +45,9 @@ class stringbag {
 	return info_len(main_);
     }
 
-    str get(int p) const {
+    Str get(int p) const {
 	info_type info = info_[p];
-	return str(s_ + info_pos(info), info_len(info));
+	return Str(s_ + info_pos(info), info_len(info));
     }
 
     bool equals_sloppy(int p, const char *s, int len) const {
@@ -57,7 +57,7 @@ class stringbag {
 	else
 	    return string_slice<uintptr_t>::equals_sloppy(s, s_ + info_pos(info), len);
     }
-    bool equals_sloppy(int p, str s) const {
+    bool equals_sloppy(int p, Str s) const {
 	return equals_sloppy(p, s.s, s.len);
     }
     bool equals(int p, const char *s, int len) const {
@@ -65,7 +65,7 @@ class stringbag {
 	return info_len(info) == len
 	    && memcmp(s_ + info_pos(info), s, len) == 0;
     }
-    bool equals(int p, str s) const {
+    bool equals(int p, Str s) const {
 	return equals(p, s.s, s.len);
     }
 
@@ -75,7 +75,7 @@ class stringbag {
 	int cmp = memcmp(s_ + info_pos(info), s, minlen);
 	return cmp ? cmp : ::compare(info_len(info), len);
     }
-    int compare(int p, str s) const {
+    int compare(int p, Str s) const {
 	return compare(p, s.s, s.len);
     }
 
@@ -92,7 +92,7 @@ class stringbag {
 	info_[p] = make_info(pos, len);
 	return true;
     }
-    bool assign(int p, str s) {
+    bool assign(int p, Str s) {
 	return assign(p, s.s, s.len);
     }
 

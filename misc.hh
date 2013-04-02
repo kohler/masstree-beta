@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef MISC_HH
-#define MISC_HH 1
+#define MISC_HH
 #include "compiler.hh"
 #include "shared_config.hh"
 #include "str.hh"
@@ -141,18 +141,18 @@ struct quick_istr {
 	    x /= 10;
 	} while (--minlen > 0 || x != 0);
     }
-    str string() const {
-	return str(bbuf_, buf_ + sizeof(buf_) - 1);
+    Str string() const {
+	return Str(bbuf_, buf_ + sizeof(buf_) - 1);
     }
     const char *c_str() {
 	buf_[sizeof(buf_) - 1] = 0;
 	return bbuf_;
     }
-    bool operator==(str s) const {
+    bool operator==(Str s) const {
 	return s.len == (buf_ + sizeof(buf_) - 1) - bbuf_
 	    && memcmp(s.s, bbuf_, s.len) == 0;
     }
-    bool operator!=(str s) const {
+    bool operator!=(Str s) const {
 	return !(*this == s);
     }
 };
@@ -161,7 +161,7 @@ size_t get_hugepage_size();
 
 struct ckstate;
 class threadinfo;
-void checkpoint1(ckstate *c, str key, const row_type *row);
+void checkpoint1(ckstate *c, Str key, const row_type *row);
 
 struct Clp_Parser;
 int clp_parse_suffixdouble(struct Clp_Parser *clp, const char *vstr,

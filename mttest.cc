@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -158,8 +158,8 @@ struct kvtest_client {
     }
 
     void get(long ikey);
-    bool get_sync(const str &key);
-    bool get_sync(const str &key, str &value);
+    bool get_sync(const Str &key);
+    bool get_sync(const Str &key, Str &value);
     bool get_sync(long ikey) {
 	quick_istr key(ikey);
 	return get_sync(key.string());
@@ -168,15 +168,15 @@ struct kvtest_client {
 	quick_istr key(ikey, 16);
 	return get_sync(key.string());
     }
-    void get_check(const str &key, const str &expected);
+    void get_check(const Str &key, const Str &expected);
     void get_check(const char *key, const char *expected) {
-	get_check(str(key), str(expected));
+	get_check(Str(key), Str(expected));
     }
     void get_check(long ikey, long iexpected) {
 	quick_istr key(ikey), expected(iexpected);
 	get_check(key.string(), expected.string());
     }
-    void get_check(const str &key, long iexpected) {
+    void get_check(const Str &key, long iexpected) {
 	quick_istr expected(iexpected);
 	get_check(key, expected.string());
     }
@@ -184,7 +184,7 @@ struct kvtest_client {
 	quick_istr key(ikey, 8), expected(iexpected);
 	get_check(key.string(), expected.string());
     }
-    void get_col_check(const str &key, int col, const str &value);
+    void get_col_check(const Str &key, int col, const Str &value);
     void get_col_check(long ikey, int col, long ivalue) {
 	quick_istr key(ikey), value(ivalue);
 	get_col_check(key.string(), col, value.string());
@@ -195,20 +195,20 @@ struct kvtest_client {
     }
     void many_get_check(int nk, long ikey[], long iexpected[]);
 
-    void scan_sync(const str &firstkey, int n,
-		   std::vector<str> &keys, std::vector<str> &values);
-    void rscan_sync(const str &firstkey, int n,
-		    std::vector<str> &keys, std::vector<str> &values);
+    void scan_sync(const Str &firstkey, int n,
+		   std::vector<Str> &keys, std::vector<Str> &values);
+    void rscan_sync(const Str &firstkey, int n,
+		    std::vector<Str> &keys, std::vector<Str> &values);
 
-    void put(const str &key, const str &value);
+    void put(const Str &key, const Str &value);
     void put(const char *key, const char *value) {
-	put(str(key), str(value));
+	put(Str(key), Str(value));
     }
     void put(long ikey, long ivalue) {
 	quick_istr key(ikey), value(ivalue);
 	put(key.string(), value.string());
     }
-    void put(const str &key, long ivalue) {
+    void put(const Str &key, long ivalue) {
 	quick_istr value(ivalue);
 	put(key, value.string());
     }
@@ -220,7 +220,7 @@ struct kvtest_client {
 	quick_istr key(ikey, 16), value(ivalue);
 	put(key.string(), value.string());
     }
-    void put_col(const str &key, int col, const str &value);
+    void put_col(const Str &key, int col, const Str &value);
     void put_col(long ikey, int col, long ivalue) {
 	quick_istr key(ikey), value(ivalue);
 	put_col(key.string(), col, value.string());
@@ -230,7 +230,7 @@ struct kvtest_client {
 	put_col(key.string(), col, value.string());
     }
 
-    void remove(const str &key);
+    void remove(const Str &key);
     void remove(long ikey) {
 	quick_istr key(ikey);
 	remove(key.string());
@@ -243,7 +243,7 @@ struct kvtest_client {
 	quick_istr key(ikey, 16);
 	remove(key.string());
     }
-    bool remove_sync(const str &key);
+    bool remove_sync(const Str &key);
     bool remove_sync(long ikey) {
 	quick_istr key(ikey);
 	return remove_sync(key.string());
@@ -287,7 +287,7 @@ struct kvtest_client {
     kvout *kvo_;
 
   private:
-    void output_scan(std::vector<str> &keys, std::vector<str> &values) const;
+    void output_scan(std::vector<Str> &keys, std::vector<Str> &values) const;
 };
 
 static volatile int kvtest_printing;
@@ -320,13 +320,13 @@ void kvtest_client<T>::get(long ikey) {
 }
 
 template <typename T>
-bool kvtest_client<T>::get_sync(const str &key) {
+bool kvtest_client<T>::get_sync(const Str &key) {
     q_[0].begin_get1(key);
     return table_->get(q_[0], ti_);
 }
 
 template <typename T>
-bool kvtest_client<T>::get_sync(const str &key, str &value) {
+bool kvtest_client<T>::get_sync(const Str &key, Str &value) {
     q_[0].begin_get1(key);
     if (table_->get(q_[0], ti_)) {
 	value = q_[0].get1_value();
@@ -336,13 +336,13 @@ bool kvtest_client<T>::get_sync(const str &key, str &value) {
 }
 
 template <typename T>
-void kvtest_client<T>::get_check(const str &key, const str &expected) {
+void kvtest_client<T>::get_check(const Str &key, const Str &expected) {
     q_[0].begin_get1(key);
     if (!table_->get(q_[0], ti_))
 	fail("get(%.*s) failed (expected %.*s)\n", key.len, key.s,
 	     expected.len, expected.s);
     else {
-        str val = q_[0].get1_value();
+        Str val = q_[0].get1_value();
         if (expected != val)
 	    fail("get(%.*s) returned unexpected value %.*s (expected %.*s)\n",
 		 key.len, key.s, std::min(val.len, 40), val.s,
@@ -351,14 +351,14 @@ void kvtest_client<T>::get_check(const str &key, const str &expected) {
 }
 
 template <typename T>
-void kvtest_client<T>::get_col_check(const str &key, int col,
-				     const str &expected) {
+void kvtest_client<T>::get_col_check(const Str &key, int col,
+				     const Str &expected) {
     q_[0].begin_get1(key, col);
     if (!table_->get(q_[0], ti_))
 	fail("get.%d(%.*s) failed (expected %.*s)\n",
 	     col, key.len, key.s, expected.len, expected.s);
     else {
-        str val = q_[0].get1_value();
+        Str val = q_[0].get1_value();
         if (expected != val)
 	    fail("get.%d(%.*s) returned unexpected value %.*s (expected %.*s)\n",
 		 col, key.len, key.s, std::min(val.len, 40), val.s,
@@ -376,7 +376,7 @@ void kvtest_client<T>::many_get_check(int nk, long ikey[], long iexpected[]) {
     }
     table_->many_get(q_, nk, ti_);
     for(int i = 0; i < nk; i++){
-      str val = q_[i].get1_value();
+      Str val = q_[i].get1_value();
       if (ka[i+nk] != val){
         printf("get(%ld) returned unexpected value %.*s (expected %ld)\n",
              ikey[i], std::min(val.len, 40), val.s, iexpected[i]);
@@ -386,9 +386,9 @@ void kvtest_client<T>::many_get_check(int nk, long ikey[], long iexpected[]) {
 }
 
 template <typename T>
-void kvtest_client<T>::scan_sync(const str &firstkey, int n,
-				 std::vector<str> &keys,
-				 std::vector<str> &values) {
+void kvtest_client<T>::scan_sync(const Str &firstkey, int n,
+				 std::vector<Str> &keys,
+				 std::vector<Str> &values) {
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
     kvout_reset(kvo_);
@@ -398,9 +398,9 @@ void kvtest_client<T>::scan_sync(const str &firstkey, int n,
 }
 
 template <typename T>
-void kvtest_client<T>::rscan_sync(const str &firstkey, int n,
-				  std::vector<str> &keys,
-				  std::vector<str> &values) {
+void kvtest_client<T>::rscan_sync(const Str &firstkey, int n,
+				  std::vector<Str> &keys,
+				  std::vector<Str> &values) {
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
     kvout_reset(kvo_);
@@ -410,11 +410,11 @@ void kvtest_client<T>::rscan_sync(const str &firstkey, int n,
 }
 
 template <typename T>
-void kvtest_client<T>::output_scan(std::vector<str> &keys,
-				   std::vector<str> &values) const {
+void kvtest_client<T>::output_scan(std::vector<Str> &keys,
+				   std::vector<Str> &values) const {
     keys.clear();
     values.clear();
-    str key, value;
+    Str key, value;
 
     kvin kvi;
     kvin_init(&kvi, kvo_->buf, kvo_->n);
@@ -430,13 +430,13 @@ void kvtest_client<T>::output_scan(std::vector<str> &keys,
 }
 
 template <typename T>
-void kvtest_client<T>::put(const str &key, const str &value) {
+void kvtest_client<T>::put(const Str &key, const Str &value) {
     q_[0].begin_put1(key, value);
     table_->put(q_[0], ti_);
 }
 
 template <typename T>
-void kvtest_client<T>::put_col(const str &key, int col, const str &value) {
+void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
 #if !KVDB_ROW_TYPE_STR
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
@@ -450,28 +450,28 @@ void kvtest_client<T>::put_col(const str &key, int col, const str &value) {
 
 template <bool CR> struct kvtest_remove_helper {};
 template <> struct kvtest_remove_helper<true> {
-    template <typename T> static bool remove(kvtest_client<T> &client, const str &key) {
+    template <typename T> static bool remove(kvtest_client<T> &client, const Str &key) {
 	client.q_[0].begin_remove(key);
 	return client.table_->remove(client.q_[0], client.ti_);
     }
 };
 template <> struct kvtest_remove_helper<false> {
-    template <typename T> static bool remove(kvtest_client<T> &client, const str &key) {
+    template <typename T> static bool remove(kvtest_client<T> &client, const Str &key) {
 	client.fail("table does not support remove(%.*s)", std::min(key.len, 40), key.s);
 	return false;
     }
 };
-template <typename T> inline bool kvtest_remove(kvtest_client<T> &client, const str &key) {
+template <typename T> inline bool kvtest_remove(kvtest_client<T> &client, const Str &key) {
     return kvtest_remove_helper<table_has_remove<T>::value>::remove(client, key);
 }
 
 template <typename T>
-void kvtest_client<T>::remove(const str &key) {
+void kvtest_client<T>::remove(const Str &key) {
     (void) kvtest_remove(*this, key);
 }
 
 template <typename T>
-bool kvtest_client<T>::remove_sync(const str &key) {
+bool kvtest_client<T>::remove_sync(const Str &key) {
     return kvtest_remove(*this, key);
 }
 

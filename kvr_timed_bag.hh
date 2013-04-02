@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -14,7 +14,7 @@
  * legally binding.
  */
 #ifndef KVR_TIMED_BAG_HH
-#define KVR_TIMED_BAG_HH 1
+#define KVR_TIMED_BAG_HH
 #include "kvthread.hh"
 #include "kvrow.hh"
 
@@ -71,11 +71,11 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
     inline int ncol() const {
 	return d_.ncol_;
     }
-    inline str col(int i) const {
+    inline Str col(int i) const {
 	if (unsigned(i) < unsigned(d_.ncol_))
-	    return str(d_.s_ + d_.pos_[i], d_.pos_[i + 1] - d_.pos_[i]);
+	    return Str(d_.s_ + d_.pos_[i], d_.pos_[i + 1] - d_.pos_[i]);
 	else
-	    return str();
+	    return Str();
     }
 
     template <typename ALLOC>
@@ -102,7 +102,7 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
     kvr_timed_bag<O> *update(const change_t &c, kvtimestamp_t ts,
 			     ALLOC &ti) const;
     template <typename ALLOC>
-    inline kvr_timed_bag<O> *update(int col, str value,
+    inline kvr_timed_bag<O> *update(int col, Str value,
 				    kvtimestamp_t ts, ALLOC &ti) const {
 	change_t c;
 	c.push_back(this->make_cell(col, value));
@@ -118,22 +118,22 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
     }
     void filteremit(const fields_t &f, query<kvr_timed_bag<O> > &q,
 		    struct kvout *kvout) const;
-    void print(FILE *f, const char *prefix, int indent, str key,
+    void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "");
-    void to_priv_row_str(str &val) const {
+    void to_priv_row_str(Str &val) const {
         val.assign(d_.s_, d_.pos_[d_.ncol_]);
     }
-    str row_string() const {
-	return str(d_.s_, d_.pos_[d_.ncol_]);
+    Str row_string() const {
+	return Str(d_.s_, d_.pos_[d_.ncol_]);
     }
-    void to_shared_row_str(str &, kvout *) const {
+    void to_shared_row_str(Str &, kvout *) const {
         assert(0 && "Use to_priv_rowstr for performance!");
     }
     /** @brief Return a row object from a string that is created by to_privstr
      *    or to_sharedstr.
      */
     template <typename ALLOC>
-    static kvr_timed_bag<O> *from_rowstr(str, kvtimestamp_t,
+    static kvr_timed_bag<O> *from_rowstr(Str, kvtimestamp_t,
 					 ALLOC &);
     kvtimestamp_t ts_;
   private:
@@ -217,16 +217,16 @@ void kvr_timed_bag<O>::filteremit(const fields_t &f, query<kvr_timed_bag<O> > &,
     short n = f.size();
     if (n == 0) {
         KVW(kvout, (short)1);
-        kvwrite_str(kvout, str(d_.s_, d_.pos_[d_.ncol_]));
+        kvwrite_str(kvout, Str(d_.s_, d_.pos_[d_.ncol_]));
     } else {
         KVW(kvout, n);
         for (int i = 0; i < n; i++)
-	    kvwrite_str(kvout, str(d_.s_ + d_.pos_[f[i]], d_.pos_[f[i]+1] - d_.pos_[f[i]]));
+	    kvwrite_str(kvout, Str(d_.s_ + d_.pos_[f[i]], d_.pos_[f[i]+1] - d_.pos_[f[i]]));
     }
 }
 
 template <typename O> template <typename ALLOC>
-kvr_timed_bag<O> *kvr_timed_bag<O>::from_rowstr(str rb, kvtimestamp_t ts,
+kvr_timed_bag<O> *kvr_timed_bag<O>::from_rowstr(Str rb, kvtimestamp_t ts,
 						ALLOC &ti)
 {
     kvr_timed_bag<O> *row = (kvr_timed_bag<O> *) ti.allocate(sizeof(kvtimestamp_t) + rb.len);
@@ -237,7 +237,7 @@ kvr_timed_bag<O> *kvr_timed_bag<O>::from_rowstr(str rb, kvtimestamp_t ts,
 
 template <typename O>
 void kvr_timed_bag<O>::print(FILE *f, const char *prefix, int indent,
-			     str key, kvtimestamp_t initial_ts,
+			     Str key, kvtimestamp_t initial_ts,
 			     const char *suffix)
 {
     kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);

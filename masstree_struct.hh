@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
  * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -305,7 +305,7 @@ struct leaf : public node_base<P> {
     bool has_ksuf(int p) const {
 	return keylenx_has_ksuf(keylenx_[p]);
     }
-    str ksuf(int p) const {
+    Str ksuf(int p) const {
 	assert(has_ksuf(p));
 	return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
     }
@@ -377,11 +377,11 @@ struct leaf : public node_base<P> {
 	ikey0_[p] = x->ikey0_[xp];
 	keylenx_[p] = x->keylenx_[xp];
     }
-    void assign_ksuf(int p, str s, bool initializing, threadinfo *ti) {
+    void assign_ksuf(int p, Str s, bool initializing, threadinfo *ti) {
 	if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
 	    hard_assign_ksuf(p, s, initializing, ti);
     }
-    void hard_assign_ksuf(int p, str s, bool initializing, threadinfo *ti);
+    void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo *ti);
 
     void prefetch() const {
 	for (int i = 64; i < std::min(16 * width + 1, 4 * 64); i += 64)

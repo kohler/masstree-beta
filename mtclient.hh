@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -111,20 +111,20 @@ class KVConn {
         free_kvout(out);
         free_kvout(kvbuf);
     }
-    void aput(const str &key, row_type::change_t &c, KVCallback *cb) {
+    void aput(const Str &key, row_type::change_t &c, KVCallback *cb) {
         cb->incref();
         cb->_cmd = Cmd_Put;
         reqs.push(cb);
         sendput(key, c, 0);
     }
-    void aget(const str &key, row_type::fields_t &f, KVCallback *cb) {
+    void aget(const Str &key, row_type::fields_t &f, KVCallback *cb) {
         cb->incref();
         cb->_cmd = Cmd_Get;
         reqs.push(cb);
         sendget(key, f, 0);
     }
     void aget(const char *key, row_type::fields_t &f, KVCallback *cb) {
-	aget(str(key, strlen(key)), f, cb);
+	aget(Str(key, strlen(key)), f, cb);
     }
     void ascan(int numpairs, const char *key, row_type::fields_t &f,
                KVCallback *cb) {
@@ -148,12 +148,12 @@ class KVConn {
         run();
         return false;
     }
-    void sendgetwhole(const str &key, unsigned int seq) {
+    void sendgetwhole(const Str &key, unsigned int seq) {
         row_type::fields_t f;
         row_type::make_get1_fields(f);
         sendget(key, f, seq);
     }
-    void sendget(const str &key, row_type::fields_t &f, unsigned int seq) {
+    void sendget(const Str &key, row_type::fields_t &f, unsigned int seq) {
         KVW(out, (int)Cmd_Get);
         KVW(out, seq);
 	if (key.len > MaxKeyLen) {
@@ -164,10 +164,10 @@ class KVConn {
         // Write fields
         kvout_reset(kvbuf);
         row_type::kvwrite_fields(kvbuf, f);
-        kvwrite_str(out, str(kvbuf->buf, kvbuf->n));
+        kvwrite_str(out, Str(kvbuf->buf, kvbuf->n));
     }
     void sendget(const char *key, row_type::fields_t &f, unsigned int seq) {
-	sendget(str(key, strlen(key)), f, seq);
+	sendget(Str(key, strlen(key)), f, seq);
     }
 
     // return the length of the value if successful (>=0);
@@ -181,13 +181,13 @@ class KVConn {
         return 0;
     }
 
-    void sendputwhole(const str &key, const str &val, unsigned int seq,
+    void sendputwhole(const Str &key, const Str &val, unsigned int seq,
 		      bool need_status = false) {
         row_type::change_t c;
         row_type::make_put1_change(c, val);
         sendput(key, c, seq, need_status);
     }
-    void sendput(const str &key, row_type::change_t &c, unsigned int seq,
+    void sendput(const Str &key, row_type::change_t &c, unsigned int seq,
 		 bool need_status = false) {
 	row_type::sort(c);
         KVW(out, (int) (need_status ? Cmd_Put_Status : Cmd_Put));
@@ -200,9 +200,9 @@ class KVConn {
         // write change
         kvout_reset(kvbuf);
         row_type::kvwrite_change(kvbuf, c);
-        kvwrite_str(out, str(kvbuf->buf, kvbuf->n));
+        kvwrite_str(out, Str(kvbuf->buf, kvbuf->n));
     }
-    void sendremove(const str &key, unsigned int seq) {
+    void sendremove(const Str &key, unsigned int seq) {
         KVW(out, (int)Cmd_Remove);
         KVW(out, seq);
 	if (key.len > MaxKeyLen) {
@@ -239,11 +239,11 @@ class KVConn {
                   unsigned int seq) {
         KVW(out, (int)Cmd_Scan);
         KVW(out, seq);
-        kvwrite_str(out, str(key, strlen(key)));
+        kvwrite_str(out, Str(key, strlen(key)));
         // write fields
         kvout_reset(kvbuf);
         row_type::kvwrite_fields(kvbuf, f);
-        kvwrite_str(out, str(kvbuf->buf, kvbuf->n));
+        kvwrite_str(out, Str(kvbuf->buf, kvbuf->n));
         // write numpairs
         KVW(out, numpairs);
     }

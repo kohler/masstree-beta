@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012 President and Fellows of Harvard College
- * Copyright (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2013 President and Fellows of Harvard College
+ * Copyright (c) 2012-2013 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -47,7 +47,7 @@ class query_table {
     result_t put(query<row_type> &q, threadinfo *ti);
     bool remove(query<row_type> &q, threadinfo *ti);
 
-    void findpivots(str *pv, int npv) const;
+    void findpivots(Str *pv, int npv) const;
     ckptrav_order_t ckptravorder() const {
         return ckptrav_inorder;
     }
