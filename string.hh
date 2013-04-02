@@ -14,12 +14,20 @@
  * legally binding.
  */
 #ifndef LCDF_STRING_HH
-#define LCDF_STRING_HH 1
+#define LCDF_STRING_HH
 #include "string_base.hh"
+#include <string>
+#include <utility>
 
 class String : public String_base<String> {
+    struct memo_type;
   public:
+    struct rep_type;
+
+    enum { max_length = 0x7FFFFE0 };
+
     typedef String substring_type;
+    typedef const String& argument_type;
 
     inline String();
     inline String(const String &x);
@@ -27,12 +35,13 @@ class String : public String_base<String> {
     inline String(String &&x);
 #endif
     template <typename T>
-    explicit inline String(const String_base<T> &x);
-    inline String(const char *cstr);
-    inline String(const char *s, int len);
-    inline String(const unsigned char *s, int len);
-    inline String(const char *first, const char *last);
-    inline String(const unsigned char *first, const unsigned char *last);
+    explicit inline String(const String_base<T>& str);
+    inline String(const char* cstr);
+    inline String(const std::string& str);
+    inline String(const char* s, int len);
+    inline String(const unsigned char* s, int len);
+    inline String(const char* first, const char* last);
+    inline String(const unsigned char* first, const unsigned char* last);
     explicit inline String(bool x);
     explicit inline String(char c);
     explicit inline String(unsigned char c);
@@ -43,6 +52,9 @@ class String : public String_base<String> {
     explicit String(long long x);
     explicit String(unsigned long long x);
     explicit String(double x);
+    /** @cond never */
+    inline String(const rep_type& r);
+    /** @endcond never */
     inline ~String();
 
     static inline const String &make_empty();
@@ -70,6 +82,7 @@ class String : public String_base<String> {
     String lower() const;
     String upper() const;
     String printable(int type = 0) const;
+    String to_hex() const;
 
     enum {
 	utf_strip_bom = 1,
@@ -91,28 +104,40 @@ class String : public String_base<String> {
 
     String encode_json() const;
 
-    inline String &operator=(const String &x);
+    inline String& operator=(const String& x);
 #if HAVE_CXX_RVALUE_REFERENCES
-    inline String &operator=(String &&x);
+    inline String& operator=(String&& x);
 #endif
     template <typename T>
-    inline String &operator=(const String_base<T> &str);
-    inline String &operator=(const char *cstr);
+    inline String& operator=(const String_base<T>& str);
+    inline String& operator=(const char* cstr);
+    inline String& operator=(const std::string& str);
 
-    inline void swap(String &x);
+    inline void assign(const String& x);
+#if HAVE_CXX_RVALUE_REFERENCES
+    inline void assign(String&& x);
+#endif
+    template <typename T>
+    inline void assign(const String_base<T>& str);
+    inline void assign(const char* cstr);
+    inline void assign(const std::string& str);
+    inline void assign(const char* first, const char* last);
 
-    inline void append(const String &x);
-    inline void append(const char *cstr);
-    inline void append(const char *s, int len);
-    inline void append(const char *first, const char *last);
+    inline void swap(String& x);
+
+    inline void append(const String& x);
+    inline void append(const char* cstr);
+    inline void append(const char* s, int len);
+    inline void append(const char* first, const char* last);
+    inline void append(const unsigned char* first, const unsigned char* last);
     void append_fill(int c, int len);
     char *append_uninitialized(int len);
 
-    inline String &operator+=(const String &x);
+    inline String& operator+=(const String& x);
     template <typename T>
-    inline String &operator+=(const String_base<T> &x);
-    inline String &operator+=(const char *cstr);
-    inline String &operator+=(char c);
+    inline String& operator+=(const String_base<T>& x);
+    inline String& operator+=(const char* cstr);
+    inline String& operator+=(char c);
 
     // String operator+(String, const String &);
     // String operator+(String, const char *);
@@ -121,45 +146,98 @@ class String : public String_base<String> {
     inline String compact() const;
 
     inline bool data_shared() const;
-    char *mutable_data();
-    inline unsigned char *mutable_udata();
-    char *mutable_c_str();
+    char* mutable_data();
+    inline unsigned char* mutable_udata();
+    char* mutable_c_str();
 
     void align(int);
 
-    static const unsigned char *skip_utf8_char(const unsigned char *first,
-					       const unsigned char *last);
-    static const char *skip_utf8_char(const char *first, const char *last);
-    static const unsigned char *skip_utf8_bom(const unsigned char *first,
-					      const unsigned char *last);
-    static const char *skip_utf8_bom(const char *first, const char *last);
+    static const unsigned char* skip_utf8_char(const unsigned char* first,
+					       const unsigned char* last);
+    static const char* skip_utf8_char(const char* first, const char* last);
+    static const unsigned char* skip_utf8_bom(const unsigned char* first,
+					      const unsigned char* last);
+    static const char* skip_utf8_bom(const char* first, const char* last);
+
+    /** @cond never */
+    struct rep_type {
+	const char* data;
+	int length;
+        int memo_offset;
+
+        inline void ref() const {
+            if (memo_offset)
+                ++xmemo()->refcount;
+        }
+        inline void deref() const {
+            if (memo_offset && --xmemo()->refcount == 0)
+                String::delete_memo(xmemo());
+        }
+        inline void reset_ref() {
+            memo_offset = 0;
+        }
+
+      private:
+        inline memo_type* xmemo() const {
+            return reinterpret_cast<memo_type*>
+                (const_cast<char*>(data + memo_offset));
+        }
+        inline memo_type* memo() const {
+            return memo_offset ? xmemo() : nullptr;
+        }
+        inline void assign(const char* d, int l, memo_type* m) {
+            data = d;
+            length = l;
+            if (m) {
+                ++m->refcount;
+                memo_offset = static_cast<int>(reinterpret_cast<char*>(m) - d);
+            } else
+                memo_offset = 0;
+        }
+        inline void assign_noref(const char* d, int l, memo_type* m) {
+            data = d;
+            length = l;
+            if (m)
+                memo_offset = static_cast<int>(reinterpret_cast<char*>(m) - d);
+            else
+                memo_offset = 0;
+        }
+        friend class String;
+    };
+
+    const rep_type& internal_rep() const {
+        return _r;
+    }
+    void swap(rep_type& other_rep) {
+        using std::swap;
+        swap(_r, other_rep);
+    }
+    inline void assign(const rep_type& rep);
+    /** @endcond never */
 
   private:
 
     /** @cond never */
-    struct memo_t {
+    struct memo_type {
 	volatile uint32_t refcount;
 	uint32_t capacity;
 	volatile uint32_t dirty;
 #if HAVE_STRING_PROFILING > 1
-	memo_t **pprev;
-	memo_t *next;
+	memo_type** pprev;
+	memo_type* next;
 #endif
 	char real_data[8];	// but it might be more or less
     };
 
     enum {
-	MEMO_SPACE = sizeof(memo_t) - 8
+        MEMO_SPACE = sizeof(memo_type) - 8 /* == sizeof(memo_type::real_data) */
     };
 
-    struct rep_t {
-	const char *data;
-	int length;
-	memo_t *memo;
+    struct null_memo {
     };
     /** @endcond never */
 
-    mutable rep_t _r;		// mutable for c_str()
+    mutable rep_type _r;	// mutable for c_str()
 
 #if HAVE_STRING_PROFILING
     static uint64_t live_memo_count;
@@ -181,7 +259,7 @@ class String : public String_base<String> {
 	    return 29 + 26 - ffs_msb(capacity - 1);
     }
 
-    static void profile_update_memo_dirty(memo_t *memo, uint32_t old_dirty, uint32_t new_dirty, uint32_t capacity) {
+    static void profile_update_memo_dirty(memo_type* memo, uint32_t old_dirty, uint32_t new_dirty, uint32_t capacity) {
 	if (capacity <= 16 && new_dirty != old_dirty) {
 	    ++memo_sizes[new_dirty];
 	    ++live_memo_sizes[new_dirty];
@@ -204,85 +282,76 @@ class String : public String_base<String> {
     static void one_profile_report(StringAccum &sa, int i, int examples);
 #endif
 
-    inline void assign_memo(const char *data, int length, memo_t *memo) const {
-	_r.data = data;
-	_r.length = length;
-	if ((_r.memo = memo))
-	    ++memo->refcount;
+    inline String(const char* data, int length, memo_type* memo) {
+	_r.assign_noref(data, length, memo);
     }
-
-    inline String(const char *data, int length, memo_t *memo) {
-	assign_memo(data, length, memo);
-    }
-
-    inline void assign(const String &x) const {
-	assign_memo(x._r.data, x._r.length, x._r.memo);
+    inline String(const char* data, int length, const null_memo&)
+	: _r{data, length, 0} {
     }
 
     inline void deref() const {
-	if (_r.memo && --_r.memo->refcount == 0)
-	    delete_memo(_r.memo);
+        _r.deref();
     }
 
-    void assign(const char *s, int len, bool need_deref);
+    void assign(const char* s, int len, bool need_deref);
     void assign_out_of_memory();
-    void append(const char *s, int len, memo_t *memo);
+    void append(const char* s, int len, memo_type* memo);
     static String hard_make_stable(const char *s, int len);
-    static inline memo_t *absent_memo() {
-	return reinterpret_cast<memo_t *>(uintptr_t(1));
+    static inline memo_type* absent_memo() {
+	return reinterpret_cast<memo_type*>(uintptr_t(1));
     }
-    static memo_t *create_memo(char *space, int dirty, int capacity);
-    static void delete_memo(memo_t *memo);
-    const char *hard_c_str() const;
-    bool hard_equals(const char *s, int len) const;
+    static memo_type* create_memo(char* space, int dirty, int capacity);
+    static void delete_memo(memo_type* memo);
+    const char* hard_c_str() const;
+    bool hard_equals(const char* s, int len) const;
 
     static const char int_data[20];
-    static const rep_t null_string_rep;
-    static const rep_t oom_string_rep;
-    static const rep_t zero_string_rep;
+    static const rep_type null_string_rep;
+    static const rep_type oom_string_rep;
+    static const rep_type zero_string_rep;
 
-    static String make_claim(char *, int, int); // claim memory
+    static String make_claim(char*, int, int); // claim memory
 
-    static int parse_cesu8_char(const unsigned char *s,
-				const unsigned char *end);
+    static int parse_cesu8_char(const unsigned char* s,
+				const unsigned char* end);
 
-    friend struct rep_t;
+    friend struct rep_type;
     friend class StringAccum;
-
 };
 
 
 /** @brief Construct an empty String (with length 0). */
-inline String::String() {
-    assign_memo(String_generic::empty_data, 0, 0);
+inline String::String()
+    : _r{String_generic::empty_data, 0, 0} {
 }
 
 /** @brief Construct a copy of the String @a x. */
-inline String::String(const String &x) {
-    assign(x);
+inline String::String(const String& x)
+    : _r(x._r) {
+    _r.ref();
 }
 
 #if HAVE_CXX_RVALUE_REFERENCES
 /** @brief Move-construct a String from @a x. */
 inline String::String(String &&x)
     : _r(x._r) {
-    x._r.memo = 0;
+    x._r.reset_ref();
 }
 #endif
 
-/** @brief Construct a copy of the string @a x. */
+/** @brief Construct a copy of the string @a str. */
 template <typename T>
-inline String::String(const String_base<T> &x) {
-    assign(x.data(), x.length(), false);
+inline String::String(const String_base<T> &str) {
+    assign(str.data(), str.length(), false);
 }
 
 /** @brief Construct a String containing the C string @a cstr.
     @param cstr a null-terminated C string
     @return A String containing the characters of @a cstr, up to but not
     including the terminating null character. */
-inline String::String(const char *cstr) {
+inline String::String(const char* cstr) {
     if (LCDF_CONSTANT_CSTR(cstr))
-	assign_memo(cstr, strlen(cstr), 0);
+	_r.assign(cstr, strlen(cstr), 0);
     else
 	assign(cstr, -1, false);
 }
@@ -293,13 +362,13 @@ inline String::String(const char *cstr) {
     @param len number of characters to take from @a s.  If @a len @< 0,
     then takes @c strlen(@a s) characters.
     @return A String containing @a len characters of @a s. */
-inline String::String(const char *s, int len) {
+inline String::String(const char* s, int len) {
     assign(s, len, false);
 }
 
 /** @overload */
-inline String::String(const unsigned char *s, int len) {
-    assign(reinterpret_cast<const char *>(s), len, false);
+inline String::String(const unsigned char* s, int len) {
+    assign(reinterpret_cast<const char*>(s), len, false);
 }
 
 /** @brief Construct a String containing the characters from @a first
@@ -319,11 +388,16 @@ inline String::String(const unsigned char *first, const unsigned char *last) {
 	   (first < last ? last - first : 0), false);
 }
 
+/** @brief Construct a String from a std::string. */
+inline String::String(const std::string &str) {
+    assign(str.data(), str.length(), false);
+}
+
 /** @brief Construct a String equal to "true" or "false" depending on the
     value of @a x. */
-inline String::String(bool x) {
+inline String::String(bool x)
+    : _r{String_generic::bool_data + (-x & 6), 5 - x, 0} {
     // bool_data equals "false\0true\0"
-    assign_memo(String_generic::bool_data + (-x & 6), 5 - x, 0);
 }
 
 /** @brief Construct a String containing the single character @a c. */
@@ -336,6 +410,11 @@ inline String::String(unsigned char c) {
     assign(reinterpret_cast<char *>(&c), 1, false);
 }
 
+inline String::String(const rep_type& r)
+    : _r(r) {
+    _r.ref();
+}
+
 /** @brief Destroy a String, freeing memory if necessary. */
 inline String::~String() {
     deref();
@@ -344,7 +423,7 @@ inline String::~String() {
 /** @brief Return a const reference to an empty String.
 
     May be quicker than String::String(). */
-inline const String &String::make_empty() {
+inline const String& String::make_empty() {
     return reinterpret_cast<const String &>(null_string_rep);
 }
 
@@ -356,7 +435,7 @@ inline String String::make_uninitialized(int len) {
 }
 
 /** @brief Return a const reference to the string "0". */
-inline const String &String::make_zero() {
+inline const String& String::make_zero() {
     return reinterpret_cast<const String &>(zero_string_rep);
 }
 
@@ -369,7 +448,7 @@ inline const String &String::make_zero() {
     character. */
 inline String String::make_stable(const char *cstr) {
     if (LCDF_CONSTANT_CSTR(cstr))
-	return String(cstr, strlen(cstr), 0);
+	return String(cstr, strlen(cstr), null_memo());
     else
 	return hard_make_stable(cstr, -1);
 }
@@ -381,9 +460,9 @@ inline String String::make_stable(const char *cstr) {
 
     @warning The String implementation may access @a s[@a len], which
     should remain constant even though it's not part of the String. */
-inline String String::make_stable(const char *s, int len) {
+inline String String::make_stable(const char* s, int len) {
     if (__builtin_constant_p(len) && len >= 0)
-	return String(s, len, 0);
+	return String(s, len, null_memo());
     else
 	return hard_make_stable(s, len);
 }
@@ -400,15 +479,15 @@ inline String String::make_stable(const char *s, int len) {
 
     @warning The String implementation may access *@a last, which should
     remain constant even though it's not part of the String. */
-inline String String::make_stable(const char *first, const char *last) {
-    return String(first, (first < last ? last - first : 0), 0);
+inline String String::make_stable(const char* first, const char* last) {
+    return String(first, (first < last ? last - first : 0), null_memo());
 }
 
 /** @brief Return a pointer to the string's data.
 
     Only the first length() characters are valid, and the string
     might not be null-terminated. */
-inline const char *String::data() const {
+inline const char* String::data() const {
     return _r.data;
 }
 
@@ -423,7 +502,7 @@ inline int String::length() const {
     this->length() doesn't change.  Returns a corresponding C string
     pointer.  The returned pointer is semi-temporary; it will persist until
     the string is destroyed or appended to. */
-inline const char *String::c_str() const {
+inline const char* String::c_str() const {
     // See also hard_c_str().
 #if HAVE_OPTIMIZE_SIZE || __OPTIMIZE_SIZE__
     return hard_c_str();
@@ -432,8 +511,9 @@ inline const char *String::c_str() const {
     // capacity, then this is one of the special strings (null or
     // stable). We are guaranteed, in these strings, that _data[_length]
     // exists. Otherwise must check that _data[_length] exists.
-    const char *end_data = _r.data + _r.length;
-    if ((_r.memo && end_data >= _r.memo->real_data + _r.memo->dirty)
+    const char* end_data = _r.data + _r.length;
+    memo_type* m = _r.memo();
+    if ((m && end_data >= m->real_data + m->dirty)
 	|| *end_data != '\0') {
 	if (char *x = const_cast<String *>(this)->append_uninitialized(1)) {
 	    *x = '\0';
@@ -454,10 +534,11 @@ inline const char *String::c_str() const {
     this->begin() or greater than this->end()), but this should be
     considered a programming error; a future version may generate a warning
     for this case. */
-inline String String::substring(const char *first, const char *last) const {
-    if (first < last && first >= _r.data && last <= _r.data + _r.length)
-	return String(first, last - first, _r.memo);
-    else
+inline String String::substring(const char* first, const char* last) const {
+    if (first < last && first >= _r.data && last <= _r.data + _r.length) {
+        _r.ref();
+	return String(first, last - first, _r.memo());
+    } else
 	return String();
 }
 
@@ -466,9 +547,10 @@ inline String String::substring(const char *first, const char *last) const {
     @param first pointer to the first substring character
     @param last pointer one beyond the last substring character
     @pre begin() <= @a first <= @a last <= end() */
-inline String String::fast_substring(const char *first, const char *last) const {
+inline String String::fast_substring(const char* first, const char* last) const {
     assert(begin() <= first && first <= last && last <= end());
-    return String(first, last - first, _r.memo);
+    _r.ref();
+    return String(first, last - first, _r.memo());
 }
 
 /** @brief Return the suffix of the current string starting at index @a pos.
@@ -486,52 +568,91 @@ inline String String::substring(int pos) const {
     return substring((pos <= -_r.length ? 0 : pos), _r.length);
 }
 
+inline void String::assign(const rep_type& rep) {
+    rep.ref();
+    _r.deref();
+    _r = rep;
+}
+
 /** @brief Assign this string to @a x. */
-inline String &String::operator=(const String &x) {
-    if (likely(&x != this)) {
-	deref();
-	assign(x);
-    }
+inline void String::assign(const String& x) {
+    assign(x._r);
+}
+
+/** @brief Assign this string to @a x. */
+inline String& String::operator=(const String& x) {
+    assign(x);
     return *this;
 }
 
 #if HAVE_CXX_RVALUE_REFERENCES
 /** @brief Move-assign this string to @a x. */
-inline String &String::operator=(String &&x) {
+inline void String::assign(String&& x) {
     deref();
     _r = x._r;
-    x._r.memo = 0;
+    x._r.reset_ref();
+}
+
+/** @brief Move-assign this string to @a x. */
+inline String& String::operator=(String&& x) {
+    assign(std::move(x));
     return *this;
 }
 #endif
 
 /** @brief Assign this string to the C string @a cstr. */
-inline String &String::operator=(const char *cstr) {
+inline void String::assign(const char* cstr) {
     if (LCDF_CONSTANT_CSTR(cstr)) {
 	deref();
-	assign_memo(cstr, strlen(cstr), 0);
+	_r.assign(cstr, strlen(cstr), 0);
     } else
 	assign(cstr, -1, true);
-    return *this;
 }
 
 /** @brief Assign this string to the C string @a cstr. */
-template <typename T>
-inline String &String::operator=(const String_base<T> &str) {
-    assign(str.data(), str.length(), true);
+inline String& String::operator=(const char* cstr) {
+    assign(cstr);
     return *this;
+}
+
+/** @brief Assign this string to the string @a str. */
+template <typename T>
+inline void String::assign(const String_base<T>& str) {
+    assign(str.data(), str.length(), true);
+}
+
+/** @brief Assign this string to the string @a str. */
+template <typename T>
+inline String& String::operator=(const String_base<T>& str) {
+    assign(str);
+    return *this;
+}
+
+/** @brief Assign this string to the std::string @a str. */
+inline void String::assign(const std::string& str) {
+    assign(str.data(), str.length(), true);
+}
+
+/** @brief Assign this string to the std::string @a str. */
+inline String& String::operator=(const std::string& str) {
+    assign(str);
+    return *this;
+}
+
+/** @brief Assign this string to string [@a first, @a last). */
+inline void String::assign(const char *first, const char *last) {
+    assign(first, last - first, true);
 }
 
 /** @brief Swap the values of this string and @a x. */
 inline void String::swap(String &x) {
-    rep_t r = _r;
-    _r = x._r;
-    x._r = r;
+    using std::swap;
+    swap(_r, x._r);
 }
 
 /** @brief Append @a x to this string. */
 inline void String::append(const String &x) {
-    append(x.data(), x.length(), x._r.memo);
+    append(x.data(), x.length(), x._r.memo());
 }
 
 /** @brief Append the null-terminated C string @a cstr to this string.
@@ -559,11 +680,17 @@ inline void String::append(const char *first, const char *last) {
     if (first < last)
 	append(first, last - first);
 }
+/** @overload */
+inline void String::append(const unsigned char* first,
+                           const unsigned char* last) {
+    if (first < last)
+	append(reinterpret_cast<const char*>(first), last - first);
+}
 
 /** @brief Append @a x to this string.
     @return *this */
 inline String &String::operator+=(const String &x) {
-    append(x.data(), x.length(), x._r.memo);
+    append(x.data(), x.length(), x._r.memo());
     return *this;
 }
 
@@ -591,7 +718,8 @@ inline String &String::operator+=(const String_base<T> &x) {
 
 /** @brief Test if the String's data is shared or immutable. */
 inline bool String::data_shared() const {
-    return !_r.memo || _r.memo->refcount != 1;
+    memo_type* m = _r.memo();
+    return !m || m->refcount != 1;
 }
 
 /** @brief Return a compact version of this String.
@@ -599,8 +727,8 @@ inline bool String::data_shared() const {
     The compact version shares no more than 256 bytes of data with any other
     non-stable String. */
 inline String String::compact() const {
-    if (!_r.memo || _r.memo->refcount == 1
-	|| (uint32_t) _r.length + 256 >= _r.memo->capacity)
+    memo_type* m = _r.memo();
+    if (!m || m->refcount == 1 || (uint32_t) _r.length + 256 >= m->capacity)
 	return *this;
     else
 	return String(_r.data, _r.data + _r.length);
@@ -671,6 +799,16 @@ inline String operator+(const char *a, const String &b) {
 inline String operator+(String a, char b) {
     a.append(&b, 1);
     return a;
+}
+
+#if HAVE_CXX_USER_LITERALS
+inline String operator"" _S(const char *s, size_t len) {
+    return String::make_stable(s, s + len);
+}
+#endif
+
+inline void swap(String& a, String& b) {
+    a.swap(b);
 }
 
 #endif
