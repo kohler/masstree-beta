@@ -73,6 +73,14 @@ struct log {
 	return f_.ti_head_ == ti;
     }
 
+    struct query_times {
+        kvepoch_t epoch;
+        kvtimestamp_t ts;
+        kvtimestamp_t prev_ts;
+    };
+    void log_query(threadinfo* ti, int command, const query_times& qt,
+                   Str key, Str value);
+
   private:
     threadinfo *ti_;
 

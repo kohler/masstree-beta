@@ -165,6 +165,81 @@ log::logger()
 }
 
 
+
+// log entry format: see log.hh
+void log::log_query(threadinfo* ti, int command, const query_times& qtimes,
+                    Str key, Str value) {
+    assert(!recovering);
+    size_t n = logrec_kvdelta::size(key.len, value.len)
+        + logrec_epoch::size() + logrec_base::size();
+    bool any_paused = false;
+    int stalls = 0;
+    while (1) {
+	if (len_ - pos_ >= n
+	    && (!any_paused || log_is_ready(ti))) {
+            kvepoch_t we = global_wake_epoch;
+
+            // Potentially record a new epoch.
+	    if (qtimes.epoch != log_epoch_) {
+		log_epoch_ = qtimes.epoch;
+		pos_ += logrec_epoch::store(buf_ + pos_, logcmd_epoch, qtimes.epoch);
+	    }
+
+            if (quiescent_epoch_) {
+		// We're recording a new log record on a log that's been
+		// quiescent for a while. If the quiescence marker has been
+		// flushed, then all epochs less than the query epoch are
+		// effectively on disk.
+		if (flushed_epoch_ == quiescent_epoch_)
+		    flushed_epoch_ = qtimes.epoch;
+		quiescent_epoch_ = 0;
+                while (we < qtimes.epoch)
+                    we = cmpxchg(&global_wake_epoch, we, qtimes.epoch);
+            }
+
+            // Log epochs should be recorded in monotonically increasing
+            // order, but the wake epoch may be ahead of the query epoch (if
+            // the query took a while). So potentially record an EARLIER
+            // wake_epoch. This will get fixed shortly by the next log
+            // record.
+            if (we != wake_epoch_ && qtimes.epoch < we)
+                we = qtimes.epoch;
+            if (we != wake_epoch_) {
+                wake_epoch_ = we;
+                pos_ += logrec_base::store(buf_ + pos_, logcmd_wake);
+            }
+
+	    if (command == logcmd_put && qtimes.prev_ts && !(qtimes.prev_ts & 1))
+		pos_ += logrec_kvdelta::store(buf_ + pos_,
+                                              logcmd_modify, key, value,
+                                              qtimes.prev_ts, qtimes.ts);
+	    else
+		pos_ += logrec_kv::store(buf_ + pos_,
+                                         command, key, value, qtimes.ts);
+
+	    if (any_paused)
+		remove_log_pending(ti);
+	    release();
+	    return;
+	}
+
+	// Otherwise must spin
+	if (!any_paused) {
+	    add_log_pending(ti);
+	    any_paused = true;
+	}
+	release();
+	if (stalls == 0)
+	    printf("stall\n");
+	else if (stalls % 25 == 0)
+	    printf("stall %d\n", stalls);
+	++stalls;
+	napms(50);
+	acquire();
+    }
+}
+
+
 // replay
 
 logreplay::logreplay(const String &filename)

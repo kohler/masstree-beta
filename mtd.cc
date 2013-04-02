@@ -124,9 +124,6 @@ static uint64_t traverse_checkpoint_preorder(query<row_type> &q,
                                              char *base, uint64_t *ind,
                                              uint64_t max, threadinfo *ti);
 
-static void logone(threadinfo *ti, int command, const query<row_type> &q,
-		   const Str &key, const Str &val);
-
 static void *conc_checkpointer(void *);
 static void recovercheckpoint(threadinfo *ti);
 
@@ -337,7 +334,8 @@ void kvtest_client::put(const Str &key, const Str &value) {
     q_[0].begin_put1(key, value);
     (void) tree->put(q_[0], ti_);
     if (ti_->ti_log)
-	logone(ti_, logcmd_put1, q_[0], key, value);
+	ti_->ti_log->log_query(ti_, logcmd_put1, q_[0].query_times(),
+                               key, value);
 }
 
 void kvtest_client::put_col(const Str &key, int col, const Str &value) {
@@ -350,7 +348,7 @@ void kvtest_client::put_col(const Str &key, int col, const Str &value) {
     q_[0].begin_put(key, req);
     (void) tree->put(q_[0], ti_);
     if (ti_->ti_log)
-	logone(ti_, logcmd_put, q_[0], key, req);
+	ti_->ti_log->log_query(ti_, logcmd_put, q_[0].query_times(), key, req);
 #else
     (void) key, (void) col, (void) value;
     assert(0);
@@ -362,7 +360,7 @@ bool kvtest_client::remove_sync(long ikey) {
     q_[0].begin_remove(key.string());
     bool removed = tree->remove(q_[0], ti_);
     if (removed && ti_->ti_log)
-	logone(ti_, logcmd_remove, q_[0], key.string(), Str());
+	ti_->ti_log->log_query(ti_, logcmd_remove, q_[0].query_times(), key.string(), Str());
     return removed;
 }
 
@@ -1016,7 +1014,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
       q.begin_put(key, req);
       int status = tree->put(q, ti);
       if (ti->ti_log)
-	  logone(ti, logcmd_put, q, key, req);
+	  ti->ti_log->log_query(ti, logcmd_put, q.query_times(), key, req);
       KVW(kvout, rsm.seq);
       if (rsm.cmd == Cmd_Put_Status)
 	  KVW(kvout, status);
@@ -1025,7 +1023,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
       q.begin_remove(key);
       bool removed = tree->remove(q, ti);
       if (removed && ti->ti_log)
-	  logone(ti, logcmd_remove, q, key, Str());
+	  ti->ti_log->log_query(ti, logcmd_remove, q.query_times(), key, Str());
       KVW(kvout, rsm.seq);
       KVW(kvout, (int) removed);
   } else {
@@ -1267,87 +1265,7 @@ udpgo(void *xarg)
   return 0;
 }
 
-// log entry format: see log.hh
-void
-logone(threadinfo *ti, int command, const query<row_type> &q,
-       const Str &key, const Str &val)
-{
-    assert(logging && !recovering);
-    struct log *l = ti->ti_log;
-    size_t n = logrec_kvdelta::size(key.len, val.len)
-        + logrec_epoch::size() + logrec_base::size();
-    bool any_paused = false;
-    int stalls = 0;
-    while (1) {
-	if (l->len_ - l->pos_ >= n
-	    && (!any_paused || l->log_is_ready(ti))) {
-            kvepoch_t qe = q.query_epoch(), we = global_wake_epoch;
-
-            // Potentially record a new epoch.
-	    if (qe != l->log_epoch_) {
-		l->log_epoch_ = qe;
-		l->pos_ += logrec_epoch::store(l->buf_ + l->pos_, logcmd_epoch, qe);
-	    }
-
-            if (l->quiescent_epoch_) {
-		// We're recording a new log record on a log that's been
-		// quiescent for a while. If the quiescence marker has been
-		// flushed, then all epochs less than the query epoch are
-		// effectively on disk.
-		if (l->flushed_epoch_ == l->quiescent_epoch_)
-		    l->flushed_epoch_ = qe;
-		l->quiescent_epoch_ = 0;
-                while (we < qe)
-                    we = cmpxchg(&global_wake_epoch, we, qe);
-            }
-
-            // Log epochs should be recorded in monotonically increasing
-            // order, but the wake epoch may be ahead of the query epoch (if
-            // the query took a while). So potentially record an EARLIER
-            // wake_epoch. This will get fixed shortly by the next log
-            // record.
-            if (we != l->wake_epoch_ && qe < we)
-                we = qe;
-            if (we != l->wake_epoch_) {
-                l->wake_epoch_ = we;
-                l->pos_ += logrec_base::store(l->buf_ + l->pos_, logcmd_wake);
-            }
-
-	    kvtimestamp_t prev_ts = q.query_prev_timestamp();
-	    kvtimestamp_t ts = q.query_timestamp();
-	    if (command == logcmd_put && prev_ts && !(prev_ts & 1))
-		l->pos_ += logrec_kvdelta::store(l->buf_ + l->pos_,
-						 logcmd_modify, key, val,
-						 prev_ts, ts);
-	    else
-		l->pos_ += logrec_kv::store(l->buf_ + l->pos_,
-					    command, key, val, ts);
-
-	    if (any_paused)
-		l->remove_log_pending(ti);
-	    l->release();
-	    return;
-	}
-
-	// Otherwise must spin
-	if (!any_paused) {
-	    l->add_log_pending(ti);
-	    any_paused = true;
-	}
-	l->release();
-	if (stalls == 0)
-	    printf("stall\n");
-	else if (stalls % 25 == 0)
-	    printf("stall %d\n", stalls);
-	++stalls;
-	napms(50);
-	l->acquire();
-    }
-}
-
-void
-log_init()
-{
+void log_init() {
   int ret, i;
 
   for (i = 0; i < nlogger; i++)
