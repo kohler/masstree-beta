@@ -1744,8 +1744,8 @@ commit_checkpoint(Json ckpj)
     int r = atomic_write_file_contents(path, ckpj.unparse());
     mandatory_assert(r == 0);
     fprintf(stderr, "kvd-ckp-%" PRIu64 " [%s,%s]: committed\n",
-	    ckp_gen.value(), ckpj["min_epoch"].c_str(),
-	    ckpj["max_epoch"].c_str());
+	    ckp_gen.value(), ckpj["min_epoch"].to_s().c_str(),
+	    ckpj["max_epoch"].to_s().c_str());
 
     // delete old checkpoint files
     for (int i = 0; i < nckthreads; i++) {
@@ -1857,8 +1857,8 @@ conc_checkpointer(void *xarg)
           free((void *)pv[i].s);
       double t = now() - t0;
       fprintf(stderr, "kvd-ckp-%" PRIu64 " [%s,%s]: prepared (%.2f sec, %" PRIu64 " MB, %" PRIu64 " MB/sec)\n",
-	      ckp_gen.value(), uncommitted_ckp["min_epoch"].c_str(),
-	      uncommitted_ckp["max_epoch"].c_str(),
+	      ckp_gen.value(), uncommitted_ckp["min_epoch"].to_s().c_str(),
+	      uncommitted_ckp["max_epoch"].to_s().c_str(),
 	      t, bytes / (1 << 20), (uint64_t)(bytes / t) >> 20);
     }
   } else {
