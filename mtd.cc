@@ -89,7 +89,7 @@ static const char *ckpdir[MaxCores];
 static int nlogdir = 0;
 static int nckpdir = 0;
 
-static loginfo logs[MaxCores];
+static logset* logs;
 volatile bool recovering = false; // so don't add log entries, and free old value immediately
 
 static double checkpoint_interval = 1000000;
@@ -1142,7 +1142,7 @@ prepare_thread(threadinfo *ti)
     mandatory_assert(!pinthreads && "pinthreads not supported\n");
 #endif
     if (logging)
-	ti->ti_log = &logs[ti->ti_index % nlogger];
+	ti->ti_log = &logs->log(ti->ti_index % nlogger);
 }
 
 void *
@@ -1283,8 +1283,9 @@ static String log_filename(const char* logdir, int logindex) {
 void log_init() {
   int ret, i;
 
+  logs = logset::make(nlogger);
   for (i = 0; i < nlogger; i++)
-      logs[i].initialize(i, log_filename(logdir[i % nlogdir], i));
+      logs->log(i).initialize(log_filename(logdir[i % nlogdir], i));
 
   cks = (ckstate *)malloc(sizeof(ckstate) * nckthreads);
   for (i = 0; i < nckthreads; i++) {
@@ -1694,7 +1695,8 @@ max_flushed_epoch()
 {
     kvepoch_t mfe = 0, ge = global_log_epoch;
     for (int i = 0; i < nlogger; ++i) {
-	kvepoch_t fe = logs[i].quiescent() ? ge : logs[i].flushed_epoch();
+        loginfo& log = logs->log(i);
+	kvepoch_t fe = log.quiescent() ? ge : log.flushed_epoch();
 	if (!mfe || fe < mfe)
 	    mfe = fe;
     }

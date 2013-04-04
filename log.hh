@@ -23,12 +23,13 @@
 class kvtable;
 class threadinfo;
 template <typename R> struct query;
+class logset;
 
 // in-memory log.
 // more than one, to reduce contention on the lock.
 class loginfo {
   public:
-    void initialize(int i, const String& logfile);
+    void initialize(const String& logfile);
     void logger();
 
     inline void acquire();
@@ -54,28 +55,63 @@ class loginfo {
 	uint32_t lock_;
 	waitlist* waiting_;
         String::rep_type filename_;
+        logset* logset_;
     };
+    struct logset_info {
+        int32_t size_;
+        int allocation_offset_;
+    };
+
     union {
 	front f_;
 	char cache_line_[CacheLineSize];
     };
 
-    char *buf_;
-    uint32_t pos_;
-    uint32_t len_;
+    kvepoch_t log_epoch_;       // epoch written to log (non-quiescent)
+    kvepoch_t quiescent_epoch_; // epoch we went quiescent
+    kvepoch_t wake_epoch_;      // epoch for which we recorded a wake command
+    kvepoch_t flushed_epoch_;   // epoch fsync()ed to disk
 
-    kvepoch_t log_epoch_;	// epoch written to log (non-quiescent)
-    kvepoch_t quiescent_epoch_;	// epoch we went quiescent
-    kvepoch_t wake_epoch_;	// epoch for which we recorded a wake command
-    kvepoch_t flushed_epoch_;	// epoch fsync()ed to disk
-    // We have logged all writes up to, but not including, flushed_epoch_.
-    // Log is quiesced to disk if quiescent_epoch_ != 0
-    // and quiescent_epoch_ == flushed_epoch_.
-    // When a log wakes up from quiescence, it sets global_wake_epoch;
-    // other threads must record a logcmd_wake in their logs.
-    // Invariant: log_epoch_ != quiescent_epoch_ (unless both are 0).
+    union {
+        struct {
+            char *buf_;
+            uint32_t pos_;
+            uint32_t len_;
 
-    threadinfo *ti_;
+            // We have logged all writes up to, but not including,
+            // flushed_epoch_.
+            // Log is quiesced to disk if quiescent_epoch_ != 0
+            // and quiescent_epoch_ == flushed_epoch_.
+            // When a log wakes up from quiescence, it sets global_wake_epoch;
+            // other threads must record a logcmd_wake in their logs.
+            // Invariant: log_epoch_ != quiescent_epoch_ (unless both are 0).
+
+            threadinfo *ti_;
+            int logindex_;
+        };
+        struct {
+            char cache_line_2_[CacheLineSize - 4 * sizeof(kvepoch_t) - sizeof(logset_info)];
+            logset_info lsi_;
+        };
+    };
+
+    loginfo(logset* ls, int logindex);
+    ~loginfo();
+
+    friend class logset;
+};
+
+class logset {
+  public:
+    static logset* make(int size);
+    static void free(logset* ls);
+
+    inline int size() const;
+    inline loginfo& log(int i);
+    inline const loginfo& log(int i) const;
+
+  private:
+    loginfo li_[0];
 };
 
 extern kvepoch_t global_log_epoch;
@@ -155,6 +191,20 @@ inline kvepoch_t loginfo::flushed_epoch() const {
 
 inline bool loginfo::quiescent() const {
     return quiescent_epoch_ && quiescent_epoch_ == flushed_epoch_;
+}
+
+inline int logset::size() const {
+    return li_[-1].lsi_.size_;
+}
+
+inline loginfo& logset::log(int i) {
+    assert(unsigned(i) < unsigned(size()));
+    return li_[i];
+}
+
+inline const loginfo& logset::log(int i) const {
+    assert(unsigned(i) < unsigned(size()));
+    return li_[i];
 }
 
 #endif

@@ -143,14 +143,35 @@ struct logrec_kvdelta {
 };
 
 
+logset* logset::make(int size) {
+    static_assert(sizeof(loginfo) == 2 * CacheLineSize, "unexpected sizeof(loginfo)");
+    assert(size > 0 && size <= 64);
+    char* x = new char[sizeof(loginfo) * size + sizeof(loginfo::logset_info) + CacheLineSize];
+    char* ls_pos = x + sizeof(loginfo::logset_info);
+    uintptr_t left = reinterpret_cast<uintptr_t>(ls_pos) % CacheLineSize;
+    if (left)
+        ls_pos += CacheLineSize - left;
+    logset* ls = reinterpret_cast<logset*>(ls_pos);
+    ls->li_[-1].lsi_.size_ = size;
+    ls->li_[-1].lsi_.allocation_offset_ = (int) (x - ls_pos);
+    for (int i = 0; i != size; ++i)
+        new((void*) &ls->li_[i]) loginfo(ls, i);
+    return ls;
+}
+
+void logset::free(logset* ls) {
+    for (int i = 0; i != ls->size(); ++i)
+        ls->li_[i].~loginfo();
+    delete[] (reinterpret_cast<char*>(ls) + ls->li_[-1].lsi_.allocation_offset_);
+}
+
+
 static void *logger(void *);
 
-void loginfo::initialize(int i, const String& logfile) {
-    assert(!ti_);
-
+loginfo::loginfo(logset* ls, int logindex) {
     f_.lock_ = 0;
     f_.waiting_ = 0;
-    f_.filename_ = logfile.internal_rep();
+    f_.filename_ = String().internal_rep();
     f_.filename_.ref();
 
     len_ = 20 * 1024 * 1024;
@@ -162,7 +183,24 @@ void loginfo::initialize(int i, const String& logfile) {
     wake_epoch_ = 0;
     flushed_epoch_ = 0;
 
-    ti_ = threadinfo::make(threadinfo::TI_LOG, i);
+    ti_ = 0;
+    f_.logset_ = ls;
+    logindex_ = logindex;
+}
+
+loginfo::~loginfo() {
+    f_.filename_.deref();
+    free(buf_);
+}
+
+void loginfo::initialize(const String& logfile) {
+    assert(!ti_);
+
+    f_.filename_.deref();
+    f_.filename_ = logfile.internal_rep();
+    f_.filename_.ref();
+
+    ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_);
     int r = pthread_create(&ti_->ti_threadid, 0, ::logger, this);
     mandatory_assert(r == 0);
 }
