@@ -193,6 +193,15 @@ template <typename B> struct sized_compiler_operations<1, B> {
 	return __sync_fetch_and_add(object, addend);
 #endif
     }
+    static inline void atomic_or(type* object, type addend) {
+#if __x86__
+	asm volatile("lock; orb %0,%1"
+		     : "=r" (addend), "+m" (*object) : : "cc");
+	B()();
+#else
+        __sync_fetch_and_or(object, addend);
+#endif
+    }
 };
 
 template <typename B> struct sized_compiler_operations<2, B> {
@@ -240,6 +249,15 @@ template <typename B> struct sized_compiler_operations<2, B> {
 	return __sync_fetch_and_add(object, addend);
 #endif
     }
+    static inline void atomic_or(type* object, type addend) {
+#if __x86__
+	asm volatile("lock; orw %0,%1"
+		     : "=r" (addend), "+m" (*object) : : "cc");
+	B()();
+#else
+        __sync_fetch_and_or(object, addend);
+#endif
+    }
 };
 
 template <typename B> struct sized_compiler_operations<4, B> {
@@ -285,6 +303,15 @@ template <typename B> struct sized_compiler_operations<4, B> {
 	return addend;
 #else
 	return __sync_fetch_and_add(object, addend);
+#endif
+    }
+    static inline void atomic_or(type* object, type addend) {
+#if __x86__
+	asm volatile("lock; orl %0,%1"
+		     : "=r" (addend), "+m" (*object) : : "cc");
+	B()();
+#else
+        __sync_fetch_and_or(object, addend);
 #endif
     }
 };
@@ -356,6 +383,17 @@ template <typename B> struct sized_compiler_operations<8, B> {
 # else
 	return __sync_fetch_and_add(object, addend);
 # endif
+    }
+#endif
+#if __x86_64__ || HAVE___SYNC_FETCH_AND_OR_8
+    static inline void atomic_or(type* object, type addend) {
+#if __x86_64__
+	asm volatile("lock; orq %0,%1"
+		     : "=r" (addend), "+m" (*object) : : "cc");
+	B()();
+#else
+        __sync_fetch_and_or(object, addend);
+#endif
     }
 #endif
 };
@@ -489,6 +527,36 @@ template <typename T>
 inline void test_and_set_release(T* object) {
     release_fence();
     *object = T();
+}
+
+
+/** @brief Atomic fetch-and-or. Returns nothing.
+ * @param object pointer to integer
+ * @param addend value to or */
+template <typename T>
+inline void atomic_or(T* object, T addend) {
+    typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
+    typedef typename sco_t::type type;
+    sco_t::atomic_or((type*) object, (type) addend);
+}
+
+inline void atomic_or(int8_t* object, int addend) {
+    atomic_or(object, int8_t(addend));
+}
+inline void atomic_or(uint8_t* object, int addend) {
+    atomic_or(object, uint8_t(addend));
+}
+inline void atomic_or(int16_t* object, int addend) {
+    atomic_or(object, int16_t(addend));
+}
+inline void atomic_or(uint16_t* object, int addend) {
+    atomic_or(object, uint16_t(addend));
+}
+inline void atomic_or(unsigned* object, int addend) {
+    atomic_or(object, unsigned(addend));
+}
+inline void atomic_or(unsigned long* object, int addend) {
+    atomic_or(object, (unsigned long)(addend));
 }
 
 
