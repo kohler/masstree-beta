@@ -4463,6 +4463,40 @@ $as_echo "#define HAVE___SYNC_FETCH_AND_ADD 1" >>confdefs.h
 
 
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_add_and_fetch builtin" >&5
+$as_echo_n "checking for __sync_add_and_fetch builtin... " >&6; }
+if ${ac_cv_have___sync_add_and_fetch+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+long f(long* x) { return __sync_add_and_fetch(x, 2L); }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_have___sync_add_and_fetch=yes
+else
+  ac_cv_have___sync_add_and_fetch=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_add_and_fetch" >&5
+$as_echo "$ac_cv_have___sync_add_and_fetch" >&6; }
+    if test $ac_cv_have___sync_add_and_fetch = yes; then
+
+$as_echo "#define HAVE___SYNC_ADD_AND_FETCH 1" >>confdefs.h
+
+    fi
+
+
+
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_fetch_and_add_8 builtin" >&5
 $as_echo_n "checking for __sync_fetch_and_add_8 builtin... " >&6; }
 if ${ac_cv_have___sync_fetch_and_add_8+:} false; then :
@@ -4493,6 +4527,179 @@ $as_echo "$ac_cv_have___sync_fetch_and_add_8" >&6; }
     if test $ac_cv_have___sync_fetch_and_add_8 = yes; then
 
 $as_echo "#define HAVE___SYNC_FETCH_AND_ADD_8 1" >>confdefs.h
+
+    fi
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_add_and_fetch_8 builtin" >&5
+$as_echo_n "checking for __sync_add_and_fetch_8 builtin... " >&6; }
+if ${ac_cv_have___sync_add_and_fetch_8+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+    int64_t f(int64_t* x) { return __sync_add_and_fetch(x, (int64_t) 2); }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_have___sync_add_and_fetch_8=yes
+else
+  ac_cv_have___sync_add_and_fetch_8=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_add_and_fetch_8" >&5
+$as_echo "$ac_cv_have___sync_add_and_fetch_8" >&6; }
+    if test $ac_cv_have___sync_add_and_fetch_8 = yes; then
+
+$as_echo "#define HAVE___SYNC_ADD_AND_FETCH_8 1" >>confdefs.h
+
+    fi
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_fetch_and_or builtin" >&5
+$as_echo_n "checking for __sync_fetch_and_or builtin... " >&6; }
+if ${ac_cv_have___sync_fetch_and_or+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+long f(long* x) { return __sync_fetch_and_or(x, 2L); }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_have___sync_fetch_and_or=yes
+else
+  ac_cv_have___sync_fetch_and_or=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_fetch_and_or" >&5
+$as_echo "$ac_cv_have___sync_fetch_and_or" >&6; }
+    if test $ac_cv_have___sync_fetch_and_or = yes; then
+
+$as_echo "#define HAVE___SYNC_FETCH_AND_OR 1" >>confdefs.h
+
+    fi
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_or_and_fetch builtin" >&5
+$as_echo_n "checking for __sync_or_and_fetch builtin... " >&6; }
+if ${ac_cv_have___sync_or_and_fetch+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+long f(long* x) { return __sync_or_and_fetch(x, 2L); }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_have___sync_or_and_fetch=yes
+else
+  ac_cv_have___sync_or_and_fetch=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_or_and_fetch" >&5
+$as_echo "$ac_cv_have___sync_or_and_fetch" >&6; }
+    if test $ac_cv_have___sync_or_and_fetch = yes; then
+
+$as_echo "#define HAVE___SYNC_OR_AND_FETCH 1" >>confdefs.h
+
+    fi
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_fetch_and_or_8 builtin" >&5
+$as_echo_n "checking for __sync_fetch_and_or_8 builtin... " >&6; }
+if ${ac_cv_have___sync_fetch_and_or_8+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+    int64_t f(int64_t* x) { return __sync_fetch_and_or(x, (int64_t) 2); }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_have___sync_fetch_and_or_8=yes
+else
+  ac_cv_have___sync_fetch_and_or_8=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_fetch_and_or_8" >&5
+$as_echo "$ac_cv_have___sync_fetch_and_or_8" >&6; }
+    if test $ac_cv_have___sync_fetch_and_or_8 = yes; then
+
+$as_echo "#define HAVE___SYNC_FETCH_AND_OR_8 1" >>confdefs.h
+
+    fi
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_or_and_fetch_8 builtin" >&5
+$as_echo_n "checking for __sync_or_and_fetch_8 builtin... " >&6; }
+if ${ac_cv_have___sync_or_and_fetch_8+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+    int64_t f(int64_t* x) { return __sync_or_and_fetch(x, (int64_t) 2); }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_have___sync_or_and_fetch_8=yes
+else
+  ac_cv_have___sync_or_and_fetch_8=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_or_and_fetch_8" >&5
+$as_echo "$ac_cv_have___sync_or_and_fetch_8" >&6; }
+    if test $ac_cv_have___sync_or_and_fetch_8 = yes; then
+
+$as_echo "#define HAVE___SYNC_OR_AND_FETCH_8 1" >>confdefs.h
 
     fi
 

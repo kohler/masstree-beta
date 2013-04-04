@@ -143,6 +143,12 @@
 /* Define if you have the __has_trivial_copy compiler intrinsic. */
 #undef HAVE___HAS_TRIVIAL_COPY
 
+/* Define if you have the __sync_add_and_fetch builtin. */
+#undef HAVE___SYNC_ADD_AND_FETCH
+
+/* Define if you have the __sync_add_and_fetch_8 builtin. */
+#undef HAVE___SYNC_ADD_AND_FETCH_8
+
 /* Define if you have the __sync_bool_compare_and_swap builtin. */
 #undef HAVE___SYNC_BOOL_COMPARE_AND_SWAP
 
@@ -155,6 +161,12 @@
 /* Define if you have the __sync_fetch_and_add_8 builtin. */
 #undef HAVE___SYNC_FETCH_AND_ADD_8
 
+/* Define if you have the __sync_fetch_and_or builtin. */
+#undef HAVE___SYNC_FETCH_AND_OR
+
+/* Define if you have the __sync_fetch_and_or_8 builtin. */
+#undef HAVE___SYNC_FETCH_AND_OR_8
+
 /* Define if you have the __sync_lock_release_set builtin. */
 #undef HAVE___SYNC_LOCK_RELEASE_SET
 
@@ -163,6 +175,12 @@
 
 /* Define if you have the __sync_lock_test_and_set_val builtin. */
 #undef HAVE___SYNC_LOCK_TEST_AND_SET_VAL
+
+/* Define if you have the __sync_or_and_fetch builtin. */
+#undef HAVE___SYNC_OR_AND_FETCH
+
+/* Define if you have the __sync_or_and_fetch_8 builtin. */
+#undef HAVE___SYNC_OR_AND_FETCH_8
 
 /* Define if you have the __sync_synchronize builtin. */
 #undef HAVE___SYNC_SYNCHRONIZE

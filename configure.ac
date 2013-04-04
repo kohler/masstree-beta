@@ -57,9 +57,30 @@ KVDB_CHECK_BUILTIN([__sync_synchronize], [[long x = 11;
 KVDB_CHECK_BUILTIN([__sync_fetch_and_add],
     [[long f(long* x) { return __sync_fetch_and_add(x, 2L); }]])
 
+KVDB_CHECK_BUILTIN([__sync_add_and_fetch],
+    [[long f(long* x) { return __sync_add_and_fetch(x, 2L); }]])
+
 KVDB_CHECK_BUILTIN([__sync_fetch_and_add_8],
     [[#include <stdint.h>
     int64_t f(int64_t* x) { return __sync_fetch_and_add(x, (int64_t) 2); }]])
+
+KVDB_CHECK_BUILTIN([__sync_add_and_fetch_8],
+    [[#include <stdint.h>
+    int64_t f(int64_t* x) { return __sync_add_and_fetch(x, (int64_t) 2); }]])
+
+KVDB_CHECK_BUILTIN([__sync_fetch_and_or],
+    [[long f(long* x) { return __sync_fetch_and_or(x, 2L); }]])
+
+KVDB_CHECK_BUILTIN([__sync_or_and_fetch],
+    [[long f(long* x) { return __sync_or_and_fetch(x, 2L); }]])
+
+KVDB_CHECK_BUILTIN([__sync_fetch_and_or_8],
+    [[#include <stdint.h>
+    int64_t f(int64_t* x) { return __sync_fetch_and_or(x, (int64_t) 2); }]])
+
+KVDB_CHECK_BUILTIN([__sync_or_and_fetch_8],
+    [[#include <stdint.h>
+    int64_t f(int64_t* x) { return __sync_or_and_fetch(x, (int64_t) 2); }]])
 
 KVDB_CHECK_BUILTIN([__sync_bool_compare_and_swap],
     [[bool f(long* x, long y, long z) { return __sync_bool_compare_and_swap(x, y, z); }]])
