@@ -34,6 +34,115 @@ kvepoch_t rec_replay_min_epoch;
 kvepoch_t rec_replay_max_epoch;
 kvepoch_t rec_replay_min_quiescent_last_epoch;
 
+struct logrec_base {
+    uint32_t command_;
+    uint32_t size_;
+
+    static size_t size() {
+	return sizeof(logrec_base);
+    }
+    static size_t store(char *buf, uint32_t command) {
+	// XXX check alignment on some architectures
+	logrec_base *lr = reinterpret_cast<logrec_base *>(buf);
+	lr->command_ = command;
+	lr->size_ = sizeof(*lr);
+	return sizeof(*lr);
+    }
+    static bool check(const char *buf) {
+	const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
+	return lr->size_ >= sizeof(*lr);
+    }
+    static uint32_t command(const char *buf) {
+	const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
+	return lr->command_;
+    }
+};
+
+struct logrec_epoch {
+    uint32_t command_;
+    uint32_t size_;
+    kvepoch_t epoch_;
+
+    static size_t size() {
+	return sizeof(logrec_epoch);
+    }
+    static size_t store(char *buf, uint32_t command, kvepoch_t epoch) {
+	// XXX check alignment on some architectures
+	logrec_epoch *lr = reinterpret_cast<logrec_epoch *>(buf);
+	lr->command_ = command;
+	lr->size_ = sizeof(*lr);
+	lr->epoch_ = epoch;
+	return sizeof(*lr);
+    }
+    static bool check(const char *buf) {
+	const logrec_epoch *lr = reinterpret_cast<const logrec_epoch *>(buf);
+	return lr->size_ >= sizeof(*lr);
+    }
+};
+
+struct logrec_kv {
+    uint32_t command_;
+    uint32_t size_;
+    kvtimestamp_t ts_;
+    uint32_t keylen_;
+    char buf_[0];
+
+    static size_t size(uint32_t keylen, uint32_t vallen) {
+	return sizeof(logrec_kv) + keylen + vallen;
+    }
+    static size_t store(char *buf, uint32_t command,
+			Str key, Str val,
+			kvtimestamp_t ts) {
+	// XXX check alignment on some architectures
+	logrec_kv *lr = reinterpret_cast<logrec_kv *>(buf);
+	lr->command_ = command;
+	lr->size_ = sizeof(*lr) + key.len + val.len;
+	lr->ts_ = ts;
+	lr->keylen_ = key.len;
+	memcpy(lr->buf_, key.s, key.len);
+	memcpy(lr->buf_ + key.len, val.s, val.len);
+	return sizeof(*lr) + key.len + val.len;
+    }
+    static bool check(const char *buf) {
+	const logrec_kv *lr = reinterpret_cast<const logrec_kv *>(buf);
+	return lr->size_ >= sizeof(*lr)
+	    && lr->size_ >= sizeof(*lr) + lr->keylen_;
+    }
+};
+
+struct logrec_kvdelta {
+    uint32_t command_;
+    uint32_t size_;
+    kvtimestamp_t ts_;
+    kvtimestamp_t prev_ts_;
+    uint32_t keylen_;
+    char buf_[0];
+
+    static size_t size(uint32_t keylen, uint32_t vallen) {
+	return sizeof(logrec_kvdelta) + keylen + vallen;
+    }
+    static size_t store(char *buf, uint32_t command,
+			Str key, Str val,
+			kvtimestamp_t prev_ts, kvtimestamp_t ts) {
+	// XXX check alignment on some architectures
+	logrec_kvdelta *lr = reinterpret_cast<logrec_kvdelta *>(buf);
+	lr->command_ = command;
+	lr->size_ = sizeof(*lr) + key.len + val.len;
+	lr->ts_ = ts;
+	lr->prev_ts_ = prev_ts;
+	lr->keylen_ = key.len;
+	memcpy(lr->buf_, key.s, key.len);
+	memcpy(lr->buf_ + key.len, val.s, val.len);
+	return sizeof(*lr) + key.len + val.len;
+    }
+    static bool check(const char *buf) {
+	const logrec_kvdelta *lr = reinterpret_cast<const logrec_kvdelta *>(buf);
+	return lr->size_ >= sizeof(*lr)
+	    && lr->size_ >= sizeof(*lr) + lr->keylen_;
+    }
+};
+
+
 static void *logger(void *);
 
 void loginfo::initialize(int i, const char *logdir) {
