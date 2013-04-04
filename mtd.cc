@@ -1264,11 +1264,27 @@ udpgo(void *xarg)
   return 0;
 }
 
+static String log_filename(const char* logdir, int logindex) {
+    struct stat sb;
+    int r = stat(logdir, &sb);
+    if (r < 0 && errno == ENOENT) {
+	r = mkdir(logdir, 0777);
+	if (r < 0) {
+	    fprintf(stderr, "%s: %s\n", logdir, strerror(errno));
+	    mandatory_assert(0);
+	}
+    }
+
+    StringAccum sa;
+    sa.snprintf(strlen(logdir) + 24, "%s/kvd-log-%d", logdir, logindex);
+    return sa.take_string();
+}
+
 void log_init() {
   int ret, i;
 
   for (i = 0; i < nlogger; i++)
-      logs[i].initialize(i, logdir[i % nlogdir]);
+      logs[i].initialize(i, log_filename(logdir[i % nlogdir], i));
 
   cks = (ckstate *)malloc(sizeof(ckstate) * nckthreads);
   for (i = 0; i < nckthreads; i++) {

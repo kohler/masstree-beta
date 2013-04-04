@@ -28,22 +28,14 @@ template <typename R> struct query;
 // more than one, to reduce contention on the lock.
 class loginfo {
   public:
-    void initialize(int i, const char *logdir);
+    void initialize(int i, const String& logfile);
     void logger();
 
-    void acquire() {
-	test_and_set_acquire(&f_.lock_);
-    }
-    void release() {
-	test_and_set_release(&f_.lock_);
-    }
+    inline void acquire();
+    inline void release();
 
-    kvepoch_t flushed_epoch() const {
-        return flushed_epoch_;
-    }
-    bool quiescent() const {
-        return quiescent_epoch_ && quiescent_epoch_ == flushed_epoch_;
-    }
+    inline kvepoch_t flushed_epoch() const;
+    inline bool quiescent() const;
 
     // logging
     struct query_times {
@@ -61,6 +53,7 @@ class loginfo {
     struct front {
 	uint32_t lock_;
 	waitlist* waiting_;
+        String::rep_type filename_;
     };
     union {
 	front f_;
@@ -83,8 +76,6 @@ class loginfo {
     // Invariant: log_epoch_ != quiescent_epoch_ (unless both are 0).
 
     threadinfo *ti_;
-
-    char filename_[128];
 };
 
 extern kvepoch_t global_log_epoch;
@@ -148,5 +139,22 @@ extern kvepoch_t rec_replay_max_epoch;
 extern kvepoch_t rec_replay_min_quiescent_last_epoch;
 
 extern kvtable *tree;
+
+
+inline void loginfo::acquire() {
+    test_and_set_acquire(&f_.lock_);
+}
+
+inline void loginfo::release() {
+    test_and_set_release(&f_.lock_);
+}
+
+inline kvepoch_t loginfo::flushed_epoch() const {
+    return flushed_epoch_;
+}
+
+inline bool loginfo::quiescent() const {
+    return quiescent_epoch_ && quiescent_epoch_ == flushed_epoch_;
+}
 
 #endif

@@ -145,22 +145,13 @@ struct logrec_kvdelta {
 
 static void *logger(void *);
 
-void loginfo::initialize(int i, const char *logdir) {
+void loginfo::initialize(int i, const String& logfile) {
+    assert(!ti_);
+
     f_.lock_ = 0;
     f_.waiting_ = 0;
-
-    struct stat sb;
-    int r = stat(logdir, &sb);
-    if (r < 0 && errno == ENOENT) {
-	r = mkdir(logdir, 0777);
-	if (r < 0) {
-	    fprintf(stderr, "%s: %s\n", logdir, strerror(errno));
-	    mandatory_assert(0);
-	}
-    }
-
-    r = snprintf(filename_, sizeof(filename_), "%s/kvd-log-%d", logdir, i);
-    mandatory_assert(size_t(r) < sizeof(filename_));
+    f_.filename_ = logfile.internal_rep();
+    f_.filename_.ref();
 
     len_ = 20 * 1024 * 1024;
     pos_ = 0;
@@ -172,7 +163,7 @@ void loginfo::initialize(int i, const char *logdir) {
     flushed_epoch_ = 0;
 
     ti_ = threadinfo::make(threadinfo::TI_LOG, i);
-    r = pthread_create(&ti_->ti_threadid, 0, ::logger, this);
+    int r = pthread_create(&ti_->ti_threadid, 0, ::logger, this);
     mandatory_assert(r == 0);
 }
 
@@ -195,12 +186,14 @@ static void check_epoch() {
 
 void loginfo::logger() {
     ti_->enter();
+
     {
-	logreplay replayer(filename_);
+	logreplay replayer(f_.filename_);
 	replayer.replay(ti_->ti_index, ti_);
     }
 
-    int fd = open(filename_, O_WRONLY|O_APPEND|O_CREAT, 0666);
+    int fd = open(String(f_.filename_).c_str(),
+                  O_WRONLY | O_APPEND | O_CREAT, 0666);
     mandatory_assert(fd >= 0);
     char *x_buf = (char *) malloc(len_);
     mandatory_assert(x_buf);
