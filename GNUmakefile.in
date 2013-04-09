@@ -22,10 +22,10 @@ LDFLAGS = @LDFLAGS@
 all: test_atomics mtd mtclient mttest
 
 %.o: %.c config.h $(DEPSDIR)/stamp
-	$(CXX) $(CFLAGS) $(DEPCFLAGS) -c -o $@ $<
+	$(CXX) $(CFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
 %.o: %.cc config.h $(DEPSDIR)/stamp
-	$(CXX) $(CFLAGS) $(DEPCFLAGS) -c -o $@ $<
+	$(CXX) $(CFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
 %.S: %.o
 	objdump -S $< > $@
@@ -49,10 +49,10 @@ mttest: mttest.o misc.o checkpoint.o $(KVTREES) \
 	kvio.o libjson.a
 	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
-test_string: test_string.o string.o straccum.o
+test_string: test_string.o string.o straccum.o compiler.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
-test_atomics: test_atomics.o string.o straccum.o kvrandom.o json.o
+test_atomics: test_atomics.o string.o straccum.o kvrandom.o json.o compiler.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 config.h: stamp-h

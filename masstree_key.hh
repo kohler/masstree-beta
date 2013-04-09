@@ -185,7 +185,7 @@ struct key {
 	len_ = len;
     }
     void unshift() {
-	assert(is_shifted());
+	precondition(is_shifted());
 	s_ -= ikey_size;
 	ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, ikey_size);
 	len_ = ikey_size + 1;

@@ -6,6 +6,9 @@
 /* little endian */
 #undef ENDIAN_LITTLE
 
+/* Define to enable debugging assertions. */
+#undef HAVE_ASSERTIONS_ENABLED
+
 /* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
 
@@ -44,6 +47,9 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to enable invariant assertions. */
+#undef HAVE_INVARIANTS_ENABLED
+
 /* Define if you are using libjemalloc for malloc. */
 #undef HAVE_JEMALLOC
 
@@ -67,6 +73,9 @@
 
 /* Define if off_t and long long are the same type. */
 #undef HAVE_OFF_T_IS_LONG_LONG
+
+/* Define to enable precondition assertions. */
+#undef HAVE_PRECONDITIONS_ENABLED
 
 /* Define if size_t and unsigned are the same type. */
 #undef HAVE_SIZE_T_IS_UNSIGNED
@@ -197,9 +206,6 @@
 /* Maximum row length */
 #undef KVDB_MAX_ROW_LEN
 
-/* Define to disable debugging assertions. */
-#undef KVDB_NDEBUG
-
 /* Define if the default row type is kvdb_timed_array. */
 #undef KVDB_ROW_TYPE_ARRAY
 
@@ -260,6 +266,31 @@
 # endif
 #endif
 
-#if !KVDB_DEBUG && KVDB_NDEBUG
+#if !HAVE_ALL_ASSERTIONS_ENABLED && !HAVE_ASSERTIONS_ENABLED
 # define NDEBUG 1
+#endif
+
+/** @brief Assert macro that always runs. */
+extern void fail_mandatory_assert(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+#define mandatory_assert(x, ...) do { if (!(x)) fail_mandatory_assert(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+
+/** @brief Assert macro for invariants.
+
+    invariant(x) is executed if --enable-invariants or --enable-assertions. */
+extern void fail_invariant(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+#if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_INVARIANTS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_INVARIANTS_ENABLED
+#define invariant(x, ...) do { if (!(x)) fail_invariant(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+#else
+#define invariant(x, ...) do { } while (0)
+#endif
+
+/** @brief Assert macro for preconditions.
+
+    precondition(x) is executed if --enable-preconditions or
+    --enable-assertions. */
+extern void fail_precondition(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+#if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_PRECONDITIONS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_PRECONDITIONS_ENABLED
+#define precondition(x, ...) do { if (!(x)) fail_precondition(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+#else
+#define precondition(x, ...) do { } while (0)
 #endif

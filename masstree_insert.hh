@@ -107,7 +107,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 	// Position 0 is hard to reuse; ensure we reuse it last
 	permuter_type perm(n_->permutation_);
 	int zeroidx = find_lowest_zero_nibble(perm.value_from(0));
-	assert(perm[zeroidx] == 0 && zeroidx < n_->width);
+	invariant(perm[zeroidx] == 0 && zeroidx < n_->width);
 	if (zeroidx > perm.size() && n_->prev_) {
 	    perm.exchange(perm.size(), zeroidx);
 	    n_->permutation_ = perm.value();
@@ -139,7 +139,7 @@ template <typename P>
 void tcursor<P>::finish_insert()
 {
     permuter_type perm(n_->permutation_);
-    assert(perm.back() == kp_);
+    invariant(perm.back() == kp_);
     perm.insert_from_back(ki_);
     fence();
     n_->permutation_ = perm.value();

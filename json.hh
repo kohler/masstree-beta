@@ -466,12 +466,12 @@ inline void Json::ComplexJson::deref(json_type j) {
 }
 
 inline Json::ArrayJson* Json::ajson() const {
-    assert(u_.x.type == j_null || u_.x.type == j_array);
+    precondition(u_.x.type == j_null || u_.x.type == j_array);
     return u_.a.a;
 }
 
 inline Json::ObjectJson* Json::ojson() const {
-    assert(u_.x.type == j_null || u_.x.type == j_object);
+    precondition(u_.x.type == j_null || u_.x.type == j_object);
     return u_.o.o;
 }
 
@@ -696,7 +696,7 @@ inline Json::const_array_iterator operator-(Json::const_array_iterator a, Json::
 }
 
 inline Json::const_array_iterator::difference_type operator-(const Json::const_array_iterator& a, const Json::const_array_iterator& b) {
-    assert(a.j_ == b.j_);
+    precondition(a.j_ == b.j_);
     return a.i_ - b.i_;
 }
 
@@ -1616,7 +1616,7 @@ inline bool Json::empty() const {
 /** @brief Return the number of elements in this complex Json.
     @pre is_array() || is_object() || is_null() */
 inline Json::size_type Json::size() const {
-    assert(unsigned(u_.x.type) < unsigned(j_int));
+    precondition(unsigned(u_.x.type) < unsigned(j_int));
     return u_.x.c ? u_.x.c->size : 0;
 }
 /** @brief Test if this complex Json is shared. */
@@ -1732,7 +1732,7 @@ inline uint64_t Json::to_u64() const {
     @pre is_number()
     @sa to_i() */
 inline long Json::as_i() const {
-    assert(is_int() || is_double());
+    precondition(is_int() || is_double());
     return is_int() ? u_.i.x : long(u_.d.x);
 }
 
@@ -1775,7 +1775,7 @@ inline bool Json::to_d(double& x) const {
     @pre is_number()
     @sa to_d() */
 inline double Json::as_d() const {
-    assert(is_double() || is_int());
+    precondition(is_double() || is_int());
     return is_double() ? u_.d.x : double(u_.i.x);
 }
 
@@ -1818,7 +1818,7 @@ inline bool Json::to_b(bool& x) const {
     @pre is_bool()
     @sa to_b() */
 inline bool Json::as_b() const {
-    assert(is_bool());
+    precondition(is_bool());
     return u_.i.x;
 }
 
@@ -1874,7 +1874,7 @@ inline bool Json::to_s(String& x) const {
     @pre is_string()
     @sa to_s() */
 inline const String& Json::as_s() const {
-    assert(u_.x.type <= 0 && u_.x.c);
+    precondition(u_.x.type <= 0 && u_.x.c);
     return reinterpret_cast<const String&>(u_.str);
 }
 
@@ -1887,7 +1887,7 @@ inline const String& Json::as_s(const String& default_value) const {
 }
 
 inline void Json::force_number() {
-    assert((u_.x.type == j_null && !u_.x.c) || u_.x.type == j_int || u_.x.type == j_double);
+    precondition((u_.x.type == j_null && !u_.x.c) || u_.x.type == j_int || u_.x.type == j_double);
     if (u_.x.type == j_null && !u_.x.c)
 	u_.x.type = j_int;
 }
@@ -1899,7 +1899,7 @@ inline void Json::force_number() {
 
     Returns 0 if this is not an object Json. */
 inline Json::size_type Json::count(Str key) const {
-    assert(u_.x.type == j_null || u_.x.type == j_object);
+    precondition(u_.x.type == j_null || u_.x.type == j_object);
     return u_.o.o ? ojson()->find(key.data(), key.length()) >= 0 : 0;
 }
 
@@ -2093,10 +2093,10 @@ inline Json_object_str_proxy<Json> Json::operator[](const char* key) {
 /** @brief Return the value at @a key in an object Json.
     @pre is_object() && count(@a key) */
 inline const Json& Json::at(Str key) const {
-    assert(is_object() && u_.o.o);
+    precondition(is_object() && u_.o.o);
     ObjectJson *oj = ojson();
     int i = oj->find(key.data(), key.length());
-    assert(i >= 0);
+    precondition(i >= 0);
     return oj->item(i).v_.second;
 }
 
@@ -2105,19 +2105,19 @@ inline const Json& Json::at(Str key) const {
 
     Returns a newly-inserted null Json if !count(@a key). */
 inline Json& Json::at_insert(const String &key) {
-    assert(is_object());
+    precondition(is_object());
     return get_insert(key);
 }
 
 /** @overload */
 inline Json& Json::at_insert(Str key) {
-    assert(is_object());
+    precondition(is_object());
     return get_insert(key);
 }
 
 /** @overload */
 inline Json& Json::at_insert(const char *key) {
-    assert(is_object());
+    precondition(is_object());
     return get_insert(Str(key));
 }
 
@@ -2160,7 +2160,7 @@ inline Json& Json::unset(Str key) {
 
     An existing element with key @a x.first is not replaced. */
 inline std::pair<Json::object_iterator, bool> Json::insert(const object_value_type& x) {
-    assert(is_object());
+    precondition(is_object());
     uniqueify_object(false);
     ObjectJson *oj = ojson();
     int n = oj->n_, i = oj->find_insert(x.first, x.second);
@@ -2184,7 +2184,7 @@ inline Json::object_iterator Json::insert(object_iterator position, const object
     @pre is_object()
     @return Next iterator */
 inline Json::object_iterator Json::erase(Json::object_iterator it) {
-    assert(is_object() && it.live() && it.j_ == this);
+    precondition(is_object() && it.live() && it.j_ == this);
     uniqueify_object(false);
     ojson()->erase(it.i_);
     ++it;
@@ -2195,7 +2195,7 @@ inline Json::object_iterator Json::erase(Json::object_iterator it) {
     @pre is_object()
     @return Number of items removed */
 inline Json::size_type Json::erase(Str key) {
-    assert(is_object());
+    precondition(is_object());
     uniqueify_object(false);
     return ojson()->erase(key);
 }
@@ -2208,8 +2208,8 @@ inline Json::size_type Json::erase(Str key) {
     silently converted to empty objects, except that if @a x and this Json are
     both null, then this Json is left as null. */
 inline Json& Json::merge(const Json& x) {
-    assert(is_object() || is_null());
-    assert(x.is_object() || x.is_null());
+    precondition(is_object() || is_null());
+    precondition(x.is_object() || x.is_null());
     if (x.u_.o.o) {
 	uniqueify_object(false);
 	ObjectJson *oj = ojson(), *xoj = x.ojson();
@@ -2263,7 +2263,7 @@ inline Json& Json::get_insert(size_type x) {
 
     A null Json is treated like an empty array. */
 inline const Json& Json::at(size_type x) const {
-    assert(is_array());
+    precondition(is_array());
     return get(x);
 }
 
@@ -2272,7 +2272,7 @@ inline const Json& Json::at(size_type x) const {
 
     The array is extended if @a x is out of range. */
 inline Json& Json::at_insert(size_type x) {
-    assert(is_array());
+    precondition(is_array());
     return get_insert(x);
 }
 
@@ -2299,14 +2299,14 @@ inline Json_array_proxy<Json> Json::operator[](size_type x) {
 /** @brief Return the last array element.
     @pre is_array() && !empty() */
 inline const Json& Json::back() const {
-    assert(is_array() && u_.a.a && u_.a.a->size > 0);
+    precondition(is_array() && u_.a.a && u_.a.a->size > 0);
     return u_.a.a->a[u_.a.a->size - 1];
 }
 
 /** @brief Return a reference to the last array element.
     @pre is_array() && !empty() */
 inline Json& Json::back() {
-    assert(is_array() && u_.a.a && u_.a.a->size > 0);
+    precondition(is_array() && u_.a.a && u_.a.a->size > 0);
     uniqueify_array(false, 0);
     return u_.a.a->a[u_.a.a->size - 1];
 }
@@ -2344,7 +2344,7 @@ inline Json& Json::push_back(Json&& x) {
 /** @brief Remove the last element from an array.
     @pre is_array() && !empty() */
 inline void Json::pop_back() {
-    assert(is_array() && u_.a.a && u_.a.a->size > 0);
+    precondition(is_array() && u_.a.a && u_.a.a->size > 0);
     uniqueify_array(false, 0);
     --u_.a.a->size;
     u_.a.a->a[u_.a.a->size].~Json();
@@ -2368,18 +2368,18 @@ inline Json& Json::insert_back(T first, U... rest) {
 
 
 inline Json* Json::array_data() {
-    assert(is_null() || is_array());
+    precondition(is_null() || is_array());
     return u_.a.a ? u_.a.a->a : 0;
 }
 
 
 inline Json::const_object_iterator Json::cobegin() const {
-    assert(is_null() || is_object());
+    precondition(is_null() || is_object());
     return const_object_iterator(this, 0);
 }
 
 inline Json::const_object_iterator Json::coend() const {
-    assert(is_null() || is_object());
+    precondition(is_null() || is_object());
     return const_object_iterator(this, -1);
 }
 
@@ -2392,22 +2392,22 @@ inline Json::const_object_iterator Json::oend() const {
 }
 
 inline Json::object_iterator Json::obegin() {
-    assert(is_null() || is_object());
+    precondition(is_null() || is_object());
     return object_iterator(this, 0);
 }
 
 inline Json::object_iterator Json::oend() {
-    assert(is_null() || is_object());
+    precondition(is_null() || is_object());
     return object_iterator(this, -1);
 }
 
 inline Json::const_array_iterator Json::cabegin() const {
-    assert(is_null() || is_array());
+    precondition(is_null() || is_array());
     return const_array_iterator(this, 0);
 }
 
 inline Json::const_array_iterator Json::caend() const {
-    assert(is_null() || is_array());
+    precondition(is_null() || is_array());
     ArrayJson *aj = ajson();
     return const_array_iterator(this, aj ? aj->size : 0);
 }
@@ -2421,12 +2421,12 @@ inline Json::const_array_iterator Json::aend() const {
 }
 
 inline Json::array_iterator Json::abegin() {
-    assert(is_null() || is_array());
+    precondition(is_null() || is_array());
     return array_iterator(this, 0);
 }
 
 inline Json::array_iterator Json::aend() {
-    assert(is_null() || is_array());
+    precondition(is_null() || is_array());
     ArrayJson *aj = ajson();
     return array_iterator(this, aj ? aj->size : 0);
 }

@@ -683,6 +683,9 @@ enable_max_row_len
 enable_superpage
 enable_memdebug
 enable_assert
+enable_assertions
+enable_preconditions
+enable_invariants
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1305,14 +1308,17 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
-  --enable-row-type=ARG   Row type: bag array array_ver str, default bag
+  --enable-row-type=ARG   row type: bag array array_ver str, default bag
   --enable-max-key-len=ARG
-                          Maximum length of a key in bytes, default 255
+                          maximum length of a key in bytes, default 255
   --enable-max-row-len=ARG
-                          Maximum length of a row in bytes, default 65535
-  --disable-superpage     Disable superpage support
-  --enable-memdebug       Enable memory debugging
-  --disable-assert        Disable debugging assertions
+                          maximum length of a row in bytes, default 65535
+  --disable-superpage     disable superpage support
+  --enable-memdebug       enable memory debugging
+
+  --disable-assertions    disable debugging assertions
+  --disable-preconditions disable precondition assertions
+  --disable-invariants    disable invariant assertions
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -6081,13 +6087,57 @@ fi
 
 # Check whether --enable-assert was given.
 if test "${enable_assert+set}" = set; then :
-  enableval=$enable_assert;
+  enableval=$enable_assert; { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Use --disable-assertions instead of --disable-assert." >&5
+$as_echo "$as_me: WARNING: Use --disable-assertions instead of --disable-assert." >&2;}
 fi
 
-if test "$enable_assert" = no; then
+# Check whether --enable-assertions was given.
+if test "${enable_assertions+set}" = set; then :
+  enableval=$enable_assertions;
+fi
+
+if test "$enable_assertions" != no -o "(" -z "$enable_assertions" -a "$enable_assert" != no ")"; then
 
 cat >>confdefs.h <<_ACEOF
-#define KVDB_NDEBUG 1
+#define HAVE_ASSERTIONS_ENABLED 1
+_ACEOF
+
+fi
+
+# Check whether --enable-preconditions was given.
+if test "${enable_preconditions+set}" = set; then :
+  enableval=$enable_preconditions;
+fi
+
+if test "$enable_preconditions" = no; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_PRECONDITIONS_ENABLED 0
+_ACEOF
+
+elif test -n "$enable_preconditions"; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_PRECONDITIONS_ENABLED 1
+_ACEOF
+
+fi
+
+# Check whether --enable-invariants was given.
+if test "${enable_invariants+set}" = set; then :
+  enableval=$enable_invariants;
+fi
+
+if test "$enable_invariants" = no; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_INVARIANTS_ENABLED 0
+_ACEOF
+
+elif test -n "$enable_preconditions"; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_INVARIANTS_ENABLED 1
 _ACEOF
 
 fi

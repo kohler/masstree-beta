@@ -13,7 +13,7 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file is
  * legally binding.
  */
-#define KVDB_DEBUG 1
+#define HAVE_ALL_ASSERTIONS_ENABLED 1
 #include "compiler.hh"
 #include <stdlib.h>
 #include <algorithm>

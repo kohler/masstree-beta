@@ -52,11 +52,11 @@ class vec {
         return *this;
     }
     T &operator[](unsigned i) {
-        assert(i < size_);
+        precondition(i < size_);
         return a_[i];
     }
     const T &operator[](unsigned i) const {
-        assert(i < size_);
+        precondition(i < size_);
         return a_[i];
     }
     T &push_back(const T &t) {

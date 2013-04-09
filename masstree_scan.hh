@@ -308,7 +308,7 @@ int basic_table<P>::scan(H helper,
 	ikey_type x[(MaxKeyLen + sizeof(ikey_type) - 1)/sizeof(ikey_type)];
 	char s[MaxKeyLen];
     } keybuf;
-    assert(firstkey.len <= (int) sizeof(keybuf));
+    precondition(firstkey.len <= (int) sizeof(keybuf));
     memcpy(keybuf.s, firstkey.s, firstkey.len);
     key_type ka(keybuf.s, firstkey.len);
 

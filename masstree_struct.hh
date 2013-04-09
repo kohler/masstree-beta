@@ -136,7 +136,7 @@ struct internode : public node_base<P> {
     }
 
     void shift_from(int p, const internode<P> *x, int xp, int n) {
-	assert(x != this);
+	precondition(x != this);
 	if (n) {
 	    memcpy(ikey0_ + p, x->ikey0_ + xp, sizeof(ikey0_[0]) * n);
 	    memcpy(child_ + p + 1, x->child_ + xp + 1, sizeof(child_[0]) * n);
@@ -253,7 +253,7 @@ struct leaf : public node_base<P> {
 	: node_base<P>(true), nremoved_(0),
 	  permutation_(permuter_type::make_empty()),
 	  ksuf_(), parent_(), node_ts_(node_ts), iksuf_{} {
-	assert(sz % 64 == 0 && sz / 64 < 128);
+	precondition(sz % 64 == 0 && sz / 64 < 128);
 	extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
 	if (extrasize64_ > 0)
 	    new((void *)&iksuf_[0]) stringbag<uint16_t>(width, sz - sizeof(*this));
@@ -306,7 +306,7 @@ struct leaf : public node_base<P> {
 	return keylenx_has_ksuf(keylenx_[p]);
     }
     Str ksuf(int p) const {
-	assert(has_ksuf(p));
+	precondition(has_ksuf(p));
 	return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
     }
     static int keylenx_ikeylen(int keylenx) {
@@ -414,7 +414,7 @@ struct leaf : public node_base<P> {
 template <typename P>
 void basic_table<P>::initialize(threadinfo *ti)
 {
-    assert(!root_);
+    precondition(!root_);
     reinitialize(ti);
 }
 

@@ -278,7 +278,7 @@ AC_CHECK_FUNCS([clock_gettime])
 
 AC_ARG_ENABLE([row-type],
     [AS_HELP_STRING([--enable-row-type=ARG],
-                    [Row type: bag array array_ver str, default bag])],
+                    [row type: bag array array_ver str, default bag])],
     [ac_cv_row_type=$enableval], [ac_cv_row_type=bag])
 if test "$ac_cv_row_type" = array; then
     AC_DEFINE_UNQUOTED([KVDB_ROW_TYPE_ARRAY], [1], [Define if the default row type is kvdb_timed_array.])
@@ -294,19 +294,19 @@ fi
 
 AC_ARG_ENABLE([max-key-len],
     [AS_HELP_STRING([--enable-max-key-len=ARG],
-                    [Maximum length of a key in bytes, default 255])],
+                    [maximum length of a key in bytes, default 255])],
     [ac_cv_max_key_len=$enableval], [ac_cv_max_key_len=255])
 AC_DEFINE_UNQUOTED([KVDB_MAX_KEY_LEN], [$ac_cv_max_key_len], [Maximum key length])
 
 AC_ARG_ENABLE([max-row-len],
     [AS_HELP_STRING([--enable-max-row-len=ARG],
-                    [Maximum length of a row in bytes, default 65535])],
+                    [maximum length of a row in bytes, default 65535])],
     [ac_cv_max_row_len=$enableval], [ac_cv_max_row_len=65535])
 AC_DEFINE_UNQUOTED([KVDB_MAX_ROW_LEN], [$ac_cv_max_row_len], [Maximum row length])
 
 AC_ARG_ENABLE([superpage],
     [AS_HELP_STRING([--disable-superpage],
-	    [Disable superpage support])],
+	    [disable superpage support])],
     [ac_cv_superpage=$enableval], [ac_cv_superpage=yes])
 if test "$ac_cv_superpage" != no; then
     AC_DEFINE_UNQUOTED([HAVE_SUPERPAGE_ENABLED], [1], [Define if superpage support is enabled.])
@@ -314,20 +314,66 @@ fi
 
 AC_ARG_ENABLE([memdebug],
     [AS_HELP_STRING([--enable-memdebug],
-	    [Enable memory debugging])])
+	    [enable memory debugging])])
 if test "$enable_memdebug" = yes; then
     AC_DEFINE_UNQUOTED([HAVE_MEMDEBUG], [1], [Define if memory debugging support is enabled.])
 fi
 
 AC_ARG_ENABLE([assert],
-    [AS_HELP_STRING([--disable-assert],
-	    [Disable debugging assertions])])
-if test "$enable_assert" = no; then
-    AC_DEFINE_UNQUOTED([KVDB_NDEBUG], [1], [Define to disable debugging assertions.])
+    [],
+    [AC_MSG_WARN([Use --disable-assertions instead of --disable-assert.])])
+AC_ARG_ENABLE([assertions],
+    [AS_HELP_STRING([--disable-assertions],
+	    [disable debugging assertions])])
+if test "$enable_assertions" != no -o "(" -z "$enable_assertions" -a "$enable_assert" != no ")"; then
+    AC_DEFINE_UNQUOTED([HAVE_ASSERTIONS_ENABLED], [1], [Define to enable debugging assertions.])
 fi
 
-AH_BOTTOM([#if !KVDB_DEBUG && KVDB_NDEBUG
+AC_ARG_ENABLE([preconditions],
+    [AS_HELP_STRING([--disable-preconditions],
+            [disable precondition assertions])])
+if test "$enable_preconditions" = no; then
+    AC_DEFINE_UNQUOTED([HAVE_PRECONDITIONS_ENABLED], [0], [Define to enable precondition assertions.])
+elif test -n "$enable_preconditions"; then
+    AC_DEFINE_UNQUOTED([HAVE_PRECONDITIONS_ENABLED], [1], [Define to enable precondition assertions.])
+fi
+
+AC_ARG_ENABLE([invariants],
+    [AS_HELP_STRING([--disable-invariants],
+            [disable invariant assertions])])
+if test "$enable_invariants" = no; then
+    AC_DEFINE_UNQUOTED([HAVE_INVARIANTS_ENABLED], [0], [Define to enable invariant assertions.])
+elif test -n "$enable_preconditions"; then
+    AC_DEFINE_UNQUOTED([HAVE_INVARIANTS_ENABLED], [1], [Define to enable invariant assertions.])
+fi
+
+AH_BOTTOM([#if !HAVE_ALL_ASSERTIONS_ENABLED && !HAVE_ASSERTIONS_ENABLED
 # define NDEBUG 1
+#endif
+
+/** @brief Assert macro that always runs. */
+extern void fail_mandatory_assert(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+#define mandatory_assert(x, ...) do { if (!(x)) fail_mandatory_assert(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+
+/** @brief Assert macro for invariants.
+
+    invariant(x) is executed if --enable-invariants or --enable-assertions. */
+extern void fail_invariant(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+#if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_INVARIANTS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_INVARIANTS_ENABLED
+#define invariant(x, ...) do { if (!(x)) fail_invariant(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+#else
+#define invariant(x, ...) do { } while (0)
+#endif
+
+/** @brief Assert macro for preconditions.
+
+    precondition(x) is executed if --enable-preconditions or
+    --enable-assertions. */
+extern void fail_precondition(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+#if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_PRECONDITIONS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_PRECONDITIONS_ENABLED
+#define precondition(x, ...) do { if (!(x)) fail_precondition(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+#else
+#define precondition(x, ...) do { } while (0)
 #endif])
 
 AC_DEFINE_UNQUOTED([HAVE_UNALIGNED_ACCESS], [1], [Define if unaligned accesses are OK.])

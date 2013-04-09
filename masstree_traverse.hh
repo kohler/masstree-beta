@@ -126,14 +126,14 @@ template <typename P>
 internode<P> *node_base<P>::locked_parent(threadinfo *ti) const
 {
     const node_base<P> *n = this;
-    assert(!n->concurrent || n->locked());
+    precondition(!n->concurrent || n->locked());
     while (1) {
 	node_base<P> *p = n->parent();
 	if (!p)
 	    return 0;
 	nodeversion_type pv = p->lock(*p, ti->lock_fence(tc_internode_lock));
 	if (p == n->parent()) {
-	    assert(!p->isleaf());
+	    invariant(!p->isleaf());
 	    return static_cast<internode<P> *>(p);
 	}
 	p->unlock(pv);

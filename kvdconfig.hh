@@ -15,7 +15,6 @@
  */
 #ifndef KVDCONFIG_HH
 #define KVDCONFIG_HH 1
-#include "config.h"
 #include "shared_config.hh"
 
 enum { MaxCores = 48 };   // Maximum number of cores kvdb support

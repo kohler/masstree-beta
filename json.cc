@@ -227,7 +227,7 @@ template <typename T> bool string_to_int_key(const char *first,
 
 void Json::hard_uniqueify_array(bool convert, int ncap_in) {
     if (!convert)
-        assert(is_null() || is_array());
+        precondition(is_null() || is_array());
 
     rep_type old_u = u_;
 
@@ -275,7 +275,7 @@ void Json::hard_uniqueify_array(bool convert, int ncap_in) {
 
 void Json::hard_uniqueify_object(bool convert) {
     if (!convert)
-        assert(is_null() || is_object());
+        precondition(is_null() || is_object());
     ObjectJson* noj;
     if (u_.x.type == j_object && u_.o.o) {
         noj = new ObjectJson(*u_.o.o);
@@ -349,7 +349,7 @@ long Json::hard_to_i() const {
     default:
         if (!u_.x.c)
             return 0;
-        assert(u_.x.type <= 0);
+        invariant(u_.x.type <= 0);
 	const char *b = reinterpret_cast<const String&>(u_.str).c_str();
 	char *s;
 	long x = strtol(b, &s, 0);

@@ -23,7 +23,7 @@ template <typename P>
 bool tcursor<P>::gc_layer(threadinfo *ti)
 {
     find_locked(ti);
-    assert(!n_->deleted() && !n_->deleted_layer());
+    precondition(!n_->deleted() && !n_->deleted_layer());
 
     // find_locked might return early if another gc_layer attempt has
     // succeeded at removing multiple tree layers. So check that the whole
@@ -87,9 +87,9 @@ bool tcursor<P>::gc_layer(threadinfo *ti)
     }
 
     // child is an empty leaf: kill it
-    assert(!lf->prev_ && !lf->next_.ptr);
-    assert(!lf->deleted());
-    assert(!lf->deleted_layer());
+    invariant(!lf->prev_ && !lf->next_.ptr);
+    invariant(!lf->deleted());
+    invariant(!lf->deleted_layer());
     if (circular_int<kvtimestamp_t>::less(n_->node_ts_, lf->node_ts_))
 	n_->node_ts_ = lf->node_ts_;
     lf->mark_deleted_layer();	// NB DO NOT mark as deleted (see above)
@@ -185,11 +185,11 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
 
     while (1) {
 	internode_type *p = n->locked_parent(ti);
-	assert(p);
+	invariant(p);
 	n->unlock();
 
 	int kp = internode_type::bound_type::upper(ikey, *p);
-	assert(kp == 0 || key_compare(ikey, *p, kp - 1) == 0);
+	invariant(kp == 0 || key_compare(ikey, *p, kp - 1) == 0);
 
 	if (kp > 0) {
 	    p->mark_insert();
@@ -228,7 +228,7 @@ template <typename P>
 void tcursor<P>::collapse(internode_type *p, ikey_type ikey,
                           basic_table<P> &table, Str prefix, threadinfo *ti)
 {
-    assert(p && p->locked());
+    precondition(p && p->locked());
 
     while (1) {
 	internode_type *gp = p->locked_parent(ti);
@@ -240,7 +240,7 @@ void tcursor<P>::collapse(internode_type *p, ikey_type ikey,
 	}
 
 	int kp = key_upper_bound(ikey, *gp);
-	assert(gp->child_[kp] == p);
+	invariant(gp->child_[kp] == p);
 	gp->child_[kp] = p->child_[0];
 	p->child_[0]->set_parent(gp);
 
