@@ -192,16 +192,16 @@ struct query {
 	QT_Replay_Modify = 10
     };
 
-    void begin_get(Str key, Str req, struct kvout *kvout);
+    void begin_get(Str key, Str req, struct kvout* kvout);
     void begin_put(Str key, Str req);
     void begin_replay_put(Str key, Str req, kvtimestamp_t ts);
     void begin_replay_modify(Str key, Str req, kvtimestamp_t ts,
 			     kvtimestamp_t prev_ts);
     void begin_scan(Str startkey, int npairs, Str req,
-		    struct kvout *kvout);
-    void begin_checkpoint(ckstate *ck, Str startkey, Str endkey);
+		    struct kvout* kvout);
+    void begin_checkpoint(ckstate* ck, Str startkey, Str endkey);
     void begin_remove(Str key);
-    void begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo *ti);
+    void begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti);
     /** @brief Insert the string representation of a row from checkpoint.
      */
     void begin_ckp_put(Str key, Str ckv, kvtimestamp_t ts);
@@ -216,7 +216,7 @@ struct query {
     Str get1_value() const {
 	return val_;
     }
-    void begin_scan1(Str startkey, int npairs, struct kvout *kvout);
+    void begin_scan1(Str startkey, int npairs, kvout* kv);
     void begin_put1(Str key, Str value);
     void begin_replay_put1(Str key, Str value, kvtimestamp_t ts);
 
@@ -227,13 +227,13 @@ struct query {
         return qtimes_;
     }
 
-    inline bool emitrow(const R *v);
+    inline bool emitrow(const R* v);
     /** @return whether the scan should continue or not
      */
-    bool scanemit(Str k, const R *v);
+    bool scanemit(Str k, const R* v);
 
-    inline result_t apply_put(R *&value, bool has_value, threadinfo *ti);
-    inline bool apply_remove(R *&value, bool has_value, threadinfo *ti, kvtimestamp_t *node_ts = 0);
+    inline result_t apply_put(R*& value, bool has_value, threadinfo* ti);
+    inline bool apply_remove(R*& value, bool has_value, threadinfo* ti, kvtimestamp_t* node_ts = 0);
   private:
     typename R::change_t c_;
     typename R::fields_t f_;
@@ -241,39 +241,35 @@ struct query {
     loginfo::query_times qtimes_;
   public:
     Str key_;   // startkey for scan; key for others
-    kvout *kvout_;
+    kvout* kvout_;
     query_helper<R> helper_;
   private:
     int qt_;    // query type
-    ckstate *ck_;
+    ckstate* ck_;
     Str endkey_;
     Str val_;			// value for Get1 and CkpPut
-    void assign_timestamp(threadinfo *ti);
-    void assign_timestamp(threadinfo *ti, kvtimestamp_t t);
-    result_t apply_replay(R *&value, bool has_value, threadinfo *ti);
+    void assign_timestamp(threadinfo* ti);
+    void assign_timestamp(threadinfo* ti, kvtimestamp_t t);
+    result_t apply_replay(R*& value, bool has_value, threadinfo* ti);
 };
 
 template <typename R>
-void query<R>::begin_get(Str key, Str req, struct kvout *kvout) {
+void query<R>::begin_get(Str key, Str req, kvout* kv) {
     qt_ = QT_Get;
     key_ = key;
     R::parse_fields(req, f_);
-    kvout_ = kvout;
+    kvout_ = kv;
 }
 
 template <typename R>
-void
-query<R>::begin_put(Str key, Str req)
-{
+void query<R>::begin_put(Str key, Str req) {
     qt_ = QT_Put;
     key_ = key;
     R::parse_change(req, c_);
 }
 
 template <typename R>
-void
-query<R>::begin_replay_put(Str key, Str req, kvtimestamp_t ts)
-{
+void query<R>::begin_replay_put(Str key, Str req, kvtimestamp_t ts) {
     qt_ = QT_Replay_Put;
     key_ = key;
     R::parse_change(req, c_);
@@ -281,18 +277,14 @@ query<R>::begin_replay_put(Str key, Str req, kvtimestamp_t ts)
 }
 
 template <typename R>
-void
-query<R>::begin_put1(Str key, Str val)
-{
+void query<R>::begin_put1(Str key, Str val) {
     qt_ = QT_Put;
     key_ = key;
     R::make_put1_change(c_, val);
 }
 
 template <typename R>
-void
-query<R>::begin_replay_put1(Str key, Str value, kvtimestamp_t ts)
-{
+void query<R>::begin_replay_put1(Str key, Str value, kvtimestamp_t ts) {
     qt_ = QT_Replay_Put;
     key_ = key;
     R::make_put1_change(c_, value);
@@ -300,10 +292,8 @@ query<R>::begin_replay_put1(Str key, Str value, kvtimestamp_t ts)
 }
 
 template <typename R>
-void
-query<R>::begin_replay_modify(Str key, Str req,
-			      kvtimestamp_t ts, kvtimestamp_t prev_ts)
-{
+void query<R>::begin_replay_modify(Str key, Str req,
+                                   kvtimestamp_t ts, kvtimestamp_t prev_ts) {
     // XXX We assume that sizeof(row_delta_marker<R>) memory exists before
     // 'req's string data. We don't modify this memory but it must be
     // readable. This is OK for conventional log replay, but that's an ugly
@@ -317,34 +307,27 @@ query<R>::begin_replay_modify(Str key, Str req,
 }
 
 template <typename R>
-void
-query<R>::begin_scan(Str startkey, int npairs, Str req,
-		     struct kvout *kvout)
-{
+void query<R>::begin_scan(Str startkey, int npairs, Str req, kvout* kv) {
     assert(npairs > 0);
     qt_ = QT_Scan;
     key_ = startkey;
     R::parse_fields(req, f_);
     scan_npairs_ = npairs;
-    kvout_ = kvout;
+    kvout_ = kv;
 }
 
 template <typename R>
-void
-query<R>::begin_scan1(Str startkey, int npairs, struct kvout *kvout)
-{
+void query<R>::begin_scan1(Str startkey, int npairs, kvout* kv) {
     assert(npairs > 0);
     qt_ = QT_Scan;
     key_ = startkey;
     R::make_get1_fields(f_);
     scan_npairs_ = npairs;
-    kvout_ = kvout;
+    kvout_ = kv;
 }
 
 template <typename R>
-void
-query<R>::begin_checkpoint(ckstate *ck, Str startkey, Str endkey)
-{
+void query<R>::begin_checkpoint(ckstate* ck, Str startkey, Str endkey) {
     qt_ = QT_Ckp_Scan;
     key_ = startkey;
     ck_ = ck;
@@ -352,17 +335,13 @@ query<R>::begin_checkpoint(ckstate *ck, Str startkey, Str endkey)
 }
 
 template <typename R>
-void
-query<R>::begin_remove(Str key)
-{
+void query<R>::begin_remove(Str key) {
     qt_ = QT_Remove;
     key_ = key;
 }
 
 template <typename R>
-void
-query<R>::begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo *ti)
-{
+void query<R>::begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti) {
     qt_ = QT_Replay_Remove;
     key_ = key;
     qtimes_.ts = ts | 1;        // marker timestamp
@@ -372,9 +351,7 @@ query<R>::begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo *ti)
 }
 
 template <typename R>
-void
-query<R>::begin_ckp_put(Str key, Str val, kvtimestamp_t ts)
-{
+void query<R>::begin_ckp_put(Str key, Str val, kvtimestamp_t ts) {
     qt_ = QT_Ckp_Put;
     key_ = key;
     val_ = val;
@@ -382,9 +359,7 @@ query<R>::begin_ckp_put(Str key, Str val, kvtimestamp_t ts)
 }
 
 template <typename R>
-bool
-query<R>::scanemit(Str k, const R *v)
-{
+bool query<R>::scanemit(Str k, const R* v) {
     if (row_is_marker(v))
 	return true;
     if (qt_ == QT_Ckp_Scan) {
@@ -402,9 +377,7 @@ query<R>::scanemit(Str k, const R *v)
 }
 
 template <typename R>
-inline bool
-query<R>::emitrow(const R *v)
-{
+inline bool query<R>::emitrow(const R* v) {
     if (row_is_marker(v))
 	return false;
     else if (qt_ >= QT_Get1_Col0) {
@@ -418,9 +391,7 @@ query<R>::emitrow(const R *v)
 }
 
 template <typename R>
-inline void
-query<R>::assign_timestamp(threadinfo *ti)
-{
+inline void query<R>::assign_timestamp(threadinfo *ti) {
     if (qt_ < QT_MinReplay) {
 	qtimes_.ts = ti->update_timestamp();
         qtimes_.prev_ts = 0;
@@ -428,9 +399,7 @@ query<R>::assign_timestamp(threadinfo *ti)
 }
 
 template <typename R>
-inline void
-query<R>::assign_timestamp(threadinfo *ti, kvtimestamp_t min_ts)
-{
+inline void query<R>::assign_timestamp(threadinfo* ti, kvtimestamp_t min_ts) {
     if (qt_ < QT_MinReplay) {
 	qtimes_.ts = ti->update_timestamp(min_ts);
 	qtimes_.prev_ts = min_ts;
@@ -438,12 +407,10 @@ query<R>::assign_timestamp(threadinfo *ti, kvtimestamp_t min_ts)
 }
 
 template <typename R>
-result_t
-query<R>::apply_replay(R *&value, bool has_value, threadinfo *ti)
-{
+result_t query<R>::apply_replay(R*& value, bool has_value, threadinfo* ti) {
     assert(qt_ != QT_Ckp_Put || !has_value);
 
-    R **cur_value = &value;
+    R** cur_value = &value;
     if (!has_value)
 	*cur_value = 0;
 
@@ -458,7 +425,7 @@ query<R>::apply_replay(R *&value, bool has_value, threadinfo *ti)
 
     // if not modifying, delete everything earlier
     if (qt_ != QT_Replay_Modify)
-	while (R *old_value = *cur_value) {
+	while (R* old_value = *cur_value) {
 	    if (row_is_delta_marker(old_value)) {
 		ti->pstat.mark_delta_removed();
 		*cur_value = row_get_delta_marker(old_value)->prev_;
@@ -469,12 +436,12 @@ query<R>::apply_replay(R *&value, bool has_value, threadinfo *ti)
 
     // actually apply change
     if (qt_ == QT_Ckp_Put)
-        *cur_value = R::from_rowstr(val_, qtimes_.ts, *ti);
+        *cur_value = R::checkpoint_read(val_, qtimes_.ts, *ti);
     else if (qt_ != QT_Replay_Modify)
 	*cur_value = R::from_change(c_, qtimes_.ts, *ti);
     else {
 	if (*cur_value && (*cur_value)->ts_ == qtimes_.prev_ts) {
-	    R *old_value = *cur_value;
+	    R* old_value = *cur_value;
 	    *cur_value = old_value->update(c_, qtimes_.ts, *ti);
 	    if (*cur_value != old_value)
 		old_value->deallocate(*ti);
@@ -484,8 +451,8 @@ query<R>::apply_replay(R *&value, bool has_value, threadinfo *ti)
 	    val_.s -= sizeof(row_delta_marker<R>);
 	    val_.len += sizeof(row_delta_marker<R>);
 	    R::make_put1_change(c_, val_);
-	    R *new_value = R::from_change(c_, qtimes_.ts | 1, *ti);
-	    row_delta_marker<R> *dm = row_get_delta_marker(new_value, true);
+	    R* new_value = R::from_change(c_, qtimes_.ts | 1, *ti);
+	    row_delta_marker<R>* dm = row_get_delta_marker(new_value, true);
 	    dm->marker_type_ = row_marker::mt_delta;
 	    dm->prev_ts_ = qtimes_.prev_ts;
 	    dm->prev_ = *cur_value;
@@ -521,13 +488,11 @@ query<R>::apply_replay(R *&value, bool has_value, threadinfo *ti)
 }
 
 template <typename R>
-inline result_t
-query<R>::apply_put(R *&value, bool has_value, threadinfo *ti)
-{
+inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
     if (qt_ >= QT_MinReplay)
 	return apply_replay(value, has_value, ti);
 
-    if (loginfo *log = ti->ti_log) {
+    if (loginfo* log = ti->ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
@@ -539,14 +504,14 @@ query<R>::apply_put(R *&value, bool has_value, threadinfo *ti)
 	return Inserted;
     }
 
-    R *old_value = value;
+    R* old_value = value;
     assign_timestamp(ti, old_value->ts_);
     if (row_is_marker(old_value)) {
 	old_value->deallocate_rcu(*ti);
 	goto insert;
     }
 
-    R *updated = old_value->update(c_, qtimes_.ts, *ti);
+    R* updated = old_value->update(c_, qtimes_.ts, *ti);
     if (updated != old_value) {
 	value = updated;
 	old_value->deallocate_rcu_after_update(c_, *ti);
@@ -561,12 +526,12 @@ inline bool query<R>::apply_remove(R *&value, bool has_value, threadinfo *ti,
     if (!has_value)
 	return false;
 
-    if (loginfo *log = ti->ti_log) {
+    if (loginfo* log = ti->ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
 
-    R *old_value = value;
+    R* old_value = value;
     assign_timestamp(ti, old_value->ts_);
     if (node_ts && circular_int<kvtimestamp_t>::less_equal(*node_ts, qtimes_.ts))
 	*node_ts = qtimes_.ts + 2;

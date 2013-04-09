@@ -26,11 +26,6 @@ void checkpoint1(ckstate* c, Str key, const row_type* v) {
     kvwrite(c->vals, key.s, key.len);
     KVW(c->vals, (char)0);
     KVW(c->vals, v->ts_);
-    Str val;
-    if (row_type::has_priv_row_str)
-	v->to_priv_row_str(val);
-    else
-	v->to_shared_row_str(val, c->checkpoint_buffer_);
-    kvwrite_str(c->vals, val);
+    v->checkpoint_write(c->vals);
     c->count += 1;
 }

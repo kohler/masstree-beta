@@ -67,21 +67,13 @@ kvr_timed_str::filteremit(const fields_t &f, query<kvr_timed_str> &, struct kvou
     }
 }
 
-kvr_timed_str *
-kvr_timed_str::make_sized_row(int vlen, kvtimestamp_t ts, threadinfo &ti) {
+kvr_timed_str* kvr_timed_str::make_sized_row(int vlen, kvtimestamp_t ts,
+                                             threadinfo& ti) {
     size_t len = sizeof(kvr_timed_str) + vlen;
     kvr_timed_str *tv = (kvr_timed_str *) ti.allocate(len, memtag_row_str);
     tv->vallen_ = vlen;
     tv->ts_ = ts;
     return tv;
-}
-
-kvr_timed_str *
-kvr_timed_str::from_rowstr(Str rb, kvtimestamp_t ts, threadinfo &ti)
-{
-    kvr_timed_str *row = make_sized_row(rb.len, ts, ti);
-    memcpy(row->s_, rb.s, rb.len);
-    return row;
 }
 
 kvr_timed_str *

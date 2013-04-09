@@ -75,19 +75,13 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
 		key.len, key.s, KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
-    void to_priv_row_str(Str&) const {
-        assert(0 && "To private string is not available");
-    }
-    /** @brief Return the string representation of the value of the row
-     *    (excluding the timestamp).
-     *    The string is stored in @a buffer.
-     *    Should not use this version for timed_str.
-     */
-    void to_shared_row_str(Str &val, kvout *buffer) const;
-    static kvr_timed_array *from_rowstr(Str, kvtimestamp_t, threadinfo &);
+    static kvr_timed_array* checkpoint_read(Str str, kvtimestamp_t ts,
+                                            threadinfo& ti);
+    void checkpoint_write(kvout* buf) const;
+
     kvtimestamp_t ts_;
   private:
-    static int kvwrite_column(struct kvout *kvout, inline_string *c);
+    static int kvwrite_column(kvout* kv, inline_string* c);
     short ncol_;
     inline_string *cols_[0];
     inline size_t shallow_size() const {

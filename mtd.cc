@@ -1291,8 +1291,6 @@ void log_init() {
     threadinfo *ti = threadinfo::make(threadinfo::TI_CHECKPOINT, i);
     cks[i].state = CKState_Uninit;
     cks[i].ti = ti;
-    cks[i].checkpoint_buffer_ = new_bufkvout();
-    // XXX free_kvout(checkpoint_buffer_) later
     ret = pthread_create(&ti->ti_threadid, 0, conc_checkpointer, ti);
     mandatory_assert(ret == 0);
   }

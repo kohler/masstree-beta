@@ -98,16 +98,11 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
 		key.len, key.s, std::min(40, vallen_), s_,
 		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
-    void to_priv_row_str(Str& val) const {
-        val.assign(s_, vallen_);
-    }
-    void to_shared_row_str(Str&, kvout*) const {
-        assert(0 && "Use to_priv_rowstr for performance!");
-    }
-    /** @brief Return a row object from a string that is created by to_privstr
-     *    or to_sharedstr.
-     */
-    static kvr_timed_str* from_rowstr(Str, kvtimestamp_t, threadinfo&);
+
+    static inline kvr_timed_str* checkpoint_read(Str str, kvtimestamp_t ts,
+                                                 threadinfo& ti);
+    inline void checkpoint_write(kvout* kv) const;
+
     kvtimestamp_t ts_;
   private:
     int vallen_;
@@ -116,5 +111,16 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
     void update(const change_t &c);
     static kvr_timed_str *make_sized_row(int vlen, kvtimestamp_t ts, threadinfo &ti);
 };
+
+inline kvr_timed_str* kvr_timed_str::checkpoint_read(Str str, kvtimestamp_t ts,
+                                                     threadinfo& ti) {
+    kvr_timed_str* row = make_sized_row(str.len, ts, ti);
+    memcpy(row->s_, str.s, str.len);
+    return row;
+}
+
+inline void kvr_timed_str::checkpoint_write(kvout* kv) const {
+    kvwrite_str(kv, Str(s_, vallen_));
+}
 
 #endif

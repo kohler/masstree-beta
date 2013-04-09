@@ -98,27 +98,27 @@ kvr_timed_array_ver::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti) 
     return tv;
 }
 
-void
-kvr_timed_array_ver::to_shared_row_str(Str &val, kvout *buffer) const
-{
-    kvout_reset(buffer);
-    KVW(buffer, ncol_);
-    for (short i = 0; i < ncol_; i++)
-        kvwrite_inline_string(buffer, cols_[i]);
-    val.assign(buffer->buf, buffer->n);
+kvr_timed_array_ver* kvr_timed_array_ver::checkpoint_read(Str str,
+                                                          kvtimestamp_t ts,
+                                                          threadinfo& ti) {
+    kvin kv;
+    kvin_init(&kv, const_cast<char*>(str.s), str.len);
+    short ncol;
+    KVR(&kv, ncol);
+    kvr_timed_array_ver* row = make_sized_row(ncol, ts, ti);
+    for (short i = 0; i < ncol; i++)
+        row->cols_[i] = inline_string::allocate_read(&kv, ti);
+    return row;
 }
 
-kvr_timed_array_ver *
-kvr_timed_array_ver::from_rowstr(Str rstr, kvtimestamp_t ts, threadinfo &ti)
-{
-    struct kvin kvin;
-    kvin_init(&kvin, const_cast<char *>(rstr.s), rstr.len);
-    short ncol;
-    KVR(&kvin, ncol);
-    kvr_timed_array_ver *row = make_sized_row(ncol, ts, ti);
-    for (short i = 0; i < ncol; i++)
-        row->cols_[i] = inline_string::allocate_read(&kvin, ti);
-    return row;
+void kvr_timed_array_ver::checkpoint_write(kvout* kv) const {
+    int sz = sizeof(ncol_);
+    for (short i = 0; i != ncol_; ++i)
+        sz += sizeof(int) + (cols_[i] ? cols_[i]->length() : 0);
+    KVW(kv, sz);
+    KVW(kv, ncol_);
+    for (short i = 0; i != ncol_; i++)
+        kvwrite_inline_string(kv, cols_[i]);
 }
 
 kvr_timed_array_ver *

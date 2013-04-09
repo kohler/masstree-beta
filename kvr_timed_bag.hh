@@ -120,21 +120,15 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
 		    struct kvout *kvout) const;
     void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "");
-    void to_priv_row_str(Str& val) const {
-        val.assign(d_.s_, d_.pos_[d_.ncol_]);
-    }
     Str row_string() const {
 	return Str(d_.s_, d_.pos_[d_.ncol_]);
     }
-    void to_shared_row_str(Str &, kvout *) const {
-        assert(0 && "Use to_priv_rowstr for performance!");
-    }
-    /** @brief Return a row object from a string that is created by to_privstr
-     *    or to_sharedstr.
-     */
+
     template <typename ALLOC>
-    static kvr_timed_bag<O> *from_rowstr(Str, kvtimestamp_t,
-					 ALLOC &);
+    static kvr_timed_bag<O>* checkpoint_read(Str str, kvtimestamp_t ts,
+                                             ALLOC& ti);
+    inline void checkpoint_write(kvout* kv) const;
+
     kvtimestamp_t ts_;
   private:
     bagdata d_;
@@ -226,13 +220,18 @@ void kvr_timed_bag<O>::filteremit(const fields_t &f, query<kvr_timed_bag<O> > &,
 }
 
 template <typename O> template <typename ALLOC>
-kvr_timed_bag<O> *kvr_timed_bag<O>::from_rowstr(Str rb, kvtimestamp_t ts,
-						ALLOC &ti)
-{
-    kvr_timed_bag<O> *row = (kvr_timed_bag<O> *) ti.allocate(sizeof(kvtimestamp_t) + rb.len);
+inline kvr_timed_bag<O>* kvr_timed_bag<O>::checkpoint_read(Str str,
+                                                           kvtimestamp_t ts,
+                                                           ALLOC& ti) {
+    kvr_timed_bag<O>* row = (kvr_timed_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + str.len);
     row->ts_ = ts;
-    memcpy(row->d_.s_, rb.s, rb.len);
+    memcpy(row->d_.s_, str.s, str.len);
     return row;
+}
+
+template <typename O>
+inline void kvr_timed_bag<O>::checkpoint_write(kvout* kv) const {
+    kvwrite_str(kv, Str(d_.s_, d_.pos_[d_.ncol_]));
 }
 
 template <typename O>

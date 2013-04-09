@@ -30,7 +30,6 @@ struct ckstate {
     volatile int state;
     threadinfo *ti;
     query<row_type> q;
-    kvout *checkpoint_buffer_;	// used during checkpoint operations
 };
 
 #endif
