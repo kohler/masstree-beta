@@ -10,8 +10,8 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #ifndef MASSTREE_STRUCT_HH
 #define MASSTREE_STRUCT_HH
@@ -36,8 +36,8 @@ struct make_prefetcher {
 };
 
 template <typename P>
-struct node_base : public make_nodeversion<P>::type {
-
+class node_base : public make_nodeversion<P>::type {
+  public:
     static constexpr bool concurrent = P::concurrent;
     static constexpr int nikey = 1;
     typedef leaf<P> leaf_type;
@@ -55,27 +55,27 @@ struct node_base : public make_nodeversion<P>::type {
 
     int size() const {
 	if (this->isleaf())
-	    return static_cast<const leaf_type *>(this)->size();
+	    return static_cast<const leaf_type*>(this)->size();
 	else
-	    return static_cast<const internode_type *>(this)->size();
+	    return static_cast<const internode_type*>(this)->size();
     }
 
-    inline base_type *parent() const {
+    inline base_type* parent() const {
         // almost always an internode
 	if (this->isleaf())
-	    return static_cast<const leaf_type *>(this)->parent_;
+	    return static_cast<const leaf_type*>(this)->parent_;
 	else
-	    return static_cast<const internode_type *>(this)->parent_;
+	    return static_cast<const internode_type*>(this)->parent_;
     }
-    inline internode_type *locked_parent(threadinfo *ti) const;
-    inline void set_parent(base_type *p) {
+    inline internode_type* locked_parent(threadinfo* ti) const;
+    inline void set_parent(base_type* p) {
 	if (this->isleaf())
-	    static_cast<leaf_type *>(this)->parent_ = p;
+	    static_cast<leaf_type*>(this)->parent_ = p;
 	else
-	    static_cast<internode_type *>(this)->parent_ = p;
+	    static_cast<internode_type*>(this)->parent_ = p;
     }
-    inline base_type *unsplit_ancestor() const {
-	base_type *x = const_cast<base_type *>(this), *p;
+    inline base_type* unsplit_ancestor() const {
+	base_type* x = const_cast<base_type*>(this), *p;
 	while (x->has_split() && (p = x->parent()))
 	    x = p;
 	return x;
@@ -86,13 +86,12 @@ struct node_base : public make_nodeversion<P>::type {
 	    ::prefetch((const char *) this + i);
     }
 
-    void print(FILE *f, const char *prefix, int indent, int kdepth);
-
+    void print(FILE* f, const char* prefix, int indent, int kdepth);
 };
 
 template <typename P>
-struct internode : public node_base<P> {
-
+class internode : public node_base<P> {
+  public:
     static constexpr int width = P::internode_width;
     typedef key<typename P::ikey_type> key_type;
     typedef typename P::ikey_type ikey_type;
@@ -100,18 +99,18 @@ struct internode : public node_base<P> {
 
     uint8_t nkeys_;
     ikey_type ikey0_[width];
-    node_base<P> *child_[width + 1];
-    node_base<P> *parent_;
+    node_base<P>* child_[width + 1];
+    node_base<P>* parent_;
     kvtimestamp_t created_at_[P::debug_level > 0];
 
     internode()
 	: node_base<P>(false), nkeys_(0), parent_() {
     }
 
-    static internode<P> *make(threadinfo *ti) {
-	void *ptr = ti->allocate_aligned(sizeof(internode<P>),
+    static internode<P>* make(threadinfo* ti) {
+	void* ptr = ti->allocate_aligned(sizeof(internode<P>),
 					 memtag_masstree_internode, ta_tree);
-	internode<P> *n = new(ptr) internode<P>;
+	internode<P>* n = new(ptr) internode<P>;
 	assert(n);
 	if (P::debug_level > 0)
 	    n->created_at_[0] = ti->operation_timestamp();
@@ -129,13 +128,13 @@ struct internode : public node_base<P> {
 	return ikey0_[p];
     }
 
-    void assign(int p, ikey_type ikey, node_base<P> *child) {
+    void assign(int p, ikey_type ikey, node_base<P>* child) {
 	child->set_parent(this);
 	child_[p + 1] = child;
 	ikey0_[p] = ikey;
     }
 
-    void shift_from(int p, const internode<P> *x, int xp, int n) {
+    void shift_from(int p, const internode<P>* x, int xp, int n) {
 	precondition(x != this);
 	if (n) {
 	    memcpy(ikey0_ + p, x->ikey0_ + xp, sizeof(ikey0_[0]) * n);
@@ -158,17 +157,17 @@ struct internode : public node_base<P> {
 	    ::prefetch((const char *) this + i);
     }
 
-    void print(FILE *f, const char *prefix, int indent, int kdepth);
+    void print(FILE* f, const char* prefix, int indent, int kdepth);
 
-    void deallocate_rcu(threadinfo *ti) {
+    void deallocate_rcu(threadinfo* ti) {
 	ti->deallocate_aligned_rcu(this, sizeof(*this), memtag_masstree_internode,
 				   ta_tree, 0);
     }
-
 };
 
 template <typename P>
-struct leafvalue {
+class leafvalue {
+  public:
     typedef typename P::value_type value_type;
     typedef typename make_prefetcher<P>::type prefetcher_type;
 
@@ -177,7 +176,7 @@ struct leafvalue {
     leafvalue(value_type v) {
 	u_.v = v;
     }
-    leafvalue(node_base<P> *n) {
+    leafvalue(node_base<P>* n) {
 	u_.x = reinterpret_cast<uintptr_t>(n);
     }
 
@@ -196,12 +195,12 @@ struct leafvalue {
     value_type value() const {
 	return u_.v;
     }
-    value_type &value() {
+    value_type& value() {
 	return u_.v;
     }
 
-    node_base<P> *node() const {
-	return reinterpret_cast<node_base<P> *>(u_.x);
+    node_base<P>* node() const {
+	return reinterpret_cast<node_base<P>*>(u_.x);
     }
 
     void prefetch(int keylenx) const {
@@ -212,18 +211,16 @@ struct leafvalue {
     }
 
   private:
-
     union {
-	node_base<P> *n;
+	node_base<P>* n;
 	value_type v;
 	uintptr_t x;
     } u_;
-
 };
 
 template <typename P>
-struct leaf : public node_base<P> {
-
+class leaf : public node_base<P> {
+  public:
     static constexpr int width = P::leaf_width;
     typedef key<typename P::ikey_type> key_type;
     typedef typename node_base<P>::leafvalue_type leafvalue_type;
@@ -237,14 +234,14 @@ struct leaf : public node_base<P> {
     typename permuter_type::storage_type permutation_;
     ikey_type ikey0_[width];
     leafvalue_type lv_[width];
-    stringbag<uint32_t> *ksuf_;	// a real rockstar would save this space
+    stringbag<uint32_t>* ksuf_;	// a real rockstar would save this space
 				// when it is unsed
     union {
-	leaf<P> *ptr;
+	leaf<P>* ptr;
 	uintptr_t x;
     } next_;
-    leaf<P> *prev_;
-    node_base<P> *parent_;
+    leaf<P>* prev_;
+    node_base<P>* parent_;
     kvtimestamp_t node_ts_;
     kvtimestamp_t created_at_[P::debug_level > 0];
     stringbag<uint16_t> iksuf_[0];
@@ -259,10 +256,10 @@ struct leaf : public node_base<P> {
 	    new((void *)&iksuf_[0]) stringbag<uint16_t>(width, sz - sizeof(*this));
     }
 
-    static leaf<P> *make(int sb_size, kvtimestamp_t node_ts, threadinfo *ti) {
+    static leaf<P>* make(int sb_size, kvtimestamp_t node_ts, threadinfo* ti) {
 	size_t sz = ti->aligned_size(sizeof(leaf<P>) + std::min(sb_size, 128));
-	void *ptr = ti->allocate_aligned(sz, memtag_masstree_leaf, ta_tree);
-	leaf<P> *n = new(ptr) leaf<P>(sz, node_ts);
+	void* ptr = ti->allocate_aligned(sz, memtag_masstree_leaf, ta_tree);
+	leaf<P>* n = new(ptr) leaf<P>(sz, node_ts);
 	assert(n);
 	if (P::debug_level > 0)
 	    n->created_at_[0] = ti->operation_timestamp();
@@ -330,17 +327,17 @@ struct leaf : public node_base<P> {
 	else
 	    return iksuf_[0].size();
     }
-    bool ksuf_equals(int p, const key_type &ka) {
+    bool ksuf_equals(int p, const key_type& ka) {
 	// Precondition: keylenx_[p] == ka.ikeylen() && ikey0_[p] == ka.ikey()
 	return ksuf_equals(p, ka, keylenx_[p]);
     }
-    bool ksuf_equals(int p, const key_type &ka, int keylenx) {
+    bool ksuf_equals(int p, const key_type& ka, int keylenx) {
 	// Precondition: keylenx_[p] == ka.ikeylen() && ikey0_[p] == ka.ikey()
 	return !keylenx_has_ksuf(keylenx)
 	    || (!ksuf_ && iksuf_[0].equals_sloppy(p, ka.suffix()))
 	    || (ksuf_ && ksuf_->equals_sloppy(p, ka.suffix()));
     }
-    int ksuf_compare(int p, const key_type &ka) {
+    int ksuf_compare(int p, const key_type& ka) {
 	if (!has_ksuf(p))
 	    return 0;
 	else if (!ksuf_)
@@ -356,32 +353,32 @@ struct leaf : public node_base<P> {
 	nremoved_ = width + 1;
     }
 
-    void assign(int p, const key_type &ka, threadinfo *ti) {
+    void assign(int p, const key_type& ka, threadinfo* ti) {
 	lv_[p] = leafvalue_type::make_empty();
 	if (ka.has_suffix())
 	    assign_ksuf(p, ka.suffix(), false, ti);
 	ikey0_[p] = ka.ikey();
 	keylenx_[p] = ka.ikeylen();
     }
-    void assign_initialize(int p, const key_type &ka, threadinfo *ti) {
+    void assign_initialize(int p, const key_type& ka, threadinfo* ti) {
 	lv_[p] = leafvalue_type::make_empty();
 	if (ka.has_suffix())
 	    assign_ksuf(p, ka.suffix(), true, ti);
 	ikey0_[p] = ka.ikey();
 	keylenx_[p] = ka.ikeylen();
     }
-    void assign_initialize(int p, leaf<P> *x, int xp, threadinfo *ti) {
+    void assign_initialize(int p, leaf<P>* x, int xp, threadinfo* ti) {
 	lv_[p] = x->lv_[xp];
 	if (x->has_ksuf(xp))
 	    assign_ksuf(p, x->ksuf(xp), true, ti);
 	ikey0_[p] = x->ikey0_[xp];
 	keylenx_[p] = x->keylenx_[xp];
     }
-    void assign_ksuf(int p, Str s, bool initializing, threadinfo *ti) {
+    void assign_ksuf(int p, Str s, bool initializing, threadinfo* ti) {
 	if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
 	    hard_assign_ksuf(p, s, initializing, ti);
     }
-    void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo *ti);
+    void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo* ti);
 
     void prefetch() const {
 	for (int i = 64; i < std::min(16 * width + 1, 4 * 64); i += 64)
@@ -394,33 +391,30 @@ struct leaf : public node_base<P> {
 	}
     }
 
-    void print(FILE *f, const char *prefix, int indent, int kdepth);
+    void print(FILE* f, const char* prefix, int indent, int kdepth);
 
-    leaf<P> *safe_next() const {
-	return reinterpret_cast<leaf<P> *>(next_.x & ~(uintptr_t) 1);
+    leaf<P>* safe_next() const {
+	return reinterpret_cast<leaf<P>*>(next_.x & ~(uintptr_t) 1);
     }
 
-    void deallocate_rcu(threadinfo *ti) {
+    void deallocate_rcu(threadinfo* ti) {
 	if (ksuf_)
 	    ti->deallocate_rcu(ksuf_, ksuf_->allocated_size(),
 			       memtag_masstree_ksuffixes, ta_tree, 0);
 	ti->deallocate_aligned_rcu(this, allocated_size(),
 				   memtag_masstree_leaf, ta_tree, 0);
     }
-
 };
 
 
 template <typename P>
-void basic_table<P>::initialize(threadinfo *ti)
-{
+void basic_table<P>::initialize(threadinfo *ti) {
     precondition(!root_);
     reinitialize(ti);
 }
 
 template <typename P>
-void basic_table<P>::reinitialize(threadinfo *ti)
-{
+void basic_table<P>::reinitialize(threadinfo *ti) {
     typename node_type::leaf_type *n = node_type::leaf_type::make(0, 0, ti);
     n->next_.ptr = n->prev_ = 0;
     n->parent_ = 0;

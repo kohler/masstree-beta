@@ -10,16 +10,15 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #include "kvrow.hh"
 #include "kvr_timed_array.hh"
 #include <string.h>
 
-kvr_timed_array *
-kvr_timed_array::update(const change_t &c, kvtimestamp_t ts, threadinfo &ti) const
-{
+kvr_timed_array* kvr_timed_array::update(const change_t& c, kvtimestamp_t ts,
+                                         threadinfo& ti) const {
     assert(ts >= ts_);
     kvr_timed_array *row = make_sized_row(std::max(count_columns(c), (int)ncol_),
                                           ts, ti);
@@ -30,18 +29,14 @@ kvr_timed_array::update(const change_t &c, kvtimestamp_t ts, threadinfo &ti) con
     return row;
 }
 
-void
-kvr_timed_array::update(const change_t &c, threadinfo &ti)
-{
+void kvr_timed_array::update(const change_t& c, threadinfo& ti) {
     change_t::const_iterator cb = c.begin(), ce = c.end();
     for (; cb != ce; ++cb)
 	cols_[cb->c_fid] = inline_string::allocate(cb->c_value, ti);
 }
 
-void
-kvr_timed_array::filteremit(const fields_t &f, query<kvr_timed_array> &,
-			    struct kvout *kvout) const
-{
+void kvr_timed_array::filteremit(const fields_t& f, query<kvr_timed_array>&,
+                                 struct kvout* kvout) const {
     if (f.size() == 0) {
         KVW(kvout, ncol_);
         for (short i = 0; i < ncol_; i++)
@@ -54,9 +49,8 @@ kvr_timed_array::filteremit(const fields_t &f, query<kvr_timed_array> &,
     }
 }
 
-kvr_timed_array *
-kvr_timed_array::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti)
-{
+kvr_timed_array* kvr_timed_array::make_sized_row(int ncol, kvtimestamp_t ts,
+                                                 threadinfo& ti) {
     kvr_timed_array *tv;
     size_t len = sizeof(*tv) + ncol * sizeof(tv->cols_[0]);
     tv = (kvr_timed_array *) ti.allocate(len, memtag_row_array);
@@ -66,9 +60,7 @@ kvr_timed_array::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti)
     return tv;
 }
 
-void
-kvr_timed_array::to_shared_row_str(Str &val, kvout *buffer) const
-{
+void kvr_timed_array::to_shared_row_str(Str& val, kvout* buffer) const {
     kvout_reset(buffer);
     KVW(buffer, ncol_);
     for (short i = 0; i < ncol_; i++)
@@ -76,9 +68,8 @@ kvr_timed_array::to_shared_row_str(Str &val, kvout *buffer) const
     val.assign(buffer->buf, buffer->n);
 }
 
-kvr_timed_array *
-kvr_timed_array::from_rowstr(Str rstr, kvtimestamp_t ts, threadinfo &ti)
-{
+kvr_timed_array* kvr_timed_array::from_rowstr(Str rstr, kvtimestamp_t ts,
+                                              threadinfo& ti) {
     struct kvin kvin;
     kvin_init(&kvin, const_cast<char *>(rstr.s), rstr.len);
     short ncol;
@@ -89,35 +80,30 @@ kvr_timed_array::from_rowstr(Str rstr, kvtimestamp_t ts, threadinfo &ti)
     return row;
 }
 
-kvr_timed_array *
-kvr_timed_array::from_change(const change_t &c, kvtimestamp_t ts, threadinfo &ti)
-{
+kvr_timed_array* kvr_timed_array::from_change(const change_t& c,
+                                              kvtimestamp_t ts,
+                                              threadinfo& ti) {
     kvr_timed_array *row = make_sized_row(count_columns(c), ts, ti);
     row->update(c, ti);
     return row;
 }
 
-void
-kvr_timed_array::deallocate(threadinfo &ti)
-{
+void kvr_timed_array::deallocate(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
         if (cols_[i])
 	    cols_[i]->deallocate(ti);
     ti.deallocate(this, shallow_size(), memtag_row_array);
 }
 
-void
-kvr_timed_array::deallocate_rcu(threadinfo &ti)
-{
+void kvr_timed_array::deallocate_rcu(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
         if (cols_[i])
 	    cols_[i]->deallocate_rcu(ti);
     ti.deallocate_rcu(this, shallow_size(), memtag_row_array);
 }
 
-void
-kvr_timed_array::deallocate_rcu_after_update(const change_t &c, threadinfo &ti)
-{
+void kvr_timed_array::deallocate_rcu_after_update(const change_t& c,
+                                                  threadinfo& ti) {
     change_t::const_iterator cb = c.begin(), ce = c.end();
     for (; cb != ce && cb->c_fid < ncol_; ++cb)
 	if (cols_[cb->c_fid])
@@ -125,9 +111,8 @@ kvr_timed_array::deallocate_rcu_after_update(const change_t &c, threadinfo &ti)
     ti.deallocate_rcu(this, shallow_size(), memtag_row_array);
 }
 
-void
-kvr_timed_array::deallocate_after_failed_update(const change_t &c, threadinfo &ti)
-{
+void kvr_timed_array::deallocate_after_failed_update(const change_t& c,
+                                                     threadinfo& ti) {
     change_t::const_iterator cb = c.begin(), ce = c.end();
     for (; cb != ce; ++cb)
 	if (cols_[cb->c_fid])

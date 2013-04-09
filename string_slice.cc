@@ -10,7 +10,7 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #include "string_slice.hh"

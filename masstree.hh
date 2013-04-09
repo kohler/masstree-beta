@@ -10,11 +10,11 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #ifndef MASSTREE_HH
-#define MASSTREE_HH 1
+#define MASSTREE_HH
 #include "compiler.hh"
 #include "str.hh"
 #include "ksearch.hh"
@@ -36,11 +36,11 @@ template <int LW, int IW> constexpr int nodeparams<LW, IW>::leaf_width;
 template <int LW, int IW> constexpr int nodeparams<LW, IW>::internode_width;
 template <int LW, int IW> constexpr int nodeparams<LW, IW>::debug_level;
 
-template <typename P> struct node_base;
-template <typename P> struct leaf;
-template <typename P> struct internode;
-template <typename P> struct leafvalue;
-template <typename P> struct key;
+template <typename P> class node_base;
+template <typename P> class leaf;
+template <typename P> class internode;
+template <typename P> class leafvalue;
+template <typename P> class key;
 template <typename P> class basic_table;
 template <typename P> class unlocked_tcursor;
 template <typename P> class tcursor;

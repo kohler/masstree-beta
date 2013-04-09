@@ -10,8 +10,8 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #ifndef KVIO_H
 #define KVIO_H
@@ -23,102 +23,90 @@
 #include <stdlib.h>
 
 struct kvin {
-  int fd;
-  char *buf;
-  int len; // underlying size of buf[]
-  // buf[i0..i1-1] are valid
-  int i0;
-  int i1;
+    int fd;
+    char* buf;
+    int len; // underlying size of buf[]
+    // buf[i0..i1-1] are valid
+    int i0;
+    int i1;
 };
 
-struct kvin *new_kvin(int fd, int buflen);
-struct kvin *new_bufkvin(char *buf);
-void kvin_init(struct kvin *kvin, char *buf, int len);
-void kvin_setlen(struct kvin *, int len);
-char *kvin_skip(struct kvin *, int n);
-void free_kvin(struct kvin *kvin);
-int kvread(struct kvin *kvin, char *buf, int n);
-int kvcheck(struct kvin *kvin, int tryhard);
-int mayblock_kvoneread(struct kvin *kvin);
+kvin* new_kvin(int fd, int buflen);
+kvin* new_bufkvin(char* buf);
+void kvin_init(kvin* kv, char* buf, int len);
+void kvin_setlen(kvin* kv, int len);
+char* kvin_skip(kvin* kv, int n);
+void free_kvin(kvin* kv);
+int kvread(kvin* kv, char* buf, int n);
+int kvcheck(kvin* kv, int tryhard);
+int mayblock_kvoneread(kvin* kv);
 
 struct kvout {
-  int fd;
-  char *buf;
-  uint64_t len; // allocated size of buf
-  uint64_t n;   // # of chars we've written to buf
+    int fd;
+    char* buf;
+    uint64_t len; // allocated size of buf
+    uint64_t n;   // # of chars we've written to buf
 };
 
-struct kvout *new_kvout(int fd, int buflen);
-struct kvout *new_bufkvout();
-void kvout_reset(struct kvout *kvout);
-void free_kvout(struct kvout *kvout);
-int kvwrite(struct kvout *kvout, const void *buf, unsigned int n);
-void kvflush(struct kvout *kvout);
+kvout* new_kvout(int fd, int buflen);
+kvout* new_bufkvout();
+void kvout_reset(kvout* kv);
+void free_kvout(kvout* kv);
+int kvwrite(kvout* kv, const void* buf, unsigned int n);
+void kvflush(kvout* kv);
 
 template <typename T>
-inline int
-KVR(struct kvin *kvin, T &x)
-{
-  return kvread(kvin, (char *)&x, sizeof(T));
+inline int KVR(kvin* kv, T& x) {
+    return kvread(kv, (char*) &x, sizeof(T));
 }
 
 template <typename T>
-inline int
-KVW(struct kvout *kvout, const T &x)
-{
-  if (kvout->len - kvout->n >= (int) sizeof(x)) {
-    *(T *)(kvout->buf + kvout->n) = x;
-    kvout->n += sizeof(x);
-  } else {
-    kvwrite(kvout, &x, sizeof(x));
-  }
-  return sizeof(x);
+inline int KVW(kvout* kv, const T& x) {
+    if (kv->len - kv->n >= (int) sizeof(x)) {
+        *(T*) (kv->buf + kv->n) = x;
+        kv->n += sizeof(x);
+    } else
+        kvwrite(kv, &x, sizeof(x));
+    return sizeof(x);
 }
 
 template <typename T>
-inline int
-KVW(struct kvout *kvout, const volatile T &x)
-{
-    return KVW(kvout, (const T &)x);
+inline int KVW(kvout* kv, const volatile T& x) {
+    return KVW(kv, (const T &)x);
 }
 
-inline int kvread_str_inplace(struct kvin *kvin, Str &v)
-{
-    KVR(kvin, v.len);
-    v.s = kvin_skip(kvin, v.len);
+inline int kvread_str_inplace(kvin* kv, Str& v) {
+    KVR(kv, v.len);
+    v.s = kvin_skip(kv, v.len);
     return sizeof(v.len) + v.len;
 }
 
-inline int kvread_str_alloc(struct kvin *kvin, Str &v)
-{
-    KVR(kvin, v.len);
+inline int kvread_str_alloc(kvin* kv, Str& v) {
+    KVR(kv, v.len);
     char *buf = (char *)malloc(v.len);
-    kvread(kvin, buf, v.len);
+    kvread(kv, buf, v.len);
     v.s = buf;
     return sizeof(v.len) + v.len;
 }
 
-inline int kvread_str(struct kvin *kvin, char *buf, int max, int &vlen)
-{
-    KVR(kvin, vlen);
+inline int kvread_str(kvin* kv, char* buf, int max, int& vlen) {
+    KVR(kv, vlen);
     mandatory_assert(vlen <= max);
-    kvread(kvin, buf, vlen);
+    kvread(kv, buf, vlen);
     return sizeof(vlen) + vlen;
 }
 
-inline int kvwrite_str(struct kvout *kvout, Str v)
-{
-    KVW(kvout, (int)v.len);
-    kvwrite(kvout, v.s, v.len);
+inline int kvwrite_str(kvout* kv, Str v) {
+    KVW(kv, (int)v.len);
+    kvwrite(kv, v.s, v.len);
     return sizeof(v.len) + v.len;
 }
 
-inline int kvwrite_inline_string(struct kvout *kvout, inline_string *s)
-{
+inline int kvwrite_inline_string(kvout* kv, const inline_string* s) {
     if (!s)
-        return kvwrite_str(kvout, Str());
+        return kvwrite_str(kv, Str());
     else
-        return kvwrite_str(kvout, Str(s->s, s->len));
+        return kvwrite_str(kv, Str(s->s, s->len));
 }
 
 /** @brief Read a row from kvin. The row is serialized by row_type::filteremit.
@@ -126,16 +114,16 @@ inline int kvwrite_inline_string(struct kvout *kvout, inline_string *s)
  *    may prefer an STL based interface, while kvd internally does not use STL.
  *    Here we provide an STL based interface for the client side.
  */
-inline int kvread_row(struct kvin *kvin, std::vector<std::string> &row) {
+inline int kvread_row(struct kvin* kv, std::vector<std::string>& row) {
     short n;
-    if(KVR(kvin, n) != sizeof(n))
+    if (KVR(kv, n) != sizeof(n))
         return -1;
     int x, y;
     x = 0;
     for (int i = 0; i < n; i++) {
         char val[MaxRowLen];
         int vallen;
-        if ((y = kvread_str(kvin, val, sizeof(val), vallen)) < 0)
+        if ((y = kvread_str(kv, val, sizeof(val), vallen)) < 0)
             return -1;
         x += y;
         row.push_back(std::string(val, vallen));
@@ -144,16 +132,14 @@ inline int kvread_row(struct kvin *kvin, std::vector<std::string> &row) {
 }
 
 template <typename ALLOC>
-inline inline_string *
-inline_string::allocate_read(struct kvin *kvin, ALLOC &ti)
-{
+inline inline_string* inline_string::allocate_read(kvin* kv, ALLOC& ti) {
     int len;
-    int r = KVR(kvin, len);
+    int r = KVR(kv, len);
     mandatory_assert(r == sizeof(len) && len < MaxRowLen);
-    inline_string *v = (inline_string *) ti.allocate(len + sizeof(inline_string));
+    inline_string* v = (inline_string*) ti.allocate(len + sizeof(inline_string));
     assert(v);
     v->len = len;
-    r = kvread(kvin, v->s, len);
+    r = kvread(kv, v->s, len);
     assert(r == len);
     return v;
 }

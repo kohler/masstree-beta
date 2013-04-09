@@ -10,16 +10,14 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #include "checkpoint.hh"
 
 // add one key/value to a checkpoint.
 // called by checkpoint_tree() for each node.
-void
-checkpoint1(ckstate *c, Str key, const row_type *v)
-{
+void checkpoint1(ckstate* c, Str key, const row_type* v) {
     int n = std::min((int)CkpKeyPrefixLen, key.len);
     kvwrite(c->keys, key.s, n);
     for (int i = n; i < CkpKeyPrefixLen; i++)

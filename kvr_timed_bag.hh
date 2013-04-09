@@ -10,8 +10,8 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #ifndef KVR_TIMED_BAG_HH
 #define KVR_TIMED_BAG_HH
@@ -120,7 +120,7 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
 		    struct kvout *kvout) const;
     void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "");
-    void to_priv_row_str(Str &val) const {
+    void to_priv_row_str(Str& val) const {
         val.assign(d_.s_, d_.pos_[d_.ncol_]);
     }
     Str row_string() const {

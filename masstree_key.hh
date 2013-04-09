@@ -10,11 +10,11 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #ifndef MASSTREE_KEY_HH
-#define MASSTREE_KEY_HH 1
+#define MASSTREE_KEY_HH
 #include "str.hh"
 #include "string_slice.hh"
 
@@ -33,7 +33,8 @@ namespace Masstree {
     and its effects can be undone by the <code>k.unshift_all()</code>
     method. */
 template <typename I>
-struct key {
+class key {
+  public:
     static constexpr int nikey = 1;
     /** @brief Type of ikeys. */
     typedef I ikey_type;
@@ -50,7 +51,7 @@ struct key {
     }
     /** @brief Construct a key for string @a s with length @a len.
 	@pre @a len >= 0 */
-    key(const char *s, int len)
+    key(const char* s, int len)
 	: ikey0_(string_slice<ikey_type>::make_comparable(s, len)),
 	  len_(len), s_(s), first_(s) {
     }
@@ -138,7 +139,7 @@ struct key {
 	return cmp;
     }
 
-    int unparse(char *data, int datalen) const {
+    int unparse(char* data, int datalen) const {
 	int cplen = std::min(len_, datalen);
 	string_slice<ikey_type>::unparse_comparable(data, cplen, ikey0_, ikey_size);
 	if (cplen > ikey_size)
@@ -175,10 +176,10 @@ struct key {
     }
     void assign_store_ikey(ikey_type ikey) {
 	ikey0_ = ikey;
-	*reinterpret_cast<ikey_type *>(const_cast<char *>(s_)) = host_to_net_order(ikey);
+	*reinterpret_cast<ikey_type*>(const_cast<char*>(s_)) = host_to_net_order(ikey);
     }
     int assign_store_suffix(Str s) {
-	memcpy(const_cast<char *>(s_ + ikey_size), s.s, s.len);
+	memcpy(const_cast<char*>(s_ + ikey_size), s.s, s.len);
 	return ikey_size + s.len;
     }
     void assign_store_length(int len) {
@@ -204,38 +205,38 @@ struct key {
   private:
     ikey_type ikey0_;
     int len_;
-    const char *s_;
-    const char *first_;
+    const char* s_;
+    const char* first_;
 };
 
 template <typename I> constexpr int key<I>::ikey_size;
 
-}
+} // namespace Masstree
 
 template <typename P>
 inline int key_compare(typename P::ikey_type a,
-		       const Masstree::internode<P> &b, int bp)
+		       const Masstree::internode<P>& b, int bp)
 {
     return compare(a, b.ikey(bp));
 }
 
 template <typename P>
-inline int key_compare(const Masstree::key<typename P::ikey_type> &a,
-		       const Masstree::internode<P> &b, int bp)
+inline int key_compare(const Masstree::key<typename P::ikey_type>& a,
+		       const Masstree::internode<P>& b, int bp)
 {
     return compare(a.ikey(), b.ikey(bp));
 }
 
 template <typename P>
-inline int key_compare(const Masstree::key<typename P::ikey_type> &a,
-		       const Masstree::leaf<P> &b, int bp)
+inline int key_compare(const Masstree::key<typename P::ikey_type>& a,
+		       const Masstree::leaf<P>& b, int bp)
 {
     return a.compare(b.ikey(bp), b.keylenx_[bp]);
 }
 
 template <typename I>
-inline int key_compare(const Masstree::key<I> &a,
-		       const Masstree::key<I> &b)
+inline int key_compare(const Masstree::key<I>& a,
+		       const Masstree::key<I>& b)
 {
     return a.compare(b.ikey(), b.length());
 }

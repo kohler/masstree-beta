@@ -10,8 +10,8 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #ifndef KVR_TIMED_STR_HH
 #define KVR_TIMED_STR_HH
@@ -84,30 +84,30 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
     /** @brief Update the row with change c.
      * @return a new kvr_timed_str if applied; NULL if change is out-of-dated
      */
-    kvr_timed_str *update(const change_t &c, kvtimestamp_t ts, threadinfo &ti) const;
+    kvr_timed_str* update(const change_t& c, kvtimestamp_t ts, threadinfo& ti) const;
     /** @brief Convert a change to a timedvalue.
      */
-    static kvr_timed_str *from_change(const change_t &c,
-                                      kvtimestamp_t ts, threadinfo &ti);
-    void filteremit(const fields_t &f, query<kvr_timed_str> &q,
-		    struct kvout *kvout) const;
-    void print(FILE *f, const char *prefix, int indent, Str key,
-	       kvtimestamp_t initial_ts, const char *suffix = "") {
+    static kvr_timed_str* from_change(const change_t& c,
+                                      kvtimestamp_t ts, threadinfo& ti);
+    void filteremit(const fields_t& f, query<kvr_timed_str>& q,
+		    struct kvout* kvout) const;
+    void print(FILE* f, const char* prefix, int indent, Str key,
+	       kvtimestamp_t initial_ts, const char* suffix = "") {
 	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
 	fprintf(f, "%s%*s%.*s = %.*s @" PRIKVTSPARTS "%s\n", prefix, indent, "",
 		key.len, key.s, std::min(40, vallen_), s_,
 		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
-    void to_priv_row_str(Str &val) const {
+    void to_priv_row_str(Str& val) const {
         val.assign(s_, vallen_);
     }
-    void to_shared_row_str(Str &, kvout *) const {
+    void to_shared_row_str(Str&, kvout*) const {
         assert(0 && "Use to_priv_rowstr for performance!");
     }
     /** @brief Return a row object from a string that is created by to_privstr
      *    or to_sharedstr.
      */
-    static kvr_timed_str *from_rowstr(Str, kvtimestamp_t, threadinfo &);
+    static kvr_timed_str* from_rowstr(Str, kvtimestamp_t, threadinfo&);
     kvtimestamp_t ts_;
   private:
     int vallen_;

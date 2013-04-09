@@ -10,11 +10,11 @@
  * preserve this copyright notice, and you cannot mention the copyright
  * holders in advertising related to the Software without their permission.
  * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
- * notice is a summary of the Masstree LICENSE file; the license in that file is
- * legally binding.
+ * notice is a summary of the Masstree LICENSE file; the license in that file
+ * is legally binding.
  */
 #ifndef KVR_TIMED_ARRAY_HH
-#define KVR_TIMED_ARRAY_HH 1
+#define KVR_TIMED_ARRAY_HH
 #include "compiler.hh"
 #include "kvrow.hh"
 
@@ -75,7 +75,7 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
 		key.len, key.s, KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
-    void to_priv_row_str(Str &) const {
+    void to_priv_row_str(Str&) const {
         assert(0 && "To private string is not available");
     }
     /** @brief Return the string representation of the value of the row
