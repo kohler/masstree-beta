@@ -16,7 +16,9 @@
 #ifndef MASSTREE_QUERY_HH
 #define MASSTREE_QUERY_HH 1
 #include "masstree.hh"
-#include "kvtable.hh"
+#include "kvproto.hh"
+template <typename R> class query;
+class Json;
 
 namespace Masstree {
 
@@ -67,7 +69,6 @@ class query_table {
 
   private:
     basic_table<P> table_;
-
 };
 
 struct default_query_table_params : public nodeparams<15, 15> {
@@ -77,10 +78,4 @@ struct default_query_table_params : public nodeparams<15, 15> {
 typedef query_table<default_query_table_params> default_table;
 
 } // namespace Masstree
-
-template <typename P> struct table_has_print<Masstree::query_table<P> > : public mass::true_type {};
-template <typename P> struct table_has_remove<Masstree::query_table<P> > : public mass::true_type {};
-template <typename P> struct table_has_rscan<Masstree::query_table<P> > : public mass::true_type {};
-template <typename P> struct table_has_json_stats<Masstree::query_table<P> > : public mass::true_type {};
-
 #endif

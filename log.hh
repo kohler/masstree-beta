@@ -174,8 +174,6 @@ extern kvepoch_t rec_replay_min_epoch;
 extern kvepoch_t rec_replay_max_epoch;
 extern kvepoch_t rec_replay_min_quiescent_last_epoch;
 
-extern kvtable *tree;
-
 
 inline void loginfo::acquire() {
     test_and_set_acquire(&f_.lock_);

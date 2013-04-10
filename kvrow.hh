@@ -19,7 +19,7 @@
 #include "kvio.hh"
 #include "misc.hh"
 #include "kvthread.hh"
-#include "kvtable.hh"
+#include "kvproto.hh"
 #include "log.hh"
 #include <algorithm>
 

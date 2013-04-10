@@ -17,6 +17,7 @@
 #include "kvthread.hh"
 #include "kvrow.hh"
 #include "file.hh"
+#include "masstree_query.hh"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -26,6 +27,7 @@ kvepoch_t global_log_epoch;
 kvepoch_t global_wake_epoch;
 struct timeval log_epoch_interval;
 static struct timeval log_epoch_time;
+extern Masstree::default_table* tree;
 
 kvepoch_t rec_ckp_min_epoch;
 kvepoch_t rec_ckp_max_epoch;

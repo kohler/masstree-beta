@@ -58,4 +58,8 @@ enum result_t {
     ScanDone
 };
 
+enum ckptrav_order_t {
+    ckptrav_inorder = 0, ckptrav_preorder
+};
+
 #endif

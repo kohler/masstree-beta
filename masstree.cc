@@ -502,9 +502,6 @@ void query_table<P>::print(FILE *f, int indent) const {
     table_.print(f, indent);
 }
 
-static kvtable_registration_adapter<default_table> registration(default_table::name(),
-                                                                "Masstree");
-static kvtable_registration_adapter<default_table> registration2("Mbtree");
 template class basic_table<default_table::param_type>;
 template class query_table<default_table::param_type>;
 

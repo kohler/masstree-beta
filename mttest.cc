@@ -291,25 +291,16 @@ struct kvtest_client {
 };
 
 static volatile int kvtest_printing;
-template <bool CP> struct kvtest_print_helper {};
-template <> struct kvtest_print_helper<true> {
-    template <typename T> static void print(const T &table, FILE *f, int indent, threadinfo *ti) {
-	// only print out the tree from the first failure
-	while (!bool_cmpxchg((int *) &kvtest_printing, 0, ti->ti_index + 1))
-	    /* spin */;
-	table.print(f, indent);
-    }
-};
-template <> struct kvtest_print_helper<false> {
-    template <typename T> static void print(const T &, FILE *, int, threadinfo *) {
-    }
-};
+
 template <typename T> inline void kvtest_print(const T &table, FILE *f, int indent, threadinfo *ti) {
-    kvtest_print_helper<table_has_print<T>::value>::print(table, f, indent, ti);
+    // only print out the tree from the first failure
+    while (!bool_cmpxchg((int *) &kvtest_printing, 0, ti->ti_index + 1))
+        /* spin */;
+    table.print(f, indent);
 }
 
 template <typename T> inline void kvtest_json_stats(T &table, Json &j, threadinfo *ti) {
-    kvtable_helper<table_has_json_stats<T>::value>::json_stats(table, j, ti);
+    table.json_stats(j, ti);
 }
 
 template <typename T>
@@ -393,7 +384,7 @@ void kvtest_client<T>::scan_sync(const Str &firstkey, int n,
 	kvo_ = new_kvout(-1, 2048);
     kvout_reset(kvo_);
     q_[0].begin_scan1(firstkey, n, kvo_);
-    kvtable_helper<table_has_scan<T>::value>::scan(*table_, q_[0], ti_);
+    table_->scan(q_[0], ti_);
     output_scan(keys, values);
 }
 
@@ -405,7 +396,7 @@ void kvtest_client<T>::rscan_sync(const Str &firstkey, int n,
 	kvo_ = new_kvout(-1, 2048);
     kvout_reset(kvo_);
     q_[0].begin_scan1(firstkey, n, kvo_);
-    kvtable_helper<table_has_rscan<T>::value>::rscan(*table_, q_[0], ti_);
+    table_->rscan(q_[0], ti_);
     output_scan(keys, values);
 }
 
@@ -448,21 +439,9 @@ void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
 #endif
 }
 
-template <bool CR> struct kvtest_remove_helper {};
-template <> struct kvtest_remove_helper<true> {
-    template <typename T> static bool remove(kvtest_client<T> &client, const Str &key) {
-	client.q_[0].begin_remove(key);
-	return client.table_->remove(client.q_[0], client.ti_);
-    }
-};
-template <> struct kvtest_remove_helper<false> {
-    template <typename T> static bool remove(kvtest_client<T> &client, const Str &key) {
-	client.fail("table does not support remove(%.*s)", std::min(key.len, 40), key.s);
-	return false;
-    }
-};
 template <typename T> inline bool kvtest_remove(kvtest_client<T> &client, const Str &key) {
-    return kvtest_remove_helper<table_has_remove<T>::value>::remove(client, key);
+    client.q_[0].begin_remove(key);
+    return client.table_->remove(client.q_[0], client.ti_);
 }
 
 template <typename T>
@@ -516,11 +495,9 @@ void kvtest_client<T>::fail(const char *fmt, ...) {
     }
     release(&fail_message_lock);
 
-    if (table_has_print<T>::value) {
-	acquire(&failing_lock);
-	fprintf(stdout, "%d: %s", ti_->ti_index, m.c_str());
-	kvtest_print(*table_, stdout, 0, ti_);
-    }
+    acquire(&failing_lock);
+    fprintf(stdout, "%d: %s", ti_->ti_index, m.c_str());
+    kvtest_print(*table_, stdout, 0, ti_);
 
     mandatory_assert(0);
 }

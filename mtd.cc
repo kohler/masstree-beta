@@ -45,7 +45,6 @@
 #ifdef __linux__
 #include <malloc.h>
 #endif
-#include "kvtable.hh"
 #include "kvstats.hh"
 #include "json.hh"
 #include "kvtest.hh"
@@ -55,6 +54,7 @@
 #include "checkpoint.hh"
 #include "file.hh"
 #include "kvproto.hh"
+#include "masstree_query.hh"
 #include <algorithm>
 
 enum { CKState_Quit, CKState_Uninit, CKState_Ready, CKState_Go };
@@ -62,7 +62,7 @@ enum { CKState_Quit, CKState_Uninit, CKState_Ready, CKState_Go };
 volatile bool timeout[2] = {false, false};
 double duration[2] = {10, 0};
 
-kvtable *tree;
+Masstree::default_table *tree;
 
 // all default to the number of cores
 static int udpthreads = 0;
@@ -203,7 +203,6 @@ struct kvtest_client {
 	quick_istr key(ikey, 10), expected(iexpected);
 	get_col_check(key.string(), col, expected.string());
     }
-    void many_get_check(int, long [], long []);
     bool get_sync(long ikey);
 
     void put(const Str &key, const Str &value);
@@ -303,24 +302,6 @@ void kvtest_client::get_col_check(const Str &key, int col, const Str &expected)
 	++checks_;
 }
 
-void kvtest_client::many_get_check(int nk, long ikey[], long iexpected[]) {
-    std::vector<quick_istr> ka(2 * nk, quick_istr());
-    for(int i = 0; i < nk; i++){
-      ka[i].set(ikey[i]);
-      ka[i+nk].set(iexpected[i]);
-      q_[i].begin_get1(ka[i].string());
-    }
-    tree->many_get(q_, nk, ti_);
-    for(int i = 0; i < nk; i++){
-      Str val = q_[i].get1_value();
-      if (ka[i+nk] != val){
-        printf("get(%ld) returned unexpected value %.*s (expected %ld)\n",
-             ikey[i], std::min(val.len, 40), val.s, iexpected[i]);
-        exit(1);
-      }
-    }
-}
-
 bool kvtest_client::get_sync(long ikey) {
     quick_istr key(ikey);
     q_[0].begin_get1(key.string());
@@ -401,10 +382,10 @@ void kvtest_client::fail(const char *fmt, ...) {
     }
     release(&fail_message_lock);
 
-    if (doprint && tree->has_print()) {
+    if (doprint) {
 	acquire(&failing_lock);
 	fprintf(stdout, "%d: %s", ti_->ti_index, m.c_str());
-	tree->print(stdout, 0, ti_);
+	tree->print(stdout, 0);
 	fflush(stdout);
     }
 
@@ -489,7 +470,7 @@ void runtest(const char *testname, int nthreads) {
 
 enum { clp_val_suffixdouble = Clp_ValFirstUser };
 enum { opt_nolog = 1, opt_pin, opt_logdir, opt_port, opt_ckpdir, opt_duration,
-       opt_test, opt_test_name, opt_threads, opt_tabletype, opt_cores,
+       opt_test, opt_test_name, opt_threads, opt_cores,
        opt_print, opt_norun, opt_checkpoint, opt_limit };
 static const Clp_Option options[] = {
     { "no-log", 0, opt_nolog, 0, 0 },
@@ -518,7 +499,6 @@ static const Clp_Option options[] = {
     { "test-rw1fixed", 0, opt_test_name, 0, 0 },
     { "threads", 'j', opt_threads, Clp_ValInt, 0 },
     { "cores", 0, opt_cores, Clp_ValString, 0 },
-    { "table-type", 0, opt_tabletype, Clp_ValString, 0},
     { "print", 0, opt_print, 0, Clp_Negate }
 };
 
@@ -528,7 +508,6 @@ main(int argc, char *argv[])
   int s, ret, yes = 1, i = 1, firstcore = -1, corestride = 1;
   const char *dotest = 0;
   nlogger = tcpthreads = udpthreads = nckthreads = sysconf(_SC_NPROCESSORS_ONLN);
-  const char *tabletype = "masstree";
   Clp_Parser *clp = Clp_NewParser(argc, argv, (int) arraysize(options), options);
   Clp_AddType(clp, clp_val_suffixdouble, Clp_DisallowOptions, clp_parse_suffixdouble, 0);
   int opt;
@@ -584,9 +563,6 @@ main(int argc, char *argv[])
       case opt_test_name:
 	  dotest = clp->option->long_name + 5;
 	  break;
-      case opt_tabletype:
-          tabletype = clp->vstr;
-          break;
       case opt_print:
 	  doprint = !clp->negated;
 	  break;
@@ -680,14 +656,7 @@ main(int argc, char *argv[])
   main_ti->enter();
 
   initial_timestamp = timestamp();
-  tree = kvtable_factory::create(tabletype);
-  if (!tree) {
-    fprintf(stderr, "Unknown table type %s. Valid tabletypes are:\n", tabletype);
-    std::vector<const char *> names = kvtable_factory::table_types();
-    for (unsigned i = 0; i < names.size(); ++i)
-	fprintf(stderr, "%20s\n", names[i]);
-    exit(EXIT_FAILURE);
-  }
+  tree = new Masstree::default_table;
   tree->initialize(main_ti);
   printf("%s, %s, pin-threads %s, ", tree->name(), row_type::name(),
          pinthreads ? "enabled" : "disabled");
@@ -720,8 +689,8 @@ main(int argc, char *argv[])
         runtest(dotest, tcpthreads);
       print_stat();
       tree->stats(stderr);
-      if (doprint && tree->has_print())
-	  tree->print(stdout, 0, main_ti);
+      if (doprint)
+	  tree->print(stdout, 0);
       exit(0);
   }
 
