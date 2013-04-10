@@ -42,7 +42,7 @@ class loginfo {
         kvtimestamp_t prev_ts;
     };
     // NB may block!
-    void log_query(int command, const query_times& qt, Str key, Str value);
+    void record(int command, const query_times& qt, Str key, Str value);
 
   private:
     struct waitlist {

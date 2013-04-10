@@ -283,8 +283,8 @@ void loginfo::logger() {
 
 
 // log entry format: see log.hh
-void loginfo::log_query(int command, const query_times& qtimes,
-                        Str key, Str value) {
+void loginfo::record(int command, const query_times& qtimes,
+                     Str key, Str value) {
     assert(!recovering);
     size_t n = logrec_kvdelta::size(key.len, value.len)
         + logrec_epoch::size() + logrec_base::size();
