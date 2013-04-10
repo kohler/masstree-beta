@@ -50,8 +50,7 @@ namespace Masstree {
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
 void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
-			       threadinfo *ti)
-{
+			       threadinfo* ti) {
     if (ksuf_ && ksuf_->assign(p, s))
 	return;
 
@@ -105,8 +104,7 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
 
 
 template <typename P>
-bool query_table<P>::get(query<row_type> &q, threadinfo *ti) const
-{
+bool query_table<P>::get(query<row_type>& q, threadinfo* ti) const {
     ti->pstat.mark_get_begin();
     unlocked_tcursor<P> lp(table_, q.key_);
     bool found = lp.find_unlocked(ti);
@@ -117,8 +115,7 @@ bool query_table<P>::get(query<row_type> &q, threadinfo *ti) const
 }
 
 template <typename P>
-result_t query_table<P>::put(query<row_type> &q, threadinfo *ti)
-{
+result_t query_table<P>::put(query<row_type>& q, threadinfo* ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
     if (!found)
@@ -129,22 +126,29 @@ result_t query_table<P>::put(query<row_type> &q, threadinfo *ti)
 }
 
 template <typename P>
-void query_table<P>::scan(query<row_type> &q, threadinfo *ti) const
-{
+void query_table<P>::replay(query<row_type>& q, threadinfo* ti) {
+    tcursor<P> lp(table_, q.key_);
+    bool found = lp.find_insert(ti);
+    if (!found)
+	ti->advance_timestamp(lp.node_timestamp());
+    q.apply_replay(lp.value(), found, ti);
+    lp.finish(1, ti);
+}
+
+template <typename P>
+void query_table<P>::scan(query<row_type>& q, threadinfo* ti) const {
     query_scanner<row_type> scanf(q);
     table_.scan(q.key_, true, scanf, ti);
 }
 
 template <typename P>
-void query_table<P>::rscan(query<row_type> &q, threadinfo *ti) const
-{
+void query_table<P>::rscan(query<row_type>& q, threadinfo* ti) const {
     query_scanner<row_type> scanf(q);
     table_.rscan(q.key_, true, scanf, ti);
 }
 
 template <typename P>
-bool query_table<P>::remove(query<row_type> &q, threadinfo *ti)
-{
+bool query_table<P>::remove(query<row_type>& q, threadinfo* ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_locked(ti);
     bool removed = found
@@ -157,8 +161,7 @@ bool query_table<P>::remove(query<row_type> &q, threadinfo *ti)
 static uint64_t heightcounts[300], fillcounts[100];
 
 template <typename P>
-static void treestats1(node_base<P> *n, unsigned height)
-{
+static void treestats1(node_base<P>* n, unsigned height) {
     if (!n)
 	return;
     if (n->isleaf()) {
@@ -188,8 +191,7 @@ static void treestats1(node_base<P> *n, unsigned height)
 }
 
 template <typename P>
-void query_table<P>::stats(FILE *f)
-{
+void query_table<P>::stats(FILE* f) {
     memset(heightcounts, 0, sizeof(heightcounts));
     memset(fillcounts, 0, sizeof(fillcounts));
     treestats1(table_.root(), 0);

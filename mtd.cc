@@ -1297,17 +1297,15 @@ void log_init() {
 }
 
 // p points to key\0val\0
-void
-insert_from_checkpoint(query<row_type> &q, char *p, threadinfo *ti)
-{
-  int keylen = strlen(p);
-  mandatory_assert(keylen >= 0 && keylen < MaxKeyLen);
-  kvtimestamp_t ts = *(kvtimestamp_t*)(p + keylen + 1);
-  int vlen = *(int *)(p + keylen + 1 + sizeof(ts));
-  q.begin_ckp_put(Str(p, keylen),
-		  Str(p + keylen + 1 + sizeof(ts) + sizeof(vlen), vlen),
-		  ts);
-  tree->put(q, ti);
+void insert_from_checkpoint(query<row_type> &q, char *p, threadinfo *ti) {
+    int keylen = strlen(p);
+    mandatory_assert(keylen >= 0 && keylen < MaxKeyLen);
+    kvtimestamp_t ts = *(kvtimestamp_t*)(p + keylen + 1);
+    int vlen = *(int *)(p + keylen + 1 + sizeof(ts));
+    q.begin_ckp_put(Str(p, keylen),
+                    Str(p + keylen + 1 + sizeof(ts) + sizeof(vlen), vlen),
+                    ts);
+    tree->replay(q, ti);
 }
 
 // read a checkpoint, insert key/value pairs into tree.

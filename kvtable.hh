@@ -63,6 +63,7 @@ class kvtable { public:
     }
     virtual void many_get(query<row_type> *qs, int nqs, threadinfo *ti) const = 0;
     virtual void findpivots(Str *pv, int npv) const = 0;
+    virtual void replay(query<row_type>& q, threadinfo* ti) = 0;
 
     virtual void stats(FILE *) = 0;
     virtual void json_stats(Json &j, threadinfo *ti) = 0;
@@ -175,6 +176,9 @@ template <typename T> class kvtable_adapter : public kvtable { public:
     }
     virtual void findpivots(Str *pv, int npv) const {
 	kvtable_checkpoint_helper<table_has_checkpoint<T>::value>::findpivots(t_, pv, npv);
+    }
+    virtual void replay(query<row_type>& q, threadinfo* ti) {
+	return t_.replay(q, ti);
     }
 
     virtual void stats(FILE *f) {

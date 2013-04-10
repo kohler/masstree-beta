@@ -29,37 +29,39 @@ class query_table {
     query_table() {
     }
 
-    basic_table<P> &table() {
+    basic_table<P>& table() {
 	return table_;
     }
 
-    void initialize(threadinfo *ti) {
+    void initialize(threadinfo* ti) {
         table_.initialize(ti);
     }
-    void reinitialize(threadinfo *ti) {
+    void reinitialize(threadinfo* ti) {
         table_.reinitialize(ti);
     }
 
-    bool get(query<row_type> &q, threadinfo *ti) const;
-    void scan(query<row_type> &q, threadinfo *ti) const;
-    void rscan(query<row_type> &q, threadinfo *ti) const;
+    bool get(query<row_type>& q, threadinfo* ti) const;
+    void scan(query<row_type>& q, threadinfo* ti) const;
+    void rscan(query<row_type>& q, threadinfo* ti) const;
 
-    result_t put(query<row_type> &q, threadinfo *ti);
-    bool remove(query<row_type> &q, threadinfo *ti);
+    result_t put(query<row_type>& q, threadinfo* ti);
+    bool remove(query<row_type>& q, threadinfo* ti);
 
-    void findpivots(Str *pv, int npv) const;
+    void replay(query<row_type>& q, threadinfo* ti);
+
+    void findpivots(Str* pv, int npv) const;
     ckptrav_order_t ckptravorder() const {
         return ckptrav_inorder;
     }
 
-    void stats(FILE *f);
-    void json_stats(Json &j, threadinfo *ti);
+    void stats(FILE* f);
+    void json_stats(Json& j, threadinfo* ti);
 
-    void print(FILE *f, int indent) const;
+    void print(FILE* f, int indent) const;
 
-    static void test(threadinfo *ti);
+    static void test(threadinfo* ti);
 
-    static const char *name() {
+    static const char* name() {
 	return "mb";
     }
 
@@ -69,7 +71,7 @@ class query_table {
 };
 
 struct default_query_table_params : public nodeparams<15, 15> {
-    typedef row_type *value_type;
+    typedef row_type* value_type;
 };
 
 typedef query_table<default_query_table_params> default_table;
