@@ -50,11 +50,10 @@ class query_table {
     bool remove(query<row_type>& q, threadinfo* ti);
 
     void replay(query<row_type>& q, threadinfo* ti);
+    void checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
+                            threadinfo* ti);
 
     void findpivots(Str* pv, int npv) const;
-    ckptrav_order_t ckptravorder() const {
-        return ckptrav_inorder;
-    }
 
     void stats(FILE* f);
     void json_stats(Json& j, threadinfo* ti);

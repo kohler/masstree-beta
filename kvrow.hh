@@ -186,10 +186,9 @@ struct query {
 	QT_Put = 4,
 	QT_Remove = 5,
 	QT_MinReplay = 7,
-	QT_Ckp_Put = 7,
-	QT_Replay_Put = 8,
-	QT_Replay_Remove = 9,
-	QT_Replay_Modify = 10
+	QT_Replay_Put = 7,
+	QT_Replay_Remove = 8,
+	QT_Replay_Modify = 9
     };
 
     void begin_get(Str key, Str req, struct kvout* kvout);
@@ -202,9 +201,6 @@ struct query {
     void begin_checkpoint(ckstate* ck, Str startkey, Str endkey);
     void begin_remove(Str key);
     void begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti);
-    /** @brief Insert the string representation of a row from checkpoint.
-     */
-    void begin_ckp_put(Str key, Str ckv, kvtimestamp_t ts);
 
     /** @brief interfaces where the value is a single column,
      *    and where "get" does not emit but save a copy locally.
@@ -352,14 +348,6 @@ void query<R>::begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti) {
 }
 
 template <typename R>
-void query<R>::begin_ckp_put(Str key, Str val, kvtimestamp_t ts) {
-    qt_ = QT_Ckp_Put;
-    key_ = key;
-    val_ = val;
-    qtimes_.ts = ts;
-}
-
-template <typename R>
 bool query<R>::scanemit(Str k, const R* v) {
     if (row_is_marker(v))
 	return true;
@@ -436,8 +424,7 @@ inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
 
 template <typename R>
 inline bool query<R>::apply_remove(R *&value, bool has_value, threadinfo *ti,
-				   kvtimestamp_t *node_ts)
-{
+				   kvtimestamp_t *node_ts) {
     if (!has_value)
 	return false;
 
@@ -457,7 +444,6 @@ inline bool query<R>::apply_remove(R *&value, bool has_value, threadinfo *ti,
 template <typename R>
 void query<R>::apply_replay(R*& value, bool has_value, threadinfo* ti) {
     precondition(qt_ >= QT_MinReplay);
-    invariant(qt_ != QT_Ckp_Put || !has_value);
 
     R** cur_value = &value;
     if (!has_value)
@@ -484,9 +470,7 @@ void query<R>::apply_replay(R*& value, bool has_value, threadinfo* ti) {
 	}
 
     // actually apply change
-    if (qt_ == QT_Ckp_Put)
-        *cur_value = R::checkpoint_read(val_, qtimes_.ts, *ti);
-    else if (qt_ != QT_Replay_Modify)
+    if (qt_ != QT_Replay_Modify)
 	*cur_value = R::from_change(c_, qtimes_.ts, *ti);
     else {
 	if (*cur_value && (*cur_value)->ts_ == qtimes_.prev_ts) {

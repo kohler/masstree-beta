@@ -62,10 +62,8 @@ class loginfo {
         int allocation_offset_;
     };
 
-    union {
-	front f_;
-	char cache_line_[CacheLineSize];
-    };
+    front f_;
+    char padding1_[CacheLineSize - sizeof(front)];
 
     kvepoch_t log_epoch_;       // epoch written to log (non-quiescent)
     kvepoch_t quiescent_epoch_; // epoch we went quiescent

@@ -114,14 +114,9 @@ static int onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout, req
 static void log_init();
 static void recover(threadinfo *);
 static kvepoch_t read_checkpoint(threadinfo *, const char *path);
-static uint64_t traverse_checkpoint_inorder(query<row_type> &q,
-					    uint64_t off, uint64_t n,
+static uint64_t traverse_checkpoint_inorder(uint64_t off, uint64_t n,
                                             char *base, uint64_t *ind,
                                             uint64_t max, threadinfo *ti);
-static uint64_t traverse_checkpoint_preorder(query<row_type> &q,
-					     uint64_t off, uint64_t n,
-                                             char *base, uint64_t *ind,
-                                             uint64_t max, threadinfo *ti);
 
 static void *conc_checkpointer(void *);
 static void recovercheckpoint(threadinfo *ti);
@@ -1266,15 +1261,14 @@ void log_init() {
 }
 
 // p points to key\0val\0
-void insert_from_checkpoint(query<row_type> &q, char *p, threadinfo *ti) {
+void insert_from_checkpoint(char *p, threadinfo *ti) {
     int keylen = strlen(p);
     mandatory_assert(keylen >= 0 && keylen < MaxKeyLen);
     kvtimestamp_t ts = *(kvtimestamp_t*)(p + keylen + 1);
-    int vlen = *(int *)(p + keylen + 1 + sizeof(ts));
-    q.begin_ckp_put(Str(p, keylen),
-                    Str(p + keylen + 1 + sizeof(ts) + sizeof(vlen), vlen),
-                    ts);
-    tree->replay(q, ti);
+    int vlen = *(int*)(p + keylen + 1 + sizeof(ts));
+    Str key(p, keylen);
+    Str value(p + keylen + 1 + sizeof(ts) + sizeof(vlen), vlen);
+    tree->checkpoint_restore(key, value, ts, ti);
 }
 
 // read a checkpoint, insert key/value pairs into tree.
@@ -1283,9 +1277,7 @@ void insert_from_checkpoint(query<row_type> &q, char *p, threadinfo *ti) {
 // with any one point in time.
 // returns the timestamp of the first log record that needs
 // to come from the log.
-kvepoch_t
-read_checkpoint(threadinfo *ti, const char *path)
-{
+kvepoch_t read_checkpoint(threadinfo *ti, const char *path) {
   double t0 = now();
 
   int fd = open(path, 0);
@@ -1312,17 +1304,7 @@ read_checkpoint(threadinfo *ti, const char *path)
   // round n up to power of two
   uint64_t n2 = pow(2, ceil(log(n) / log(2)));
   mandatory_assert(n2 >= n);
-  switch (tree->ckptravorder()) {
-  case ckptrav_preorder:
-      traverse_checkpoint_preorder(q, 0, n2, keyval, ind, n, ti);
-      break;
-  case ckptrav_inorder:
-      traverse_checkpoint_inorder(q, 0, n2, keyval, ind, n, ti);
-      break;
-  default:
-    mandatory_assert(0 && "Unknown checkpoint order");
-    break;
-  }
+  traverse_checkpoint_inorder(0, n2, keyval, ind, n, ti);
   munmap(p, sb.st_size);
 
   double t1 = now();
@@ -1333,30 +1315,6 @@ read_checkpoint(threadinfo *ti, const char *path)
          (sb.st_size / 1000000.0) / (t1 - t0));
 
   return gen;
-}
-
-// insert the nodes from a checkpoint file in an order
-// which will yield a balanced tree. the nodes are in key
-// order in the checkpoint file. this code mimics a depth-first
-// traversal, inserting each node before its children.
-// invariant: n >= 2
-uint64_t
-traverse_checkpoint_preorder(query<row_type> &q,
-			     uint64_t off, uint64_t n,
-                             char *base, uint64_t *ind, uint64_t max,
-		             threadinfo *ti)
-{
-  uint64_t i = off + (n / 2);
-  uint64_t count = 0;
-  if(i < max){
-      insert_from_checkpoint(q, base + ind[i], ti);
-      count++;
-  }
-  if(n / 2 >= 1){
-      count += traverse_checkpoint_preorder(q, off, n / 2, base, ind, max, ti);
-      count += traverse_checkpoint_preorder(q, off + n / 2, n / 2, base, ind, max, ti);
-  }
-  return count;
 }
 
 void
@@ -1378,26 +1336,24 @@ inactive(void)
 }
 
 uint64_t
-traverse_checkpoint_inorder(query<row_type> &q, uint64_t off, uint64_t n,
-                    char *base, uint64_t *ind, uint64_t max,
-		    threadinfo *ti)
+traverse_checkpoint_inorder(uint64_t off, uint64_t n,
+                            char *base, uint64_t *ind, uint64_t max,
+                            threadinfo *ti)
 {
-  mandatory_assert(off == 0);
-  for (uint64_t i = 0; i < max; i++)
-      insert_from_checkpoint(q, base + ind[i], ti);
-  return n;
+    mandatory_assert(off == 0);
+    for (uint64_t i = 0; i < max; i++)
+        insert_from_checkpoint(base + ind[i], ti);
+    return n;
 }
 
-void
-recovercheckpoint(threadinfo *ti)
-{
-  waituntilphase(REC_CKP);
-  char path[256];
-  sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d", ckpdir[ti->ti_index % nckpdir],
-          ckp_gen.value(), ti->ti_index);
-  kvepoch_t gen = read_checkpoint(ti, path);
-  mandatory_assert(ckp_gen == gen);
-  inactive();
+void recovercheckpoint(threadinfo *ti) {
+    waituntilphase(REC_CKP);
+    char path[256];
+    sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d", ckpdir[ti->ti_index % nckpdir],
+            ckp_gen.value(), ti->ti_index);
+    kvepoch_t gen = read_checkpoint(ti, path);
+    mandatory_assert(ckp_gen == gen);
+    inactive();
 }
 
 void
