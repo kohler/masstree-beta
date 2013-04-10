@@ -20,14 +20,6 @@
 
 struct kvr_array_index {
     typedef short field_t;
-    static int kvread_field(struct kvin *kvin, field_t &f) {
-        KVR(kvin, f);
-        return sizeof(f);
-    }
-    static int kvwrite_field(struct kvout *kvout, const field_t &f) {
-        KVW(kvout, f);
-        return sizeof(f);
-    }
     static void make_full_field(field_t &f) {
         f = 0;
     }

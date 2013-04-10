@@ -49,7 +49,7 @@ struct row_base {
         KVR(kvin, n);
         f.resize(n);
         for (short i = 0; i < n; i++)
-            IDX::kvread_field(kvin, f[i]);
+            KVR(kvin, f[i]);
         return 0;
     }
     static int kvwrite_fields(struct kvout *kvout, const fields_t &f) {
@@ -61,7 +61,7 @@ struct row_base {
 	    }
         KVW(kvout, n);
         for (short i = 0; i < n; i++)
-            IDX::kvwrite_field(kvout, f[i]);
+            KVW(kvout, f[i]);
         return 0;
     }
     static int kvread_change(struct kvin *kvin, change_t &c) {
@@ -69,7 +69,7 @@ struct row_base {
         KVR(kvin, n);
         c.resize(n);
         for (short i = 0; i < n; i++) {
-            IDX::kvread_field(kvin, c[i].c_fid);
+            KVR(kvin, c[i].c_fid);
             kvread_str_inplace(kvin, c[i].c_value);
         }
         return 0;
@@ -89,7 +89,7 @@ struct row_base {
 	    }
         KVW(kvout, n);
         for (short i = 0; i < n; i++) {
-            IDX::kvwrite_field(kvout, c[i].c_fid);
+            KVW(kvout, c[i].c_fid);
             kvwrite_str(kvout, c[i].c_value);
         }
         return 0;
@@ -117,7 +117,7 @@ struct row_base {
 				    Str value) {
 	kvout_reset(kvout);
 	KVW(kvout, short(1));
-	IDX::kvwrite_field(kvout, fid);
+	KVW(kvout, fid);
 	kvwrite_str(kvout, value);
 	return Str(kvout->buf, kvout->n);
     }

@@ -26,16 +26,6 @@ struct kvr_str_index {
 	    return a.f_off < b.f_off;
 	}
     };
-    static int kvread_field(struct kvin *kvin, field_t &f) {
-        KVR(kvin, f.f_off);
-        KVR(kvin, f.f_len);
-        return sizeof(struct field_t);
-    }
-    static int kvwrite_field(struct kvout *kvout, const field_t &f) {
-        KVW(kvout, f.f_off);
-        KVW(kvout, f.f_len);
-        return sizeof(struct field_t);
-    }
     static void make_full_field(field_t &f) {
         f.f_off = 0;
         f.f_len = -1;
@@ -51,6 +41,16 @@ struct kvr_str_index {
         return f;
     }
 };
+
+inline int KVR(kvin* kv, kvr_str_index::field_t& field) {
+    int x = KVR(kv, field.f_off);
+    return x + KVR(kv, field.f_len);
+}
+
+inline int KVW(kvout* kv, kvr_str_index::field_t field) {
+    int x = KVW(kv, field.f_off);
+    return x + KVW(kv, field.f_len);
+}
 
 struct kvr_timed_str : public row_base<kvr_str_index> {
     typedef struct kvr_str_index index_t;
