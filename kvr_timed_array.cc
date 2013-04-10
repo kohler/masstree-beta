@@ -35,20 +35,6 @@ void kvr_timed_array::update(const change_t& c, threadinfo& ti) {
 	cols_[cb->c_fid] = inline_string::allocate(cb->c_value, ti);
 }
 
-void kvr_timed_array::filteremit(const fields_t& f, query<kvr_timed_array>&,
-                                 struct kvout* kvout) const {
-    if (f.size() == 0) {
-        KVW(kvout, ncol_);
-        for (short i = 0; i < ncol_; i++)
-            kvwrite_inline_string(kvout, cols_[i]);
-    } else {
-        short n = f.size();
-        KVW(kvout, n);
-        for (short i = 0; i < n; i++)
-            kvwrite_inline_string(kvout, cols_[f[i]]);
-    }
-}
-
 kvr_timed_array* kvr_timed_array::make_sized_row(int ncol, kvtimestamp_t ts,
                                                  threadinfo& ti) {
     kvr_timed_array *tv;

@@ -18,6 +18,18 @@
 #include <string.h>
 
 kvr_timed_array_ver *
+kvr_timed_array_ver::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti) {
+    kvr_timed_array_ver *tv;
+    size_t len = sizeof(*tv) + ncol * sizeof(tv->cols_[0]);
+    tv = (kvr_timed_array_ver *) ti.allocate(len, memtag_row_array_ver);
+    tv->ncol_ = tv->ncol_cap_ = ncol;
+    tv->ver_ = rowversion();
+    memset(tv->cols_, 0, sizeof(tv->cols_[0]) * ncol);
+    tv->ts_ = ts;
+    return tv;
+}
+
+kvr_timed_array_ver *
 kvr_timed_array_ver::update(const change_t &c, kvtimestamp_t ts, threadinfo &ti)
 {
     assert(ts >= ts_);
@@ -50,57 +62,30 @@ kvr_timed_array_ver::update(const change_t &c, threadinfo &ti)
     ver_.clearandbump();
 }
 
-void
-kvr_timed_array_ver::filteremit(const fields_t &f, query<kvr_timed_array_ver> &q, struct kvout *kvout) const
-{
-    KUtil::vec<void *> &snap = q.helper_.snapshot;
-    const short n = f.size();
-    // take a snapshot of columns
+void kvr_timed_array_ver::snapshot(kvr_timed_array_ver*& storage,
+                                   const fields_t& f, threadinfo& ti) const {
+    if (!storage && storage->ncol_cap_ < ncol_) {
+        if (storage)
+            storage->deallocate(ti);
+        storage = make_sized_row(ncol_, ts_, ti);
+    }
+    storage->ncol_ = ncol_;
     rowversion v1 = ver_.stable();
-    snap.resize(ncol_);
     while (1) {
-        if (!n) {
-            memcpy(&snap[0], cols_, sizeof(void *) * ncol_);
-        } else {
-            for (short i = 0; i < n; i++)
-                snap[f[i]] = cols_[i];
-        }
+        if (f.size() == 1)
+            storage->cols_[f[0]] = cols_[f[0]];
+        else
+            memcpy(storage->cols_, cols_, sizeof(cols_[0]) * storage->ncol_);
         rowversion v2 = ver_.stable();
-        if (!v2.has_changed(v1))
+        if (!v1.has_changed(v2))
             break;
         v1 = v2;
     }
-    inline_string **snapcols = (inline_string **)&snap[0];
-    if (!n) {
-        for (short i = 0; i < ncol_; i++)
-            prefetch(snapcols[i]);
-        KVW(kvout, ncol_);
-        for (short i = 0; i < ncol_; i++)
-            kvwrite_inline_string(kvout, snapcols[i]);
-    } else {
-        for (short i = 0; i < n; i++)
-            prefetch(snapcols[f[i]]);
-        KVW(kvout, n);
-        for (short i = 0; i < n; i++)
-            kvwrite_inline_string(kvout, snapcols[f[i]]);
-    }
 }
 
-kvr_timed_array_ver *
-kvr_timed_array_ver::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti) {
-    kvr_timed_array_ver *tv;
-    size_t len = sizeof(*tv) + ncol * sizeof(tv->cols_[0]);
-    tv = (kvr_timed_array_ver *) ti.allocate(len, memtag_row_array_ver);
-    tv->ncol_ = ncol;
-    tv->ver_ = rowversion();
-    memset(tv->cols_, 0, sizeof(tv->cols_[0]) * ncol);
-    tv->ts_ = ts;
-    return tv;
-}
-
-kvr_timed_array_ver* kvr_timed_array_ver::checkpoint_read(Str str,
-                                                          kvtimestamp_t ts,
-                                                          threadinfo& ti) {
+kvr_timed_array_ver*
+kvr_timed_array_ver::checkpoint_read(Str str, kvtimestamp_t ts,
+                                     threadinfo& ti) {
     kvin kv;
     kvin_init(&kv, const_cast<char*>(str.s), str.len);
     short ncol;

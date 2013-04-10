@@ -50,23 +50,6 @@ kvr_timed_str::endat(const change_t &c, bool &toend)
     return vlen;
 }
 
-void
-kvr_timed_str::filteremit(const fields_t &f, query<kvr_timed_str> &, struct kvout *kvout) const
-{
-    if (f.size() == 0) {
-        KVW(kvout, (short)1);
-        kvwrite_str(kvout, Str(s_, vallen_));
-    } else {
-        short n = f.size();
-        KVW(kvout, n);
-        for (int i = 0; i < n; i++) {
-            int len = (f[i].f_len == -1) ? (vallen_ - f[i].f_off) : f[i].f_len;
-            assert(len > 0);
-            kvwrite_str(kvout, Str(s_ + f[i].f_off, len));
-        }
-    }
-}
-
 kvr_timed_str* kvr_timed_str::make_sized_row(int vlen, kvtimestamp_t ts,
                                              threadinfo& ti) {
     size_t len = sizeof(kvr_timed_str) + vlen;

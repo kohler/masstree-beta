@@ -168,10 +168,9 @@ row_get_delta_marker(const R *row, bool force = false)
 
 template <typename R>
 struct query_helper {
-};
-template <>
-struct query_helper<kvr_timed_array_ver> {
-    KUtil::vec<void *> snapshot;
+    inline const R* snapshot(const R* row, const typename R::fields_t&, threadinfo&) {
+        return row;
+    }
 };
 
 template <typename R>
@@ -223,10 +222,10 @@ struct query {
         return qtimes_;
     }
 
-    inline bool emitrow(const R* v);
+    inline bool emitrow(const R* v, threadinfo* ti);
     /** @return whether the scan should continue or not
      */
-    bool scanemit(Str k, const R* v);
+    bool scanemit(Str k, const R* v, threadinfo* ti);
 
     inline result_t apply_put(R*& value, bool has_value, threadinfo* ti);
     void apply_replay(R*& value, bool has_value, threadinfo* ti);
@@ -246,6 +245,7 @@ struct query {
     ckstate* ck_;
     Str endkey_;
     Str val_;			// value for Get1 and CkpPut
+    void emit(const R* row);
     void assign_timestamp(threadinfo* ti);
     void assign_timestamp(threadinfo* ti, kvtimestamp_t t);
 };
@@ -348,7 +348,20 @@ void query<R>::begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti) {
 }
 
 template <typename R>
-bool query<R>::scanemit(Str k, const R* v) {
+void query<R>::emit(const R* row) {
+    if (f_.size() == 0) {
+        KVW(kvout_, (short) row->ncol());
+        for (int i = 0; i != row->ncol(); ++i)
+            kvwrite_str(kvout_, row->col(i));
+    } else {
+        KVW(kvout_, (short) f_.size());
+        for (int i = 0; i != f_.size(); ++i)
+            kvwrite_str(kvout_, row->col(f_[i]));
+    }
+}
+
+template <typename R>
+bool query<R>::scanemit(Str k, const R* v, threadinfo* ti) {
     if (row_is_marker(v))
 	return true;
     if (qt_ == QT_Ckp_Scan) {
@@ -359,14 +372,14 @@ bool query<R>::scanemit(Str k, const R* v) {
     } else {
         assert(qt_ == QT_Scan);
 	kvwrite_str(kvout_, k);
-        v->filteremit(f_, *this, kvout_);
+        emit(helper_.snapshot(v, f_, *ti));
         --scan_npairs_;
         return scan_npairs_ > 0;
     }
 }
 
 template <typename R>
-inline bool query<R>::emitrow(const R* v) {
+inline bool query<R>::emitrow(const R* v, threadinfo* ti) {
     if (row_is_marker(v))
 	return false;
     else if (qt_ >= QT_Get1_Col0) {
@@ -374,7 +387,7 @@ inline bool query<R>::emitrow(const R* v) {
 	return true;
     } else {
         assert(qt_ == QT_Get);
-        v->filteremit(f_, *this, kvout_);
+        emit(helper_.snapshot(v, f_, *ti));
 	return true;
     }
 }
@@ -525,8 +538,8 @@ struct query_scanner {
     query_scanner(query<R> &q)
 	: q_(q) {
     }
-    bool operator()(Str key, R *value, threadinfo *) {
-	return q_.scanemit(key, value);
+    bool operator()(Str key, R* value, threadinfo* ti) {
+	return q_.scanemit(key, value, ti);
     }
 };
 

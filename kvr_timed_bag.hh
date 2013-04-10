@@ -116,10 +116,10 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
 	kvr_timed_bag<O> empty_bag;
 	return empty_bag.update(c, ts, ti);
     }
-    void filteremit(const fields_t &f, query<kvr_timed_bag<O> > &q,
-		    struct kvout *kvout) const;
+
     void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "");
+
     Str row_string() const {
 	return Str(d_.s_, d_.pos_[d_.ncol_]);
     }
@@ -203,20 +203,6 @@ kvr_timed_bag<O> *kvr_timed_bag<O>::update(const change_t &c, kvtimestamp_t ts,
     }
     row->d_.pos_[ncol] = sz;
     return row;
-}
-
-template <typename O>
-void kvr_timed_bag<O>::filteremit(const fields_t &f, query<kvr_timed_bag<O> > &, struct kvout *kvout) const
-{
-    short n = f.size();
-    if (n == 0) {
-        KVW(kvout, (short)1);
-        kvwrite_str(kvout, Str(d_.s_, d_.pos_[d_.ncol_]));
-    } else {
-        KVW(kvout, n);
-        for (int i = 0; i < n; i++)
-	    kvwrite_str(kvout, Str(d_.s_ + d_.pos_[f[i]], d_.pos_[f[i]+1] - d_.pos_[f[i]]));
-    }
 }
 
 template <typename O> template <typename ALLOC>

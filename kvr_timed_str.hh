@@ -62,10 +62,17 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
     inline size_t size() const {
         return sizeof(kvr_timed_str) + vallen_;
     }
+    inline int ncol() const {
+        return 1;
+    }
     inline Str col(int i) const {
 	assert(i == 0);
 	(void) i;
 	return Str(s_, vallen_);
+    }
+    inline Str col(kvr_str_index::field_t idx) const {
+        int len = idx.f_len == -1 ? vallen_ - idx.f_off : idx.f_len;
+        return Str(s_ + idx.f_off, len);
     }
 
     inline void deallocate(threadinfo &ti) {
@@ -89,8 +96,7 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
      */
     static kvr_timed_str* from_change(const change_t& c,
                                       kvtimestamp_t ts, threadinfo& ti);
-    void filteremit(const fields_t& f, query<kvr_timed_str>& q,
-		    struct kvout* kvout) const;
+
     void print(FILE* f, const char* prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char* suffix = "") {
 	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);

@@ -70,12 +70,18 @@ struct kvr_timed_array_ver : public row_base<kvr_array_index> {
 
     static const char *name() { return "ArrayVersion"; }
 
+    inline int ncol() const {
+        return ncol_;
+    }
     inline Str col(int i) const {
 	if (unsigned(i) < unsigned(ncol_))
 	    return Str(cols_[i]->s, cols_[i]->len);
 	else
 	    return Str();
     }
+
+    void snapshot(kvr_timed_array_ver*& storage,
+                  const fields_t& f, threadinfo& ti) const;
 
     void deallocate(threadinfo &ti);
     void deallocate_rcu(threadinfo &ti);
@@ -94,7 +100,7 @@ struct kvr_timed_array_ver : public row_base<kvr_array_index> {
      */
     static kvr_timed_array_ver *from_change(const change_t &c,
                                             kvtimestamp_t ts, threadinfo &ti);
-    void filteremit(const fields_t &f, query<kvr_timed_array_ver> &q, struct kvout *kvout) const;
+
     void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "") {
 	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
@@ -110,6 +116,7 @@ struct kvr_timed_array_ver : public row_base<kvr_array_index> {
   private:
     rowversion ver_;
     short ncol_;
+    short ncol_cap_;
     inline_string *cols_[0];
     inline size_t shallow_size() const {
         return sizeof(kvr_timed_array_ver) + ncol_ * sizeof(cols_[0]);
@@ -121,6 +128,19 @@ struct kvr_timed_array_ver : public row_base<kvr_array_index> {
     }
     void update(const change_t &c, threadinfo &ti);
     static kvr_timed_array_ver *make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti);
+};
+
+template <>
+struct query_helper<kvr_timed_array_ver> {
+    kvr_timed_array_ver* snapshot_;
+
+    query_helper()
+        : snapshot_() {
+    }
+    inline const kvr_timed_array_ver* snapshot(const kvr_timed_array_ver* row, const kvr_timed_array_ver::fields_t& f, threadinfo& ti) {
+        row->snapshot(snapshot_, f, ti);
+        return snapshot_;
+    }
 };
 
 #endif

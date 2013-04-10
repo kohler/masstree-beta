@@ -46,7 +46,10 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
 
     static const char *name() { return "Array"; }
 
-    Str col(int i) const {
+    inline int ncol() const {
+        return ncol_;
+    }
+    inline Str col(int i) const {
 	if (unsigned(i) < unsigned(ncol_))
 	    return Str(cols_[i]->s, cols_[i]->len);
 	else
@@ -66,8 +69,7 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
      */
     static kvr_timed_array *from_change(const change_t &c,
                                         kvtimestamp_t ts, threadinfo &ti);
-    void filteremit(const fields_t &f, query<kvr_timed_array> &q,
-		    struct kvout *kvout) const;
+
     void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "") {
 	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
