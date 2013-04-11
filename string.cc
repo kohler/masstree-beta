@@ -112,7 +112,7 @@ String::memo_type *String::live_memos[55];
 #endif
 
 int
-String_generic::compare(const char *a, int a_len, const char *b, int b_len)
+String_generic::compare(const char* a, int a_len, const char* b, int b_len)
 {
     if (a != b) {
 	int len = a_len < b_len ? a_len : b_len;

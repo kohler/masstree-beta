@@ -24,7 +24,7 @@ class String : public String_base<String> {
   public:
     struct rep_type;
 
-    enum { max_length = 0x7FFFFE0 };
+    enum { max_length = 0x7FFFFFE0 };
 
     typedef String substring_type;
     typedef const String& argument_type;
@@ -57,16 +57,16 @@ class String : public String_base<String> {
     /** @endcond never */
     inline ~String();
 
-    static inline const String &make_empty();
-    static inline const String &make_out_of_memory();
+    static inline const String& make_empty();
+    static inline const String& make_out_of_memory();
     static String make_uninitialized(int len);
-    static inline String make_stable(const char *cstr);
-    static inline String make_stable(const char *s, int len);
-    static inline String make_stable(const char *first, const char *last);
-    static String make_fill(int c, int n); // n copies of c
-    static inline const String &make_zero();
+    static inline String make_stable(const char* cstr);
+    static inline String make_stable(const char* s, int len);
+    static inline String make_stable(const char* first, const char* last);
+    static String make_fill(int c, int n);
+    static inline const String& make_zero();
 
-    inline const char *data() const;
+    inline const char* data() const;
     inline int length() const;
 
     inline const char *c_str() const;
@@ -216,7 +216,6 @@ class String : public String_base<String> {
     /** @endcond never */
 
   private:
-
     /** @cond never */
     struct memo_type {
 	volatile uint32_t refcount;
@@ -383,8 +382,8 @@ inline String::String(const char *first, const char *last) {
 }
 
 /** @overload */
-inline String::String(const unsigned char *first, const unsigned char *last) {
-    assign(reinterpret_cast<const char *>(first),
+inline String::String(const unsigned char* first, const unsigned char* last) {
+    assign(reinterpret_cast<const char*>(first),
 	   (first < last ? last - first : 0), false);
 }
 
@@ -436,7 +435,7 @@ inline String String::make_uninitialized(int len) {
 
 /** @brief Return a const reference to the string "0". */
 inline const String& String::make_zero() {
-    return reinterpret_cast<const String &>(zero_string_rep);
+    return reinterpret_cast<const String&>(zero_string_rep);
 }
 
 /** @brief Return a String that directly references the C string @a cstr.
@@ -735,7 +734,7 @@ inline String String::compact() const {
 }
 
 /** @brief Return the unsigned char * version of mutable_data(). */
-unsigned char *String::mutable_udata() {
+inline unsigned char *String::mutable_udata() {
     return reinterpret_cast<unsigned char *>(mutable_data());
 }
 

@@ -155,9 +155,9 @@ class String_base {
     const char& back() const {
 	return data()[length() - 1];
     }
-    /** @brief Test if this string is equal to the C string @a c_str. */
-    bool equals(const char *c_str) const {
-	return String_generic::equals(data(), length(), c_str, strlen(c_str));
+    /** @brief Test if this string is equal to the C string @a cstr. */
+    bool equals(const char *cstr) const {
+	return String_generic::equals(data(), length(), cstr, strlen(cstr));
     }
     /** @brief Test if this string is equal to the first @a len characters
 	of @a s. */
@@ -169,14 +169,14 @@ class String_base {
     bool equals(const String_base<TT> &x) const {
 	return String_generic::equals(data(), length(), x.data(), x.length());
     }
-    /** @brief Compare this string with the C string @a c_str.
+    /** @brief Compare this string with the C string @a cstr.
 
-	Returns 0 if this string equals @a c_str, negative if this string is
-	less than @a c_str in lexicographic order, and positive if this
-	string is greater than @a c_str. Lexicographic order treats
+	Returns 0 if this string equals @a cstr, negative if this string is
+	less than @a cstr in lexicographic order, and positive if this
+	string is greater than @a cstr. Lexicographic order treats
 	characters as unsigned. */
-    int compare(const char *c_str) const {
-	return String_generic::compare(data(), length(), c_str, strlen(c_str));
+    int compare(const char *cstr) const {
+	return String_generic::compare(data(), length(), cstr, strlen(cstr));
     }
     /** @brief Compare this string with the first @a len characters of @a
 	s. */
@@ -193,9 +193,9 @@ class String_base {
     static int compare(const String_base<TT> &a, const String_base<UU> &b) {
         return String_generic::compare(a.data(), a.length(), b.data(), b.length());
     }
-    /** @brief Test if this string begins with the C string @a c_str. */
-    bool starts_with(const char *c_str) const {
-	return String_generic::starts_with(data(), length(), c_str, strlen(c_str));
+    /** @brief Test if this string begins with the C string @a cstr. */
+    bool starts_with(const char *cstr) const {
+	return String_generic::starts_with(data(), length(), cstr, strlen(cstr));
     }
     /** @brief Test if this string begins with the first @a len characters
 	of @a s. */
@@ -215,12 +215,12 @@ class String_base {
     int find_left(char x, int start = 0) const {
 	return String_generic::find_left(data(), length(), start, x);
     }
-    /** @brief Search for the C string @a c_str as a substring in this string.
+    /** @brief Search for the C string @a cstr as a substring in this string.
 
-	Return the index of the leftmost occurrence of @a c_str, starting at
+	Return the index of the leftmost occurrence of @a cstr, starting at
 	index @a start. Return -1 if the substring is not found. */
-    int find_left(const char *c_str, int start = 0) const {
-	return String_generic::find_left(data(), length(), start, c_str, strlen(c_str));
+    int find_left(const char *cstr, int start = 0) const {
+	return String_generic::find_left(data(), length(), start, cstr, strlen(cstr));
     }
     /** @brief Search for @a x as a substring in this string.
 
@@ -238,13 +238,13 @@ class String_base {
     int find_right(char c, int start = INT_MAX) const {
 	return String_generic::find_right(data(), length(), start, c);
     }
-    /** @brief Search backwards for the C string @a c_str as a substring in
+    /** @brief Search backwards for the C string @a cstr as a substring in
 	this string.
 
-	Return the index of the rightmost occurrence of @a c_str, starting
+	Return the index of the rightmost occurrence of @a cstr, starting
 	at index @a start. Return -1 if the substring is not found. */
-    int find_right(const char *c_str, int start = INT_MAX) const {
-	return String_generic::find_right(data(), length(), start, c_str, strlen(c_str));
+    int find_right(const char *cstr, int start = INT_MAX) const {
+	return String_generic::find_right(data(), length(), start, cstr, strlen(cstr));
     }
     /** @brief Search backwards for @a x as a substring in this string.
 
