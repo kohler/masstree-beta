@@ -123,7 +123,6 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
 
     static inline size_t shallow_size(int vallen);
     inline size_t shallow_size() const;
-    static kvr_timed_str *make_sized_row(int vlen, kvtimestamp_t ts, threadinfo &ti);
 };
 
 inline kvr_timed_str::kvr_timed_str()

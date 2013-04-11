@@ -16,12 +16,3 @@
 #include "kvrow.hh"
 #include "kvr_timed_str.hh"
 #include <string.h>
-
-kvr_timed_str* kvr_timed_str::make_sized_row(int vlen, kvtimestamp_t ts,
-                                             threadinfo& ti) {
-    size_t len = sizeof(kvr_timed_str) + vlen;
-    kvr_timed_str *tv = (kvr_timed_str *) ti.allocate(len, memtag_row_str);
-    tv->vallen_ = vlen;
-    tv->ts_ = ts;
-    return tv;
-}
