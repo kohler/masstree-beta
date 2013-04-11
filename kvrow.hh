@@ -40,7 +40,7 @@ struct row_base {
         return kvread_change(&kvin, c);
     }
     static int parse_fields(Str v, fields_t &f) {
-        struct kvin kvin;
+	struct kvin kvin;
         kvin_init(&kvin, const_cast<char *>(v.s), v.len);
         return kvread_fields(&kvin, f);
     }
@@ -124,48 +124,6 @@ struct row_base {
 };
 
 
-struct row_marker {
-    enum { mt_remove = 1, mt_delta = 2 };
-    int marker_type_;
-};
-
-template <typename R>
-struct row_delta_marker : public row_marker {
-    kvtimestamp_t prev_ts_;
-    R *prev_;
-    char s_[0];
-};
-
-template <typename R>
-inline bool
-row_is_marker(const R *row)
-{
-    return row->ts_ & 1;
-}
-
-template <typename R>
-inline bool
-row_is_delta_marker(const R *row)
-{
-    if (row_is_marker(row)) {
-	const row_marker *m =
-	    reinterpret_cast<const row_marker *>(row->col(0).s);
-	return m->marker_type_ == m->mt_delta;
-    } else
-	return false;
-}
-
-template <typename R>
-inline row_delta_marker<R> *
-row_get_delta_marker(const R *row, bool force = false)
-{
-    (void) force;
-    assert(force || row_is_delta_marker(row));
-    return reinterpret_cast<row_delta_marker<R> *>
-	(const_cast<char *>(row->col(0).s));
-}
-
-
 template <typename R>
 struct query_helper {
     inline const R* snapshot(const R* row, const typename R::fields_t&, threadinfo&) {
@@ -192,14 +150,10 @@ struct query {
 
     void begin_get(Str key, Str req, struct kvout* kvout);
     void begin_put(Str key, Str req);
-    void begin_replay_put(Str key, Str req, kvtimestamp_t ts);
-    void begin_replay_modify(Str key, Str req, kvtimestamp_t ts,
-			     kvtimestamp_t prev_ts);
+    void begin_remove(Str key);
     void begin_scan(Str startkey, int npairs, Str req,
 		    struct kvout* kvout);
     void begin_checkpoint(ckstate* ck, Str startkey, Str endkey);
-    void begin_remove(Str key);
-    void begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti);
 
     /** @brief interfaces where the value is a single column,
      *    and where "get" does not emit but save a copy locally.
@@ -213,7 +167,6 @@ struct query {
     }
     void begin_scan1(Str startkey, int npairs, kvout* kv);
     void begin_put1(Str key, Str value);
-    void begin_replay_put1(Str key, Str value, kvtimestamp_t ts);
 
     int query_type() const {
 	return qt_;
@@ -228,7 +181,6 @@ struct query {
     bool scanemit(Str k, const R* v, threadinfo* ti);
 
     inline result_t apply_put(R*& value, bool has_value, threadinfo* ti);
-    void apply_replay(R*& value, bool has_value, threadinfo* ti);
     inline bool apply_remove(R*& value, bool has_value, threadinfo* ti, kvtimestamp_t* node_ts = 0);
 
   private:
@@ -266,41 +218,10 @@ void query<R>::begin_put(Str key, Str req) {
 }
 
 template <typename R>
-void query<R>::begin_replay_put(Str key, Str req, kvtimestamp_t ts) {
-    qt_ = QT_Replay_Put;
-    key_ = key;
-    R::parse_change(req, c_);
-    qtimes_.ts = ts;
-}
-
-template <typename R>
 void query<R>::begin_put1(Str key, Str val) {
     qt_ = QT_Put;
     key_ = key;
     R::make_put1_change(c_, val);
-}
-
-template <typename R>
-void query<R>::begin_replay_put1(Str key, Str value, kvtimestamp_t ts) {
-    qt_ = QT_Replay_Put;
-    key_ = key;
-    R::make_put1_change(c_, value);
-    qtimes_.ts = ts;
-}
-
-template <typename R>
-void query<R>::begin_replay_modify(Str key, Str req,
-                                   kvtimestamp_t ts, kvtimestamp_t prev_ts) {
-    // XXX We assume that sizeof(row_delta_marker<R>) memory exists before
-    // 'req's string data. We don't modify this memory but it must be
-    // readable. This is OK for conventional log replay, but that's an ugly
-    // interface
-    qt_ = QT_Replay_Modify;
-    key_ = key;
-    R::parse_change(req, c_);
-    val_ = req;
-    qtimes_.ts = ts;
-    qtimes_.prev_ts = prev_ts;
 }
 
 template <typename R>
@@ -338,16 +259,6 @@ void query<R>::begin_remove(Str key) {
 }
 
 template <typename R>
-void query<R>::begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti) {
-    qt_ = QT_Replay_Remove;
-    key_ = key;
-    qtimes_.ts = ts | 1;        // marker timestamp
-    row_marker *m = reinterpret_cast<row_marker *>(ti->buf_);
-    m->marker_type_ = row_marker::mt_remove;
-    R::make_put1_change(c_, Str(ti->buf_, sizeof(*m)));
-}
-
-template <typename R>
 void query<R>::emit(const R* row) {
     if (f_.size() == 0) {
         KVW(kvout_, (short) row->ncol());
@@ -355,7 +266,7 @@ void query<R>::emit(const R* row) {
             kvwrite_str(kvout_, row->col(i));
     } else {
         KVW(kvout_, (short) f_.size());
-        for (int i = 0; i != f_.size(); ++i)
+        for (int i = 0; i != (int) f_.size(); ++i)
             kvwrite_str(kvout_, row->col(f_[i]));
     }
 }
@@ -452,83 +363,6 @@ inline bool query<R>::apply_remove(R *&value, bool has_value, threadinfo *ti,
 	*node_ts = qtimes_.ts + 2;
     old_value->deallocate_rcu(*ti);
     return true;
-}
-
-template <typename R>
-void query<R>::apply_replay(R*& value, bool has_value, threadinfo* ti) {
-    precondition(qt_ >= QT_MinReplay);
-
-    R** cur_value = &value;
-    if (!has_value)
-	*cur_value = 0;
-
-    // find point to insert change (may be after some delta markers)
-    while (*cur_value && row_is_delta_marker(*cur_value)
-	   && (*cur_value)->ts_ > qtimes_.ts)
-	cur_value = &row_get_delta_marker(*cur_value)->prev_;
-
-    // check out of date
-    if (*cur_value && (*cur_value)->ts_ >= qtimes_.ts)
-	return;
-
-    // if not modifying, delete everything earlier
-    if (qt_ != QT_Replay_Modify)
-	while (R* old_value = *cur_value) {
-	    if (row_is_delta_marker(old_value)) {
-		ti->pstat.mark_delta_removed();
-		*cur_value = row_get_delta_marker(old_value)->prev_;
-	    } else
-		*cur_value = 0;
-	    old_value->deallocate(*ti);
-	}
-
-    // actually apply change
-    if (qt_ != QT_Replay_Modify)
-	*cur_value = R::from_change(c_, qtimes_.ts, *ti);
-    else {
-	if (*cur_value && (*cur_value)->ts_ == qtimes_.prev_ts) {
-	    R* old_value = *cur_value;
-	    *cur_value = old_value->update(c_, qtimes_.ts, *ti);
-	    if (*cur_value != old_value)
-		old_value->deallocate(*ti);
-	} else {
-	    // XXX assume that memory exists before saved request -- it does
-	    // in conventional log replay, but that's an ugly interface
-	    val_.s -= sizeof(row_delta_marker<R>);
-	    val_.len += sizeof(row_delta_marker<R>);
-	    R::make_put1_change(c_, val_);
-	    R* new_value = R::from_change(c_, qtimes_.ts | 1, *ti);
-	    row_delta_marker<R>* dm = row_get_delta_marker(new_value, true);
-	    dm->marker_type_ = row_marker::mt_delta;
-	    dm->prev_ts_ = qtimes_.prev_ts;
-	    dm->prev_ = *cur_value;
-	    *cur_value = new_value;
-	    ti->pstat.mark_delta_created();
-	}
-    }
-
-    // clean up
-    while (value && row_is_delta_marker(value)) {
-	R **prev = 0, **trav = &value;
-	while (*trav && row_is_delta_marker(*trav)) {
-	    prev = trav;
-	    trav = &row_get_delta_marker(*trav)->prev_;
-	}
-	if (prev && *trav
-	    && row_get_delta_marker(*prev)->prev_ts_ == (*trav)->ts_) {
-	    R *old_prev = *prev;
-	    Str req = old_prev->col(0);
-	    req.s += sizeof(row_delta_marker<R>);
-	    req.len -= sizeof(row_delta_marker<R>);
-	    R::parse_change(req, c_);
-	    *prev = (*trav)->update(c_, old_prev->ts_ - 1, *ti);
-	    if (*prev != *trav)
-		(*trav)->deallocate(*ti);
-	    old_prev->deallocate(*ti);
-	    ti->pstat.mark_delta_removed();
-	} else
-	    break;
-    }
 }
 
 

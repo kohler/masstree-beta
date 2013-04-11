@@ -18,6 +18,7 @@
 #include "masstree.hh"
 #include "kvproto.hh"
 template <typename R> class query;
+template <typename R> class replay_query;
 class Json;
 
 namespace Masstree {
@@ -49,7 +50,7 @@ class query_table {
     result_t put(query<row_type>& q, threadinfo* ti);
     bool remove(query<row_type>& q, threadinfo* ti);
 
-    void replay(query<row_type>& q, threadinfo* ti);
+    void replay(replay_query<row_type>& q, threadinfo* ti);
     void checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
                             threadinfo* ti);
 

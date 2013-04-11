@@ -126,12 +126,12 @@ result_t query_table<P>::put(query<row_type>& q, threadinfo* ti) {
 }
 
 template <typename P>
-void query_table<P>::replay(query<row_type>& q, threadinfo* ti) {
+void query_table<P>::replay(replay_query<row_type>& q, threadinfo* ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
     if (!found)
 	ti->advance_timestamp(lp.node_timestamp());
-    q.apply_replay(lp.value(), found, ti);
+    q.apply(lp.value(), found, ti);
     lp.finish(1, ti);
 }
 

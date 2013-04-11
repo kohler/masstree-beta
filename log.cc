@@ -550,7 +550,7 @@ logreplay::min_post_quiescent_wake_epoch(kvepoch_t quiescent_epoch) const
 }
 
 uint64_t
-logreplay::replayandclean1(query<row_type> &q,
+logreplay::replayandclean1(replay_query<row_type> &q,
 			   kvepoch_t min_epoch, kvepoch_t max_epoch,
 			   threadinfo *ti)
 {
@@ -707,7 +707,7 @@ void
 logreplay::replay(int which, threadinfo *ti)
 {
     waituntilphase(REC_LOG_TS);
-    query<row_type> q;
+    replay_query<row_type> q;
     // find the maximum timestamp of entries in the log
     if (buf_) {
 	info_type x = info();

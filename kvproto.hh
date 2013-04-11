@@ -62,4 +62,14 @@ enum ckptrav_order_t {
     ckptrav_inorder = 0, ckptrav_preorder
 };
 
+struct row_marker {
+    enum { mt_remove = 1, mt_delta = 2 };
+    int marker_type_;
+};
+
+template <typename R>
+inline bool row_is_marker(const R *row) {
+    return row->ts_ & 1;
+}
+
 #endif
