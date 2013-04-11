@@ -116,7 +116,8 @@ struct query_helper {
 };
 
 template <typename R>
-struct query {
+class query {
+  public:
     enum {
 	QT_None = 0,
 	QT_Get = 1,

@@ -93,7 +93,7 @@ inline Str serial_changeset_iterator<IDX>::value() const {
 template <typename IDX>
 inline bool serial_changeset_iterator<IDX>::check(serial_changeset_iterator<IDX> last) const {
     int32_t len;
-    return last.p_ - p_ >= sizeof(IDX) + sizeof(int32_t)
+    return last.p_ - p_ >= ssize_t(sizeof(IDX) + sizeof(int32_t))
 	&& (len = value_length()) >= 0
 	&& last.p_ - (p_ + sizeof(IDX) + sizeof(int32_t)) >= len;
 }

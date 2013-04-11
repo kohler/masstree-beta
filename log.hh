@@ -20,7 +20,7 @@
 #include "kvproto.hh"
 #include "serial_changeset.hh"
 #include <pthread.h>
-template <typename R> struct replay_query;
+template <typename R> class replay_query;
 class logset;
 
 // in-memory log.
@@ -228,7 +228,8 @@ inline row_delta_marker<R>* row_get_delta_marker(const R* row, bool force = fals
 }
 
 template <typename R>
-struct replay_query {
+class replay_query {
+  public:
     enum {
 	QT_Replay_Put = 1,
         QT_Replay_Put1 = 2,
