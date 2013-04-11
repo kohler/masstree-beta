@@ -24,16 +24,27 @@
 #include <algorithm>
 
 template <typename IDX>
+struct valueindex {
+    static inline IDX make_full() {
+        return IDX(0);
+    }
+    static inline IDX make_fixed(int index, int width) {
+        (void) width;
+        return IDX(index);
+    }
+};
+
+template <typename IDX>
 struct row_base {
     struct cell_t {
-        typename IDX::field_t c_fid;
+        IDX c_fid;
         Str c_value;
 	friend bool operator<(const cell_t &a, const cell_t &b) {
 	    return a.c_fid < b.c_fid;
 	}
     };
     typedef KUtil::vec<cell_t> change_t;
-    typedef KUtil::vec<typename IDX::field_t> fields_t;
+    typedef KUtil::vec<IDX> fields_t;
     static int parse_fields(Str v, fields_t &f) {
 	struct kvin kvin;
         kvin_init(&kvin, const_cast<char *>(v.s), v.len);
@@ -79,7 +90,7 @@ struct row_base {
         return 0;
     }
 
-    static cell_t make_cell(typename IDX::field_t fid, Str value) {
+    static cell_t make_cell(IDX fid, Str value) {
 	cell_t c;
 	c.c_fid = fid;
 	c.c_value = value;
@@ -89,16 +100,15 @@ struct row_base {
     /** @brief Interfaces for column-less key/value store. */
     static void make_get1_fields(fields_t &f) {
         f.resize(1);
-        IDX::make_full_field(f[0]);
+        f[0] = valueindex<IDX>::make_full();
     }
     static void make_put1_change(change_t &c, Str val) {
         c.resize(1);
-        IDX::make_full_field(c[0].c_fid);
+        c[0].c_fid = valueindex<IDX>::make_full();
         c[0].c_value = val;
     }
     static Str make_put_col_request(struct kvout *kvout,
-				    typename IDX::field_t fid,
-				    Str value) {
+				    IDX fid, Str value) {
 	kvout_reset(kvout);
 	KVW(kvout, short(1));
 	KVW(kvout, fid);

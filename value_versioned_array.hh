@@ -63,10 +63,9 @@ struct rowversion {
 
 };
 
-class value_versioned_array : public row_base<kvr_array_index> {
+class value_versioned_array : public row_base<value_array::index_type> {
   public:
     typedef value_array::index_type index_type;
-    typedef kvr_array_index index_t;
     static constexpr rowtype_id type_id = RowType_ArrayVer;
 
     static const char *name() { return "ArrayVersion"; }

@@ -19,25 +19,10 @@
 #include "kvrow.hh"
 #include "parsed_changeset.hh"
 
-struct kvr_bag_index {
-    typedef short field_t;
-    typedef short field_type;
-    static void make_full_field(field_t &f) {
-        f = 0;
-    }
-    static void make_fixed_width_field(field_t &f, int idx, int) {
-        f = idx;
-    }
-    static field_t make_fixed_width_field(int idx, int) {
-        return idx;
-    }
-};
-
 template <typename O>
-class value_bag : public row_base<kvr_bag_index> {
+class value_bag : public row_base<short> {
   public:
-    typedef struct kvr_bag_index index_t;
-    typedef kvr_bag_index::field_type index_type;
+    typedef short index_type;
     typedef O offset_type;
 
   private:

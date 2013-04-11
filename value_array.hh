@@ -18,23 +18,9 @@
 #include "compiler.hh"
 #include "kvrow.hh"
 
-struct kvr_array_index {
-    typedef short field_t;
-    static void make_full_field(field_t &f) {
-        f = 0;
-    }
-    static void make_fixed_width_field(field_t &f, int idx, int) {
-        f = idx;
-    }
-    static field_t make_fixed_width_field(int idx, int) {
-        return idx;
-    }
-};
-
-class value_array : public row_base<kvr_array_index> {
+class value_array : public row_base<short> {
   public:
     typedef short index_type;
-    typedef kvr_array_index index_t;
     static constexpr rowtype_id type_id = RowType_Array;
 
     static const char *name() { return "Array"; }

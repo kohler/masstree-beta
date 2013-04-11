@@ -18,44 +18,46 @@
 #include "compiler.hh"
 #include "kvrow.hh"
 
-struct kvr_str_index {
-    struct field_t {
-        short f_off;
-        short f_len;
-	friend bool operator<(const field_t &a, const field_t &b) {
-	    return a.f_off < b.f_off;
-	}
-    };
-    static void make_full_field(field_t &f) {
-        f.f_off = 0;
-        f.f_len = -1;
+struct valueindex_string {
+    short f_off;
+    short f_len;
+    valueindex_string() = default;
+    valueindex_string(short off, short len)
+        : f_off(off), f_len(len) {
     }
-    static void make_fixed_width_field(field_t &f, int idx, int width) {
-        f.f_off = idx * width;
-        f.f_len = width;
+    friend bool operator==(const valueindex_string& a,
+                           const valueindex_string& b) {
+        return a.f_off == b.f_off && a.f_len == b.f_len;
     }
-    static field_t make_fixed_width_field(int idx, int width) {
-        field_t f;
-        f.f_off = idx * width;
-        f.f_len = width;
-        return f;
+    friend bool operator<(const valueindex_string& a,
+                          const valueindex_string& b) {
+        return a.f_off < b.f_off;
     }
 };
 
-inline int KVR(kvin* kv, kvr_str_index::field_t& field) {
+template <>
+struct valueindex<valueindex_string> {
+    static inline valueindex_string make_full() {
+        return valueindex_string(0, -1);
+    }
+    static inline valueindex_string make_fixed(int index, int width) {
+        return valueindex_string(index * width, width);
+    }
+};
+
+inline int KVR(kvin* kv, valueindex_string& field) {
     int x = KVR(kv, field.f_off);
     return x + KVR(kv, field.f_len);
 }
 
-inline int KVW(kvout* kv, kvr_str_index::field_t field) {
+inline int KVW(kvout* kv, valueindex_string field) {
     int x = KVW(kv, field.f_off);
     return x + KVW(kv, field.f_len);
 }
 
-class value_string : public row_base<kvr_str_index> {
+class value_string : public row_base<valueindex_string> {
   public:
-    typedef kvr_str_index::field_t index_type;
-    typedef kvr_str_index index_t;
+    typedef valueindex_string index_type;
     static constexpr rowtype_id type_id = RowType_Str;
 
     static const char *name() { return "String"; }
@@ -73,7 +75,7 @@ class value_string : public row_base<kvr_str_index> {
 	(void) i;
 	return Str(s_, vallen_);
     }
-    inline Str col(kvr_str_index::field_t idx) const {
+    inline Str col(valueindex_string idx) const {
         int len = idx.f_len == -1 ? vallen_ - idx.f_off : idx.f_len;
         return Str(s_ + idx.f_off, len);
     }
@@ -96,7 +98,7 @@ class value_string : public row_base<kvr_str_index> {
     inline void deallocate_after_failed_update(const CS& changeset, threadinfo& ti);
 
     static inline value_string* checkpoint_read(Str str, kvtimestamp_t ts,
-                                                 threadinfo& ti);
+                                                threadinfo& ti);
     inline void checkpoint_write(kvout* kv) const;
 
     void print(FILE* f, const char* prefix, int indent, Str key,
