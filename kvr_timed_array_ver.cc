@@ -17,54 +17,18 @@
 #include "kvr_timed_array_ver.hh"
 #include <string.h>
 
-kvr_timed_array_ver *
-kvr_timed_array_ver::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti) {
-    kvr_timed_array_ver *tv;
-    size_t len = sizeof(*tv) + ncol * sizeof(tv->cols_[0]);
-    tv = (kvr_timed_array_ver *) ti.allocate(len, memtag_row_array_ver);
-    tv->ncol_ = tv->ncol_cap_ = ncol;
-    tv->ver_ = rowversion();
-    memset(tv->cols_, 0, sizeof(tv->cols_[0]) * ncol);
-    tv->ts_ = ts;
-    return tv;
-}
-
-kvr_timed_array_ver *
-kvr_timed_array_ver::update(const change_t &c, kvtimestamp_t ts, threadinfo &ti)
-{
-    assert(ts >= ts_);
-    int ncol = count_columns(c);
-    if (ncol > ncol_) {
-	kvr_timed_array_ver *r = make_sized_row(ncol, ts, ti);
-	memcpy(r->cols_, cols_, sizeof(r->cols_[0]) * ncol_);
-	r->update(c, ti);
-	return r;
-    } else {
-	ts_ = ts;
-	update(c, ti);
-	return this;
-    }
-}
-
-void
-kvr_timed_array_ver::update(const change_t &c, threadinfo &ti)
-{
-    ver_.setdirty();
-    // show dirty bit before any change to columns
-    fence();
-    change_t::const_iterator cb = c.begin(), ce = c.end();
-    for (; cb != ce; ++cb) {
-	if (cols_[cb->c_fid])
-	    cols_[cb->c_fid]->deallocate_rcu(ti);
-	cols_[cb->c_fid] = inline_string::allocate(cb->c_value, ti);
-    }
-    fence();
-    ver_.clearandbump();
+kvr_timed_array_ver* kvr_timed_array_ver::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo& ti) {
+    kvr_timed_array_ver* row = (kvr_timed_array_ver*) ti.allocate(shallow_size(ncol), memtag_row_array_ver);
+    row->ts_ = ts;
+    row->ver_ = rowversion();
+    row->ncol_ = row->ncol_cap_ = ncol;
+    memset(row->cols_, 0, sizeof(row->cols_[0]) * ncol);
+    return row;
 }
 
 void kvr_timed_array_ver::snapshot(kvr_timed_array_ver*& storage,
                                    const fields_t& f, threadinfo& ti) const {
-    if (!storage && storage->ncol_cap_ < ncol_) {
+    if (!storage || storage->ncol_cap_ < ncol_) {
         if (storage)
             storage->deallocate(ti);
         storage = make_sized_row(ncol_, ts_, ti);
@@ -106,26 +70,14 @@ void kvr_timed_array_ver::checkpoint_write(kvout* kv) const {
         kvwrite_inline_string(kv, cols_[i]);
 }
 
-kvr_timed_array_ver *
-kvr_timed_array_ver::from_change(const change_t &c, kvtimestamp_t ts, threadinfo &ti)
-{
-    kvr_timed_array_ver *row = make_sized_row(count_columns(c), ts, ti);
-    row->update(c, ti);
-    return row;
-}
-
-void
-kvr_timed_array_ver::deallocate(threadinfo &ti)
-{
+void kvr_timed_array_ver::deallocate(threadinfo &ti) {
     for (short i = 0; i < ncol_; ++i)
         if (cols_[i])
 	    cols_[i]->deallocate(ti);
     ti.deallocate(this, shallow_size(), memtag_row_array_ver);
 }
 
-void
-kvr_timed_array_ver::deallocate_rcu(threadinfo &ti)
-{
+void kvr_timed_array_ver::deallocate_rcu(threadinfo &ti) {
     for (short i = 0; i < ncol_; ++i)
         if (cols_[i])
 	    cols_[i]->deallocate_rcu(ti);

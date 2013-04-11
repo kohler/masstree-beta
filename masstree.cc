@@ -126,6 +126,16 @@ result_t query_table<P>::put(query<row_type>& q, threadinfo* ti) {
 }
 
 template <typename P>
+void query_table<P>::replace(query<row_type>& q, threadinfo* ti) {
+    tcursor<P> lp(table_, q.key_);
+    bool found = lp.find_insert(ti);
+    if (!found)
+	ti->advance_timestamp(lp.node_timestamp());
+    q.apply_replace(lp.value(), found, ti);
+    lp.finish(1, ti);
+}
+
+template <typename P>
 void query_table<P>::replay(replay_query<row_type>& q, threadinfo* ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
@@ -403,8 +413,8 @@ void query_table<P>::test(threadinfo *ti) {
 
     for (int i = arraysize(values); i > 0; --i) {
 	int x = rand() % i;
-        q.begin_put1(Str(values_copy[x]), Str(values_copy[x]));
-	t.put(q, ti);
+        q.begin_replace(Str(values_copy[x]), Str(values_copy[x]));
+	t.replace(q, ti);
 	values_copy[x] = values_copy[i - 1];
     }
 

@@ -34,11 +34,6 @@ struct row_base {
     };
     typedef KUtil::vec<cell_t> change_t;
     typedef KUtil::vec<typename IDX::field_t> fields_t;
-    static int parse_change(Str v, change_t &c) {
-        struct kvin kvin;
-        kvin_init(&kvin, const_cast<char *>(v.s), v.len);
-        return kvread_change(&kvin, c);
-    }
     static int parse_fields(Str v, fields_t &f) {
 	struct kvin kvin;
         kvin_init(&kvin, const_cast<char *>(v.s), v.len);
@@ -64,16 +59,6 @@ struct row_base {
             KVW(kvout, f[i]);
         return 0;
     }
-    static int kvread_change(struct kvin *kvin, change_t &c) {
-        short n;
-        KVR(kvin, n);
-        c.resize(n);
-        for (short i = 0; i < n; i++) {
-            KVR(kvin, c[i].c_fid);
-            kvread_str_inplace(kvin, c[i].c_value);
-        }
-        return 0;
-    }
     static void sort(change_t &c) {
 	std::sort(c.begin(), c.end());
     }
@@ -87,10 +72,9 @@ struct row_base {
 	        assert(0 && "The change must be sorted");
 		exit(EXIT_FAILURE);
 	    }
-        KVW(kvout, n);
         for (short i = 0; i < n; i++) {
             KVW(kvout, c[i].c_fid);
-            kvwrite_str(kvout, c[i].c_value);
+            KVW(kvout, c[i].c_value);
         }
         return 0;
     }
@@ -118,7 +102,7 @@ struct row_base {
 	kvout_reset(kvout);
 	KVW(kvout, short(1));
 	KVW(kvout, fid);
-	kvwrite_str(kvout, value);
+	KVW(kvout, value);
 	return Str(kvout->buf, kvout->n);
     }
 };
@@ -141,15 +125,13 @@ struct query {
 	QT_Get1_Col0 = 4, /* + column index */
 
 	QT_Put = 4,
-	QT_Remove = 5,
-	QT_MinReplay = 7,
-	QT_Replay_Put = 7,
-	QT_Replay_Remove = 8,
-	QT_Replay_Modify = 9
+        QT_Replace = 5,
+	QT_Remove = 6
     };
 
     void begin_get(Str key, Str req, struct kvout* kvout);
     void begin_put(Str key, Str req);
+    void begin_replace(Str key, Str value);
     void begin_remove(Str key);
     void begin_scan(Str startkey, int npairs, Str req,
 		    struct kvout* kvout);
@@ -166,7 +148,6 @@ struct query {
 	return val_;
     }
     void begin_scan1(Str startkey, int npairs, kvout* kv);
-    void begin_put1(Str key, Str value);
 
     int query_type() const {
 	return qt_;
@@ -181,10 +162,10 @@ struct query {
     bool scanemit(Str k, const R* v, threadinfo* ti);
 
     inline result_t apply_put(R*& value, bool has_value, threadinfo* ti);
+    inline void apply_replace(R*& value, bool has_value, threadinfo* ti);
     inline bool apply_remove(R*& value, bool has_value, threadinfo* ti, kvtimestamp_t* node_ts = 0);
 
   private:
-    typename R::change_t c_;
     typename R::fields_t f_;
     unsigned long scan_npairs_;
     loginfo::query_times qtimes_;
@@ -197,6 +178,7 @@ struct query {
     ckstate* ck_;
     Str endkey_;
     Str val_;			// value for Get1 and CkpPut
+
     void emit(const R* row);
     void assign_timestamp(threadinfo* ti);
     void assign_timestamp(threadinfo* ti, kvtimestamp_t t);
@@ -214,14 +196,14 @@ template <typename R>
 void query<R>::begin_put(Str key, Str req) {
     qt_ = QT_Put;
     key_ = key;
-    R::parse_change(req, c_);
+    val_ = req;
 }
 
 template <typename R>
-void query<R>::begin_put1(Str key, Str val) {
-    qt_ = QT_Put;
+void query<R>::begin_replace(Str key, Str val) {
+    qt_ = QT_Replace;
     key_ = key;
-    R::make_put1_change(c_, val);
+    val_ = val;
 }
 
 template <typename R>
@@ -263,11 +245,11 @@ void query<R>::emit(const R* row) {
     if (f_.size() == 0) {
         KVW(kvout_, (short) row->ncol());
         for (int i = 0; i != row->ncol(); ++i)
-            kvwrite_str(kvout_, row->col(i));
+            KVW(kvout_, row->col(i));
     } else {
         KVW(kvout_, (short) f_.size());
         for (int i = 0; i != (int) f_.size(); ++i)
-            kvwrite_str(kvout_, row->col(f_[i]));
+            KVW(kvout_, row->col(f_[i]));
     }
 }
 
@@ -282,7 +264,7 @@ bool query<R>::scanemit(Str k, const R* v, threadinfo* ti) {
         return true;
     } else {
         assert(qt_ == QT_Scan);
-	kvwrite_str(kvout_, k);
+	KVW(kvout_, k);
         emit(helper_.snapshot(v, f_, *ti));
         --scan_npairs_;
         return scan_npairs_ > 0;
@@ -317,7 +299,8 @@ inline void query<R>::assign_timestamp(threadinfo* ti, kvtimestamp_t min_ts) {
 
 template <typename R>
 inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
-    precondition(qt_ < QT_MinReplay);
+    precondition(qt_ == QT_Put);
+    serial_changeset<typename R::index_type> changeset(val_);
 
     if (loginfo* log = ti->ti_log) {
 	log->acquire();
@@ -327,7 +310,7 @@ inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
     if (!has_value) {
     insert:
 	assign_timestamp(ti);
-        value = R::from_change(c_, qtimes_.ts, *ti);
+        value = R::create(changeset, qtimes_.ts, *ti);
 	return Inserted;
     }
 
@@ -338,12 +321,31 @@ inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
 	goto insert;
     }
 
-    R* updated = old_value->update(c_, qtimes_.ts, *ti);
+    R* updated = old_value->update(changeset, qtimes_.ts, *ti);
     if (updated != old_value) {
 	value = updated;
-	old_value->deallocate_rcu_after_update(c_, *ti);
+	old_value->deallocate_rcu_after_update(changeset, *ti);
     }
     return Updated;
+}
+
+template <typename R>
+inline void query<R>::apply_replace(R*& value, bool has_value, threadinfo* ti) {
+    precondition(qt_ == QT_Replace);
+
+    if (loginfo* log = ti->ti_log) {
+	log->acquire();
+	qtimes_.epoch = global_log_epoch;
+    }
+
+    if (!has_value)
+	assign_timestamp(ti);
+    else {
+        assign_timestamp(ti, value->ts_);
+        value->deallocate_rcu(*ti);
+    }
+
+    value = R::create1(val_, qtimes_.ts, *ti);
 }
 
 template <typename R>

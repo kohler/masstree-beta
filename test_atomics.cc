@@ -28,6 +28,7 @@
 #include "kpermuter.hh"
 #include "kvr_timed_bag.hh"
 #include "json.hh"
+#include "serial_changeset.hh"
 
 uint8_t xb[100];
 uint16_t xw[100];
@@ -202,6 +203,10 @@ void test_string_bag() {
     assert(b->row_string() == Str("\001\000\006\000\007\000A", 7));
     assert(b->ncol() == 1);
     assert(b->col(0) == Str("A", 1));
+
+    bag_t* bx = bag_t::create1(Str("A", 1), 1, ti);
+    assert(bx->row_string() == b->row_string());
+    bx->deallocate(ti);
 
     bag_t *bb = b->update(1, Str("BB", 2), 2, ti);
     b->deallocate(ti);
@@ -402,6 +407,72 @@ void test_json()
     j["b"] = Json::parse("[]");
 }
 
+void test_serial_changeset() {
+    fake_threadinfo ti;
+    typedef kvr_timed_bag<uint16_t> bag_t;
+    bag_t* eb = new bag_t;
+
+    kvout* kv = new_bufkvout();
+    KVW(kv, (short) 4);
+    KVW(kv, (short) 0);
+    KVW(kv, Str("ABC", 3));
+    KVW(kv, (short) 1);
+    KVW(kv, Str("def", 3));
+    KVW(kv, (short) 2);
+    KVW(kv, Str("EGHIJ", 5));
+    KVW(kv, (short) 3);
+    KVW(kv, Str("klm", 3));
+    Str blorp(kv->buf, kv->n);
+    Str blorpx(kv->buf + 2, kv->n - 2);
+
+    {
+        serial_changeset<short> sc(blorpx);
+        assert(!sc.empty());
+        assert(!sc.single_index());
+        assert(sc.last_index() == 3);
+        bag_t* eb2 = eb->update(sc, 1, ti);
+        eb->deallocate(ti);
+        eb = eb2;
+        assert(eb->col(0) == Str("ABC"));
+        assert(eb->col(1) == Str("def"));
+        assert(eb->col(2) == Str("EGHIJ"));
+        assert(eb->col(3) == Str("klm"));
+    }
+
+    {
+        serial_changeset<short> sc(Str(kv->buf + 2, 9));
+        assert(!sc.empty());
+        assert(sc.single_index());
+        assert(sc.last_index() == 0);
+    }
+
+#if 0
+    kvtimestamp_t t0 = timestamp();
+    for (int i = 0; i != 100000000; ++i) {
+        serial_changeset<short> sc(blorpx);
+        bag_t* eb2 = eb->update(sc, 1, ti);
+        eb->deallocate(ti);
+        eb = eb2;
+    }
+    std::cerr << (timestamp() - t0) << "\n";
+    eb->print(stderr, ">> ", 0, "K", 0);
+
+    row_base<kvr_bag_index>::change_t ch;
+    t0 = timestamp();
+    for (int i = 0; i != 100000000; ++i) {
+        row_base<kvr_bag_index>::parse_change(blorp, ch);
+        bag_t* eb2 = eb->update(ch, 1, ti);
+        eb->deallocate(ti);
+        eb = eb2;
+    }
+    std::cerr << (timestamp() - t0) << "\n";
+    eb->print(stderr, ">> ", 0, "K", 0);
+#endif
+
+    eb->deallocate(ti);
+    free_kvout(kv);
+}
+
 int main(int, char *[])
 {
     //test_atomics();
@@ -416,5 +487,6 @@ int main(int, char *[])
     test_string_slice();
     test_string_bag();
     test_json();
+    test_serial_changeset();
     return 0;
 }

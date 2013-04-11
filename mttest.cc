@@ -422,8 +422,8 @@ void kvtest_client<T>::output_scan(std::vector<Str> &keys,
 
 template <typename T>
 void kvtest_client<T>::put(const Str &key, const Str &value) {
-    q_[0].begin_put1(key, value);
-    table_->put(q_[0], ti_);
+    q_[0].begin_replace(key, value);
+    table_->replace(q_[0], ti_);
 }
 
 template <typename T>

@@ -32,11 +32,17 @@ struct kvr_array_index {
 };
 
 struct kvr_timed_array : public row_base<kvr_array_index> {
-    typedef struct kvr_array_index index_t;
+    typedef short index_type;
+    typedef kvr_array_index index_t;
     static constexpr bool has_priv_row_str = false;
     static constexpr rowtype_id type_id = RowType_Array;
 
     static const char *name() { return "Array"; }
+
+    inline kvr_timed_array();
+
+    void deallocate(threadinfo &ti);
+    void deallocate_rcu(threadinfo &ti);
 
     inline int ncol() const {
         return ncol_;
@@ -48,19 +54,19 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
 	    return Str();
     }
 
-    void deallocate(threadinfo &ti);
-    void deallocate_rcu(threadinfo &ti);
-    void deallocate_rcu_after_update(const change_t &c, threadinfo &ti);
-    void deallocate_after_failed_update(const change_t &c, threadinfo &ti);
+    template <typename CS>
+    kvr_timed_array* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const;
+    template <typename CS>
+    static kvr_timed_array* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
+    static inline kvr_timed_array* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
+    template <typename CS>
+    void deallocate_rcu_after_update(const CS& changeset, threadinfo& ti);
+    template <typename CS>
+    void deallocate_after_failed_update(const CS& changeset, threadinfo& ti);
 
-    /** @brief Update the row with change c.
-     * @return a new kvr_timed_array if applied; NULL if change is out-of-dated
-     */
-    kvr_timed_array *update(const change_t &c, kvtimestamp_t ts, threadinfo &ti) const;
-    /** @brief Convert a change to a timedvalue without keyrest.
-     */
-    static kvr_timed_array *from_change(const change_t &c,
-                                        kvtimestamp_t ts, threadinfo &ti);
+    static kvr_timed_array* checkpoint_read(Str str, kvtimestamp_t ts,
+                                            threadinfo& ti);
+    void checkpoint_write(kvout* buf) const;
 
     void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "") {
@@ -69,18 +75,14 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
 		key.len, key.s, KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
-    static kvr_timed_array* checkpoint_read(Str str, kvtimestamp_t ts,
-                                            threadinfo& ti);
-    void checkpoint_write(kvout* buf) const;
-
     kvtimestamp_t ts_;
+
   private:
-    static int kvwrite_column(kvout* kv, inline_string* c);
     short ncol_;
-    inline_string *cols_[0];
-    inline size_t shallow_size() const {
-        return sizeof(kvr_timed_array) + ncol_ * sizeof(cols_[0]);
-    }
+    inline_string* cols_[0];
+
+    static inline size_t shallow_size(int ncol);
+    inline size_t shallow_size() const;
     static inline int count_columns(const change_t &c) {
 	// Changes are sorted by field! Cheers!
 	assert(c.size() && "Change can not be empty");
@@ -89,5 +91,64 @@ struct kvr_timed_array : public row_base<kvr_array_index> {
     void update(const change_t &c, threadinfo &ti);
     static kvr_timed_array *make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti);
 };
+
+inline kvr_timed_array::kvr_timed_array()
+    : ts_(0), ncol_(0) {
+}
+
+inline size_t kvr_timed_array::shallow_size(int ncol) {
+    return sizeof(kvr_timed_array) + sizeof(inline_string*) * ncol;
+}
+
+inline size_t kvr_timed_array::shallow_size() const {
+    return shallow_size(ncol_);
+}
+
+template <typename CS>
+kvr_timed_array* kvr_timed_array::update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const {
+    precondition(ts >= ts_);
+    int ncol = std::max(int(ncol_), int(changeset.last_index()) + 1);
+    kvr_timed_array* row = (kvr_timed_array*) ti.allocate(shallow_size(ncol), memtag_row_array);
+    row->ts_ = ts;
+    row->ncol_ = ncol;
+    memcpy(row->cols_, cols_, ncol_ * sizeof(cols_[0]));
+    memset(row->cols_ + ncol_, 0, (ncol - ncol_) * sizeof(cols_[0]));
+    auto last = changeset.end();
+    for (auto it = changeset.begin(); it != last; ++it)
+        row->cols_[it->index()] = inline_string::allocate(it->value(), ti);
+    return row;
+}
+
+template <typename CS>
+kvr_timed_array* kvr_timed_array::create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) {
+    kvr_timed_array empty;
+    return empty.update(changeset, ts, ti);
+}
+
+inline kvr_timed_array* kvr_timed_array::create1(Str value, kvtimestamp_t ts, threadinfo& ti) {
+    kvr_timed_array* row = (kvr_timed_array*) ti.allocate(shallow_size(1), memtag_row_array);
+    row->ts_ = ts;
+    row->ncol_ = 1;
+    row->cols_[0] = inline_string::allocate(value, ti);
+    return row;
+}
+
+template <typename CS>
+void kvr_timed_array::deallocate_rcu_after_update(const CS& changeset, threadinfo& ti) {
+    auto last = changeset.end();
+    for (auto it = changeset.begin(); it != last && it->index() < ncol_; ++it)
+        if (cols_[it->index()])
+            cols_[it->index()]->deallocate_rcu(ti);
+    ti.deallocate_rcu(this, shallow_size(), memtag_row_array);
+}
+
+template <typename CS>
+void kvr_timed_array::deallocate_after_failed_update(const CS& changeset, threadinfo& ti) {
+    auto last = changeset.end();
+    for (auto it = changeset.begin(); it != last; ++it)
+        if (cols_[it->index()])
+            cols_[it->index()]->deallocate(ti);
+    ti.deallocate(this, shallow_size(), memtag_row_array);
+}
 
 #endif

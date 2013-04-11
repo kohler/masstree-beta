@@ -17,32 +17,13 @@
 #include "kvr_timed_array.hh"
 #include <string.h>
 
-kvr_timed_array* kvr_timed_array::update(const change_t& c, kvtimestamp_t ts,
-                                         threadinfo& ti) const {
-    assert(ts >= ts_);
-    kvr_timed_array *row = make_sized_row(std::max(count_columns(c), (int)ncol_),
-                                          ts, ti);
-    // make a shallow copy
-    memcpy(row->cols_, cols_, ncol_ * sizeof(cols_[0]));
-    // update it
-    row->update(c, ti);
-    return row;
-}
-
-void kvr_timed_array::update(const change_t& c, threadinfo& ti) {
-    change_t::const_iterator cb = c.begin(), ce = c.end();
-    for (; cb != ce; ++cb)
-	cols_[cb->c_fid] = inline_string::allocate(cb->c_value, ti);
-}
-
 kvr_timed_array* kvr_timed_array::make_sized_row(int ncol, kvtimestamp_t ts,
                                                  threadinfo& ti) {
     kvr_timed_array *tv;
-    size_t len = sizeof(*tv) + ncol * sizeof(tv->cols_[0]);
-    tv = (kvr_timed_array *) ti.allocate(len, memtag_row_array);
+    tv = (kvr_timed_array *) ti.allocate(shallow_size(ncol), memtag_row_array);
+    tv->ts_ = ts;
     tv->ncol_ = ncol;
     memset(tv->cols_, 0, sizeof(tv->cols_[0]) * ncol);
-    tv->ts_ = ts;
     return tv;
 }
 
@@ -68,14 +49,6 @@ void kvr_timed_array::checkpoint_write(kvout* kv) const {
         kvwrite_inline_string(kv, cols_[i]);
 }
 
-kvr_timed_array* kvr_timed_array::from_change(const change_t& c,
-                                              kvtimestamp_t ts,
-                                              threadinfo& ti) {
-    kvr_timed_array *row = make_sized_row(count_columns(c), ts, ti);
-    row->update(c, ti);
-    return row;
-}
-
 void kvr_timed_array::deallocate(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
         if (cols_[i])
@@ -88,22 +61,4 @@ void kvr_timed_array::deallocate_rcu(threadinfo& ti) {
         if (cols_[i])
 	    cols_[i]->deallocate_rcu(ti);
     ti.deallocate_rcu(this, shallow_size(), memtag_row_array);
-}
-
-void kvr_timed_array::deallocate_rcu_after_update(const change_t& c,
-                                                  threadinfo& ti) {
-    change_t::const_iterator cb = c.begin(), ce = c.end();
-    for (; cb != ce && cb->c_fid < ncol_; ++cb)
-	if (cols_[cb->c_fid])
-	    cols_[cb->c_fid]->deallocate_rcu(ti);
-    ti.deallocate_rcu(this, shallow_size(), memtag_row_array);
-}
-
-void kvr_timed_array::deallocate_after_failed_update(const change_t& c,
-                                                     threadinfo& ti) {
-    change_t::const_iterator cb = c.begin(), ce = c.end();
-    for (; cb != ce; ++cb)
-	if (cols_[cb->c_fid])
-	    cols_[cb->c_fid]->deallocate(ti);
-    ti.deallocate(this, shallow_size(), memtag_row_array);
 }

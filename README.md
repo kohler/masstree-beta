@@ -31,8 +31,9 @@ See `./configure --help` for more configure options.
 
 ##Test Masstree in a single process##
 
-The quickiest and simpliest way to trying out Masstree is (**note that this test doesn't
-involve disk or network overhead.**):
+The quickiest and simplest way to try out Masstree is the `./mttest` program.
+(**Note that this test doesn't involve disk or network overhead.**)
+
 <pre>
 $ ./mttest
 1/1 rw1/m

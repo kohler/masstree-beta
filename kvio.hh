@@ -75,6 +75,12 @@ inline int KVW(kvout* kv, const volatile T& x) {
     return KVW(kv, (const T &)x);
 }
 
+inline int KVW(kvout* kv, Str x) {
+    KVW(kv, int32_t(x.length()));
+    kvwrite(kv, x.data(), x.length());
+    return sizeof(int32_t) + x.length();
+}
+
 inline int kvread_str_inplace(kvin* kv, Str& v) {
     KVR(kv, v.len);
     v.s = kvin_skip(kv, v.len);
@@ -104,9 +110,9 @@ inline int kvwrite_str(kvout* kv, Str v) {
 
 inline int kvwrite_inline_string(kvout* kv, const inline_string* s) {
     if (!s)
-        return kvwrite_str(kv, Str());
+        return KVW(kv, Str());
     else
-        return kvwrite_str(kv, Str(s->s, s->len));
+        return KVW(kv, Str(s->s, s->len));
 }
 
 /** @brief Read a row from kvin. The row is serialized by row_type::filteremit.

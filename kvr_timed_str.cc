@@ -17,39 +17,6 @@
 #include "kvr_timed_str.hh"
 #include <string.h>
 
-kvr_timed_str *
-kvr_timed_str::update(const change_t &c, kvtimestamp_t ts, threadinfo &ti) const
-{
-    bool toend;
-    int max = endat(c, toend);
-    if (!toend)
-        max = std::max(max, vallen_);
-    kvr_timed_str *row = make_sized_row(max, ts, ti);
-    memcpy(row->s_, s_, std::min(max, vallen_));
-    row->update(c);
-    return row;
-}
-
-void
-kvr_timed_str::update(const change_t &c)
-{
-    for (unsigned i = 0; i < c.size(); i++)
-        memcpy(s_ + c[i].c_fid.f_off, c[i].c_value.s, c[i].c_value.len);
-}
-
-int
-kvr_timed_str::endat(const change_t &c, bool &toend)
-{
-    toend = false;
-    int vlen = 0;
-    for (unsigned i = 0; i < c.size(); i++) {
-        vlen = std::max(vlen, c[i].c_fid.f_off + c[i].c_value.len);
-        if (c[i].c_fid.f_len == -1)
-            toend = true;
-    }
-    return vlen;
-}
-
 kvr_timed_str* kvr_timed_str::make_sized_row(int vlen, kvtimestamp_t ts,
                                              threadinfo& ti) {
     size_t len = sizeof(kvr_timed_str) + vlen;
@@ -57,14 +24,4 @@ kvr_timed_str* kvr_timed_str::make_sized_row(int vlen, kvtimestamp_t ts,
     tv->vallen_ = vlen;
     tv->ts_ = ts;
     return tv;
-}
-
-kvr_timed_str *
-kvr_timed_str::from_change(const kvr_timed_str::change_t &c, kvtimestamp_t ts,
-                           threadinfo &ti)
-{
-    bool toend;
-    kvr_timed_str *row = make_sized_row(endat(c, toend), ts, ti);
-    row->update(c);
-    return row;
 }

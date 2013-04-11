@@ -53,11 +53,14 @@ inline int KVW(kvout* kv, kvr_str_index::field_t field) {
 }
 
 struct kvr_timed_str : public row_base<kvr_str_index> {
-    typedef struct kvr_str_index index_t;
+    typedef kvr_str_index::field_t index_type;
+    typedef kvr_str_index index_t;
     static constexpr bool has_priv_row_str = true;
     static constexpr rowtype_id type_id = RowType_Str;
 
     static const char *name() { return "String"; }
+
+    inline kvr_timed_str();
 
     inline size_t size() const {
         return sizeof(kvr_timed_str) + vallen_;
@@ -81,12 +84,16 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
     inline void deallocate_rcu(threadinfo &ti) {
 	ti.deallocate_rcu(this, size(), memtag_row_str);
     }
-    inline void deallocate_rcu_after_update(const change_t &, threadinfo &ti) {
-	deallocate_rcu(ti);
-    }
-    inline void deallocate_after_failed_update(const change_t &, threadinfo &ti) {
-	deallocate(ti);
-    }
+
+    template <typename CS>
+    kvr_timed_str* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const;
+    template <typename CS>
+    static inline kvr_timed_str* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
+    static inline kvr_timed_str* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
+    template <typename CS>
+    inline void deallocate_rcu_after_update(const CS& changeset, threadinfo& ti);
+    template <typename CS>
+    inline void deallocate_after_failed_update(const CS& changeset, threadinfo& ti);
 
     /** @brief Update the row with change c.
      * @return a new kvr_timed_str if applied; NULL if change is out-of-dated
@@ -113,20 +120,81 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
   private:
     int vallen_;
     char s_[0];
-    static int endat(const change_t &, bool &toend);
-    void update(const change_t &c);
+
+    static inline size_t shallow_size(int vallen);
+    inline size_t shallow_size() const;
     static kvr_timed_str *make_sized_row(int vlen, kvtimestamp_t ts, threadinfo &ti);
 };
 
-inline kvr_timed_str* kvr_timed_str::checkpoint_read(Str str, kvtimestamp_t ts,
-                                                     threadinfo& ti) {
-    kvr_timed_str* row = make_sized_row(str.len, ts, ti);
-    memcpy(row->s_, str.s, str.len);
+inline kvr_timed_str::kvr_timed_str()
+    : ts_(0), vallen_(0) {
+}
+
+inline size_t kvr_timed_str::shallow_size(int vallen) {
+    return sizeof(kvr_timed_str) + vallen;
+}
+
+inline size_t kvr_timed_str::shallow_size() const {
+    return shallow_size(vallen_);
+}
+
+template <typename CS>
+kvr_timed_str* kvr_timed_str::update(const CS& changeset, kvtimestamp_t ts,
+                                     threadinfo& ti) const {
+    auto last = changeset.end();
+    int vallen = 0, cut = vallen_;
+    for (auto it = changeset.begin(); it != last; ++it) {
+        vallen = std::max(vallen, it->index().f_off + it->value_length());
+        if (it->index().f_len == -1)
+            cut = std::min(cut, int(it->index().f_off));
+    }
+    vallen = std::max(vallen, cut);
+    kvr_timed_str* row = (kvr_timed_str*) ti.allocate(shallow_size(vallen));
+    row->ts_ = ts;
+    row->vallen_ = vallen;
+    memcpy(row->s_, s_, cut);
+    for (auto it = changeset.begin(); it != last; ++it)
+        memcpy(row->s_ + it->index().f_off, it->value().data(),
+               it->value().length());
     return row;
 }
 
+template <typename CS>
+inline kvr_timed_str* kvr_timed_str::create(const CS& changeset,
+                                            kvtimestamp_t ts,
+                                            threadinfo& ti) {
+    kvr_timed_str empty;
+    return empty.update(changeset, ts, ti);
+}
+
+inline kvr_timed_str* kvr_timed_str::create1(Str value,
+                                             kvtimestamp_t ts,
+                                             threadinfo& ti) {
+    kvr_timed_str* row = (kvr_timed_str*) ti.allocate(shallow_size(value.length()));
+    row->ts_ = ts;
+    row->vallen_ = value.length();
+    memcpy(row->s_, value.data(), value.length());
+    return row;
+}
+
+template <typename CS>
+inline void kvr_timed_str::deallocate_rcu_after_update(const CS&, threadinfo& ti) {
+    deallocate_rcu(ti);
+}
+
+template <typename CS>
+inline void kvr_timed_str::deallocate_after_failed_update(const CS&, threadinfo& ti) {
+    deallocate(ti);
+}
+
+inline kvr_timed_str* kvr_timed_str::checkpoint_read(Str str,
+                                                     kvtimestamp_t ts,
+                                                     threadinfo& ti) {
+    return create1(str, ts, ti);
+}
+
 inline void kvr_timed_str::checkpoint_write(kvout* kv) const {
-    kvwrite_str(kv, Str(s_, vallen_));
+    KVW(kv, Str(s_, vallen_));
 }
 
 #endif
