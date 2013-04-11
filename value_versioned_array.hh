@@ -13,10 +13,10 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#ifndef KVR_TIMED_ARRAY_VER_HH
-#define KVR_TIMED_ARRAY_VER_HH
+#ifndef VALUE_VERSIONED_ARRAY_HH
+#define VALUE_VERSIONED_ARRAY_HH
 #include "compiler.hh"
-#include "kvr_timed_array.hh"
+#include "value_array.hh"
 
 struct rowversion {
     rowversion() {
@@ -63,15 +63,15 @@ struct rowversion {
 
 };
 
-struct kvr_timed_array_ver : public row_base<kvr_array_index> {
-    typedef kvr_timed_array::index_type index_type;
+class value_versioned_array : public row_base<kvr_array_index> {
+  public:
+    typedef value_array::index_type index_type;
     typedef kvr_array_index index_t;
-    static constexpr bool has_priv_row_str = false;
     static constexpr rowtype_id type_id = RowType_ArrayVer;
 
     static const char *name() { return "ArrayVersion"; }
 
-    inline kvr_timed_array_ver();
+    inline value_versioned_array();
 
     inline int ncol() const {
         return ncol_;
@@ -83,23 +83,23 @@ struct kvr_timed_array_ver : public row_base<kvr_array_index> {
 	    return Str();
     }
 
-    void snapshot(kvr_timed_array_ver*& storage,
+    void snapshot(value_versioned_array*& storage,
                   const fields_t& f, threadinfo& ti) const;
 
     void deallocate(threadinfo &ti);
     void deallocate_rcu(threadinfo &ti);
 
     template <typename CS>
-    kvr_timed_array_ver* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti, bool always_copy = false);
+    value_versioned_array* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti, bool always_copy = false);
     template <typename CS>
-    static kvr_timed_array_ver* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
-    static kvr_timed_array_ver* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
+    static value_versioned_array* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
+    static value_versioned_array* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
     template <typename CS>
     inline void deallocate_rcu_after_update(const CS& changeset, threadinfo& ti);
     template <typename CS>
     inline void deallocate_after_failed_update(const CS& changeset, threadinfo& ti);
 
-    static kvr_timed_array_ver* checkpoint_read(Str str, kvtimestamp_t ts,
+    static value_versioned_array* checkpoint_read(Str str, kvtimestamp_t ts,
                                                 threadinfo& ti);
     void checkpoint_write(kvout* kv) const;
 
@@ -119,40 +119,40 @@ struct kvr_timed_array_ver : public row_base<kvr_array_index> {
 
     static inline size_t shallow_size(int ncol);
     inline size_t shallow_size() const;
-    static kvr_timed_array_ver* make_sized_row(int ncol, kvtimestamp_t ts, threadinfo& ti);
+    static value_versioned_array* make_sized_row(int ncol, kvtimestamp_t ts, threadinfo& ti);
 };
 
 template <>
-struct query_helper<kvr_timed_array_ver> {
-    kvr_timed_array_ver* snapshot_;
+struct query_helper<value_versioned_array> {
+    value_versioned_array* snapshot_;
 
     query_helper()
         : snapshot_() {
     }
-    inline const kvr_timed_array_ver* snapshot(const kvr_timed_array_ver* row, const kvr_timed_array_ver::fields_t& f, threadinfo& ti) {
+    inline const value_versioned_array* snapshot(const value_versioned_array* row, const value_versioned_array::fields_t& f, threadinfo& ti) {
         row->snapshot(snapshot_, f, ti);
         return snapshot_;
     }
 };
 
-inline kvr_timed_array_ver::kvr_timed_array_ver()
+inline value_versioned_array::value_versioned_array()
     : ts_(0), ncol_(0), ncol_cap_(0) {
 }
 
-inline size_t kvr_timed_array_ver::shallow_size(int ncol) {
-    return sizeof(kvr_timed_array_ver) + ncol * sizeof(inline_string*);
+inline size_t value_versioned_array::shallow_size(int ncol) {
+    return sizeof(value_versioned_array) + ncol * sizeof(inline_string*);
 }
 
-inline size_t kvr_timed_array_ver::shallow_size() const {
+inline size_t value_versioned_array::shallow_size() const {
     return shallow_size(ncol_);
 }
 
 template <typename CS>
-kvr_timed_array_ver* kvr_timed_array_ver::update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti, bool always_copy) {
+value_versioned_array* value_versioned_array::update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti, bool always_copy) {
     int ncol = changeset.last_index() + 1;
-    kvr_timed_array_ver* row;
+    value_versioned_array* row;
     if (ncol > ncol_cap_ || always_copy) {
-        row = (kvr_timed_array_ver*) ti.allocate(shallow_size(ncol), memtag_row_array_ver);
+        row = (value_versioned_array*) ti.allocate(shallow_size(ncol), memtag_row_array_ver);
         row->ts_ = ts;
         row->ver_ = rowversion();
         row->ncol_ = row->ncol_cap_ = ncol;
@@ -184,13 +184,13 @@ kvr_timed_array_ver* kvr_timed_array_ver::update(const CS& changeset, kvtimestam
 }
 
 template <typename CS>
-kvr_timed_array_ver* kvr_timed_array_ver::create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) {
-    kvr_timed_array_ver empty;
+value_versioned_array* value_versioned_array::create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) {
+    value_versioned_array empty;
     return empty.update(changeset, ts, ti, true);
 }
 
-inline kvr_timed_array_ver* kvr_timed_array_ver::create1(Str value, kvtimestamp_t ts, threadinfo& ti) {
-    kvr_timed_array_ver* row = (kvr_timed_array_ver*) ti.allocate(shallow_size(1), memtag_row_array_ver);
+inline value_versioned_array* value_versioned_array::create1(Str value, kvtimestamp_t ts, threadinfo& ti) {
+    value_versioned_array* row = (value_versioned_array*) ti.allocate(shallow_size(1), memtag_row_array_ver);
     row->ts_ = ts;
     row->ver_ = rowversion();
     row->ncol_ = row->ncol_cap_ = 1;
@@ -199,12 +199,12 @@ inline kvr_timed_array_ver* kvr_timed_array_ver::create1(Str value, kvtimestamp_
 }
 
 template <typename CS>
-inline void kvr_timed_array_ver::deallocate_rcu_after_update(const CS&, threadinfo& ti) {
+inline void value_versioned_array::deallocate_rcu_after_update(const CS&, threadinfo& ti) {
     ti.deallocate_rcu(this, shallow_size(), memtag_row_array_ver);
 }
 
 template <typename CS>
-inline void kvr_timed_array_ver::deallocate_after_failed_update(const CS&, threadinfo&) {
+inline void value_versioned_array::deallocate_after_failed_update(const CS&, threadinfo&) {
     mandatory_assert(0);
 }
 

@@ -26,7 +26,7 @@
 #include "kvrandom.hh"
 #include "string_slice.hh"
 #include "kpermuter.hh"
-#include "kvr_timed_bag.hh"
+#include "value_bag.hh"
 #include "json.hh"
 #include "serial_changeset.hh"
 
@@ -194,7 +194,7 @@ void test_string_slice() {
 
 void test_string_bag() {
     fake_threadinfo ti;
-    typedef kvr_timed_bag<uint16_t> bag_t;
+    typedef value_bag<uint16_t> bag_t;
     bag_t eb;
     if (eb.size() > sizeof(bag_t))
 	fprintf(stderr, "sizes are off: %zu vs. %zu\n", eb.size(), sizeof(bag_t));
@@ -409,7 +409,7 @@ void test_json()
 
 void test_serial_changeset() {
     fake_threadinfo ti;
-    typedef kvr_timed_bag<uint16_t> bag_t;
+    typedef value_bag<uint16_t> bag_t;
     bag_t* eb = new bag_t;
 
     kvout* kv = new_bufkvout();

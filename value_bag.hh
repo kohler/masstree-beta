@@ -13,8 +13,8 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#ifndef KVR_TIMED_BAG_HH
-#define KVR_TIMED_BAG_HH
+#ifndef VALUE_BAG_HH
+#define VALUE_BAG_HH
 #include "kvthread.hh"
 #include "kvrow.hh"
 #include "parsed_changeset.hh"
@@ -34,7 +34,8 @@ struct kvr_bag_index {
 };
 
 template <typename O>
-struct kvr_timed_bag : public row_base<kvr_bag_index> {
+class value_bag : public row_base<kvr_bag_index> {
+  public:
     typedef struct kvr_bag_index index_t;
     typedef kvr_bag_index::field_type index_type;
     typedef O offset_type;
@@ -49,10 +50,9 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
     };
 
   public:
-    static constexpr bool has_priv_row_str = true;
     static constexpr rowtype_id type_id = RowType_Bag;
 
-    kvr_timed_bag()
+    value_bag()
 	: ts_(0) {
 	d_.ncol_ = 0;
 	d_.pos_[0] = sizeof(bagdata);
@@ -87,25 +87,24 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
     }
 
     template <typename CS, typename ALLOC>
-    kvr_timed_bag<O>* update(const CS& changeset, kvtimestamp_t ts,
-                             ALLOC& ti) const;
+    value_bag<O>* update(const CS& changeset, kvtimestamp_t ts,
+                         ALLOC& ti) const;
     template <typename ALLOC>
-    inline kvr_timed_bag<O>* update(int col, Str value,
-				    kvtimestamp_t ts, ALLOC& ti) const;
+    inline value_bag<O>* update(int col, Str value,
+                                kvtimestamp_t ts, ALLOC& ti) const;
     template <typename CS, typename ALLOC>
-    static kvr_timed_bag<O>* create(const CS& changeset, kvtimestamp_t ts,
-                                    ALLOC& ti);
+    static value_bag<O>* create(const CS& changeset, kvtimestamp_t ts,
+                                ALLOC& ti);
     template <typename ALLOC>
-    static kvr_timed_bag<O>* create1(Str value, kvtimestamp_t ts,
-                                     ALLOC& ti);
+    static value_bag<O>* create1(Str value, kvtimestamp_t ts, ALLOC& ti);
     template <typename CS, typename ALLOC>
     inline void deallocate_rcu_after_update(const CS& changeset, ALLOC &ti);
     template <typename CS, typename ALLOC>
     inline void deallocate_after_failed_update(const CS& changeset, ALLOC &ti);
 
     template <typename ALLOC>
-    static kvr_timed_bag<O>* checkpoint_read(Str str, kvtimestamp_t ts,
-                                             ALLOC& ti);
+    static value_bag<O>* checkpoint_read(Str str, kvtimestamp_t ts,
+                                         ALLOC& ti);
     inline void checkpoint_write(kvout* kv) const;
 
     void print(FILE *f, const char *prefix, int indent, Str key,
@@ -118,9 +117,9 @@ struct kvr_timed_bag : public row_base<kvr_bag_index> {
 
 
 template <typename O> template <typename CS, typename ALLOC>
-kvr_timed_bag<O>* kvr_timed_bag<O>::update(const CS& changeset,
-                                           kvtimestamp_t ts,
-					   ALLOC &ti) const
+value_bag<O>* value_bag<O>::update(const CS& changeset,
+                                   kvtimestamp_t ts,
+                                   ALLOC &ti) const
 {
     size_t sz = size();
     int ncol = d_.ncol_;
@@ -135,7 +134,7 @@ kvr_timed_bag<O>* kvr_timed_bag<O>::update(const CS& changeset,
     if (ncol > d_.ncol_)
 	sz += (ncol - d_.ncol_) * sizeof(offset_type);
 
-    kvr_timed_bag<O>* row = (kvr_timed_bag<O>*) ti.allocate(sz);
+    value_bag<O>* row = (value_bag<O>*) ti.allocate(sz);
     row->ts_ = ts;
 
     // Minor optimization: Replacing one small column without changing length
@@ -191,27 +190,26 @@ kvr_timed_bag<O>* kvr_timed_bag<O>::update(const CS& changeset,
 }
 
 template <typename O> template <typename CS, typename ALLOC>
-inline kvr_timed_bag<O>* kvr_timed_bag<O>::create(const CS& changeset,
-                                                  kvtimestamp_t ts,
-                                                  ALLOC& ti) {
-    kvr_timed_bag<O> empty;
+inline value_bag<O>* value_bag<O>::create(const CS& changeset,
+                                          kvtimestamp_t ts,
+                                          ALLOC& ti) {
+    value_bag<O> empty;
     return empty.update(changeset, ts, ti);
 }
 
 template <typename O> template <typename ALLOC>
-inline kvr_timed_bag<O>* kvr_timed_bag<O>::update(int col, Str value,
-                                                  kvtimestamp_t ts,
-                                                  ALLOC& ti) const {
+inline value_bag<O>* value_bag<O>::update(int col, Str value,
+                                          kvtimestamp_t ts,
+                                          ALLOC& ti) const {
     parsed_changeset<short> changeset;
     changeset.emplace_back(col, value);
     return update(changeset, ts, ti);
 }
 
 template <typename O> template <typename ALLOC>
-inline kvr_timed_bag<O>* kvr_timed_bag<O>::create1(Str str,
-                                                   kvtimestamp_t ts,
-                                                   ALLOC& ti) {
-    kvr_timed_bag<O>* row = (kvr_timed_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + sizeof(bagdata) + sizeof(O) + str.length());
+inline value_bag<O>* value_bag<O>::create1(Str str, kvtimestamp_t ts,
+                                           ALLOC& ti) {
+    value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + sizeof(bagdata) + sizeof(O) + str.length());
     row->ts_ = ts;
     row->d_.ncol_ = 1;
     row->d_.pos_[0] = sizeof(bagdata) + sizeof(O);
@@ -221,34 +219,34 @@ inline kvr_timed_bag<O>* kvr_timed_bag<O>::create1(Str str,
 }
 
 template <typename O> template <typename CS, typename ALLOC>
-inline void kvr_timed_bag<O>::deallocate_rcu_after_update(const CS&, ALLOC& ti) {
+inline void value_bag<O>::deallocate_rcu_after_update(const CS&, ALLOC& ti) {
     deallocate_rcu(ti);
 }
 
 template <typename O> template <typename CS, typename ALLOC>
-inline void kvr_timed_bag<O>::deallocate_after_failed_update(const CS&, ALLOC& ti) {
+inline void value_bag<O>::deallocate_after_failed_update(const CS&, ALLOC& ti) {
     deallocate(ti);
 }
 
 template <typename O> template <typename ALLOC>
-inline kvr_timed_bag<O>* kvr_timed_bag<O>::checkpoint_read(Str str,
-                                                           kvtimestamp_t ts,
-                                                           ALLOC& ti) {
-    kvr_timed_bag<O>* row = (kvr_timed_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + str.len);
+inline value_bag<O>* value_bag<O>::checkpoint_read(Str str,
+                                                   kvtimestamp_t ts,
+                                                   ALLOC& ti) {
+    value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + str.len);
     row->ts_ = ts;
     memcpy(row->d_.s_, str.s, str.len);
     return row;
 }
 
 template <typename O>
-inline void kvr_timed_bag<O>::checkpoint_write(kvout* kv) const {
+inline void value_bag<O>::checkpoint_write(kvout* kv) const {
     KVW(kv, Str(d_.s_, d_.pos_[d_.ncol_]));
 }
 
 template <typename O>
-void kvr_timed_bag<O>::print(FILE *f, const char *prefix, int indent,
-			     Str key, kvtimestamp_t initial_ts,
-			     const char *suffix)
+void value_bag<O>::print(FILE *f, const char *prefix, int indent,
+                         Str key, kvtimestamp_t initial_ts,
+                         const char *suffix)
 {
     kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
     if (d_.ncol_ == 1)

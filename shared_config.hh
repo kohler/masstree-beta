@@ -26,10 +26,10 @@ enum { MaxRowLen = KVDB_MAX_ROW_LEN }; // Maximum length of a row
 typedef uint64_t kvtimestamp_t;
 
 
-struct kvr_timed_array;
-struct kvr_timed_array_ver;
-template <typename O> struct kvr_timed_bag;
-struct kvr_timed_str;
+class value_array;
+class value_versioned_array;
+template <typename O> class value_bag;
+class value_string;
 
 enum rowtype_id {
     RowType_Str = 0,
@@ -39,21 +39,21 @@ enum rowtype_id {
 };
 
 #if KVDB_ROW_TYPE_ARRAY
-# define KVDB_ROW_TYPE_INCLUDE "kvr_timed_array.hh"
+# define KVDB_ROW_TYPE_INCLUDE "value_array.hh"
 # define KVDB_ROW_TYPE_ID RowType_Array
-typedef kvr_timed_array row_type;
+typedef value_array row_type;
 #elif KVDB_ROW_TYPE_ARRAY_VER
-# define KVDB_ROW_TYPE_INCLUDE "kvr_timed_array_ver.hh"
+# define KVDB_ROW_TYPE_INCLUDE "value_versioned_array.hh"
 # define KVDB_ROW_TYPE_ID RowType_ArrayVer
-typedef kvr_timed_array_ver row_type;
+typedef value_versioned_array row_type;
 #elif KVDB_ROW_TYPE_BAG
-# define KVDB_ROW_TYPE_INCLUDE "kvr_timed_bag.hh"
+# define KVDB_ROW_TYPE_INCLUDE "value_bag.hh"
 # define KVDB_ROW_TYPE_ID RowType_Bag
-typedef kvr_timed_bag<uint16_t> row_type;
+typedef value_bag<uint16_t> row_type;
 #else
-# define KVDB_ROW_TYPE_INCLUDE "kvr_timed_str.hh"
+# define KVDB_ROW_TYPE_INCLUDE "value_string.hh"
 # define KVDB_ROW_TYPE_ID RowType_Str
-typedef kvr_timed_str row_type;
+typedef value_string row_type;
 #endif
 
 #endif

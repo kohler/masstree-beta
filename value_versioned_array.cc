@@ -14,11 +14,11 @@
  * is legally binding.
  */
 #include "kvrow.hh"
-#include "kvr_timed_array_ver.hh"
+#include "value_versioned_array.hh"
 #include <string.h>
 
-kvr_timed_array_ver* kvr_timed_array_ver::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo& ti) {
-    kvr_timed_array_ver* row = (kvr_timed_array_ver*) ti.allocate(shallow_size(ncol), memtag_row_array_ver);
+value_versioned_array* value_versioned_array::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo& ti) {
+    value_versioned_array* row = (value_versioned_array*) ti.allocate(shallow_size(ncol), memtag_row_array_ver);
     row->ts_ = ts;
     row->ver_ = rowversion();
     row->ncol_ = row->ncol_cap_ = ncol;
@@ -26,7 +26,7 @@ kvr_timed_array_ver* kvr_timed_array_ver::make_sized_row(int ncol, kvtimestamp_t
     return row;
 }
 
-void kvr_timed_array_ver::snapshot(kvr_timed_array_ver*& storage,
+void value_versioned_array::snapshot(value_versioned_array*& storage,
                                    const fields_t& f, threadinfo& ti) const {
     if (!storage || storage->ncol_cap_ < ncol_) {
         if (storage)
@@ -47,20 +47,20 @@ void kvr_timed_array_ver::snapshot(kvr_timed_array_ver*& storage,
     }
 }
 
-kvr_timed_array_ver*
-kvr_timed_array_ver::checkpoint_read(Str str, kvtimestamp_t ts,
-                                     threadinfo& ti) {
+value_versioned_array*
+value_versioned_array::checkpoint_read(Str str, kvtimestamp_t ts,
+                                       threadinfo& ti) {
     kvin kv;
     kvin_init(&kv, const_cast<char*>(str.s), str.len);
     short ncol;
     KVR(&kv, ncol);
-    kvr_timed_array_ver* row = make_sized_row(ncol, ts, ti);
+    value_versioned_array* row = make_sized_row(ncol, ts, ti);
     for (short i = 0; i < ncol; i++)
         row->cols_[i] = inline_string::allocate_read(&kv, ti);
     return row;
 }
 
-void kvr_timed_array_ver::checkpoint_write(kvout* kv) const {
+void value_versioned_array::checkpoint_write(kvout* kv) const {
     int sz = sizeof(ncol_);
     for (short i = 0; i != ncol_; ++i)
         sz += sizeof(int) + (cols_[i] ? cols_[i]->length() : 0);
@@ -70,14 +70,14 @@ void kvr_timed_array_ver::checkpoint_write(kvout* kv) const {
         kvwrite_inline_string(kv, cols_[i]);
 }
 
-void kvr_timed_array_ver::deallocate(threadinfo &ti) {
+void value_versioned_array::deallocate(threadinfo &ti) {
     for (short i = 0; i < ncol_; ++i)
         if (cols_[i])
 	    cols_[i]->deallocate(ti);
     ti.deallocate(this, shallow_size(), memtag_row_array_ver);
 }
 
-void kvr_timed_array_ver::deallocate_rcu(threadinfo &ti) {
+void value_versioned_array::deallocate_rcu(threadinfo &ti) {
     for (short i = 0; i < ncol_; ++i)
         if (cols_[i])
 	    cols_[i]->deallocate_rcu(ti);

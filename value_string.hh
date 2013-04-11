@@ -13,8 +13,8 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#ifndef KVR_TIMED_STR_HH
-#define KVR_TIMED_STR_HH
+#ifndef VALUE_STRING_HH
+#define VALUE_STRING_HH
 #include "compiler.hh"
 #include "kvrow.hh"
 
@@ -52,18 +52,18 @@ inline int KVW(kvout* kv, kvr_str_index::field_t field) {
     return x + KVW(kv, field.f_len);
 }
 
-struct kvr_timed_str : public row_base<kvr_str_index> {
+class value_string : public row_base<kvr_str_index> {
+  public:
     typedef kvr_str_index::field_t index_type;
     typedef kvr_str_index index_t;
-    static constexpr bool has_priv_row_str = true;
     static constexpr rowtype_id type_id = RowType_Str;
 
     static const char *name() { return "String"; }
 
-    inline kvr_timed_str();
+    inline value_string();
 
     inline size_t size() const {
-        return sizeof(kvr_timed_str) + vallen_;
+        return sizeof(value_string) + vallen_;
     }
     inline int ncol() const {
         return 1;
@@ -86,23 +86,18 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
     }
 
     template <typename CS>
-    kvr_timed_str* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const;
+    value_string* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const;
     template <typename CS>
-    static inline kvr_timed_str* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
-    static inline kvr_timed_str* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
+    static inline value_string* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
+    static inline value_string* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
     template <typename CS>
     inline void deallocate_rcu_after_update(const CS& changeset, threadinfo& ti);
     template <typename CS>
     inline void deallocate_after_failed_update(const CS& changeset, threadinfo& ti);
 
-    /** @brief Update the row with change c.
-     * @return a new kvr_timed_str if applied; NULL if change is out-of-dated
-     */
-    kvr_timed_str* update(const change_t& c, kvtimestamp_t ts, threadinfo& ti) const;
-    /** @brief Convert a change to a timedvalue.
-     */
-    static kvr_timed_str* from_change(const change_t& c,
-                                      kvtimestamp_t ts, threadinfo& ti);
+    static inline value_string* checkpoint_read(Str str, kvtimestamp_t ts,
+                                                 threadinfo& ti);
+    inline void checkpoint_write(kvout* kv) const;
 
     void print(FILE* f, const char* prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char* suffix = "") {
@@ -111,10 +106,6 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
 		key.len, key.s, std::min(40, vallen_), s_,
 		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
-
-    static inline kvr_timed_str* checkpoint_read(Str str, kvtimestamp_t ts,
-                                                 threadinfo& ti);
-    inline void checkpoint_write(kvout* kv) const;
 
     kvtimestamp_t ts_;
   private:
@@ -125,21 +116,21 @@ struct kvr_timed_str : public row_base<kvr_str_index> {
     inline size_t shallow_size() const;
 };
 
-inline kvr_timed_str::kvr_timed_str()
+inline value_string::value_string()
     : ts_(0), vallen_(0) {
 }
 
-inline size_t kvr_timed_str::shallow_size(int vallen) {
-    return sizeof(kvr_timed_str) + vallen;
+inline size_t value_string::shallow_size(int vallen) {
+    return sizeof(value_string) + vallen;
 }
 
-inline size_t kvr_timed_str::shallow_size() const {
+inline size_t value_string::shallow_size() const {
     return shallow_size(vallen_);
 }
 
 template <typename CS>
-kvr_timed_str* kvr_timed_str::update(const CS& changeset, kvtimestamp_t ts,
-                                     threadinfo& ti) const {
+value_string* value_string::update(const CS& changeset, kvtimestamp_t ts,
+                                   threadinfo& ti) const {
     auto last = changeset.end();
     int vallen = 0, cut = vallen_;
     for (auto it = changeset.begin(); it != last; ++it) {
@@ -148,7 +139,7 @@ kvr_timed_str* kvr_timed_str::update(const CS& changeset, kvtimestamp_t ts,
             cut = std::min(cut, int(it->index().f_off));
     }
     vallen = std::max(vallen, cut);
-    kvr_timed_str* row = (kvr_timed_str*) ti.allocate(shallow_size(vallen));
+    value_string* row = (value_string*) ti.allocate(shallow_size(vallen));
     row->ts_ = ts;
     row->vallen_ = vallen;
     memcpy(row->s_, s_, cut);
@@ -159,17 +150,17 @@ kvr_timed_str* kvr_timed_str::update(const CS& changeset, kvtimestamp_t ts,
 }
 
 template <typename CS>
-inline kvr_timed_str* kvr_timed_str::create(const CS& changeset,
-                                            kvtimestamp_t ts,
-                                            threadinfo& ti) {
-    kvr_timed_str empty;
+inline value_string* value_string::create(const CS& changeset,
+                                          kvtimestamp_t ts,
+                                          threadinfo& ti) {
+    value_string empty;
     return empty.update(changeset, ts, ti);
 }
 
-inline kvr_timed_str* kvr_timed_str::create1(Str value,
-                                             kvtimestamp_t ts,
-                                             threadinfo& ti) {
-    kvr_timed_str* row = (kvr_timed_str*) ti.allocate(shallow_size(value.length()));
+inline value_string* value_string::create1(Str value,
+                                           kvtimestamp_t ts,
+                                           threadinfo& ti) {
+    value_string* row = (value_string*) ti.allocate(shallow_size(value.length()));
     row->ts_ = ts;
     row->vallen_ = value.length();
     memcpy(row->s_, value.data(), value.length());
@@ -177,22 +168,22 @@ inline kvr_timed_str* kvr_timed_str::create1(Str value,
 }
 
 template <typename CS>
-inline void kvr_timed_str::deallocate_rcu_after_update(const CS&, threadinfo& ti) {
+inline void value_string::deallocate_rcu_after_update(const CS&, threadinfo& ti) {
     deallocate_rcu(ti);
 }
 
 template <typename CS>
-inline void kvr_timed_str::deallocate_after_failed_update(const CS&, threadinfo& ti) {
+inline void value_string::deallocate_after_failed_update(const CS&, threadinfo& ti) {
     deallocate(ti);
 }
 
-inline kvr_timed_str* kvr_timed_str::checkpoint_read(Str str,
-                                                     kvtimestamp_t ts,
-                                                     threadinfo& ti) {
+inline value_string* value_string::checkpoint_read(Str str,
+                                                   kvtimestamp_t ts,
+                                                   threadinfo& ti) {
     return create1(str, ts, ti);
 }
 
-inline void kvr_timed_str::checkpoint_write(kvout* kv) const {
+inline void value_string::checkpoint_write(kvout* kv) const {
     KVW(kv, Str(s_, vallen_));
 }
 

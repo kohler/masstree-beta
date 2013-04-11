@@ -14,5 +14,5 @@
  * is legally binding.
  */
 #include "kvrow.hh"
-#include "kvr_timed_str.hh"
+#include "value_string.hh"
 #include <string.h>
