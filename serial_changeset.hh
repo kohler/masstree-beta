@@ -137,7 +137,7 @@ template <typename IDX>
 inline bool serial_changeset<IDX>::single_index() const {
     return !str_.empty()
         && (serial_changeset_iterator<IDX>(str_.begin()).value_length()
-            == str_.length() - sizeof(IDX) - sizeof(int32_t));
+            == str_.length() - int(sizeof(IDX) + sizeof(int32_t)));
 }
 
 template <typename IDX>
