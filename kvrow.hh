@@ -326,7 +326,7 @@ inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
     }
 
     R* old_value = value;
-    assign_timestamp(ti, old_value->ts_);
+    assign_timestamp(ti, old_value->timestamp());
     if (row_is_marker(old_value)) {
 	old_value->deallocate_rcu(*ti);
 	goto insert;
@@ -352,7 +352,7 @@ inline void query<R>::apply_replace(R*& value, bool has_value, threadinfo* ti) {
     if (!has_value)
 	assign_timestamp(ti);
     else {
-        assign_timestamp(ti, value->ts_);
+        assign_timestamp(ti, value->timestamp());
         value->deallocate_rcu(*ti);
     }
 
@@ -371,7 +371,7 @@ inline bool query<R>::apply_remove(R *&value, bool has_value, threadinfo *ti,
     }
 
     R* old_value = value;
-    assign_timestamp(ti, old_value->ts_);
+    assign_timestamp(ti, old_value->timestamp());
     if (node_ts && circular_int<kvtimestamp_t>::less_equal(*node_ts, qtimes_.ts))
 	*node_ts = qtimes_.ts + 2;
     old_value->deallocate_rcu(*ti);

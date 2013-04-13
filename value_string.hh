@@ -59,33 +59,18 @@ class value_string : public row_base<valueindex_string> {
   public:
     typedef valueindex_string index_type;
     static constexpr rowtype_id type_id = RowType_Str;
-
     static const char *name() { return "String"; }
 
     inline value_string();
 
-    inline size_t size() const {
-        return sizeof(value_string) + vallen_;
-    }
-    inline int ncol() const {
-        return 1;
-    }
-    inline Str col(int i) const {
-	assert(i == 0);
-	(void) i;
-	return Str(s_, vallen_);
-    }
-    inline Str col(valueindex_string idx) const {
-        int len = idx.f_len == -1 ? vallen_ - idx.f_off : idx.f_len;
-        return Str(s_ + idx.f_off, len);
-    }
+    inline kvtimestamp_t timestamp() const;
+    inline size_t size() const;
+    inline int ncol() const;
+    inline Str col(int i) const;
+    inline Str col(valueindex_string idx) const;
 
-    inline void deallocate(threadinfo &ti) {
-	ti.deallocate(this, size(), memtag_row_str);
-    }
-    inline void deallocate_rcu(threadinfo &ti) {
-	ti.deallocate_rcu(this, size(), memtag_row_str);
-    }
+    inline void deallocate(threadinfo& ti);
+    inline void deallocate_rcu(threadinfo& ti);
 
     template <typename CS>
     value_string* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const;
@@ -109,8 +94,8 @@ class value_string : public row_base<valueindex_string> {
 		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
-    kvtimestamp_t ts_;
   private:
+    kvtimestamp_t ts_;
     int vallen_;
     char s_[0];
 
@@ -120,6 +105,37 @@ class value_string : public row_base<valueindex_string> {
 
 inline value_string::value_string()
     : ts_(0), vallen_(0) {
+}
+
+inline kvtimestamp_t value_string::timestamp() const {
+    return ts_;
+}
+
+inline size_t value_string::size() const {
+    return sizeof(value_string) + vallen_;
+}
+
+inline int value_string::ncol() const {
+    return 1;
+}
+
+inline Str value_string::col(int i) const {
+    assert(i == 0);
+    (void) i;
+    return Str(s_, vallen_);
+}
+
+inline Str value_string::col(valueindex_string idx) const {
+    int len = idx.f_len == -1 ? vallen_ - idx.f_off : idx.f_len;
+    return Str(s_ + idx.f_off, len);
+}
+
+inline void value_string::deallocate(threadinfo &ti) {
+    ti.deallocate(this, size(), memtag_row_str);
+}
+
+inline void value_string::deallocate_rcu(threadinfo &ti) {
+    ti.deallocate_rcu(this, size(), memtag_row_str);
 }
 
 inline size_t value_string::shallow_size(int vallen) {

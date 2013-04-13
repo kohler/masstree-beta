@@ -309,11 +309,11 @@ void replay_query<R>::apply(R*& value, bool has_value, threadinfo* ti) {
 
     // find point to insert change (may be after some delta markers)
     while (*cur_value && row_is_delta_marker(*cur_value)
-	   && (*cur_value)->ts_ > qtimes_.ts)
+	   && (*cur_value)->timestamp() > qtimes_.ts)
 	cur_value = &row_get_delta_marker(*cur_value)->prev_;
 
     // check out of date
-    if (*cur_value && (*cur_value)->ts_ >= qtimes_.ts)
+    if (*cur_value && (*cur_value)->timestamp() >= qtimes_.ts)
 	return;
 
     // if not modifying, delete everything earlier
@@ -334,7 +334,7 @@ void replay_query<R>::apply(R*& value, bool has_value, threadinfo* ti) {
         serial_changeset<typename R::index_type> changeset(val_);
 	*cur_value = R::create(changeset, qtimes_.ts, *ti);
     } else {
-	if (*cur_value && (*cur_value)->ts_ == qtimes_.prev_ts) {
+	if (*cur_value && (*cur_value)->timestamp() == qtimes_.prev_ts) {
 	    R* old_value = *cur_value;
             serial_changeset<typename R::index_type> changeset(val_);
 	    *cur_value = old_value->update(changeset, qtimes_.ts, *ti);
@@ -363,13 +363,13 @@ void replay_query<R>::apply(R*& value, bool has_value, threadinfo* ti) {
 	    trav = &row_get_delta_marker(*trav)->prev_;
 	}
 	if (prev && *trav
-	    && row_get_delta_marker(*prev)->prev_ts_ == (*trav)->ts_) {
+	    && row_get_delta_marker(*prev)->prev_ts_ == (*trav)->timestamp()) {
 	    R *old_prev = *prev;
 	    Str req = old_prev->col(0);
 	    req.s += sizeof(row_delta_marker<R>);
 	    req.len -= sizeof(row_delta_marker<R>);
 	    serial_changeset<typename R::index_type> changeset(req);
-	    *prev = (*trav)->update(changeset, old_prev->ts_ - 1, *ti);
+	    *prev = (*trav)->update(changeset, old_prev->timestamp() - 1, *ti);
 	    if (*prev != *trav)
 		(*trav)->deallocate(*ti);
 	    old_prev->deallocate(*ti);

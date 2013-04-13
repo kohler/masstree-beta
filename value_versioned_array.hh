@@ -67,26 +67,19 @@ class value_versioned_array : public row_base<value_array::index_type> {
   public:
     typedef value_array::index_type index_type;
     static constexpr rowtype_id type_id = RowType_ArrayVer;
-
     static const char *name() { return "ArrayVersion"; }
 
     inline value_versioned_array();
 
-    inline int ncol() const {
-        return ncol_;
-    }
-    inline Str col(int i) const {
-	if (unsigned(i) < unsigned(ncol_))
-	    return Str(cols_[i]->s, cols_[i]->len);
-	else
-	    return Str();
-    }
-
-    void snapshot(value_versioned_array*& storage,
-                  const fields_t& f, threadinfo& ti) const;
+    inline kvtimestamp_t timestamp() const;
+    inline int ncol() const;
+    inline Str col(int i) const;
 
     void deallocate(threadinfo &ti);
     void deallocate_rcu(threadinfo &ti);
+
+    void snapshot(value_versioned_array*& storage,
+                  const fields_t& f, threadinfo& ti) const;
 
     template <typename CS>
     value_versioned_array* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti, bool always_copy = false);
@@ -109,8 +102,8 @@ class value_versioned_array : public row_base<value_array::index_type> {
 		key.len, key.s, KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
-    kvtimestamp_t ts_;
   private:
+    kvtimestamp_t ts_;
     rowversion ver_;
     short ncol_;
     short ncol_cap_;
@@ -136,6 +129,21 @@ struct query_helper<value_versioned_array> {
 
 inline value_versioned_array::value_versioned_array()
     : ts_(0), ncol_(0), ncol_cap_(0) {
+}
+
+inline kvtimestamp_t value_versioned_array::timestamp() const {
+    return ts_;
+}
+
+inline int value_versioned_array::ncol() const {
+    return ncol_;
+}
+
+inline Str value_versioned_array::col(int i) const {
+    if (unsigned(i) < unsigned(ncol_))
+        return Str(cols_[i]->s, cols_[i]->len);
+    else
+        return Str();
 }
 
 inline size_t value_versioned_array::shallow_size(int ncol) {

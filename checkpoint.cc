@@ -25,7 +25,7 @@ void checkpoint1(ckstate* c, Str key, const row_type* v) {
     KVW(c->ind, c->vals->n); // remember the offset of the next two
     kvwrite(c->vals, key.s, key.len);
     KVW(c->vals, (char)0);
-    KVW(c->vals, v->ts_);
+    KVW(c->vals, v->timestamp());
     v->checkpoint_write(c->vals);
     c->count += 1;
 }

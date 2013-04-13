@@ -22,23 +22,16 @@ class value_array : public row_base<short> {
   public:
     typedef short index_type;
     static constexpr rowtype_id type_id = RowType_Array;
-
     static const char *name() { return "Array"; }
 
     inline value_array();
 
+    inline kvtimestamp_t timestamp() const;
+    inline int ncol() const;
+    inline Str col(int i) const;
+
     void deallocate(threadinfo &ti);
     void deallocate_rcu(threadinfo &ti);
-
-    inline int ncol() const {
-        return ncol_;
-    }
-    inline Str col(int i) const {
-	if (unsigned(i) < unsigned(ncol_))
-	    return Str(cols_[i]->s, cols_[i]->len);
-	else
-	    return Str();
-    }
 
     template <typename CS>
     value_array* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const;
@@ -54,16 +47,15 @@ class value_array : public row_base<short> {
                                             threadinfo& ti);
     void checkpoint_write(kvout* buf) const;
 
-    void print(FILE *f, const char *prefix, int indent, Str key,
-	       kvtimestamp_t initial_ts, const char *suffix = "") {
+    void print(FILE* f, const char* prefix, int indent, Str key,
+	       kvtimestamp_t initial_ts, const char* suffix = "") {
 	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
 	fprintf(f, "%s%*s%.*s = ### @" PRIKVTSPARTS "%s\n", prefix, indent, "",
 		key.len, key.s, KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
-    kvtimestamp_t ts_;
-
   private:
+    kvtimestamp_t ts_;
     short ncol_;
     inline_string* cols_[0];
 
@@ -80,6 +72,21 @@ class value_array : public row_base<short> {
 
 inline value_array::value_array()
     : ts_(0), ncol_(0) {
+}
+
+inline kvtimestamp_t value_array::timestamp() const {
+    return ts_;
+}
+
+inline int value_array::ncol() const {
+    return ncol_;
+}
+
+inline Str value_array::col(int i) const {
+    if (unsigned(i) < unsigned(ncol_))
+        return Str(cols_[i]->s, cols_[i]->len);
+    else
+        return Str();
 }
 
 inline size_t value_array::shallow_size(int ncol) {

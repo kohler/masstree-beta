@@ -68,8 +68,8 @@ struct row_marker {
 };
 
 template <typename R>
-inline bool row_is_marker(const R *row) {
-    return row->ts_ & 1;
+inline bool row_is_marker(const R* row) {
+    return row->timestamp() & 1;
 }
 
 #endif

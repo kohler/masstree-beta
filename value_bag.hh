@@ -36,40 +36,19 @@ class value_bag : public row_base<short> {
 
   public:
     static constexpr rowtype_id type_id = RowType_Bag;
-
-    value_bag()
-	: ts_(0) {
-	d_.ncol_ = 0;
-	d_.pos_[0] = sizeof(bagdata);
-    }
-
     static const char *name() { return "Bag"; }
 
-    inline size_t size() const {
-        return sizeof(kvtimestamp_t) + d_.pos_[d_.ncol_];
-    }
-    inline int ncol() const {
-	return d_.ncol_;
-    }
-    inline Str col(int i) const {
-	if (unsigned(i) < unsigned(d_.ncol_))
-	    return Str(d_.s_ + d_.pos_[i], d_.pos_[i + 1] - d_.pos_[i]);
-	else
-	    return Str();
-    }
+    inline value_bag();
 
-    inline Str row_string() const {
-	return Str(d_.s_, d_.pos_[d_.ncol_]);
-    }
+    inline kvtimestamp_t timestamp() const;
+    inline size_t size() const;
+    inline int ncol() const;
+    inline Str col(int i) const;
 
-    template <typename ALLOC>
-    inline void deallocate(ALLOC &ti) {
-	ti.deallocate(this, size());
-    }
-    template <typename ALLOC>
-    inline void deallocate_rcu(ALLOC &ti) {
-	ti.deallocate_rcu(this, size());
-    }
+    inline Str row_string() const;
+
+    template <typename ALLOC> inline void deallocate(ALLOC& ti);
+    template <typename ALLOC> inline void deallocate_rcu(ALLOC& ti);
 
     template <typename CS, typename ALLOC>
     value_bag<O>* update(const CS& changeset, kvtimestamp_t ts,
@@ -83,28 +62,73 @@ class value_bag : public row_base<short> {
     template <typename ALLOC>
     static value_bag<O>* create1(Str value, kvtimestamp_t ts, ALLOC& ti);
     template <typename CS, typename ALLOC>
-    inline void deallocate_rcu_after_update(const CS& changeset, ALLOC &ti);
+    inline void deallocate_rcu_after_update(const CS& changeset, ALLOC& ti);
     template <typename CS, typename ALLOC>
-    inline void deallocate_after_failed_update(const CS& changeset, ALLOC &ti);
+    inline void deallocate_after_failed_update(const CS& changeset, ALLOC& ti);
 
     template <typename ALLOC>
     static value_bag<O>* checkpoint_read(Str str, kvtimestamp_t ts,
                                          ALLOC& ti);
     inline void checkpoint_write(kvout* kv) const;
 
-    void print(FILE *f, const char *prefix, int indent, Str key,
-	       kvtimestamp_t initial_ts, const char *suffix = "");
+    void print(FILE* f, const char* prefix, int indent, Str key,
+	       kvtimestamp_t initial_ts, const char* suffix = "");
 
-    kvtimestamp_t ts_;
   private:
+    kvtimestamp_t ts_;
     bagdata d_;
 };
 
 
+template <typename O>
+inline value_bag<O>::value_bag()
+    : ts_(0) {
+    d_.ncol_ = 0;
+    d_.pos_[0] = sizeof(bagdata);
+}
+
+template <typename O>
+inline kvtimestamp_t value_bag<O>::timestamp() const {
+    return ts_;
+}
+
+template <typename O>
+inline size_t value_bag<O>::size() const {
+    return sizeof(kvtimestamp_t) + d_.pos_[d_.ncol_];
+}
+
+template <typename O>
+inline int value_bag<O>::ncol() const {
+    return d_.ncol_;
+}
+
+template <typename O>
+inline Str value_bag<O>::col(int i) const {
+    if (unsigned(i) < unsigned(d_.ncol_))
+        return Str(d_.s_ + d_.pos_[i], d_.pos_[i + 1] - d_.pos_[i]);
+    else
+        return Str();
+}
+
+template <typename O>
+inline Str value_bag<O>::row_string() const {
+    return Str(d_.s_, d_.pos_[d_.ncol_]);
+}
+
+template <typename O> template <typename ALLOC>
+inline void value_bag<O>::deallocate(ALLOC& ti) {
+    ti.deallocate(this, size());
+}
+
+template <typename O> template <typename ALLOC>
+inline void value_bag<O>::deallocate_rcu(ALLOC& ti) {
+    ti.deallocate_rcu(this, size());
+}
+
 template <typename O> template <typename CS, typename ALLOC>
 value_bag<O>* value_bag<O>::update(const CS& changeset,
                                    kvtimestamp_t ts,
-                                   ALLOC &ti) const
+                                   ALLOC& ti) const
 {
     size_t sz = size();
     int ncol = d_.ncol_;
