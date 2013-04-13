@@ -69,11 +69,12 @@ class value_string : public row_base<valueindex_string> {
     inline Str col(int i) const;
     inline Str col(valueindex_string idx) const;
 
-    inline void deallocate(threadinfo& ti);
+    template <typename ALLOC>
+    inline void deallocate(ALLOC& ti);
     inline void deallocate_rcu(threadinfo& ti);
 
-    template <typename CS>
-    value_string* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const;
+    template <typename CS, typename ALLOC>
+    value_string* update(const CS& changeset, kvtimestamp_t ts, ALLOC& ti) const;
     template <typename CS>
     static inline value_string* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
     static inline value_string* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
@@ -130,11 +131,12 @@ inline Str value_string::col(valueindex_string idx) const {
     return Str(s_ + idx.f_off, len);
 }
 
-inline void value_string::deallocate(threadinfo &ti) {
+template <typename ALLOC>
+inline void value_string::deallocate(ALLOC& ti) {
     ti.deallocate(this, size(), memtag_row_str);
 }
 
-inline void value_string::deallocate_rcu(threadinfo &ti) {
+inline void value_string::deallocate_rcu(threadinfo& ti) {
     ti.deallocate_rcu(this, size(), memtag_row_str);
 }
 
@@ -146,9 +148,9 @@ inline size_t value_string::shallow_size() const {
     return shallow_size(vallen_);
 }
 
-template <typename CS>
+template <typename CS, typename ALLOC>
 value_string* value_string::update(const CS& changeset, kvtimestamp_t ts,
-                                   threadinfo& ti) const {
+                                   ALLOC& ti) const {
     auto last = changeset.end();
     int vallen = 0, cut = vallen_;
     for (auto it = changeset.begin(); it != last; ++it) {
@@ -157,7 +159,7 @@ value_string* value_string::update(const CS& changeset, kvtimestamp_t ts,
             cut = std::min(cut, int(it->index().f_off));
     }
     vallen = std::max(vallen, cut);
-    value_string* row = (value_string*) ti.allocate(shallow_size(vallen));
+    value_string* row = (value_string*) ti.allocate(shallow_size(vallen), memtag_row_str);
     row->ts_ = ts;
     row->vallen_ = vallen;
     memcpy(row->s_, s_, cut);
@@ -178,7 +180,7 @@ inline value_string* value_string::create(const CS& changeset,
 inline value_string* value_string::create1(Str value,
                                            kvtimestamp_t ts,
                                            threadinfo& ti) {
-    value_string* row = (value_string*) ti.allocate(shallow_size(value.length()));
+    value_string* row = (value_string*) ti.allocate(shallow_size(value.length()), memtag_row_str);
     row->ts_ = ts;
     row->vallen_ = value.length();
     memcpy(row->s_, value.data(), value.length());

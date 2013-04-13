@@ -27,6 +27,7 @@
 #include "string_slice.hh"
 #include "kpermuter.hh"
 #include "value_bag.hh"
+#include "value_string.hh"
 #include "json.hh"
 #include "serial_changeset.hh"
 
@@ -35,10 +36,10 @@ uint16_t xw[100];
 uint32_t xl[100];
 
 struct fake_threadinfo {
-    static void *allocate(size_t sz) {
+    static void *allocate(size_t sz, memtag = memtag_none) {
 	return new char[sz];
     }
-    static void deallocate(void *p, size_t) {
+    static void deallocate(void *p, size_t, memtag = memtag_none) {
 	delete[] reinterpret_cast<char *>(p);
     }
 };
@@ -411,9 +412,9 @@ void test_serial_changeset() {
     fake_threadinfo ti;
     typedef value_bag<uint16_t> bag_t;
     bag_t* eb = new bag_t;
+    value_string* strb = new value_string;
 
     kvout* kv = new_bufkvout();
-    KVW(kv, (short) 4);
     KVW(kv, (short) 0);
     KVW(kv, Str("ABC", 3));
     KVW(kv, (short) 1);
@@ -423,10 +424,24 @@ void test_serial_changeset() {
     KVW(kv, (short) 3);
     KVW(kv, Str("klm", 3));
     Str blorp(kv->buf, kv->n);
-    Str blorpx(kv->buf + 2, kv->n - 2);
+
+    kvout* strkv = new_bufkvout();
+    KVW(strkv, (short) 0);
+    KVW(strkv, (short) 3);
+    KVW(strkv, Str("ABC", 3));
+    KVW(strkv, (short) 3);
+    KVW(strkv, (short) 3);
+    KVW(strkv, Str("def", 3));
+    KVW(strkv, (short) 6);
+    KVW(strkv, (short) 5);
+    KVW(strkv, Str("EGHIJ", 5));
+    KVW(strkv, (short) 11);
+    KVW(strkv, (short) 3);
+    KVW(strkv, Str("klm", 3));
+    Str strblorp(strkv->buf, strkv->n);
 
     {
-        serial_changeset<short> sc(blorpx);
+        serial_changeset<short> sc(blorp);
         assert(!sc.empty());
         assert(!sc.single_index());
         assert(sc.last_index() == 3);
@@ -440,7 +455,7 @@ void test_serial_changeset() {
     }
 
     {
-        serial_changeset<short> sc(Str(kv->buf + 2, 9));
+        serial_changeset<short> sc(Str(kv->buf, 9));
         assert(!sc.empty());
         assert(sc.single_index());
         assert(sc.last_index() == 0);
@@ -449,7 +464,7 @@ void test_serial_changeset() {
 #if 0
     kvtimestamp_t t0 = timestamp();
     for (int i = 0; i != 100000000; ++i) {
-        serial_changeset<short> sc(blorpx);
+        serial_changeset<short> sc(blorp);
         bag_t* eb2 = eb->update(sc, 1, ti);
         eb->deallocate(ti);
         eb = eb2;
@@ -457,20 +472,21 @@ void test_serial_changeset() {
     std::cerr << (timestamp() - t0) << "\n";
     eb->print(stderr, ">> ", 0, "K", 0);
 
-    row_base<kvr_bag_index>::change_t ch;
     t0 = timestamp();
     for (int i = 0; i != 100000000; ++i) {
-        row_base<kvr_bag_index>::parse_change(blorp, ch);
-        bag_t* eb2 = eb->update(ch, 1, ti);
-        eb->deallocate(ti);
-        eb = eb2;
+        serial_changeset<valueindex_string> sc(strblorp);
+        value_string* strb2 = strb->update(sc, 1, ti);
+        strb->deallocate(ti);
+        strb = strb2;
     }
     std::cerr << (timestamp() - t0) << "\n";
     eb->print(stderr, ">> ", 0, "K", 0);
 #endif
 
     eb->deallocate(ti);
+    strb->deallocate(ti);
     free_kvout(kv);
+    free_kvout(strkv);
 }
 
 int main(int, char *[])
