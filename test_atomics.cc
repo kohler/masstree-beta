@@ -36,11 +36,11 @@ uint16_t xw[100];
 uint32_t xl[100];
 
 struct fake_threadinfo {
-    static void *allocate(size_t sz, memtag = memtag_none) {
+    static void* allocate(size_t sz, memtag = memtag_none) {
 	return new char[sz];
     }
-    static void deallocate(void *p, size_t, memtag = memtag_none) {
-	delete[] reinterpret_cast<char *>(p);
+    static void deallocate(void* p, size_t, memtag = memtag_none) {
+	delete[] reinterpret_cast<char*>(p);
     }
 };
 
@@ -200,7 +200,7 @@ void test_string_bag() {
     if (eb.size() > sizeof(bag_t))
 	fprintf(stderr, "sizes are off: %zu vs. %zu\n", eb.size(), sizeof(bag_t));
     assert(eb.size() <= sizeof(bag_t));
-    bag_t *b = eb.update(0, Str("A", 1), 1, ti);
+    bag_t* b = eb.update(0, Str("A", 1), 1, ti);
     assert(b->row_string() == Str("\001\000\006\000\007\000A", 7));
     assert(b->ncol() == 1);
     assert(b->col(0) == Str("A", 1));
@@ -411,8 +411,8 @@ void test_json()
 void test_serial_changeset() {
     fake_threadinfo ti;
     typedef value_bag<uint16_t> bag_t;
-    bag_t* eb = new bag_t;
-    value_string* strb = new value_string;
+    bag_t* eb = new(ti.allocate(sizeof(bag_t))) bag_t;
+    value_string* strb = new(ti.allocate(sizeof(value_string))) value_string;
 
     kvout* kv = new_bufkvout();
     KVW(kv, (short) 0);
@@ -480,7 +480,7 @@ void test_serial_changeset() {
         strb = strb2;
     }
     std::cerr << (timestamp() - t0) << "\n";
-    eb->print(stderr, ">> ", 0, "K", 0);
+    strb->print(stderr, ">> ", 0, "K", 0);
 #endif
 
     eb->deallocate(ti);

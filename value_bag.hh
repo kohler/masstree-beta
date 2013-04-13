@@ -43,6 +43,7 @@ class value_bag : public row_base<short> {
     inline kvtimestamp_t timestamp() const;
     inline size_t size() const;
     inline int ncol() const;
+    inline O column_length(int i) const;
     inline Str col(int i) const;
 
     inline Str row_string() const;
@@ -103,9 +104,14 @@ inline int value_bag<O>::ncol() const {
 }
 
 template <typename O>
+inline O value_bag<O>::column_length(int i) const {
+    return d_.pos_[i + 1] - d_.pos_[i];
+}
+
+template <typename O>
 inline Str value_bag<O>::col(int i) const {
     if (unsigned(i) < unsigned(d_.ncol_))
-        return Str(d_.s_ + d_.pos_[i], d_.pos_[i + 1] - d_.pos_[i]);
+        return Str(d_.s_ + d_.pos_[i], column_length(i));
     else
         return Str();
 }
@@ -136,7 +142,7 @@ value_bag<O>* value_bag<O>::update(const CS& changeset,
     for (auto it = changeset.begin(); it != last; ++it) {
         sz += it->value().length();
         if (it->index() < d_.ncol_)
-            sz -= (d_.pos_[it->index() + 1] - d_.pos_[it->index()]);
+            sz -= column_length(it->index());
         else
             ncol = it->index() + 1;
     }
@@ -161,7 +167,7 @@ value_bag<O>* value_bag<O>::update(const CS& changeset,
     sz = sizeof(bagdata) + ncol * sizeof(offset_type);
     int col = 0;
     while (1) {
-	int this_col = (first == last ? ncol : first->index());
+	int this_col = (first != last ? first->index() : ncol);
 
 	// copy data from old row
 	if (col != this_col && col < d_.ncol_) {
@@ -178,6 +184,8 @@ value_bag<O>* value_bag<O>::update(const CS& changeset,
 	    col = end_col;
 	    sz += amt;
 	}
+
+        // mark empty columns if we're extending
 	while (col != this_col) {
 	    row->d_.pos_[col] = sz;
 	    ++col;
