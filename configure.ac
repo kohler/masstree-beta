@@ -209,6 +209,8 @@ if test \( "$ac_kvdb_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
 	-o \( "$ac_kvdb_malloc" = jemalloc -a -z "$have_jemalloc" \) \
 	-o \( "$ac_kvdb_malloc" = flow -a -z "$have_flow" \); then
     AC_MSG_ERROR([$ac_kvdb_malloc not found])
+elif test "$ac_kvdb_malloc" = tcmalloc -o "$ac_kvdb_malloc" = jemalloc -o "$ac_kvdb_malloc" = flow; then
+    :
 elif test "$ac_kvdb_malloc" = yes -o "$ac_kvdb_malloc" = default; then
     AC_MSG_CHECKING([for malloc library])
     if test -n "$have_flow"; then ac_kvdb_malloc=flow;

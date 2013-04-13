@@ -5428,6 +5428,8 @@ if test \( "$ac_kvdb_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
 	-o \( "$ac_kvdb_malloc" = jemalloc -a -z "$have_jemalloc" \) \
 	-o \( "$ac_kvdb_malloc" = flow -a -z "$have_flow" \); then
     as_fn_error $? "$ac_kvdb_malloc not found" "$LINENO" 5
+elif test "$ac_kvdb_malloc" = tcmalloc -o "$ac_kvdb_malloc" = jemalloc -o "$ac_kvdb_malloc" = flow; then
+    :
 elif test "$ac_kvdb_malloc" = yes -o "$ac_kvdb_malloc" = default; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for malloc library" >&5
 $as_echo_n "checking for malloc library... " >&6; }

@@ -50,11 +50,11 @@ mttest: mttest.o misc.o checkpoint.o $(KVTREES) \
 	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 test_string: test_string.o string.o straccum.o compiler.o
-	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 test_atomics: test_atomics.o string.o straccum.o kvrandom.o \
 	json.o compiler.o kvio.o
-	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 config.h: stamp-h
 
