@@ -1323,7 +1323,7 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-malloc=TYPE      Memory allocator (malloc|jemalloc|tcmalloc|flow)
+  --with-malloc=TYPE      memory allocator (malloc|jemalloc|tcmalloc|flow)
 
 Some influential environment variables:
   CC          C compiler command
@@ -6061,12 +6061,12 @@ _ACEOF
 
 # Check whether --enable-superpage was given.
 if test "${enable_superpage+set}" = set; then :
-  enableval=$enable_superpage; ac_cv_superpage=$enableval
+  enableval=$enable_superpage;
 else
-  ac_cv_superpage=yes
+  enable_superpage=yes
 fi
 
-if test "$ac_cv_superpage" != no; then
+if test "$enable_superpage" != no; then
 
 cat >>confdefs.h <<_ACEOF
 #define HAVE_SUPERPAGE_ENABLED 1

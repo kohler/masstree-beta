@@ -202,7 +202,7 @@ AC_CHECK_LIB([tcmalloc_minimal], [tc_malloc], [have_tcmalloc_minimal=true], [hav
 
 AC_ARG_WITH([malloc],
     [AS_HELP_STRING([--with-malloc=TYPE],
-                    [Memory allocator (malloc|jemalloc|tcmalloc|flow)])],
+                    [memory allocator (malloc|jemalloc|tcmalloc|flow)])],
     [ac_kvdb_malloc=$withval], [ac_kvdb_malloc=yes])
 
 if test \( "$ac_kvdb_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
@@ -309,8 +309,8 @@ AC_DEFINE_UNQUOTED([KVDB_MAX_ROW_LEN], [$ac_cv_max_row_len], [Maximum row length
 AC_ARG_ENABLE([superpage],
     [AS_HELP_STRING([--disable-superpage],
 	    [disable superpage support])],
-    [ac_cv_superpage=$enableval], [ac_cv_superpage=yes])
-if test "$ac_cv_superpage" != no; then
+    [], [enable_superpage=yes])
+if test "$enable_superpage" != no; then
     AC_DEFINE_UNQUOTED([HAVE_SUPERPAGE_ENABLED], [1], [Define if superpage support is enabled.])
 fi
 
