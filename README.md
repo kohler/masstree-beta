@@ -170,14 +170,3 @@ gets: n 2, total 15244502, average 7622251, min 7612501, max 7632001, stddev 137
 puts/s: n 2, total 1524707, average 762354, min 761423, max 763284, stddev 1316
 gets/s: n 2, total 2523396, average 1261698, min 1259847, max 1263548, stddev 2617
 </pre>
-
-
-##Factor Analysis##
-
-We have included the script that allows you to reproduce the factor analysis
-graph in Masstree paper. Run:
-
-    $ ./script/factor.py
-
-Then you can use `./script/factorgraph.py` to convert the result into plottable
-gnuplot data.
