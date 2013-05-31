@@ -228,7 +228,7 @@ void query_table<P>::stats(FILE* f) {
 }
 
 template <typename P>
-static void json_stats1(node_base<P> *n, Json &j, int layer, int depth,
+static void json_stats1(node_base<P> *n, lcdf::Json &j, int layer, int depth,
 			threadinfo *ti)
 {
     if (!n)
@@ -242,7 +242,7 @@ static void json_stats1(node_base<P> *n, Json &j, int layer, int depth,
 	int n = 0;
 	for (int i = 0; i < perm.size(); ++i)
 	    if (lf->is_node(perm[i])) {
-		Json x = j["l1_size"];
+		lcdf::Json x = j["l1_size"];
 		j["l1_size"] = 0;
 		json_stats1(lf->lv_[perm[i]].node(), j, layer + 1, 0, ti);
 		j["l1_size_sum"] += j["l1_size"].to_i();
@@ -269,8 +269,9 @@ static void json_stats1(node_base<P> *n, Json &j, int layer, int depth,
 }
 
 template <typename P>
-void query_table<P>::json_stats(Json &j, threadinfo *ti)
+void query_table<P>::json_stats(lcdf::Json &j, threadinfo *ti)
 {
+    using lcdf::Json;
     j["size"] = 0.0;
     j["l1_count"] = 0;
     j["l1_size"] = 0;

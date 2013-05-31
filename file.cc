@@ -18,15 +18,13 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-String
-read_file_contents(int fd)
-{
-    StringAccum sa;
+lcdf::String read_file_contents(int fd) {
+    lcdf::StringAccum sa;
     while (1) {
 	char *buf = sa.reserve(4096);
 	if (!buf) {
 	    errno = ENOMEM;
-	    return String();
+	    return lcdf::String();
 	}
 
 	ssize_t x = read(fd, buf, 4096);
@@ -35,21 +33,19 @@ read_file_contents(int fd)
 	else if (x == 0)
 	    break;
 	else if (errno != EINTR)
-	    return String();
+	    return lcdf::String();
     }
 
     errno = 0;
     return sa.take_string();
 }
 
-String
-read_file_contents(const char *filename)
-{
+lcdf::String read_file_contents(const char *filename) {
     int fd = open(filename, O_RDONLY);
     if (fd == -1)
-	return String();
+	return lcdf::String();
 
-    String text = read_file_contents(fd);
+    lcdf::String text = read_file_contents(fd);
 
     if (text.empty() && errno) {
 	int saved_errno = errno;
@@ -59,9 +55,8 @@ read_file_contents(const char *filename)
     return text;
 }
 
-int
-sync_write_file_contents(const char *filename, const String &contents,
-			 mode_t mode)
+int sync_write_file_contents(const char *filename, const lcdf::String &contents,
+			     mode_t mode)
 {
     int fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY, mode);
     if (fd == -1)
@@ -85,11 +80,10 @@ sync_write_file_contents(const char *filename, const String &contents,
     return 0;
 }
 
-int
-atomic_write_file_contents(const char *filename, const String &contents,
-			   mode_t mode)
+int atomic_write_file_contents(const char *filename, const lcdf::String &contents,
+			       mode_t mode)
 {
-    String tmp_filename = String(filename) + ".tmp";
+    lcdf::String tmp_filename = lcdf::String(filename) + ".tmp";
     int r = sync_write_file_contents(tmp_filename.c_str(), contents, mode);
     if (r != 0)
 	return -1;

@@ -30,6 +30,7 @@
 #include "value_string.hh"
 #include "json.hh"
 #include "serial_changeset.hh"
+using namespace lcdf;
 
 uint8_t xb[100];
 uint16_t xw[100];

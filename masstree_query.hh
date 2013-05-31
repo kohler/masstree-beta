@@ -19,7 +19,7 @@
 #include "kvproto.hh"
 template <typename R> class query;
 template <typename R> class replay_query;
-class Json;
+namespace lcdf { class Json; }
 
 namespace Masstree {
 
@@ -58,7 +58,7 @@ class query_table {
     void findpivots(Str* pv, int npv) const;
 
     void stats(FILE* f);
-    void json_stats(Json& j, threadinfo* ti);
+    void json_stats(lcdf::Json& j, threadinfo* ti);
 
     void print(FILE* f, int indent) const;
 

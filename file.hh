@@ -72,11 +72,11 @@ checked_write(int fd, const T *x)
 }
 
 
-String read_file_contents(int fd);
-String read_file_contents(const char *filename);
-int sync_write_file_contents(const char *filename, const String &contents,
+lcdf::String read_file_contents(int fd);
+lcdf::String read_file_contents(const char *filename);
+int sync_write_file_contents(const char *filename, const lcdf::String &contents,
 			     mode_t mode = 0666);
-int atomic_write_file_contents(const char *filename, const String &contents,
+int atomic_write_file_contents(const char *filename, const lcdf::String &contents,
 			       mode_t mode = 0666);
 
 #endif

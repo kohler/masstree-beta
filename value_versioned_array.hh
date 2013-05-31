@@ -107,7 +107,7 @@ class value_versioned_array : public row_base<value_array::index_type> {
     rowversion ver_;
     short ncol_;
     short ncol_cap_;
-    inline_string* cols_[0];
+    lcdf::inline_string* cols_[0];
 
     static inline size_t shallow_size(int ncol);
     inline size_t shallow_size() const;
@@ -147,7 +147,7 @@ inline Str value_versioned_array::col(int i) const {
 }
 
 inline size_t value_versioned_array::shallow_size(int ncol) {
-    return sizeof(value_versioned_array) + ncol * sizeof(inline_string*);
+    return sizeof(value_versioned_array) + ncol * sizeof(lcdf::inline_string*);
 }
 
 inline size_t value_versioned_array::shallow_size() const {
@@ -180,7 +180,7 @@ value_versioned_array* value_versioned_array::update(const CS& changeset, kvtime
     for (auto it = changeset.begin(); it != last; ++it) {
         if (row->cols_[it->index()])
             row->cols_[it->index()]->deallocate_rcu(ti);
-        row->cols_[it->index()] = inline_string::allocate(it->value(), ti);
+        row->cols_[it->index()] = lcdf::inline_string::allocate(it->value(), ti);
     }
 
     if (row == this) {
@@ -201,7 +201,7 @@ inline value_versioned_array* value_versioned_array::create1(Str value, kvtimest
     row->ts_ = ts;
     row->ver_ = rowversion();
     row->ncol_ = row->ncol_cap_ = 1;
-    row->cols_[0] = inline_string::allocate(value, ti);
+    row->cols_[0] = lcdf::inline_string::allocate(value, ti);
     return row;
 }
 

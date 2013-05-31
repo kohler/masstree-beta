@@ -24,6 +24,7 @@
 #else
 # define LCDF_SNPRINTF_ATTR /* nothing */
 #endif
+namespace lcdf {
 
 /** @file <lcdf/straccum.hh>
     @brief Click's StringAccum class, used to construct Strings efficiently from pieces.
@@ -710,5 +711,6 @@ inline void swap(StringAccum& a, StringAccum& b) {
     a.swap(b);
 }
 
+} // namespace lcdf
 #undef LCDF_SNPRINTF_ATTR
 #endif

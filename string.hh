@@ -18,6 +18,7 @@
 #include "string_base.hh"
 #include <string>
 #include <utility>
+namespace lcdf {
 
 class String : public String_base<String> {
     struct memo_type;
@@ -810,4 +811,5 @@ inline void swap(String& a, String& b) {
     a.swap(b);
 }
 
+} // namespace lcdf
 #endif

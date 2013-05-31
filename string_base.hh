@@ -22,6 +22,7 @@
 #include <limits.h>
 #include <ctype.h>
 #include <iostream>
+namespace lcdf {
 class StringAccum;
 #define LCDF_CONSTANT_CSTR(cstr) ((cstr) && __builtin_constant_p(strlen((cstr))))
 
@@ -391,4 +392,5 @@ inline typename T::substring_type String_generic::trim(const T &str) {
     return str.fast_substring(b, e);
 }
 
+} // namespace lcdf
 #endif

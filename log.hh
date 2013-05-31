@@ -22,12 +22,13 @@
 #include <pthread.h>
 template <typename R> class replay_query;
 class logset;
+using lcdf::Str;
 
 // in-memory log.
 // more than one, to reduce contention on the lock.
 class loginfo {
   public:
-    void initialize(const String& logfile);
+    void initialize(const lcdf::String& logfile);
     void logger();
 
     inline void acquire();
@@ -52,7 +53,7 @@ class loginfo {
     struct front {
 	uint32_t lock_;
 	waitlist* waiting_;
-        String::rep_type filename_;
+	lcdf::String::rep_type filename_;
         logset* logset_;
     };
     struct logset_info {
@@ -128,7 +129,7 @@ enum logcommand {
 
 class logreplay {
   public:
-    logreplay(const String &filename);
+    logreplay(const lcdf::String &filename);
     ~logreplay();
     int unmap();
 
@@ -145,7 +146,7 @@ class logreplay {
     void replay(int i, threadinfo *ti);
 
   private:
-    String filename_;
+    lcdf::String filename_;
     int errno_;
     off_t size_;
     char *buf_;

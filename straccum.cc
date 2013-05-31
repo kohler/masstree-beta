@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
+namespace lcdf {
 
 /** @class StringAccum
  * @brief Efficiently build up Strings from pieces.
@@ -376,3 +377,5 @@ StringAccum::append_break_lines(const String& text, int linelen, const String &l
 	*this << '\n';
     }
 }
+
+} // namespace lcdf

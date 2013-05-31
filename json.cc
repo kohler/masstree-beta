@@ -17,6 +17,7 @@
 #include "json.hh"
 #include "compiler.hh"
 #include <ctype.h>
+namespace lcdf {
 
 /** @class Json
     @brief Json data.
@@ -907,3 +908,5 @@ Json::parse_primitive(const String&, const char *begin, const char *end)
 	return 0;
     }
 }
+
+} // namespace lcdf

@@ -141,18 +141,18 @@ struct quick_istr {
 	    x /= 10;
 	} while (--minlen > 0 || x != 0);
     }
-    Str string() const {
-	return Str(bbuf_, buf_ + sizeof(buf_) - 1);
+    lcdf::Str string() const {
+	return lcdf::Str(bbuf_, buf_ + sizeof(buf_) - 1);
     }
     const char *c_str() {
 	buf_[sizeof(buf_) - 1] = 0;
 	return bbuf_;
     }
-    bool operator==(Str s) const {
+    bool operator==(lcdf::Str s) const {
 	return s.len == (buf_ + sizeof(buf_) - 1) - bbuf_
 	    && memcmp(s.s, bbuf_, s.len) == 0;
     }
-    bool operator!=(Str s) const {
+    bool operator!=(lcdf::Str s) const {
 	return !(*this == s);
     }
 };
@@ -161,7 +161,7 @@ size_t get_hugepage_size();
 
 struct ckstate;
 class threadinfo;
-void checkpoint1(ckstate *c, Str key, const row_type *row);
+void checkpoint1(ckstate *c, lcdf::Str key, const row_type *row);
 
 struct Clp_Parser;
 int clp_parse_suffixdouble(struct Clp_Parser *clp, const char *vstr,

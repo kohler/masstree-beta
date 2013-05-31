@@ -19,11 +19,14 @@
 #include "misc.hh"
 #include "kvproto.hh"
 #include <vector>
+using lcdf::Str;
+using lcdf::String;
+using lcdf::Json;
 // Templated KV tests, so we can run them either client/server or linked with
 // the kvd binary.
 
 template <typename N>
-inline Json &kvtest_set_time(Json &result, const String &base, N n, double delta_t)
+inline Json &kvtest_set_time(Json &result, const lcdf::String &base, N n, double delta_t)
 {
     result.set(base, n);
     if (delta_t > 0)

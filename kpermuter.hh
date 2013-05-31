@@ -251,7 +251,7 @@ template <int width> class kpermuter {
 	x_ ^= diff;
     }
 
-    String unparse() const;
+    lcdf::String unparse() const;
 
     static inline int size(value_type p) {
 	return p & 15;
@@ -261,7 +261,7 @@ template <int width> class kpermuter {
 };
 
 template <int width>
-String kpermuter<width>::unparse() const
+lcdf::String kpermuter<width>::unparse() const
 {
     char buf[max_width + 3], *s = buf;
     value_type p(x_);
@@ -284,7 +284,7 @@ String kpermuter<width>::unparse() const
         *s++ = '?';
         *s++ = '!';
     }
-    return String(buf, s);
+    return lcdf::String(buf, s);
 }
 
 

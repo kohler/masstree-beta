@@ -15,7 +15,6 @@
  */
 #ifndef KVIO_H
 #define KVIO_H
-
 #include "misc.hh"
 #include "shared_config.hh"
 #include <string>
@@ -75,19 +74,19 @@ inline int KVW(kvout* kv, const volatile T& x) {
     return KVW(kv, (const T &)x);
 }
 
-inline int KVW(kvout* kv, Str x) {
+inline int KVW(kvout* kv, lcdf::Str x) {
     KVW(kv, int32_t(x.length()));
     kvwrite(kv, x.data(), x.length());
     return sizeof(int32_t) + x.length();
 }
 
-inline int kvread_str_inplace(kvin* kv, Str& v) {
+inline int kvread_str_inplace(kvin* kv, lcdf::Str& v) {
     KVR(kv, v.len);
     v.s = kvin_skip(kv, v.len);
     return sizeof(v.len) + v.len;
 }
 
-inline int kvread_str_alloc(kvin* kv, Str& v) {
+inline int kvread_str_alloc(kvin* kv, lcdf::Str& v) {
     KVR(kv, v.len);
     char *buf = (char *)malloc(v.len);
     kvread(kv, buf, v.len);
@@ -102,17 +101,17 @@ inline int kvread_str(kvin* kv, char* buf, int max, int& vlen) {
     return sizeof(vlen) + vlen;
 }
 
-inline int kvwrite_str(kvout* kv, Str v) {
+inline int kvwrite_str(kvout* kv, lcdf::Str v) {
     KVW(kv, (int)v.len);
     kvwrite(kv, v.s, v.len);
     return sizeof(v.len) + v.len;
 }
 
-inline int kvwrite_inline_string(kvout* kv, const inline_string* s) {
+inline int kvwrite_inline_string(kvout* kv, const lcdf::inline_string* s) {
     if (!s)
-        return KVW(kv, Str());
+        return KVW(kv, lcdf::Str());
     else
-        return KVW(kv, Str(s->s, s->len));
+        return KVW(kv, lcdf::Str(s->s, s->len));
 }
 
 /** @brief Read a row from kvin. The row is serialized by row_type::filteremit.
@@ -137,6 +136,7 @@ inline int kvread_row(struct kvin* kv, std::vector<std::string>& row) {
     return sizeof(n) + x;
 }
 
+namespace lcdf {
 template <typename ALLOC>
 inline inline_string* inline_string::allocate_read(kvin* kv, ALLOC& ti) {
     int len;
@@ -149,5 +149,6 @@ inline inline_string* inline_string::allocate_read(kvin* kv, ALLOC& ti) {
     assert(r == len);
     return v;
 }
+} // namespace lcdf
 
 #endif

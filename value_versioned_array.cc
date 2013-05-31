@@ -56,7 +56,7 @@ value_versioned_array::checkpoint_read(Str str, kvtimestamp_t ts,
     KVR(&kv, ncol);
     value_versioned_array* row = make_sized_row(ncol, ts, ti);
     for (short i = 0; i < ncol; i++)
-        row->cols_[i] = inline_string::allocate_read(&kv, ti);
+        row->cols_[i] = lcdf::inline_string::allocate_read(&kv, ti);
     return row;
 }
 

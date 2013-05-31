@@ -259,7 +259,7 @@ struct kvtest_client {
 	    globalepoch = e;
 	ti_->rcu_quiesce();
     }
-    String make_message(StringAccum &sa) const;
+    String make_message(lcdf::StringAccum &sa) const;
     void notice(const char *fmt, ...);
     void fail(const char *fmt, ...);
     void report(const Json &result) {
@@ -455,7 +455,7 @@ bool kvtest_client<T>::remove_sync(const Str &key) {
 }
 
 template <typename T>
-String kvtest_client<T>::make_message(StringAccum &sa) const {
+String kvtest_client<T>::make_message(lcdf::StringAccum &sa) const {
     const char *begin = sa.begin();
     while (begin != sa.end() && isspace((unsigned char) *begin))
 	++begin;
@@ -469,7 +469,7 @@ template <typename T>
 void kvtest_client<T>::notice(const char *fmt, ...) {
     va_list val;
     va_start(val, fmt);
-    String m = make_message(StringAccum().vsnprintf(500, fmt, val));
+    String m = make_message(lcdf::StringAccum().vsnprintf(500, fmt, val));
     va_end(val);
     if (m && !quiet)
 	fprintf(stderr, "%d: %s", ti_->ti_index, m.c_str());
@@ -483,7 +483,7 @@ void kvtest_client<T>::fail(const char *fmt, ...) {
 
     va_list val;
     va_start(val, fmt);
-    String m = make_message(StringAccum().vsnprintf(500, fmt, val));
+    String m = make_message(lcdf::StringAccum().vsnprintf(500, fmt, val));
     va_end(val);
     if (!m)
 	m = "unknown failure";
@@ -1062,9 +1062,9 @@ struct gnuplot_info {
     String last_test;
     int normalizetype;
 
-    std::vector<StringAccum> candlesticks;
-    std::vector<StringAccum> medians;
-    StringAccum xtics;
+    std::vector<lcdf::StringAccum> candlesticks;
+    std::vector<lcdf::StringAccum> medians;
+    lcdf::StringAccum xtics;
 
     gnuplot_info(int nt)
 	: pos(1 - trialdelta), nextdelta(trialdelta), normalization(-1),
@@ -1210,7 +1210,7 @@ static void print_gnuplot(FILE *f, const char * const *types_begin, const char *
 static String
 read_file(FILE *f, const char *name)
 {
-    StringAccum sa;
+    lcdf::StringAccum sa;
     while (1) {
 	size_t x = fread(sa.reserve(4096), 1, 4096, f);
 	if (x != 0)

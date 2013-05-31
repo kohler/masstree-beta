@@ -56,6 +56,7 @@
 #include "kvproto.hh"
 #include "masstree_query.hh"
 #include <algorithm>
+using lcdf::StringAccum;
 
 enum { CKState_Quit, CKState_Uninit, CKState_Ready, CKState_Go };
 

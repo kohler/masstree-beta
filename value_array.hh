@@ -57,7 +57,7 @@ class value_array : public row_base<short> {
   private:
     kvtimestamp_t ts_;
     short ncol_;
-    inline_string* cols_[0];
+    lcdf::inline_string* cols_[0];
 
     static inline size_t shallow_size(int ncol);
     inline size_t shallow_size() const;
@@ -90,7 +90,7 @@ inline Str value_array::col(int i) const {
 }
 
 inline size_t value_array::shallow_size(int ncol) {
-    return sizeof(value_array) + sizeof(inline_string*) * ncol;
+    return sizeof(value_array) + sizeof(lcdf::inline_string*) * ncol;
 }
 
 inline size_t value_array::shallow_size() const {
@@ -108,7 +108,7 @@ value_array* value_array::update(const CS& changeset, kvtimestamp_t ts, threadin
     memset(row->cols_ + ncol_, 0, (ncol - ncol_) * sizeof(cols_[0]));
     auto last = changeset.end();
     for (auto it = changeset.begin(); it != last; ++it)
-        row->cols_[it->index()] = inline_string::allocate(it->value(), ti);
+        row->cols_[it->index()] = lcdf::inline_string::allocate(it->value(), ti);
     return row;
 }
 
@@ -122,7 +122,7 @@ inline value_array* value_array::create1(Str value, kvtimestamp_t ts, threadinfo
     value_array* row = (value_array*) ti.allocate(shallow_size(1), memtag_row_array);
     row->ts_ = ts;
     row->ncol_ = 1;
-    row->cols_[0] = inline_string::allocate(value, ti);
+    row->cols_[0] = lcdf::inline_string::allocate(value, ti);
     return row;
 }
 

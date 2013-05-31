@@ -21,6 +21,8 @@
 class threadinfo;
 
 namespace Masstree {
+using lcdf::Str;
+using lcdf::String;
 
 template <int LW = 15, int IW = LW> struct nodeparams {
     static constexpr int leaf_width = LW;

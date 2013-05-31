@@ -38,6 +38,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <inttypes.h>
+namespace lcdf {
 
 /** @file string.hh
  * @brief The LCDF String class.
@@ -1212,3 +1213,5 @@ String::encode_json() const
     } else
 	return *this;
 }
+
+} // namespace lcdf

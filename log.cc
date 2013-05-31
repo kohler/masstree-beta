@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+using lcdf::String;
 
 kvepoch_t global_log_epoch;
 kvepoch_t global_wake_epoch;

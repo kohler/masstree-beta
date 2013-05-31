@@ -992,7 +992,7 @@ struct kvtest_client {
     }
     void report(const Json &result) {
 	if (!quiet) {
-	    StringAccum sa;
+	    lcdf::StringAccum sa;
 	    double dv;
 	    if (result.count("puts"))
 		sa << " total " << result.get("puts");

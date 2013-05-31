@@ -19,6 +19,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 struct kvin;
+namespace lcdf {
 
 struct Str : public String_base<Str> {
     typedef Str substring_type;
@@ -175,4 +176,5 @@ struct inline_string : public String_base<inline_string> {
     }
 };
 
+} // namespace lcdf
 #endif

@@ -22,6 +22,7 @@
 #include <vector>
 #include <utility>
 #include <stdlib.h>
+namespace lcdf {
 
 template <typename P> class Json_proxy_base;
 template <typename T> class Json_object_proxy;
@@ -2772,4 +2773,5 @@ inline void swap(Json& a, Json& b) {
     a.swap(b);
 }
 
+} // namespace lcdf
 #endif

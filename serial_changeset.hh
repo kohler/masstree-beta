@@ -11,7 +11,7 @@ class serial_changeset_iterator : public std::iterator<std::input_iterator_tag, 
     inline bool check(serial_changeset_iterator<IDX> last) const;
 
     inline IDX index() const;
-    inline Str value() const;
+    inline lcdf::Str value() const;
     inline int32_t value_length() const;
 
     inline const serial_changeset_iterator<IDX>& operator*() const;
@@ -29,7 +29,7 @@ template <typename IDX>
 class serial_changeset {
   public:
     inline serial_changeset();
-    inline serial_changeset(Str str);
+    inline serial_changeset(lcdf::Str str);
 
     inline bool empty() const;
     inline bool single_index() const;
@@ -39,7 +39,7 @@ class serial_changeset {
     inline serial_changeset_iterator<IDX> end() const;
 
   private:
-    Str str_;
+    lcdf::Str str_;
 };
 
 
@@ -86,8 +86,8 @@ inline int32_t serial_changeset_iterator<IDX>::value_length() const {
 }
 
 template <typename IDX>
-inline Str serial_changeset_iterator<IDX>::value() const {
-    return Str(p_ + sizeof(IDX) + sizeof(int32_t), value_length());
+inline lcdf::Str serial_changeset_iterator<IDX>::value() const {
+    return lcdf::Str(p_ + sizeof(IDX) + sizeof(int32_t), value_length());
 }
 
 template <typename IDX>
@@ -119,13 +119,13 @@ inline serial_changeset<IDX>::serial_changeset()
 }
 
 template <typename IDX>
-inline serial_changeset<IDX>::serial_changeset(Str str)
+inline serial_changeset<IDX>::serial_changeset(lcdf::Str str)
     : str_(str) {
     serial_changeset_iterator<IDX> ib(str_.begin()), ie(str_.end());
     while (ib != ie && ib.check(ie))
 	++ib;
     if (ib != ie)
-	str_ = Str();
+	str_ = lcdf::Str();
 }
 
 template <typename IDX>
