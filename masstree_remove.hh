@@ -57,7 +57,7 @@ bool tcursor<P>::gc_layer(threadinfo *ti)
 	if (in->size() > 0 && !in->has_split())
 	    return false;
 	in->lock(*in, ti->lock_fence(tc_internode_lock));
-	if (in->has_split() && !in->parent())
+	if (in->has_split() && !in->has_parent())
 	    in->mark_root();
 	if (in->size() > 0 || in->has_split()) {
 	    in->unlock();
@@ -65,7 +65,7 @@ bool tcursor<P>::gc_layer(threadinfo *ti)
 	}
 
 	node_type *child = in->child_[0];
-	child->set_parent(0);
+	child->set_parent(node_type::parent_for_layer_root(n_));
 	n_->lv_[kp_] = child;
 	in->mark_split();
 	in->set_parent(child);	// ensure concurrent reader finds true root
@@ -79,7 +79,7 @@ bool tcursor<P>::gc_layer(threadinfo *ti)
     if (lf->size() > 0 && !lf->has_split())
 	return false;
     lf->lock(*lf, ti->lock_fence(tc_leaf_lock));
-    if (lf->has_split() && !lf->parent())
+    if (lf->has_split() && !lf->has_parent())
 	lf->mark_root();
     if (lf->size() > 0 || lf->has_split()) {
 	lf->unlock();
@@ -232,7 +232,7 @@ void tcursor<P>::collapse(internode_type *p, ikey_type ikey,
 
     while (1) {
 	internode_type *gp = p->locked_parent(ti);
-	if (!gp) {
+	if (!internode_type::parent_exists(gp)) {
 	    if (!prefix.empty())
 		gc_layer_rcu_callback<P>::make(table, prefix, ti);
 	    p->unlock();

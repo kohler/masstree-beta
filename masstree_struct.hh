@@ -67,6 +67,16 @@ class node_base : public make_nodeversion<P>::type {
 	else
 	    return static_cast<const internode_type*>(this)->parent_;
     }
+    static inline base_type* parent_for_layer_root(base_type* higher_layer) {
+        (void) higher_layer;
+        return 0;
+    }
+    static inline bool parent_exists(base_type* p) {
+        return p != 0;
+    }
+    inline bool has_parent() const {
+        return parent_exists(parent());
+    }
     inline internode_type* locked_parent(threadinfo* ti) const;
     inline void set_parent(base_type* p) {
 	if (this->isleaf())
@@ -417,7 +427,6 @@ template <typename P>
 void basic_table<P>::reinitialize(threadinfo *ti) {
     typename node_type::leaf_type *n = node_type::leaf_type::make(0, 0, ti);
     n->next_.ptr = n->prev_ = 0;
-    n->parent_ = 0;
     n->mark_root();
     root_ = n;
 }

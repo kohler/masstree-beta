@@ -123,22 +123,23 @@ leaf<P> *forward_at_leaf(const leaf<P> *n,
 }
 
 template <typename P>
-internode<P> *node_base<P>::locked_parent(threadinfo *ti) const
+internode<P>* node_base<P>::locked_parent(threadinfo *ti) const
 {
-    const node_base<P> *n = this;
-    precondition(!n->concurrent || n->locked());
+    node_base<P>* p;
+    precondition(!this->concurrent || this->locked());
     while (1) {
-	node_base<P> *p = n->parent();
-	if (!p)
-	    return 0;
+	p = this->parent();
+	if (!node_base<P>::parent_exists(p))
+            break;
 	nodeversion_type pv = p->lock(*p, ti->lock_fence(tc_internode_lock));
-	if (p == n->parent()) {
+	if (p == this->parent()) {
 	    invariant(!p->isleaf());
-	    return static_cast<internode<P> *>(p);
+	    break;
 	}
 	p->unlock(pv);
 	relax_fence();
     }
+    return static_cast<internode<P>*>(p);
 }
 
 } // namespace Masstree

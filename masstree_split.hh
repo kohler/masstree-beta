@@ -170,12 +170,12 @@ node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
 
 	internode_type *p = n->locked_parent(ti);
 
-	if (!p) {
+	if (!node_type::parent_exists(p)) {
 	    internode_type *nn = internode_type::make(ti);
 	    nn->child_[0] = n;
 	    nn->assign(0, xikey[sense], child);
 	    nn->nkeys_ = 1;
-	    nn->parent_ = 0;
+	    nn->parent_ = p;
 	    nn->mark_root();
 	    fence();
 	    n->set_parent(nn);

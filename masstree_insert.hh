@@ -43,7 +43,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 	    ksufsize = 0;
 	leaf_type *nl = leaf_type::make(ksufsize, n_->node_ts_, ti);
 	nl->next_.ptr = nl->prev_ = 0;
-	nl->parent_ = 0;
+	nl->parent_ = node_type::parent_for_layer_root(n_);
 	nl->mark_root();
 	nl->assign_initialize(0, kc <= 0 ? oka : ka_, ti);
 	if (kc != 0)
