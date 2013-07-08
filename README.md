@@ -1,26 +1,26 @@
-# MASSTREE-BETA RELEASE 0.1 #
+# Masstree #
 
-This is the README file for the source release for Masstree - a fast key-value
-store for multicore. The purpose of the document is to describe the code
-layout, and necessary information for you to run Masstree and interpreting the
-result.  More recent information may be available at
+This is the source release for Masstree, a fast, multi-core key-value
+store. This document describes how to run Masstree and interpret its
+results. More recent information may be available at
 [Masstree website](http://pdos.csail.mit.edu/masstree).
 
-##CONTENTS##
+## Contents ##
 
 * `MTDIR`                     This directory
 * `MTDIR/doc`               Masstree algorithm specification
 
-##Install##
-Masstree is tested on Debian, Ubuntu and Mac OS X. Install Masstree as:
+## Installation ##
+
+Masstree is tested on Debian, Ubuntu and Mac OS X. To build:
 
     $ ./configure
     $ make
 
-By default, Masstree links with glibc's malloc. You can also configure Masstree
-to link with another memory allocator as:
+By default, Masstree links with glibc’s malloc. You can also configure Masstree
+to link with another memory allocator:
 
-    ./configure --with-malloc=<jemalloc|flow|tcmalloc>`.
+    ./configure --with-malloc=<jemalloc|tcmalloc>
 
 Flow is our re-implementation of
 [Streamflow](http://people.cs.vt.edu/~scschnei/streamflow/) allocator, and may
@@ -28,11 +28,10 @@ be open-sourced in future.
 
 See `./configure --help` for more configure options.
 
+## Testing ##
 
-##Test Masstree in a single process##
-
-The quickiest and simplest way to try out Masstree is the `./mttest` program.
-(**Note that this test doesn't involve disk or network overhead.**)
+The simplest way to try out Masstree is the `./mttest` program.
+This test doesn’t involve disk or network overhead.
 
 <pre>
 $ ./mttest
@@ -72,20 +71,18 @@ The test starts a process which hosts a Masstree, generates and execute queries
 over the tree. It uses all available cores (two in the above example). The test
 lasts for 20 seconds. It populates the key-value store with `put` queries
 during first 10 seconds, and then issues `get` queries over the tree during the
-second10 seconds, i.e. the getting phase. See `kvtest_rw1_seed` in `mttest.hh`
+second 10 seconds. See `kvtest_rw1_seed` in `mttest.hh`
 for more details about the workload and other workloads that `mttest` supports.
 
 The output summarizes the throughput of each core. The `1/1 rw1/m` line says
 that `mttest` is running the first trial (out of one trials), of the `rw1`
 workload using Masstree (`m` for short) as the internal data structure.
 
-The rest of the result mainly consists of two parts. First is the per-core
+The rest of the result comprises of two parts. First is the per-core
 throughput summary, as indicated by `0: {"table":"mb","test":"rw1",...}`. The
 rest is the gnuplot source that plot the median per-core throughput. If you
 plot it, each candlestick has five points, each represents the
 min,20%,50%,70%,max of the corresponding metric among all threads.
-
-##Output format##
 
 `mttest` can also write the output as JSON into file for further analysis. For
 example, `./mttest -b notebook.json` will create `notebook.json` containing:
@@ -132,15 +129,15 @@ example, `./mttest -b notebook.json` will create `notebook.json` containing:
 }
 </pre>
 
-##Test Masstree with `mtclient`##
+## Network testing ##
 
 `mtclient` supports almost the same set of workloads that `mttest` does, but it
-sends queries to the Masstree deamon over network.
+sends queries to a Masstree server over the network.
 
-To start Masstree daemon, run:
+To start the Masstree server, run:
 
 <pre>
-$ ./mtd --logdir=[LOG_DIRS]  --ckdir=[CHECKPOINT_DIRS]
+$ ./mtd --logdir=[LOG_DIRS] --ckdir=[CHECKPOINT_DIRS]
 mb, Bag, pin-threads disabled, logging enabled
 no ./kvd-ckp-gen
 no ./kvd-ckp-0-0
@@ -150,10 +147,15 @@ no ./kvd-ckp-0-1
 </pre>
 
 `LOG_DIRS` is a comma-separated list of directories storing Masstree
-logs, and `CHECKPOINT_DIRS` is a comm-separated list of directory storing
-Masstree checkpoints.
+logs, and `CHECKPOINT_DIRS` is a comma-separated list of directories
+storing Masstree checkpoints. Masstree will write its logs to the
+`LOG_DIRS` and periodic checkpoints to the `CHECKPOINT_DIRS`. (Both
+logging and multithreading are performed using multiple cores, so
+there are several log and checkpoint files.) Alternatively, run `./mtd
+-n` to turn off logging.
 
-To run `rw1` workload with `mtclient` on the same machine as `mtd`, run:
+To run the `rw1` workload with `mtclient` on the same machine as
+`mtd`, run:
 
 <pre>
 $ ./mtclient -s 127.0.0.1 rw1
