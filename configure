@@ -1323,7 +1323,8 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-malloc=TYPE      memory allocator (malloc|jemalloc|tcmalloc|flow)
+  --with-malloc=TYPE      memory allocator
+                          (malloc|jemalloc|tcmalloc|hoard|flow)
 
 Some influential environment variables:
   CC          C compiler command
@@ -5414,6 +5415,48 @@ else
   have_tcmalloc_minimal=
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for _Z16getMainHoardHeapv in -lhoard" >&5
+$as_echo_n "checking for _Z16getMainHoardHeapv in -lhoard... " >&6; }
+if ${ac_cv_lib_hoard__Z16getMainHoardHeapv+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lhoard  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char _Z16getMainHoardHeapv ();
+int
+main ()
+{
+return _Z16getMainHoardHeapv ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_lib_hoard__Z16getMainHoardHeapv=yes
+else
+  ac_cv_lib_hoard__Z16getMainHoardHeapv=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_hoard__Z16getMainHoardHeapv" >&5
+$as_echo "$ac_cv_lib_hoard__Z16getMainHoardHeapv" >&6; }
+if test "x$ac_cv_lib_hoard__Z16getMainHoardHeapv" = xyes; then :
+  have_hoard=true
+else
+  have_hoard=
+fi
+
 
 
 # Check whether --with-malloc was given.
@@ -5426,9 +5469,10 @@ fi
 
 if test \( "$ac_kvdb_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
 	-o \( "$ac_kvdb_malloc" = jemalloc -a -z "$have_jemalloc" \) \
-	-o \( "$ac_kvdb_malloc" = flow -a -z "$have_flow" \); then
+	-o \( "$ac_kvdb_malloc" = flow -a -z "$have_flow" \) \
+        -o \( "$ac_kvdb_malloc" = hoard -a -z "$have_hoard" \) ; then
     as_fn_error $? "$ac_kvdb_malloc not found" "$LINENO" 5
-elif test "$ac_kvdb_malloc" = tcmalloc -o "$ac_kvdb_malloc" = jemalloc -o "$ac_kvdb_malloc" = flow; then
+elif test "$ac_kvdb_malloc" = tcmalloc -o "$ac_kvdb_malloc" = jemalloc -o "$ac_kvdb_malloc" = flow -o "$ac_kvdb_malloc" = hoard; then
     :
 elif test "$ac_kvdb_malloc" = yes -o "$ac_kvdb_malloc" = default; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for malloc library" >&5
@@ -5459,6 +5503,11 @@ elif test "$ac_kvdb_malloc" = flow; then
     MALLOC_LIBS="-lflow"
 
 $as_echo "#define HAVE_FLOW_MALLOC 1" >>confdefs.h
+
+elif test "$ac_kvdb_malloc" = hoard; then
+    MALLOC_LIBS="-lhoard"
+
+$as_echo "#define HAVE_HOARD_MALLOC 1" >>confdefs.h
 
 else
     MALLOC_LIBS=

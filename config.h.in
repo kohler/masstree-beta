@@ -38,6 +38,9 @@
 /* Define if you are using libflow for malloc. */
 #undef HAVE_FLOW_MALLOC
 
+/* Define if you are using libhoard for malloc. */
+#undef HAVE_HOARD_MALLOC
+
 /* Define if int64_t and long are the same type. */
 #undef HAVE_INT64_T_IS_LONG
 

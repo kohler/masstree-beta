@@ -199,17 +199,19 @@ dnl Memory allocator
 AC_CHECK_LIB([flow], [malloc], [have_flow=true], [have_flow=])
 AC_CHECK_LIB([jemalloc], [mallctl], [have_jemalloc=true], [have_jemalloc=])
 AC_CHECK_LIB([tcmalloc_minimal], [tc_malloc], [have_tcmalloc_minimal=true], [have_tcmalloc_minimal=])
+AC_CHECK_LIB([hoard], [_Z16getMainHoardHeapv], [have_hoard=true], [have_hoard=])
 
 AC_ARG_WITH([malloc],
     [AS_HELP_STRING([--with-malloc=TYPE],
-                    [memory allocator (malloc|jemalloc|tcmalloc|flow)])],
+                    [memory allocator (malloc|jemalloc|tcmalloc|hoard|flow)])],
     [ac_kvdb_malloc=$withval], [ac_kvdb_malloc=yes])
 
 if test \( "$ac_kvdb_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
 	-o \( "$ac_kvdb_malloc" = jemalloc -a -z "$have_jemalloc" \) \
-	-o \( "$ac_kvdb_malloc" = flow -a -z "$have_flow" \); then
+	-o \( "$ac_kvdb_malloc" = flow -a -z "$have_flow" \) \
+        -o \( "$ac_kvdb_malloc" = hoard -a -z "$have_hoard" \) ; then
     AC_MSG_ERROR([$ac_kvdb_malloc not found])
-elif test "$ac_kvdb_malloc" = tcmalloc -o "$ac_kvdb_malloc" = jemalloc -o "$ac_kvdb_malloc" = flow; then
+elif test "$ac_kvdb_malloc" = tcmalloc -o "$ac_kvdb_malloc" = jemalloc -o "$ac_kvdb_malloc" = flow -o "$ac_kvdb_malloc" = hoard; then
     :
 elif test "$ac_kvdb_malloc" = yes -o "$ac_kvdb_malloc" = default; then
     AC_MSG_CHECKING([for malloc library])
@@ -233,6 +235,9 @@ elif test "$ac_kvdb_malloc" = jemalloc; then
 elif test "$ac_kvdb_malloc" = flow; then
     MALLOC_LIBS="-lflow"
     AC_DEFINE([HAVE_FLOW_MALLOC], [1], [Define if you are using libflow for malloc.])
+elif test "$ac_kvdb_malloc" = hoard; then
+    MALLOC_LIBS="-lhoard"
+    AC_DEFINE([HAVE_HOARD_MALLOC], [1], [Define if you are using libhoard for malloc.])
 else
     MALLOC_LIBS=
 fi
