@@ -113,10 +113,13 @@ inline void memory_fence() {
 
 /** @brief Do-nothing function object. */
 struct do_nothing {
-    void operator()() {
+    void operator()() const {
     }
     template <typename T>
-    void operator()(T) {
+    void operator()(const T&) const {
+    }
+    template <typename T, typename U>
+    void operator()(const T&, const U&) const {
     }
 };
 
