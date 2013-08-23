@@ -235,9 +235,9 @@ static void json_stats1(node_base<P> *n, lcdf::Json &j, int layer, int depth,
 	return;
     else if (n->isleaf()) {
 	leaf<P> *lf = static_cast<leaf<P> *>(n);
-	j["l1_node_by_depth" + (!layer * 3)][depth] += 1;
-	j["l1_leaf_by_depth" + (!layer * 3)][depth] += 1;
-	j["l1_leaf_by_size" + (!layer * 3)][lf->size()] += 1;
+	j[&"l1_node_by_depth"[!layer * 3]][depth] += 1;
+	j[&"l1_leaf_by_depth"[!layer * 3]][depth] += 1;
+	j[&"l1_leaf_by_size"[!layer * 3]][lf->size()] += 1;
 	typename leaf<P>::permuter_type perm(lf->permutation_);
 	int n = 0;
 	for (int i = 0; i < perm.size(); ++i)
@@ -264,7 +264,7 @@ static void json_stats1(node_base<P> *n, lcdf::Json &j, int layer, int depth,
 	for (int i = 0; i <= n->size(); ++i)
 	    if (in->child_[i])
 		json_stats1(in->child_[i], j, layer, depth + 1, ti);
-	j["l1_node_by_depth" + (!layer * 3)][depth] += 1;
+	j[&"l1_node_by_depth"[!layer * 3]][depth] += 1;
     }
 }
 
