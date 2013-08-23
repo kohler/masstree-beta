@@ -332,6 +332,15 @@ void Json::clear() {
     }
 }
 
+/** @brief Resize the array Json to size @a n. */
+void Json::resize(size_type n) {
+    uniqueify_array(false, n);
+    while (u_.a.a->size > n && u_.a.a->size > 0) {
+        --u_.a.a->size;
+        u_.a.a->a[u_.a.a->size].~Json();
+    }
+}
+
 
 // Primitives
 
@@ -597,316 +606,558 @@ void Json::hard_unparse(StringAccum &sa, const unparse_manipulator &m, int depth
 }
 
 
-inline const char *
-Json::skip_space(const char *s, const char *end)
-{
-    while (s != end && (unsigned char) *s <= 32
-	   && (*s == ' ' || *s == '\n' || *s == '\r' || *s == '\t'))
-	++s;
-    return s;
-}
-
 bool
-Json::assign_parse(const String &str, const char *s, const char *end)
+Json::assign_parse(const char* first, const char* last, const String& str)
 {
-    int state = st_initial;
-    Json result;
-    String key;
-    std::vector<Json *> stack;
-
-    while (1) {
-    next_token:
-	s = skip_space(s, end);
-	if (s == end)
-	    return false;
-
-	switch (*s) {
-
-	case ',':
-	    if (state == st_object_delim) {
-		state = st_object_key;
-		++s;
-		goto next_token;
-	    } else if (state == st_array_delim) {
-		state = st_array_value;
-		++s;
-		goto next_token;
-	    } else
-		return false;
-
-	case ':':
-	    if (state == st_object_colon) {
-		state = st_object_value;
-		++s;
-		goto next_token;
-	    } else
-		return false;
-
-	case '}':
-	    if (state == st_object_initial || state == st_object_delim) {
-	    parse_complex_value:
-		++s;
-		stack.pop_back();
-	    parse_value:
-		if (stack.size() == 0)
-		    goto done;
-		state = (stack.back()->is_object() ? st_object_delim : st_array_delim);
-		goto next_token;
-	    } else
-		return false;
-
-	case ']':
-	    if (state == st_array_initial || state == st_array_delim)
-		goto parse_complex_value;
-	    else
-		return false;
-
-	case '\"':
-	    if (state == st_object_initial || state == st_object_key) {
-		if ((s = parse_string(key, str, s + 1, end))) {
-		    state = st_object_colon;
-		    goto next_token;
-		} else
-		    return false;
-	    }
-	    break;
-
-	}
-
-	Json *this_value;
-	if (state == st_initial)
-	    this_value = &result;
-	else if (state == st_object_value)
-	    this_value = &stack.back()->get_insert(key);
-	else if (state == st_array_initial || state == st_array_value) {
-	    stack.back()->push_back(Json());
-	    this_value = &stack.back()->back();
-	} else
-	    return false;
-
-	switch (*s) {
-
-	case '{':
-	    if (stack.size() < max_depth) {
-		*this_value = Json::make_object();
-		state = st_object_initial;
-		stack.push_back(this_value);
-		++s;
-		goto next_token;
-	    } else
-		return false;
-
-	case '[':
-	    if (stack.size() < max_depth) {
-		*this_value = Json::make_array();
-		state = st_array_initial;
-		stack.push_back(this_value);
-		++s;
-		goto next_token;
-	    } else
-		return false;
-
-	case '\"':
-	    if ((s = parse_string(key, str, s + 1, end))) {
-		*this_value = Json::make_string(key);
-		goto parse_value;
-	    } else
-		return false;
-
-	default:
-	    if ((s = this_value->parse_primitive(str, s, end)))
-		goto parse_value;
-	    else
-		return false;
-
-	}
-    }
-
- done:
-    if (skip_space(s, end) == end) {
-	swap(result);
-	return true;
+    using std::swap;
+    Json::streaming_parser jsp;
+    first = jsp.consume(first, last, str, true);
+    if (first != last && (*first == ' ' || *first == '\n' || *first == '\r'
+                          || *first == '\t'))
+        ++first;
+    if (first == last && jsp.success()) {
+        swap(jsp.result(), *this);
+        return true;
     } else
-	return false;
+        return false;
 }
 
-const char *
-Json::parse_string(String &result, const String &str, const char *s, const char *end)
-{
-    if (s == end)
-	return 0;
-    StringAccum sa;
-    const char *last = s;
-    for (; s != end; ++s) {
-	if (*s == '\\') {
-	    if (s + 1 == end)
-		return 0;
-	    sa.append(last, s);
-	    if (s[1] == '\"' || s[1] == '\\' || s[1] == '/')
-		++s, last = s;
-	    else if (s[1] == 'b') {
-		sa.append('\b');
-		++s, last = s + 1;
-	    } else if (s[1] == 'f') {
-		sa.append('\f');
-		++s, last = s + 1;
-	    } else if (s[1] == 'n') {
-		sa.append('\n');
-		++s, last = s + 1;
-	    } else if (s[1] == 'r') {
-		sa.append('\r');
-		++s, last = s + 1;
-	    } else if (s[1] == 't') {
-		sa.append('\t');
-		++s, last = s + 1;
-	    } else if (s[1] == 'u' && s + 5 < end) {
-		int ch = 0;
-		for (int i = 2; i < 6; ++i) {
-		    char c = s[i];
-		    if (c >= '0' && c <= '9')
-			ch = 16 * ch + c - '0';
-		    else if (c >= 'A' && c <= 'F')
-			ch = 16 * ch + c - 'A' + 10;
-		    else if (c >= 'a' && c <= 'f')
-			ch = 16 * ch + c - 'a' + 10;
-		    else
-			return 0;
-		}
-		// special handling required for surrogate pairs
-		if (unlikely(ch >= 0xD800 && ch <= 0xDFFF)) {
-		    if (ch >= 0xDC00 || s + 11 >= end || s[6] != '\\' || s[7] != 'u')
-			return 0;
-		    int ch2 = 0;
-		    for (int i = 8; i < 12; ++i) {
-			char c = s[i];
-			if (c >= '0' && c <= '9')
-			    ch2 = 16 * ch2 + c - '0';
-			else if (c >= 'A' && c <= 'F')
-			    ch2 = 16 * ch2 + c - 'A' + 10;
-			else if (c >= 'a' && c <= 'f')
-			    ch2 = 16 * ch2 + c - 'a' + 10;
-			else
-			    return 0;
-		    }
-		    if (ch2 < 0xDC00 || ch2 > 0xDFFF)
-			return 0;
-		    else if (!sa.append_utf8(0x10000 + (ch - 0xD800) * 0x400 + (ch2 - 0xDC00)))
-			return 0;
-		    s += 11, last = s + 1;
-		} else {
-		    if (!sa.append_utf8(ch))
-			return 0;
-		    s += 5, last = s + 1;
-		}
-	    } else
-		return 0;
-	} else if (*s == '\"')
+static inline bool in_range(uint8_t x, unsigned low, unsigned high) {
+    return (unsigned) x - low < high - low;
+}
+
+static inline bool in_range(int x, unsigned low, unsigned high) {
+    return (unsigned) x - low < high - low;
+}
+
+inline const uint8_t* Json::streaming_parser::error_at(const uint8_t* here) {
+    state_ = st_error;
+    return here;
+}
+
+inline Json* Json::streaming_parser::current() {
+    return stack_.empty() ? &json_ : stack_.back();
+}
+
+const uint8_t*
+Json::streaming_parser::consume(const uint8_t* first,
+                                const uint8_t* last,
+                                const String& str,
+                                bool complete) {
+    using std::swap;
+    Json j;
+
+    if (state_ >= 0 && (state_ & st_partmask)) {
+        if ((state_ & st_stringpart) && state_ >= st_object_colon)
+            goto string_object_key;
+        else if (state_ & st_stringpart)
+            goto string_value;
+        else if (state_ & st_primitivepart)
+            goto primitive;
+        else
+            goto number;
+    }
+
+    while (state_ >= 0 && first != last)
+        switch (*first) {
+        case ' ':
+        case '\n':
+        case '\r':
+        case '\t':
+            while (first != last && *first <= 32
+                   && (*first == ' ' || *first == '\n' || *first == '\r'
+                       || *first == '\t'))
+                ++first;
+            break;
+
+        case ',':
+            if (state_ == st_array_delim)
+                state_ = st_array_value;
+            else if (state_ == st_object_delim)
+                state_ = st_object_key;
+            else
+                goto error_here;
+            ++first;
+            break;
+
+        case ':':
+            if (state_ == st_object_colon) {
+                state_ = st_object_value;
+                ++first;
+                break;
+            } else
+                goto error_here;
+
+        case '{':
+            if (state_ <= st_object_value) {
+                if (stack_.size() == max_depth)
+                    goto error_here;
+                ++first;
+                if (state_ == st_initial && json_.is_o()) {
+                    swap(j, json_);
+                    j.clear();
+                } else
+                    j = Json::make_object();
+                goto value;
+            } else
+                goto error_here;
+
+        case '}':
+            if (state_ == st_object_initial || state_ == st_object_delim) {
+                ++first;
+                goto close_value;
+            } else
+                goto error_here;
+
+        case '[':
+            if (state_ <= st_object_value) {
+                if (stack_.size() == max_depth)
+                    goto error_here;
+                ++first;
+                if (state_ == st_initial && json_.is_a()) {
+                    swap(j, json_);
+                    j.clear();
+                } else
+                    j = Json::make_array();
+                goto value;
+            } else
+                goto error_here;
+
+        case ']':
+            if (state_ == st_array_initial || state_ == st_array_delim) {
+                ++first;
+                goto close_value;
+            } else
+                goto error_here;
+
+        case '\"':
+            if (state_ <= st_object_value) {
+                str_ = String();
+                ++first;
+            string_value:
+                first = consume_string(first, last, str);
+                if (state_ >= 0 && !(state_ & st_stringpart)) {
+                    j = Json(std::move(str_));
+                    goto value;
+                }
+            } else if (state_ == st_object_initial || state_ == st_object_key) {
+                state_ = st_object_colon;
+                str_ = String();
+                ++first;
+            string_object_key:
+                first = consume_string(first, last, str);
+                if (state_ >= 0 && !(state_ & st_stringpart)) {
+                    stack_.push_back(&current()->get_insert(std::move(str_)));
+                    continue;
+                }
+            } else
+                goto error_here;
+            break;
+
+        case 'n':
+        case 'f':
+        case 't':
+            if (state_ <= st_object_value) {
+            primitive:
+                first = consume_primitive(first, last, j);
+                if (state_ >= 0 && !(state_ & st_primitivepart))
+                    goto value;
+            } else
+                goto error_here;
+            break;
+
+        case '-':
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            if (state_ <= st_object_value) {
+            number:
+                first = consume_number(first, last, str, complete, j);
+                if (state_ >= 0 && !(state_ & st_numberpart))
+                    goto value;
+            } else
+                goto error_here;
+            break;
+
+        default:
+        error_here:
+            return error_at(first);
+
+        value: {
+            Json* jp = current();
+            if (state_ != st_initial && jp->is_a()) {
+                jp->push_back(std::move(j));
+                jp = &jp->back();
+            } else
+                swap(*jp, j);
+
+            if (state_ == st_object_value)
+                stack_.pop_back();
+            if (jp->is_a() || jp->is_o()) {
+                if (state_ != st_initial)
+                    stack_.push_back(jp);
+                state_ = jp->is_a() ? st_array_initial : st_object_initial;
+            } else if (state_ == st_object_value)
+                state_ = st_object_delim;
+            else if (state_ == st_array_initial || state_ == st_array_value)
+                state_ = st_array_delim;
+            else {
+                state_ = st_final;
+                return first;
+            }
+            break;
+        }
+
+        close_value:
+            if (stack_.empty()) {
+                state_ = st_final;
+                return first;
+            } else {
+                stack_.pop_back();
+                state_ = current()->is_a() ? st_array_delim : st_object_delim;
+            }
+            break;
+        }
+
+    return first;
+}
+
+const uint8_t*
+Json::streaming_parser::consume_string(const uint8_t* first,
+                                       const uint8_t* last,
+                                       const String& str) {
+    StringAccum sa = StringAccum::make_transfer(str_);
+
+    if (unlikely(state_ & st_partlenmask)) {
+        first = consume_stringpart(sa, first, last);
+        if (state_ == st_error)
+            return first;
+    }
+
+    const uint8_t* prev = first;
+    while (first != last) {
+        if (likely(in_range(*first, 32, 128)) && *first != '\\' && *first != '\"')
+            ++first;
+        else if (*first == '\\') {
+            sa.append(prev, first);
+            prev = first = consume_backslash(sa, first, last);
+            if (state_ == st_error)
+                return first;
+	} else if (*first == '\"')
 	    break;
-	else if (likely((unsigned char) *s >= 32 && (unsigned char) *s < 128))
-	    /* OK as is */;
-	else if ((unsigned char) *s < 32)
-	    return 0;
-	else {
-	    const char *t = String::skip_utf8_char(s, end);
-	    if (t == s)
-		return 0;
-	    s = t - 1;
-	}
+        else if (unlikely(!in_range(*first, 0xC2, 0xF5)))
+            return error_at(first);
+        else {
+            int want = 2 + (*first >= 0xE0) + (*first >= 0xF0);
+            int n = last - first < want ? last - first : want;
+            if ((n > 1 && unlikely(!in_range(first[1], 0x80, 0xC0)))
+                || (*first >= 0xE0
+                    && ((*first == 0xE0 && first[1] < 0xA0) /* overlong */
+                        || (*first == 0xED && first[1] >= 0xA0) /* surrogate */
+                        || (*first == 0xF0 && first[1] < 0x90) /* overlong */
+                        || (*first == 0xF4 && first[1] >= 0x90) /* not a char */
+                        )))
+                return error_at(first + 1);
+            else if (n > 2 && unlikely(!in_range(first[2], 0x80, 0xC0)))
+                return error_at(first + 2);
+            else if (n > 3 && unlikely(!in_range(first[3], 0x80, 0xC0)))
+                return error_at(first + 3);
+            first += n;
+            if (n != want) {
+                state_ |= n;
+                break;
+            }
+        }
     }
-    if (s == end)
-	return 0;
-    else if (!sa.empty()) {
-	sa.append(last, s);
-	result = sa.take_string();
-    } else if (last == s)
-	result = String();
-    else if (last >= str.begin() && s <= str.end())
-	result = str.substring(last, s);
-    else
-	result = String(last, s);
-    return s + 1;
+
+    if (!sa.empty() || first == last)
+	sa.append(prev, first);
+    if (first != last) {
+        if (!sa.empty())
+            str_ = sa.take_string();
+        else if (prev >= str.ubegin() && first <= str.uend())
+            str_ = str.fast_substring(prev, first);
+        else
+            str_ = String(prev, first);
+        state_ &= ~st_stringpart;
+        return first + 1;
+    } else {
+        state_ |= st_stringpart;
+        str_ = sa.take_string();
+        return first;
+    }
 }
 
-const char *
-Json::parse_primitive(const String&, const char *begin, const char *end)
-{
-    if (u_.x.type < 0)
-        u_.str.deref();
-    else if (u_.x.c && (u_.x.type == j_array || u_.x.type == j_object))
-        u_.x.c->deref((json_type) u_.x.type);
-    memset(&u_, 0, sizeof(u_));
+const uint8_t*
+Json::streaming_parser::consume_stringpart(StringAccum& sa,
+                                           const uint8_t* first,
+                                           const uint8_t* last) {
+    while ((state_ & st_partlenmask) && first != last) {
+        int part = state_ & st_partlenmask;
+        if (part > sa.length())
+            std::cerr << "fuck " << sa.length() << " " << part << "\n";
+        uint8_t tag = sa[sa.length() - part];
+        if ((tag != '\\' && (*first & 0xC0) != 0x80)
+            || (tag == '\\' && part == 6 && *first != '\\')
+            || (tag == '\\' && part == 7 && *first != 'u')
+            || (tag == '\\' && part != 1 && part != 6 && part != 7
+                && !isxdigit(*first))) {
+            state_ = st_error;
+            break;
+        }
+        sa.append(*first);
+        if ((tag != '\\' && part == 1 + (tag >= 0xE0) + (tag >= 0xF0))
+            || (tag == '\\' && (part == 1 || part == 5 || part == 11))) {
+            uint8_t buf[12];
+            memcpy(buf, sa.end() - part - 1, part + 1);
+            sa.adjust_length(-part - 1);
+            state_ -= st_stringpart | part;
+            str_ = sa.take_string();
+            (void) consume_string(buf, buf + part + 1, String());
+            if (state_ == st_error)
+                break;
+            sa = StringAccum::make_transfer(str_);
+        } else
+            ++state_;
+        ++first;
+    }
+    return first;
+}
 
-    const char *s = begin;
-    switch (*s) {
-    case '-':
-	if (s + 1 == end || s[1] < '0' || s[1] > '9')
-	    return 0;
-	++s;
-	/* fallthru */
-    case '0':
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9': {
-	json_type type = j_int;
-	if (*s == '0')
-	    ++s;
-	else
-	    for (++s; s != end && isdigit((unsigned char) *s); )
-		++s;
-	if (s != end && *s == '.') {
-	    type = j_double;
-	    if (s + 1 == end || s[1] < '0' || s[1] > '9')
-		return 0;
-	    for (s += 2; s != end && isdigit((unsigned char) *s); )
-		++s;
-	}
-	if (s != end && (*s == 'e' || *s == 'E')) {
-	    type = j_double;
-	    ++s;
-	    if (s != end && (*s == '+' || *s == '-'))
-		++s;
-	    if (s == end || s[1] < '0' || s[1] > '9')
-		return 0;
-	    for (++s; s != end && isdigit((unsigned char) *s); )
-		++s;
-	}
-        if (s == begin + 1)
-            u_.i.x = *begin - '0';
-        else if (type == j_int)
-            u_.i.x = strtoll(String(begin, s).c_str(), 0, 0);
-        else
-            u_.d.x = strtod(String(begin, s).c_str(), 0);
-	u_.x.type = type;
-	return s;
+const uint8_t*
+Json::streaming_parser::consume_backslash(StringAccum& sa,
+                                          const uint8_t* first,
+                                          const uint8_t* last) {
+    const uint8_t* prev = first;
+    int ch = 0;
+
+    if (first + 1 == last)
+        goto incomplete;
+    else if (first[1] == '\"' || first[1] == '\\' || first[1] == '/')
+        ch = first[1];
+    else if (first[1] == 'b')
+        ch = '\b';
+    else if (first[1] == 'f')
+        ch = '\f';
+    else if (first[1] == 'n')
+        ch = '\n';
+    else if (first[1] == 'r')
+        ch = '\r';
+    else if (first[1] == 't')
+        ch = '\t';
+    else if (first[1] == 'u') {
+        for (int i = 2; i < 6; ++i) {
+            if (first + i == last)
+                goto incomplete;
+            else if (in_range(first[i], '0', '9' + 1))
+                ch = 16 * ch + first[i] - '0';
+            else if (in_range(first[i], 'A', 'F' + 1))
+                ch = 16 * ch + first[i] - 'A' + 10;
+            else if (in_range(first[i], 'a', 'f' + 1))
+                ch = 16 * ch + first[i] - 'a' + 10;
+            else
+                return error_at(&first[i]);
+        }
+        first += 4;
+        // special handling required for surrogate pairs
+        if (unlikely(in_range(ch, 0xD800, 0xE000))) {
+            if (ch >= 0xDC00)
+                return error_at(&first[1]);
+            else if (first + 2 == last)
+                goto incomplete;
+            else if (first[2] != '\\')
+                return error_at(&first[2]);
+            else if (first + 3 == last)
+                goto incomplete;
+            else if (first[3] != 'u')
+                return error_at(&first[3]);
+            int ch2 = 0;
+            for (int i = 4; i < 8; ++i) {
+                if (first + i == last)
+                    goto incomplete;
+                else if (in_range(first[i], '0', '9' + 1))
+                    ch2 = 16 * ch2 + first[i] - '0';
+                else if (in_range(first[i], 'A', 'F' + 1))
+                    ch2 = 16 * ch2 + first[i] - 'A' + 10;
+                else if (in_range(first[i], 'A', 'F' + 1))
+                    ch2 = 16 * ch2 + first[i] - 'a' + 10;
+                else
+                    return error_at(&first[i]);
+            }
+            if (!in_range(ch2, 0xDC00, 0xE000))
+                return error_at(&first[7]);
+            ch = 0x10000 + (ch - 0xD800) * 0x400 + (ch2 - 0xDC00);
+            first += 6;
+        }
     }
-    case 't':
-	if (s + 4 <= end && s[1] == 'r' && s[2] == 'u' && s[3] == 'e') {
-	    u_.i.x = 1;
-	    u_.i.type = j_bool;
-	    return s + 4;
-	} else
-	    return 0;
-    case 'f':
-	if (s + 5 <= end && s[1] == 'a' && s[2] == 'l' && s[3] == 's' && s[4] == 'e') {
-	    u_.i.x = 0;
-	    u_.i.type = j_bool;
-	    return s + 5;
-	} else
-	    return 0;
-    case 'n':
-	if (s + 4 <= end && s[1] == 'u' && s[2] == 'l' && s[3] == 'l')
-	    return s + 4;
-        else
-	    return 0;
-    default:
-	return 0;
+
+    if (!ch || !sa.append_utf8(ch))
+        return error_at(&first[1]);
+    return first + 2;
+
+ incomplete:
+    state_ |= last - prev;
+    sa.append(prev, last);
+    return last;
+}
+
+const uint8_t*
+Json::streaming_parser::consume_primitive(const uint8_t* first,
+                                          const uint8_t* last,
+                                          Json& j) {
+    const char* t = "null\0false\0true";
+    int n;
+    if (unlikely(state_ & st_primitivepart)) {
+        n = state_ & st_partlenmask;
+        state_ &= ~st_partmask;
+    } else {
+        n = (*first == 'n' ? 1 : (*first == 'f' ? 6 : 12));
+        ++first;
     }
+
+    for (; first != last && t[n]; ++n, ++first)
+        if (t[n] != *first)
+            return error_at(first);
+
+    if (t[n])
+        state_ |= st_primitivepart | n;
+    else if (n == 4)
+        j = Json();
+    else if (n == 10)
+        j = Json(false);
+    else
+        j = Json(true);
+    return first;
+}
+
+const uint8_t*
+Json::streaming_parser::consume_number(const uint8_t* first,
+                                       const uint8_t* last,
+                                       const String& str,
+                                       bool complete,
+                                       Json& j) {
+    const uint8_t* prev = first;
+    int position = state_ & st_partlenmask;
+
+    switch (position) {
+    case 0:
+        if (*first == '-')
+            ++first;
+        /* fallthru */
+    case 2:
+        if (first != last && *first == '0') {
+            position = 3;
+            ++first;
+        } else if (first != last && in_range(*first, '1', '9' + 1)) {
+            position = 1;
+            ++first;
+        case 1:
+            while (first != last && in_range(*first, '0', '9' + 1))
+                ++first;
+        } else
+            position = 2;
+        /* fallthru */
+    case 3:
+        if (first != last && *first == '.') {
+            ++first;
+            goto decimal;
+        }
+    maybe_exponent:
+        if (first != last && (*first == 'e' || *first == 'E')) {
+            ++first;
+            goto exponent;
+        }
+        break;
+
+    decimal:
+    case 4:
+        position = 4;
+        if (first != last && in_range(*first, '0', '9' + 1)) {
+            ++first;
+            position = 5;
+        }
+        /* fallthru */
+    case 5:
+        while (first != last && in_range(*first, '0', '9' + 1))
+            ++first;
+        if (first != last && position == 5)
+            goto maybe_exponent;
+        break;
+
+    exponent:
+    case 6:
+        position = 6;
+        if (first != last && (*first == '+' || *first == '-'))
+            ++first;
+        else if (first == last)
+            break;
+        /* fallthru */
+    case 8:
+        position = 8;
+        if (first != last && in_range(*first, '0', '9' + 1)) {
+            ++first;
+            position = 9;
+        }
+        /* fallthru */
+    case 9:
+        while (first != last && in_range(*first, '0', '9' + 1))
+            ++first;
+        break;
+    }
+
+    if (first != last || complete) {
+        if (!(position & 1))
+            goto error_here;
+        last = first;
+        if (state_ & st_partlenmask) {
+            str_.append(prev, first);
+            prev = str_.ubegin();
+            first = str_.uend();
+        }
+        if (prev + 1 == first)
+            j = Json(int(*prev - '0'));
+        else if (position < 4) {
+            bool negative = *prev == '-';
+            prev += int(negative);
+            uint64_t x = 0;
+            while (prev != first) {
+                x = (x * 10) + *prev - '0';
+                ++prev;
+            }
+            if (negative)
+                j = Json(-int64_t(x));
+            else
+                j = Json(x);
+        } else {
+            if (!(state_ & st_partlenmask))
+                str_ = String(prev, first);
+            double x = strtod(str_.c_str(), 0);
+            j = Json(x);
+        }
+        state_ &= ~st_partmask;
+        str_ = String();
+        return last;
+    }
+
+    if (state_ & st_partmask)
+        str_.append(prev, first);
+    else if (prev >= str.ubegin() && first <= str.uend())
+        str_ = str.substring(prev, first);
+    else
+        str_ = String(prev, first);
+    state_ = (state_ & ~st_partmask) | st_numberpart | position;
+    return first;
+
+ error_here:
+    str_ = String();
+    return error_at(first);
 }
 
 } // namespace lcdf

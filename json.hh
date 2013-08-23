@@ -66,6 +66,7 @@ class Json {
 
     typedef bool (Json::*unspecified_bool_type)() const;
     class unparse_manipulator;
+    class streaming_parser;
 
     // Constructors
     inline Json();
@@ -228,6 +229,8 @@ class Json {
     template <typename T, typename... U>
     inline Json& insert_back(T first, U... rest);
 
+    void resize(size_type n);
+
     inline Json* array_data();
 
     // Iteration
@@ -375,10 +378,7 @@ class Json {
     static void unparse_indent(StringAccum &sa, const unparse_manipulator &m, int depth);
     void hard_unparse(StringAccum &sa, const unparse_manipulator &m, int depth) const;
 
-    static inline const char *skip_space(const char *s, const char *end);
-    bool assign_parse(const String &str, const char *begin, const char *end);
-    static const char *parse_string(String &result, const String &str, const char *s, const char *end);
-    const char *parse_primitive(const String &str, const char *s, const char *end);
+    bool assign_parse(const char* first, const char* last, const String &str);
 
     friend class object_iterator;
     friend class const_object_iterator;
@@ -1090,6 +1090,9 @@ class Json_proxy_base {
 #endif
     void pop_back() {
 	value().pop_back();
+    }
+    void resize(Json::size_type n) {
+        value().resize(n);
     }
     void unparse(StringAccum& sa) const {
 	return cvalue().unparse(sa);
@@ -2547,12 +2550,114 @@ inline void Json::unparse(StringAccum &sa, const unparse_manipulator &m) const {
 
 // Parsing
 
+class Json::streaming_parser {
+  public:
+    inline streaming_parser();
+    inline void reset();
+
+    inline bool done() const;
+    inline bool success() const;
+    inline bool error() const;
+
+    inline size_t consume(const char* first, size_t length,
+                          const String& str = String(),
+                          bool complete = false);
+    inline const char* consume(const char* first, const char* last,
+                               const String& str = String(),
+                               bool complete = false);
+    const uint8_t* consume(const uint8_t* first, const uint8_t* last,
+                           const String& str = String(),
+                           bool complete = false);
+
+    inline Json& result();
+    inline const Json& result() const;
+
+  private:
+    enum {
+        st_final = -2, st_error = -1,
+        st_partlenmask = 0x0F, st_partmask = 0xFF,
+        st_stringpart = 0x10, st_primitivepart = 0x20, st_numberpart = 0x40,
+
+	st_initial = 0x000,
+        st_array_initial = 0x100,
+        st_array_value = 0x200,
+        st_object_value = 0x300,
+
+        st_array_delim = 0x400,
+        st_object_delim = 0x500,
+        st_object_initial = 0x600,
+        st_object_key = 0x700,
+        st_object_colon = 0x800,
+
+        max_depth = 2048
+    };
+
+    int state_;
+    std::vector<Json*> stack_;
+    String str_;
+    Json json_;
+
+    inline Json* current();
+    const uint8_t* error_at(const uint8_t* here);
+    const uint8_t* consume_string(const uint8_t* first, const uint8_t* last, const String& str);
+    const uint8_t* consume_backslash(StringAccum& sa, const uint8_t* first, const uint8_t* last);
+    const uint8_t* consume_stringpart(StringAccum& sa, const uint8_t* first, const uint8_t* last);
+    const uint8_t* consume_primitive(const uint8_t* first, const uint8_t* last, Json& j);
+    const uint8_t* consume_number(const uint8_t* first, const uint8_t* last, const String& str, bool complete, Json& j);
+};
+
+inline Json::streaming_parser::streaming_parser()
+    : state_(st_initial) {
+}
+
+inline void Json::streaming_parser::reset() {
+    state_ = st_initial;
+    stack_.clear();
+}
+
+inline bool Json::streaming_parser::done() const {
+    return state_ < 0;
+}
+
+inline bool Json::streaming_parser::success() const {
+    return state_ == st_final;
+}
+
+inline bool Json::streaming_parser::error() const {
+    return state_ == st_error;
+}
+
+inline size_t Json::streaming_parser::consume(const char* first, size_t length,
+                                              const String& str,
+                                              bool complete) {
+    const uint8_t* ufirst = reinterpret_cast<const uint8_t*>(first);
+    return consume(ufirst, ufirst + length, str, complete) - ufirst;
+}
+
+inline const char* Json::streaming_parser::consume(const char* first,
+                                                   const char* last,
+                                                   const String& str,
+                                                   bool complete) {
+    return reinterpret_cast<const char*>
+        (consume(reinterpret_cast<const uint8_t*>(first),
+                 reinterpret_cast<const uint8_t*>(last), str, complete));
+}
+
+inline Json& Json::streaming_parser::result() {
+    return json_;
+}
+
+inline const Json& Json::streaming_parser::result() const {
+    return json_;
+}
+
+
 /** @brief Parse @a str as UTF-8 JSON into this Json object.
     @return true iff the parse succeeded.
 
     An unsuccessful parse does not modify *this. */
 inline bool Json::assign_parse(const String &str) {
-    return assign_parse(str, str.begin(), str.end());
+    return assign_parse(str.begin(), str.end(), str);
 }
 
 /** @brief Parse [@a first, @a last) as UTF-8 JSON into this Json object.
@@ -2560,7 +2665,7 @@ inline bool Json::assign_parse(const String &str) {
 
     An unsuccessful parse does not modify *this. */
 inline bool Json::assign_parse(const char *first, const char *last) {
-    return assign_parse(String(), first, last);
+    return assign_parse(first, last, String());
 }
 
 /** @brief Return @a str parsed as UTF-8 JSON.
