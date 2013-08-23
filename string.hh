@@ -72,8 +72,12 @@ class String : public String_base<String> {
 
     inline const char *c_str() const;
 
-    inline String substring(const char *first, const char *last) const;
-    inline String fast_substring(const char *first, const char *last) const;
+    inline String substring(const char* first, const char* last) const;
+    inline String substring(const unsigned char* first,
+                            const unsigned char* last) const;
+    inline String fast_substring(const char* first, const char* last) const;
+    inline String fast_substring(const unsigned char* first,
+                                 const unsigned char* last) const;
     String substring(int pos, int len) const;
     inline String substring(int pos) const;
     String ltrim() const;
@@ -204,6 +208,7 @@ class String : public String_base<String> {
                 memo_offset = 0;
         }
         friend class String;
+        friend class StringAccum;
     };
 
     const rep_type& internal_rep() const {
@@ -227,6 +232,14 @@ class String : public String_base<String> {
 	memo_type* next;
 #endif
 	char real_data[8];	// but it might be more or less
+
+        inline void initialize(uint32_t capacity, uint32_t dirty);
+#if HAVE_STRING_PROFILING
+        void account_new();
+        void account_destroy();
+#else
+        inline void account_destroy() {}
+#endif
     };
 
     enum {
@@ -300,7 +313,7 @@ class String : public String_base<String> {
     static inline memo_type* absent_memo() {
 	return reinterpret_cast<memo_type*>(uintptr_t(1));
     }
-    static memo_type* create_memo(char* space, int dirty, int capacity);
+    static inline memo_type* create_memo(int capacity, int dirty);
     static void delete_memo(memo_type* memo);
     const char* hard_c_str() const;
     bool hard_equals(const char* s, int len) const;
@@ -310,8 +323,6 @@ class String : public String_base<String> {
     static const rep_type oom_string_rep;
     static const rep_type zero_string_rep;
 
-    static String make_claim(char*, int, int); // claim memory
-
     static int parse_cesu8_char(const unsigned char* s,
 				const unsigned char* end);
 
@@ -319,6 +330,17 @@ class String : public String_base<String> {
     friend class StringAccum;
 };
 
+
+/** @cond never */
+inline void String::memo_type::initialize(uint32_t capacity, uint32_t dirty) {
+    this->refcount = 1;
+    this->capacity = capacity;
+    this->dirty = dirty;
+#if HAVE_STRING_PROFILING
+    this->account_new();
+#endif
+}
+/** @endcond never */
 
 /** @brief Construct an empty String (with length 0). */
 inline String::String()
@@ -515,7 +537,7 @@ inline const char* String::c_str() const {
     memo_type* m = _r.memo();
     if ((m && end_data >= m->real_data + m->dirty)
 	|| *end_data != '\0') {
-	if (char *x = const_cast<String *>(this)->append_uninitialized(1)) {
+	if (char *x = const_cast<String*>(this)->append_uninitialized(1)) {
 	    *x = '\0';
 	    --_r.length;
 	}
@@ -541,6 +563,11 @@ inline String String::substring(const char* first, const char* last) const {
     } else
 	return String();
 }
+/** @overload */
+inline String String::substring(const unsigned char* first, const unsigned char* last) const {
+    return substring(reinterpret_cast<const char*>(first),
+                     reinterpret_cast<const char*>(last));
+}
 
 /** @brief Return a substring of the current string starting at @a first
     and ending before @a last.
@@ -551,6 +578,11 @@ inline String String::fast_substring(const char* first, const char* last) const 
     assert(begin() <= first && first <= last && last <= end());
     _r.ref();
     return String(first, last - first, _r.memo());
+}
+/** @overload */
+inline String String::fast_substring(const unsigned char* first, const unsigned char* last) const {
+    return fast_substring(reinterpret_cast<const char*>(first),
+                          reinterpret_cast<const char*>(last));
 }
 
 /** @brief Return the suffix of the current string starting at index @a pos.

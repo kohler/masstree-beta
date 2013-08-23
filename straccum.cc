@@ -18,7 +18,7 @@
  * Eddie Kohler
  *
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
- * Copyright (c) 2001-2011 Eddie Kohler
+ * Copyright (c) 2001-2013 Eddie Kohler
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -69,40 +69,43 @@ void
 StringAccum::assign_out_of_memory()
 {
     if (r_.cap > 0)
-	delete[] (r_.s - MEMO_SPACE);
-    r_.s = reinterpret_cast<unsigned char *>(const_cast<char *>(String_generic::empty_data));
+	delete[] reinterpret_cast<char*>(r_.s - memo_space);
+    r_.s = reinterpret_cast<unsigned char*>(const_cast<char*>(String_generic::empty_data));
     r_.cap = -1;
     r_.len = 0;
 }
 
-char *
-StringAccum::grow(int want)
-{
+char* StringAccum::grow(int ncap) {
     // can't append to out-of-memory strings
     if (r_.cap < 0) {
 	errno = ENOMEM;
 	return 0;
     }
 
-    int ncap = (r_.cap ? (r_.cap + MEMO_SPACE) * 2 : 128) - MEMO_SPACE;
-    while (ncap <= want)
-	ncap = (ncap + MEMO_SPACE) * 2 - MEMO_SPACE;
+    if (ncap < r_.cap)
+        return reinterpret_cast<char*>(r_.s + r_.len);
+    else if (ncap < 128)
+        ncap = 128;
+    else if (r_.cap < (1 << 20) && ncap < (r_.cap + memo_space) * 2 - memo_space)
+        ncap = (r_.cap + memo_space) * 2 - memo_space;
+    else if (r_.cap >= (1 << 20) && ncap < r_.cap + (1 << 19))
+        ncap = r_.cap + (1 << 19);
 
-    unsigned char *n = new unsigned char[ncap + MEMO_SPACE];
+    char* n = new char[ncap + memo_space];
     if (!n) {
 	assign_out_of_memory();
 	errno = ENOMEM;
 	return 0;
     }
-    n += MEMO_SPACE;
 
+    n += memo_space;
     if (r_.cap > 0) {
 	memcpy(n, r_.s, r_.len);
-	delete[] (r_.s - MEMO_SPACE);
+	delete[] reinterpret_cast<char*>(r_.s - memo_space);
     }
-    r_.s = n;
+    r_.s = reinterpret_cast<unsigned char*>(n);
     r_.cap = ncap;
-    return reinterpret_cast<char *>(r_.s + r_.len);
+    return reinterpret_cast<char*>(r_.s + r_.len);
 }
 
 /** @brief Set the StringAccum's length to @a len.
@@ -125,12 +128,23 @@ StringAccum::hard_extend(int nadjust, int nreserve)
 {
     char *x;
     if (r_.len + nadjust + nreserve <= r_.cap)
-	x = reinterpret_cast<char *>(r_.s + r_.len);
+	x = reinterpret_cast<char*>(r_.s + r_.len);
     else
 	x = grow(r_.len + nadjust + nreserve);
     if (x)
 	r_.len += nadjust;
     return x;
+}
+
+void StringAccum::transfer_from(String& x) {
+    if (x.data_shared() || x._r.memo_offset != -memo_space) {
+        append(x.begin(), x.end());
+        x._r.deref();
+    } else {
+        r_.s = const_cast<unsigned char*>(x.udata());
+        r_.len = x.length();
+        r_.cap = x._r.memo()->capacity;
+    }
 }
 
 /** @brief Null-terminate this StringAccum and return its data.
@@ -176,7 +190,7 @@ StringAccum::hard_append(const char *s, int len)
 	    memcpy(new_s, old_r.s, old_r.len);
 	    memcpy(new_s + old_r.len, s, len);
 	}
-	delete[] (old_r.s - MEMO_SPACE);
+	delete[] reinterpret_cast<char*>(old_r.s - memo_space);
     }
 }
 
@@ -221,10 +235,13 @@ StringAccum::take_string()
 {
     int len = length();
     int cap = r_.cap;
-    char *str = reinterpret_cast<char *>(r_.s);
+    char* str = reinterpret_cast<char*>(r_.s);
     if (len > 0 && cap > 0) {
+        String::memo_type* memo =
+            reinterpret_cast<String::memo_type*>(r_.s - memo_space);
+        memo->initialize(cap, len);
 	r_ = rep_t();
-	return String::make_claim(str, len, cap);
+	return String(str, len, memo);
     } else if (!out_of_memory())
 	return String();
     else {

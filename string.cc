@@ -272,33 +272,39 @@ long String_generic::to_i(const char* s, const char* ends) {
 
 
 /** @cond never */
-String::memo_type *
-String::create_memo(char *space, int dirty, int capacity)
-{
-    assert(capacity > 0 && capacity >= dirty);
-    memo_type *memo;
-    if (space)
-	memo = reinterpret_cast<memo_type *>(space);
-    else
-	memo = reinterpret_cast<memo_type *>(new char[MEMO_SPACE + capacity]);
-    if (memo) {
-	memo->capacity = capacity;
-	memo->dirty = dirty;
-	memo->refcount = 1;
 #if HAVE_STRING_PROFILING
-	int bucket = profile_memo_size_bucket(dirty, capacity);
-	++memo_sizes[bucket];
-	++live_memo_sizes[bucket];
-	live_memo_bytes[bucket] += capacity;
-	++live_memo_count;
+void String::memo_type::account_new() {
+    int bucket = profile_memo_size_bucket(this->dirty, this->capacity);
+    ++memo_sizes[bucket];
+    ++live_memo_sizes[bucket];
+    live_memo_bytes[bucket] += this->capacity;
+    ++live_memo_count;
 # if HAVE_STRING_PROFILING > 1
-	memo->pprev = &live_memos[bucket];
-	if ((memo->next = *memo->pprev))
-	    memo->next->pprev = &memo->next;
-	*memo->pprev = memo;
+    this->pprev = &live_memos[bucket];
+    if ((this->next = *this->pprev))
+        this->next->pprev = &this->next;
+    *this->pprev = memo;
 # endif
+}
+
+void String::memo_type::account_destroy() {
+    int bucket = profile_memo_size_bucket(this->dirty, this->capacity);
+    --live_memo_sizes[bucket];
+    live_memo_bytes[bucket] -= this->capacity;
+    --live_memo_count;
+# if HAVE_STRING_PROFILING > 1
+    if ((*this->pprev = this->next))
+	this->next->pprev = this->pprev;
+# endif
+}
 #endif
-    }
+
+inline String::memo_type* String::create_memo(int capacity, int dirty) {
+    assert(capacity > 0 && capacity >= dirty);
+    memo_type *memo =
+	reinterpret_cast<memo_type *>(new char[capacity + MEMO_SPACE]);
+    if (memo)
+        memo->initialize(capacity, dirty);
     return memo;
 }
 
@@ -307,17 +313,8 @@ String::delete_memo(memo_type *memo)
 {
     assert(memo->capacity > 0);
     assert(memo->capacity >= memo->dirty);
-#if HAVE_STRING_PROFILING
-    int bucket = profile_memo_size_bucket(memo->dirty, memo->capacity);
-    --live_memo_sizes[bucket];
-    live_memo_bytes[bucket] -= memo->capacity;
-    --live_memo_count;
-# if HAVE_STRING_PROFILING > 1
-    if ((*memo->pprev = memo->next))
-	memo->next->pprev = memo->pprev;
-# endif
-#endif
-    delete[] reinterpret_cast<char *>(memo);
+    memo->account_destroy();
+    delete[] reinterpret_cast<char*>(memo);
 }
 
 
@@ -459,14 +456,6 @@ String::hard_make_stable(const char *s, int len)
 }
 
 String
-String::make_claim(char *str, int len, int capacity)
-{
-    assert(str && len > 0 && capacity >= len);
-    memo_type *new_memo = create_memo(str - MEMO_SPACE, len, capacity);
-    return String(str, len, new_memo);
-}
-
-String
 String::make_fill(int c, int len)
 {
     String s;
@@ -510,7 +499,7 @@ String::assign(const char *s, int len, bool need_deref)
     } else {
 	// Make the memo a multiple of 16 characters and bigger than 'len'.
 	int memo_capacity = (len + 15 + MEMO_SPACE) & ~15;
-	m = create_memo(0, len, memo_capacity - MEMO_SPACE);
+	m = create_memo(memo_capacity - MEMO_SPACE, len);
 	if (!m) {
             _r.reset_ref();
 	    assign_out_of_memory();
@@ -565,7 +554,7 @@ String::append_uninitialized(int len)
 	for (memo_capacity = 2048; memo_capacity < want_memo_len; )
 	    memo_capacity *= 2;
 
-    m = create_memo(0, _r.length + len, memo_capacity - MEMO_SPACE);
+    m = create_memo(memo_capacity - MEMO_SPACE, _r.length + len);
     if (!m) {
 	assign_out_of_memory();
 	return 0;
