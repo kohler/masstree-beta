@@ -17,6 +17,7 @@
 #define MASSTREE_QUERY_HH 1
 #include "masstree.hh"
 #include "kvproto.hh"
+#include "timestamp.hh"
 template <typename R> class query;
 template <typename R> class replay_query;
 namespace lcdf { class Json; }

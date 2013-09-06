@@ -23,9 +23,6 @@
 enum { MaxKeyLen = KVDB_MAX_KEY_LEN }; // Maximum length of a key
 enum { MaxRowLen = KVDB_MAX_ROW_LEN }; // Maximum length of a row
 
-typedef uint64_t kvtimestamp_t;
-
-
 class value_array;
 class value_versioned_array;
 template <typename O> class value_bag;

@@ -22,7 +22,7 @@ enum { MaxNumaNode = 8 }; // Maximum number of Numa node kvdb statistics support
 enum { CacheLineSize = 64 };
 enum { BadKeyRestLen = 1 };
 enum { BadKeyRest = 0xdeadbeef };
-enum { CoresPerChip = MaxCores / MaxNumaNode };
+// enum { CoresPerChip = MaxCores / MaxNumaNode };
 
 #if !__APPLE__ && !defined(NOSUPERPAGE) && HAVE_SUPERPAGE_ENABLED
 #define SUPERPAGE 1

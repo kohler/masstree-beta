@@ -14,6 +14,9 @@
  * is legally binding.
  */
 #include "kvthread.hh"
+#include <string.h>
+#include <stdio.h>
+#include <new>
 
 threadinfo *threadinfo::allthreads;
 pthread_key_t threadinfo::key;

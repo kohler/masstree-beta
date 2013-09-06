@@ -52,6 +52,7 @@
 #endif
 #include "kvstats.hh"
 #include "masstree_query.hh"
+#include "timestamp.hh"
 #include "json.hh"
 #include "kvtest.hh"
 #include "kvrandom.hh"

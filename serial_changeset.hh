@@ -1,6 +1,7 @@
 #ifndef MASSTREE_SERIAL_CHANGESET_HH
 #define MASSTREE_SERIAL_CHANGESET_HH
 #include <iterator>
+#include "str.hh"
 
 template <typename IDX>
 class serial_changeset_iterator : public std::iterator<std::input_iterator_tag, serial_changeset_iterator<IDX> > {

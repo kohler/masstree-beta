@@ -17,12 +17,14 @@
 #define KVTHREAD_HH 1
 #include "compiler.hh"
 #include "kvdconfig.hh"
-#include "shared_config.hh"
 #include "circular_int.hh"
-#include "misc.hh"
+#include "timestamp.hh"
+#include <assert.h>
 #include <pthread.h>
 #include <sys/mman.h>
+#include <stdlib.h>
 
+class threadinfo;
 class loginfo;
 extern uint64_t initial_timestamp;
 
