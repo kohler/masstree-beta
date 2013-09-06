@@ -159,7 +159,7 @@ value_versioned_array* value_versioned_array::update(const CS& changeset, kvtime
     int ncol = changeset.last_index() + 1;
     value_versioned_array* row;
     if (ncol > ncol_cap_ || always_copy) {
-        row = (value_versioned_array*) ti.allocate(shallow_size(ncol), memtag_value, ta_data);
+        row = (value_versioned_array*) ti.allocate(shallow_size(ncol), memtag_value);
         row->ts_ = ts;
         row->ver_ = rowversion();
         row->ncol_ = row->ncol_cap_ = ncol;
@@ -196,7 +196,7 @@ value_versioned_array* value_versioned_array::create(const CS& changeset, kvtime
 }
 
 inline value_versioned_array* value_versioned_array::create1(Str value, kvtimestamp_t ts, threadinfo& ti) {
-    value_versioned_array* row = (value_versioned_array*) ti.allocate(shallow_size(1), memtag_value, ta_data);
+    value_versioned_array* row = (value_versioned_array*) ti.allocate(shallow_size(1), memtag_value);
     row->ts_ = ts;
     row->ver_ = rowversion();
     row->ncol_ = row->ncol_cap_ = 1;
@@ -206,7 +206,7 @@ inline value_versioned_array* value_versioned_array::create1(Str value, kvtimest
 
 template <typename CS>
 inline void value_versioned_array::deallocate_rcu_after_update(const CS&, threadinfo& ti) {
-    ti.deallocate_rcu(this, shallow_size(), memtag_value, ta_data);
+    ti.deallocate_rcu(this, shallow_size(), memtag_value);
 }
 
 template <typename CS>

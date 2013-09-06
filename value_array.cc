@@ -20,7 +20,7 @@
 value_array* value_array::make_sized_row(int ncol, kvtimestamp_t ts,
                                          threadinfo& ti) {
     value_array *tv;
-    tv = (value_array *) ti.allocate(shallow_size(ncol), memtag_value, ta_data);
+    tv = (value_array *) ti.allocate(shallow_size(ncol), memtag_value);
     tv->ts_ = ts;
     tv->ncol_ = ncol;
     memset(tv->cols_, 0, sizeof(tv->cols_[0]) * ncol);
@@ -52,11 +52,11 @@ void value_array::checkpoint_write(kvout* kv) const {
 void value_array::deallocate(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
         deallocate_column(cols_[i], ti);
-    ti.deallocate(this, shallow_size(), memtag_value, ta_data);
+    ti.deallocate(this, shallow_size(), memtag_value);
 }
 
 void value_array::deallocate_rcu(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
         deallocate_column_rcu(cols_[i], ti);
-    ti.deallocate_rcu(this, shallow_size(), memtag_value, ta_data);
+    ti.deallocate_rcu(this, shallow_size(), memtag_value);
 }

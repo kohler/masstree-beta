@@ -18,7 +18,7 @@
 #include <string.h>
 
 value_versioned_array* value_versioned_array::make_sized_row(int ncol, kvtimestamp_t ts, threadinfo& ti) {
-    value_versioned_array* row = (value_versioned_array*) ti.allocate(shallow_size(ncol), memtag_value, ta_data);
+    value_versioned_array* row = (value_versioned_array*) ti.allocate(shallow_size(ncol), memtag_value);
     row->ts_ = ts;
     row->ver_ = rowversion();
     row->ncol_ = row->ncol_cap_ = ncol;
@@ -73,11 +73,11 @@ void value_versioned_array::checkpoint_write(kvout* kv) const {
 void value_versioned_array::deallocate(threadinfo &ti) {
     for (short i = 0; i < ncol_; ++i)
         value_array::deallocate_column(cols_[i], ti);
-    ti.deallocate(this, shallow_size(), memtag_value, ta_data);
+    ti.deallocate(this, shallow_size(), memtag_value);
 }
 
 void value_versioned_array::deallocate_rcu(threadinfo &ti) {
     for (short i = 0; i < ncol_; ++i)
         value_array::deallocate_column_rcu(cols_[i], ti);
-    ti.deallocate_rcu(this, shallow_size(), memtag_value, ta_data);
+    ti.deallocate_rcu(this, shallow_size(), memtag_value);
 }

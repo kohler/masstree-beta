@@ -72,7 +72,7 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
     while (sz < csz + stringbag<uint32_t>::overhead(width) + s.len)
 	sz *= 2;
 
-    void *ptr = ti->allocate(sz, memtag_masstree_ksuffixes, ta_tree);
+    void *ptr = ti->allocate(sz, memtag_masstree_ksuffixes);
     stringbag<uint32_t> *nksuf = new(ptr) stringbag<uint32_t>(width, sz);
     permuter_type perm(permutation_);
     int n = initializing ? p : perm.size();
@@ -99,7 +99,7 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
 
     if (oksuf)
 	ti->deallocate_rcu(oksuf, oksuf->allocated_size(),
-			   memtag_masstree_ksuffixes, ta_tree, 0);
+			   memtag_masstree_ksuffixes, 0);
 }
 
 

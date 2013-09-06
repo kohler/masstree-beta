@@ -39,10 +39,6 @@ enum memtag {
     memtag_masstree_gclayer = 0x13
 };
 
-enum allocationtag {
-    ta_data = 0, ta_tree = 1, ta_rcu = 2
-};
-
 struct memdebug {
 #if HAVE_MEMDEBUG
     enum {
@@ -330,35 +326,31 @@ class threadinfo {
     }
 
     // memory allocation
-    void* allocate(size_t sz, memtag tag,
-		   allocationtag ta, int line = 0) {
+    void* allocate(size_t sz, memtag tag, int line = 0) {
 	void *p = malloc(sz + memdebug_size);
 	p = memdebug::make(p, sz, tag << 8, line);
 	if (p)
-	    pstat.mark_alloc(sz, ta);
+	    pstat.mark_alloc(sz, tag > memtag_value);
 	return p;
     }
-    void deallocate(void* p, size_t sz, memtag tag,
-		    allocationtag ta, int line = 0) {
+    void deallocate(void* p, size_t sz, memtag tag, int line = 0) {
 	// in C++ allocators, 'p' must be nonnull
 	assert(p);
 	p = memdebug::check_free(p, sz, tag << 8, line);
 	free(p);
-	pstat.mark_free(sz, ta);
+	pstat.mark_free(sz, tag > memtag_value);
     }
-    void deallocate_rcu(void *p, size_t sz, memtag tag,
-			allocationtag ta, int line = 0) {
+    void deallocate_rcu(void *p, size_t sz, memtag tag, int line = 0) {
 	assert(p);
 	memdebug::check_rcu(p, sz, tag << 8, line);
-	record_rcu(p, tag << 8, ta);
-	pstat.mark_free(sz, ta);
+	record_rcu(p, tag << 8);
+	pstat.mark_free(sz, tag > memtag_value);
     }
 
     static size_t aligned_size(size_t sz) {
 	return iceil(sz, int(CacheLineSize));
     }
-    void* allocate_aligned(size_t sz, memtag tag,
-			   allocationtag ta, int line = 0) {
+    void* allocate_aligned(size_t sz, memtag tag, int line = 0) {
 	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;
 	assert(nl < NMaxLines);
 	if (unlikely(!arena[nl - 1]))
@@ -368,25 +360,23 @@ class threadinfo {
 	    arena[nl - 1] = *reinterpret_cast<void **>(p);
 	p = memdebug::make(p, sz, (tag << 8) + nl, line);
 	if (p)
-	    pstat.mark_alloc(nl * CacheLineSize, ta);
+	    pstat.mark_alloc(nl * CacheLineSize, tag > memtag_value);
 	return p;
     }
-    void deallocate_aligned(void* p, size_t sz, memtag tag,
-			    allocationtag ta, int line = 0) {
+    void deallocate_aligned(void* p, size_t sz, memtag tag, int line = 0) {
 	assert(p);
 	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;
 	p = memdebug::check_free(p, sz, (tag << 8) + nl, line);
 	*reinterpret_cast<void **>(p) = arena[nl - 1];
 	arena[nl - 1] = p;
-	pstat.mark_free(nl * CacheLineSize, ta);
+	pstat.mark_free(nl * CacheLineSize, tag > memtag_value);
     }
-    void deallocate_aligned_rcu(void* p, size_t sz, memtag tag,
-				allocationtag ta, int line = 0) {
+    void deallocate_aligned_rcu(void* p, size_t sz, memtag tag, int line = 0) {
 	assert(p);
 	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;
 	memdebug::check_rcu(p, sz, (tag << 8) + nl, line);
-	record_rcu(p, (tag << 8) + nl, ta);
-	pstat.mark_free(nl * CacheLineSize, ta);
+	record_rcu(p, (tag << 8) + nl);
+	pstat.mark_free(nl * CacheLineSize, tag > memtag_value);
     }
 
     // RCU
@@ -405,7 +395,7 @@ class threadinfo {
 	    hard_rcu_quiesce();
     }
     void rcu_register(rcu_callback *cb) {
-	record_rcu(cb, -1, -1);
+	record_rcu(cb, -1);
     }
 
     void enter() {
@@ -442,8 +432,8 @@ class threadinfo {
 	}
     }
 
-    void record_rcu(void *ptr, int freetype, int ta) {
-	if (recovering && ta == ta_data) {
+    void record_rcu(void *ptr, int freetype) {
+	if (recovering && freetype == (memtag_value << 8)) {
 	    free_rcu(ptr, freetype);
 	    return;
 	}
