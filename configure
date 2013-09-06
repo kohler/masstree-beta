@@ -679,7 +679,6 @@ enable_option_checking
 with_malloc
 enable_row_type
 enable_max_key_len
-enable_max_row_len
 enable_superpage
 enable_memdebug
 enable_assert
@@ -1311,8 +1310,6 @@ Optional Features:
   --enable-row-type=ARG   row type: bag array array_ver str, default bag
   --enable-max-key-len=ARG
                           maximum length of a key in bytes, default 255
-  --enable-max-row-len=ARG
-                          maximum length of a row in bytes, default 65535
   --disable-superpage     disable superpage support
   --enable-memdebug       enable memory debugging
 
@@ -6092,19 +6089,6 @@ fi
 
 cat >>confdefs.h <<_ACEOF
 #define KVDB_MAX_KEY_LEN $ac_cv_max_key_len
-_ACEOF
-
-
-# Check whether --enable-max-row-len was given.
-if test "${enable_max_row_len+set}" = set; then :
-  enableval=$enable_max_row_len; ac_cv_max_row_len=$enableval
-else
-  ac_cv_max_row_len=65535
-fi
-
-
-cat >>confdefs.h <<_ACEOF
-#define KVDB_MAX_ROW_LEN $ac_cv_max_row_len
 _ACEOF
 
 

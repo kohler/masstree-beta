@@ -125,13 +125,16 @@ inline int kvread_row(struct kvin* kv, std::vector<std::string>& row) {
         return -1;
     int x, y;
     x = 0;
+    std::string val;
+    int vallen;
     for (int i = 0; i < n; i++) {
-        char val[MaxRowLen];
-        int vallen;
-        if ((y = kvread_str(kv, val, sizeof(val), vallen)) < 0)
+        if (KVR(kv, vallen) != sizeof(vallen))
+            return -1;
+        val.resize(vallen);
+        if ((y = kvread(kv, &val[0], vallen)) != vallen)
             return -1;
         x += y;
-        row.push_back(std::string(val, vallen));
+        row.push_back(std::move(val));
     }
     return sizeof(n) + x;
 }

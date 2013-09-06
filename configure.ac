@@ -305,12 +305,6 @@ AC_ARG_ENABLE([max-key-len],
     [ac_cv_max_key_len=$enableval], [ac_cv_max_key_len=255])
 AC_DEFINE_UNQUOTED([KVDB_MAX_KEY_LEN], [$ac_cv_max_key_len], [Maximum key length])
 
-AC_ARG_ENABLE([max-row-len],
-    [AS_HELP_STRING([--enable-max-row-len=ARG],
-                    [maximum length of a row in bytes, default 65535])],
-    [ac_cv_max_row_len=$enableval], [ac_cv_max_row_len=65535])
-AC_DEFINE_UNQUOTED([KVDB_MAX_ROW_LEN], [$ac_cv_max_row_len], [Maximum row length])
-
 AC_ARG_ENABLE([superpage],
     [AS_HELP_STRING([--disable-superpage],
 	    [disable superpage support])],

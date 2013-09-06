@@ -21,7 +21,6 @@
 #include "compiler.hh"
 
 enum { MaxKeyLen = KVDB_MAX_KEY_LEN }; // Maximum length of a key
-enum { MaxRowLen = KVDB_MAX_ROW_LEN }; // Maximum length of a row
 
 class value_array;
 class value_versioned_array;

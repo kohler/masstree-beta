@@ -206,9 +206,6 @@
 /* Maximum key length */
 #undef KVDB_MAX_KEY_LEN
 
-/* Maximum row length */
-#undef KVDB_MAX_ROW_LEN
-
 /* Define if the default row type is kvdb_timed_array. */
 #undef KVDB_ROW_TYPE_ARRAY
 

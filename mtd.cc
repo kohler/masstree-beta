@@ -472,12 +472,21 @@ class reqst_machine {
     volatile int keylen;
     char key[MaxKeyLen];
     volatile int reqlen;
-    char req[MaxRowLen];
+    char* req;
+    int req_capacity;
     volatile int numpairs;
 
     int ci;
     int wanted;
     char *p;
+
+    reqst_machine()
+        : req(new char[2048]), req_capacity(2048) {
+    }
+    ~reqst_machine() {
+        delete[] req;
+    }
+
     void reset() {
         ci = CI_Cmd;
         p = (char *)&cmd;
@@ -505,26 +514,34 @@ class reqst_machine {
         wanted = sizeof(reqlen);
     }
     void goto_req() {
-        assert(reqlen < (int)sizeof(req));
+        while (reqlen > req_capacity) {
+            delete[] req;
+            req_capacity *= 2;
+            req = new char[req_capacity];
+        }
         ci = CI_Req;
         p = (char *)req;
-        wanted= reqlen;
+        wanted = reqlen;
     }
     void goto_numpairs() {
         ci = CI_Numpairs;
         p = (char *)&numpairs;
         wanted = sizeof(numpairs);
     }
+
+  private:
+    reqst_machine(const reqst_machine&);
+    reqst_machine& operator=(const reqst_machine&);
 };
 
 struct conn {
-  bool ready;
-  int fd;
-  struct kvin *kvin;
-  struct kvout *kvout;
-  reqst_machine rsm;
-  conn(int s): fd(s) {
-  }
+    bool ready;
+    int fd;
+    struct kvin *kvin;
+    struct kvout *kvout;
+    reqst_machine rsm;
+    conn(int s): fd(s) {
+    }
 };
 
 
