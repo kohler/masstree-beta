@@ -133,11 +133,11 @@ inline Str value_string::col(valueindex_string idx) const {
 
 template <typename ALLOC>
 inline void value_string::deallocate(ALLOC& ti) {
-    ti.deallocate(this, size(), memtag_value);
+    ti.deallocate(this, size(), memtag_value, ta_data);
 }
 
 inline void value_string::deallocate_rcu(threadinfo& ti) {
-    ti.deallocate_rcu(this, size(), memtag_value);
+    ti.deallocate_rcu(this, size(), memtag_value, ta_data);
 }
 
 inline size_t value_string::shallow_size(int vallen) {
@@ -180,7 +180,7 @@ inline value_string* value_string::create(const CS& changeset,
 inline value_string* value_string::create1(Str value,
                                            kvtimestamp_t ts,
                                            threadinfo& ti) {
-    value_string* row = (value_string*) ti.allocate(shallow_size(value.length()), memtag_value);
+    value_string* row = (value_string*) ti.allocate(shallow_size(value.length()), memtag_value, ta_data);
     row->ts_ = ts;
     row->vallen_ = value.length();
     memcpy(row->s_, value.data(), value.length());

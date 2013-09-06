@@ -37,10 +37,10 @@ uint16_t xw[100];
 uint32_t xl[100];
 
 struct fake_threadinfo {
-    static void* allocate(size_t sz, memtag = memtag_none) {
+    static void* allocate(size_t sz, memtag = memtag_none, allocationtag = ta_data) {
 	return new char[sz];
     }
-    static void deallocate(void* p, size_t, memtag = memtag_none) {
+    static void deallocate(void* p, size_t, memtag = memtag_none, allocationtag = ta_data) {
 	delete[] reinterpret_cast<char*>(p);
     }
 };

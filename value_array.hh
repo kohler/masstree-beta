@@ -104,7 +104,7 @@ inline size_t value_array::shallow_size() const {
 
 inline lcdf::inline_string* value_array::make_column(Str str, threadinfo& ti) {
     using lcdf::inline_string;
-    inline_string* col = (inline_string*) ti.allocate(inline_string::size(str.length()), memtag_value);
+    inline_string* col = (inline_string*) ti.allocate(inline_string::size(str.length()), memtag_value, ta_data);
     col->len = str.length();
     memcpy(col->s, str.data(), str.length());
     return col;
@@ -115,7 +115,7 @@ inline lcdf::inline_string* value_array::read_column(kvin* kv, threadinfo& ti) {
     int len;
     int r = KVR(kv, len);
     mandatory_assert(r == sizeof(len) && len < MaxRowLen);
-    inline_string* col = (inline_string*) ti.allocate(inline_string::size(len), memtag_value);
+    inline_string* col = (inline_string*) ti.allocate(inline_string::size(len), memtag_value, ta_data);
     col->len = len;
     r = kvread(kv, col->s, len);
     assert(r == len);
@@ -125,20 +125,20 @@ inline lcdf::inline_string* value_array::read_column(kvin* kv, threadinfo& ti) {
 inline void value_array::deallocate_column(lcdf::inline_string* col,
                                            threadinfo& ti) {
     if (col)
-        ti.deallocate(col, col->size(), memtag_value);
+        ti.deallocate(col, col->size(), memtag_value, ta_data);
 }
 
 inline void value_array::deallocate_column_rcu(lcdf::inline_string* col,
                                                threadinfo& ti) {
     if (col)
-        ti.deallocate_rcu(col, col->size(), memtag_value);
+        ti.deallocate_rcu(col, col->size(), memtag_value, ta_data);
 }
 
 template <typename CS>
 value_array* value_array::update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const {
     precondition(ts >= ts_);
     int ncol = std::max(int(ncol_), int(changeset.last_index()) + 1);
-    value_array* row = (value_array*) ti.allocate(shallow_size(ncol), memtag_value);
+    value_array* row = (value_array*) ti.allocate(shallow_size(ncol), memtag_value, ta_data);
     row->ts_ = ts;
     row->ncol_ = ncol;
     memcpy(row->cols_, cols_, ncol_ * sizeof(cols_[0]));
@@ -156,7 +156,7 @@ value_array* value_array::create(const CS& changeset, kvtimestamp_t ts, threadin
 }
 
 inline value_array* value_array::create1(Str value, kvtimestamp_t ts, threadinfo& ti) {
-    value_array* row = (value_array*) ti.allocate(shallow_size(1), memtag_value);
+    value_array* row = (value_array*) ti.allocate(shallow_size(1), memtag_value, ta_data);
     row->ts_ = ts;
     row->ncol_ = 1;
     row->cols_[0] = make_column(value, ti);
@@ -168,7 +168,7 @@ void value_array::deallocate_rcu_after_update(const CS& changeset, threadinfo& t
     auto last = changeset.end();
     for (auto it = changeset.begin(); it != last && it->index() < ncol_; ++it)
         deallocate_column_rcu(cols_[it->index()], ti);
-    ti.deallocate_rcu(this, shallow_size(), memtag_value);
+    ti.deallocate_rcu(this, shallow_size(), memtag_value, ta_data);
 }
 
 template <typename CS>
@@ -176,7 +176,7 @@ void value_array::deallocate_after_failed_update(const CS& changeset, threadinfo
     auto last = changeset.end();
     for (auto it = changeset.begin(); it != last; ++it)
         deallocate_column(cols_[it->index()], ti);
-    ti.deallocate(this, shallow_size(), memtag_value);
+    ti.deallocate(this, shallow_size(), memtag_value, ta_data);
 }
 
 #endif
