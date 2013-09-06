@@ -84,10 +84,11 @@ static int port = 2117;
 static int rscale_ncores = 0;
 
 #if MEMSTATS && HAVE_NUMA_H && HAVE_LIBNUMA
-static struct {
-  long long free;
-  long long size;
-} numa[MaxNumaNode];
+struct mttest_numainfo {
+    long long free;
+    long long size;
+};
+std::vector<mttest_numainfo> numa;
 #endif
 
 volatile bool recovering = false; // so don't add log entries, and free old value immediately
@@ -895,11 +896,11 @@ main(int argc, char *argv[])
     mandatory_assert(pinthreads && "Using performance counter requires pinning threads to cores!");
 #endif
 #if MEMSTATS && HAVE_NUMA_H && HAVE_LIBNUMA
-    if (numa_available() != -1) {
-	mandatory_assert(numa_max_node() <= MaxNumaNode);
-	for (int i = 0; i <= numa_max_node(); i++)
-	    numa[i].size = numa_node_size64(i, &numa[i].free);
-    }
+    if (numa_available() != -1)
+	for (int i = 0; i <= numa_max_node(); i++) {
+            numa.push_back(mttest_numainfo());
+            numa.back().size = numa_node_size64(i, &numa.back().free);
+        }
 #endif
     if (treetypes.empty())
 	treetypes.push_back("m");

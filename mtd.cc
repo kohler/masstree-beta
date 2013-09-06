@@ -84,10 +84,8 @@ static int doprint = 0;
 static volatile sig_atomic_t go_quit = 0;
 static int quit_pipe[2];
 
-static const char *logdir[MaxCores];
-static const char *ckpdir[MaxCores];
-static int nlogdir = 0;
-static int nckpdir = 0;
+static std::vector<const char*> logdirs;
+static std::vector<const char*> ckpdirs;
 
 static logset* logs;
 volatile bool recovering = false; // so don't add log entries, and free old value immediately
@@ -603,20 +601,14 @@ main(int argc, char *argv[])
 	  break;
       case opt_logdir: {
 	  const char *s = strtok((char *) clp->vstr, ",");
-	  while (s) {
-	      mandatory_assert(nlogdir < MaxCores);
-	      logdir[nlogdir++] = s;
-	      s = strtok(NULL, ",");
-	  }
+	  for (; s; s = strtok(NULL, ","))
+              logdirs.push_back(s);
 	  break;
       }
       case opt_ckpdir: {
 	  const char *s = strtok((char *) clp->vstr, ",");
-	  while (s) {
-	      mandatory_assert(nckpdir < MaxCores);
-	      ckpdir[nckpdir++] = s;
-	      s = strtok(NULL, ",");
-	  }
+	  for (; s; s = strtok(NULL, ","))
+	      ckpdirs.push_back(s);
 	  break;
       }
       case opt_checkpoint:
@@ -680,14 +672,10 @@ main(int argc, char *argv[])
       }
   }
   Clp_DeleteParser(clp);
-  if (nlogdir == 0) {
-    logdir[0] = ".";
-    nlogdir = 1;
-  }
-  if (nckpdir == 0) {
-    ckpdir[0] = ".";
-    nckpdir = 1;
-  }
+  if (logdirs.empty())
+      logdirs.push_back(".");
+  if (ckpdirs.empty())
+      ckpdirs.push_back(".");
   if (firstcore < 0)
       firstcore = cores.size() ? cores.back() + 1 : 0;
   for (; (int) cores.size() < udpthreads; firstcore += corestride)
@@ -1317,7 +1305,7 @@ void log_init() {
 
   logs = logset::make(nlogger);
   for (i = 0; i < nlogger; i++)
-      logs->log(i).initialize(log_filename(logdir[i % nlogdir], i));
+      logs->log(i).initialize(log_filename(logdirs[i % logdirs.size()], i));
 
   cks = (ckstate *)malloc(sizeof(ckstate) * nckthreads);
   for (i = 0; i < nckthreads; i++) {
@@ -1418,7 +1406,8 @@ traverse_checkpoint_inorder(uint64_t off, uint64_t n,
 void recovercheckpoint(threadinfo *ti) {
     waituntilphase(REC_CKP);
     char path[256];
-    sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d", ckpdir[ti->ti_index % nckpdir],
+    sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d",
+            ckpdirs[ti->ti_index % ckpdirs.size()],
             ckp_gen.value(), ti->ti_index);
     kvepoch_t gen = read_checkpoint(ti, path);
     mandatory_assert(ckp_gen == gen);
@@ -1448,7 +1437,7 @@ recover(threadinfo *)
 
   // get the generation of the checkpoint from ckp-gen, if any
   char path[256];
-  sprintf(path, "%s/kvd-ckp-gen", ckpdir[0]);
+  sprintf(path, "%s/kvd-ckp-gen", ckpdirs[0]);
   ckp_gen = 0;
   rec_ckp_min_epoch = rec_ckp_max_epoch = 0;
   int fd = open(path, O_RDONLY);
@@ -1630,7 +1619,8 @@ conc_filecheckpoint(threadinfo *ti)
   double t0 = now();
   tree->scan(c->q, ti);
   char path[256];
-  sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d", ckpdir[ti->ti_index % nckpdir],
+  sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d",
+          ckpdirs[ti->ti_index % ckpdirs.size()],
           ckp_gen.value(), ti->ti_index);
   writecheckpoint(path, c, t0);
   c->count = 0;
@@ -1663,7 +1653,7 @@ commit_checkpoint(Json ckpj)
     // atomically commit a set of checkpoint files by incrementing
     // the checkpoint generation on disk
     char path[256];
-    sprintf(path, "%s/kvd-ckp-gen", ckpdir[0]);
+    sprintf(path, "%s/kvd-ckp-gen", ckpdirs[0]);
     int r = atomic_write_file_contents(path, ckpj.unparse());
     mandatory_assert(r == 0);
     fprintf(stderr, "kvd-ckp-%" PRIu64 " [%s,%s]: committed\n",
@@ -1673,7 +1663,8 @@ commit_checkpoint(Json ckpj)
     // delete old checkpoint files
     for (int i = 0; i < nckthreads; i++) {
 	char path[256];
-	sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d", ckpdir[i % nckpdir],
+	sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d",
+                ckpdirs[i % ckpdirs.size()],
 		ckp_gen.value() - 1, i);
 	unlink(path);
     }
