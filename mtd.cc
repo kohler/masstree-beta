@@ -105,6 +105,7 @@ kvtimestamp_t initial_timestamp;
 static pthread_cond_t checkpoint_cond;
 static pthread_mutex_t checkpoint_mu;
 static struct ckstate *cktable;
+class reqst_machine;
 
 static void prepare_thread(threadinfo *ti);
 static void *tcpgo(void *);
@@ -460,6 +461,72 @@ void runtest(const char *testname, int nthreads) {
     for (int j = 0; j < (int) arraysize(kvstats_name); ++j)
 	kvs[j].print_report(kvstats_name[j]);
 }
+
+
+/* request state machine */
+enum { CI_Cmd = 0, CI_Seq, CI_Keylen, CI_Key, CI_Reqlen, CI_Req, CI_Numpairs };
+
+class reqst_machine {
+  public:
+    volatile int cmd;
+    volatile unsigned int seq;
+    volatile int keylen;
+    char key[MaxKeyLen];
+    volatile int reqlen;
+    char req[MaxRowLen];
+    volatile int numpairs;
+
+    int ci;
+    int wanted;
+    char *p;
+    void reset() {
+        ci = CI_Cmd;
+        p = (char *)&cmd;
+        wanted = sizeof(cmd);
+    }
+    void goto_seq() {
+        ci = CI_Seq;
+        p = (char *)&seq;
+        wanted = sizeof(seq);
+    }
+    void goto_keylen() {
+        ci = CI_Keylen;
+        p = (char *)&keylen;
+        wanted = sizeof(keylen);
+    }
+    void goto_key() {
+        assert(keylen < (int)sizeof(key));
+        ci = CI_Key;
+        p = (char *)key;
+        wanted = keylen;
+    }
+    void goto_reqlen() {
+        ci = CI_Reqlen;
+        p = (char *)&reqlen;
+        wanted = sizeof(reqlen);
+    }
+    void goto_req() {
+        assert(reqlen < (int)sizeof(req));
+        ci = CI_Req;
+        p = (char *)req;
+        wanted= reqlen;
+    }
+    void goto_numpairs() {
+        ci = CI_Numpairs;
+        p = (char *)&numpairs;
+        wanted = sizeof(numpairs);
+    }
+};
+
+struct conn {
+  bool ready;
+  int fd;
+  struct kvin *kvin;
+  struct kvout *kvout;
+  reqst_machine rsm;
+  conn(int s): fd(s) {
+  }
+};
 
 
 /* main loop */
