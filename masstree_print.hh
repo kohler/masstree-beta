@@ -43,7 +43,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 	perm = permutation_;
     } while (this->has_changed(v));
 
-    char keybuf[MaxKeyLen];
+    char keybuf[MASSTREE_MAXKEYSIZE];
     fprintf(f, "%s%*sleaf %p: %d keys, version %x, permutation %s, ",
 	    prefix, indent, "", this, perm.size(), v.version_value(),
 	    perm.unparse().c_str());
@@ -99,7 +99,7 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
     for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i)
 	memcpy(&copy, this, sizeof(copy));
 
-    char keybuf[MaxKeyLen];
+    char keybuf[MASSTREE_MAXKEYSIZE];
     fprintf(f, "%s%*sinternode %p%s: %d keys, version %x, parent %p",
 	    prefix, indent, "", this, this->deleted() ? " [DELETED]" : "",
 	    copy.size(), copy.version_value(), copy.parent_);

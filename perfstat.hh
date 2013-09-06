@@ -17,7 +17,6 @@
 #define PERF_STAT_HH 1
 #include "compiler.hh"
 #include "misc.hh"
-#include "kvdconfig.hh"
 #include <stdlib.h>
 #include <inttypes.h>
 

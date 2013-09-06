@@ -20,7 +20,7 @@
 #define SHARED_CONFIG_HH 1
 #include "compiler.hh"
 
-enum { MaxKeyLen = KVDB_MAX_KEY_LEN }; // Maximum length of a key
+enum { MaxKeyLen = MASSTREE_MAXKEYSIZE }; // Maximum length of a key
 
 class value_array;
 class value_versioned_array;

@@ -16,7 +16,6 @@
 #ifndef KVTHREAD_HH
 #define KVTHREAD_HH 1
 #include "compiler.hh"
-#include "kvdconfig.hh"
 #include "circular_int.hh"
 #include "timestamp.hh"
 #include <assert.h>
@@ -231,7 +230,7 @@ class threadinfo {
 	    uint64_t gc_epoch;
 	    uint64_t limbo_epoch_;
 	};
-	char padding1[CacheLineSize];
+	char padding1[CACHE_LINE_SIZE];
     };
 
   private:
@@ -363,10 +362,10 @@ class threadinfo {
     }
 
     static size_t aligned_size(size_t sz) {
-	return iceil(sz, int(CacheLineSize));
+	return iceil(sz, int(CACHE_LINE_SIZE));
     }
     void* allocate_aligned(size_t sz, memtag tag, int line = 0) {
-	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;
+	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
 	assert(nl < NMaxLines);
 	if (unlikely(!arena[nl - 1]))
 	    refill_aligned_arena(nl);
@@ -376,25 +375,25 @@ class threadinfo {
 	p = memdebug::make(p, sz, (tag << 8) + nl, line);
 	if (p)
             mark(threadcounter(tc_alloc + (tag > memtag_value)),
-                 nl * CacheLineSize);
+                 nl * CACHE_LINE_SIZE);
 	return p;
     }
     void deallocate_aligned(void* p, size_t sz, memtag tag, int line = 0) {
 	assert(p);
-	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;
+	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
 	p = memdebug::check_free(p, sz, (tag << 8) + nl, line);
 	*reinterpret_cast<void **>(p) = arena[nl - 1];
 	arena[nl - 1] = p;
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
-             -nl * CacheLineSize);
+             -nl * CACHE_LINE_SIZE);
     }
     void deallocate_aligned_rcu(void* p, size_t sz, memtag tag, int line = 0) {
 	assert(p);
-	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;
+	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
 	memdebug::check_rcu(p, sz, (tag << 8) + nl, line);
 	record_rcu(p, (tag << 8) + nl);
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
-             -nl * CacheLineSize);
+             -nl * CACHE_LINE_SIZE);
     }
 
     // RCU

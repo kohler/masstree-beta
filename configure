@@ -6088,7 +6088,7 @@ fi
 
 
 cat >>confdefs.h <<_ACEOF
-#define KVDB_MAX_KEY_LEN $ac_cv_max_key_len
+#define MASSTREE_MAXKEYSIZE $ac_cv_max_key_len
 _ACEOF
 
 
@@ -6241,6 +6241,12 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define CACHE_LINE_SIZE 64
+_ACEOF
+
 
 
 

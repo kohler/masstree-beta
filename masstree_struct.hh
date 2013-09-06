@@ -397,7 +397,7 @@ class leaf : public node_base<P> {
 	    ::prefetch((const char *) &iksuf_[0]);
 	else if (extrasize64_ < 0) {
 	    ::prefetch((const char *) ksuf_);
-	    ::prefetch((const char *) ksuf_ + CacheLineSize);
+	    ::prefetch((const char *) ksuf_ + CACHE_LINE_SIZE);
 	}
     }
 

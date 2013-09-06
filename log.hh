@@ -62,7 +62,7 @@ class loginfo {
     };
 
     front f_;
-    char padding1_[CacheLineSize - sizeof(front)];
+    char padding1_[CACHE_LINE_SIZE - sizeof(front)];
 
     kvepoch_t log_epoch_;       // epoch written to log (non-quiescent)
     kvepoch_t quiescent_epoch_; // epoch we went quiescent
@@ -87,7 +87,7 @@ class loginfo {
             int logindex_;
         };
         struct {
-            char cache_line_2_[CacheLineSize - 4 * sizeof(kvepoch_t) - sizeof(logset_info)];
+            char cache_line_2_[CACHE_LINE_SIZE - 4 * sizeof(kvepoch_t) - sizeof(logset_info)];
             logset_info lsi_;
         };
     };

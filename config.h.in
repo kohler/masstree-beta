@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Assumed size of a cache line. */
+#undef CACHE_LINE_SIZE
+
 /* big endian */
 #undef ENDIAN_BIG
 
@@ -209,9 +212,6 @@
 /* Define if you have the __sync_val_compare_and_swap_8 builtin. */
 #undef HAVE___SYNC_VAL_COMPARE_AND_SWAP_8
 
-/* Maximum key length */
-#undef KVDB_MAX_KEY_LEN
-
 /* Define if the default row type is kvdb_timed_array. */
 #undef KVDB_ROW_TYPE_ARRAY
 
@@ -223,6 +223,9 @@
 
 /* Define if the default row type is kvdb_timed_str. */
 #undef KVDB_ROW_TYPE_STR
+
+/* Maximum key length */
+#undef MASSTREE_MAXKEYSIZE
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT

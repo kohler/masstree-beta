@@ -44,7 +44,7 @@ struct allocator {
         static const int PageSize = getpagesize();
         void *x = malloc(PageSize);
         assert(x);
-        return initialize_page(x, PageSize, nl * CacheLineSize);
+        return initialize_page(x, PageSize, nl * CACHE_LINE_SIZE);
     }
 };
 }
@@ -90,7 +90,7 @@ struct allocator {
             perror("madvise");
             exit(EXIT_FAILURE);
         }
-        return initialize_page(x, HugePageSize, nl * CacheLineSize);
+        return initialize_page(x, HugePageSize, nl * CACHE_LINE_SIZE);
 #elif defined(MAP_HUGETLB)
         void *x = mmap(0, HugePageSize, PROT_READ | PROT_WRITE,
   	   	       MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
@@ -99,7 +99,7 @@ struct allocator {
   	           "enough super-pages");
             assert(0);
         }
-        return initialize_page(x, HugePageSize, nl * CacheLineSize);
+        return initialize_page(x, HugePageSize, nl * CACHE_LINE_SIZE);
 #else
 	(void) HugePageSize, (void) nl;
 	mandatory_assert(0 && "No hugepage support is detected");

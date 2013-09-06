@@ -303,7 +303,7 @@ AC_ARG_ENABLE([max-key-len],
     [AS_HELP_STRING([--enable-max-key-len=ARG],
                     [maximum length of a key in bytes, default 255])],
     [ac_cv_max_key_len=$enableval], [ac_cv_max_key_len=255])
-AC_DEFINE_UNQUOTED([KVDB_MAX_KEY_LEN], [$ac_cv_max_key_len], [Maximum key length])
+AC_DEFINE_UNQUOTED([MASSTREE_MAXKEYSIZE], [$ac_cv_max_key_len], [Maximum key length])
 
 AC_MSG_CHECKING([whether MADV_HUGEPAGE is supported])
 AC_PREPROC_IFELSE([AC_LANG_PROGRAM([[#include <sys/mman.h>
@@ -374,6 +374,8 @@ if test "$enable_invariants" = no; then
 elif test -n "$enable_preconditions"; then
     AC_DEFINE_UNQUOTED([HAVE_INVARIANTS_ENABLED], [1], [Define to enable invariant assertions.])
 fi
+
+AC_DEFINE_UNQUOTED([CACHE_LINE_SIZE], [64], [Assumed size of a cache line.])
 
 AH_BOTTOM([#if !HAVE_ALL_ASSERTIONS_ENABLED && !HAVE_ASSERTIONS_ENABLED
 # define NDEBUG 1
