@@ -133,11 +133,11 @@ inline Str value_string::col(valueindex_string idx) const {
 
 template <typename ALLOC>
 inline void value_string::deallocate(ALLOC& ti) {
-    ti.deallocate(this, size(), memtag_row_str);
+    ti.deallocate(this, size(), memtag_value);
 }
 
 inline void value_string::deallocate_rcu(threadinfo& ti) {
-    ti.deallocate_rcu(this, size(), memtag_row_str);
+    ti.deallocate_rcu(this, size(), memtag_value);
 }
 
 inline size_t value_string::shallow_size(int vallen) {
@@ -159,7 +159,7 @@ value_string* value_string::update(const CS& changeset, kvtimestamp_t ts,
             cut = std::min(cut, int(it->index().f_off));
     }
     vallen = std::max(vallen, cut);
-    value_string* row = (value_string*) ti.allocate(shallow_size(vallen), memtag_row_str);
+    value_string* row = (value_string*) ti.allocate(shallow_size(vallen), memtag_value);
     row->ts_ = ts;
     row->vallen_ = vallen;
     memcpy(row->s_, s_, cut);
@@ -180,7 +180,7 @@ inline value_string* value_string::create(const CS& changeset,
 inline value_string* value_string::create1(Str value,
                                            kvtimestamp_t ts,
                                            threadinfo& ti) {
-    value_string* row = (value_string*) ti.allocate(shallow_size(value.length()), memtag_row_str);
+    value_string* row = (value_string*) ti.allocate(shallow_size(value.length()), memtag_value);
     row->ts_ = ts;
     row->vallen_ = value.length();
     memcpy(row->s_, value.data(), value.length());

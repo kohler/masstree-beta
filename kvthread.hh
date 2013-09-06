@@ -31,10 +31,7 @@ extern volatile bool recovering;
 
 enum memtag {
     memtag_none = 0x0,
-    memtag_row_bag = 0x1,
-    memtag_row_str = 0x2,
-    memtag_row_array = 0x3,
-    memtag_row_array_ver = 0x4,
+    memtag_value = 0x1,
     memtag_limbo = 0x5,
     memtag_masstree_leaf = 0x10,
     memtag_masstree_internode = 0x11,
