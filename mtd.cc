@@ -126,7 +126,6 @@ static void recovercheckpoint(threadinfo *ti);
 static void *canceling(void *);
 static void catchint(int);
 static void epochinc(int);
-static void print_stat();
 
 /* running local tests */
 void test_timeout(int) {
@@ -664,7 +663,6 @@ main(int argc, char *argv[])
       }
   }
   Clp_DeleteParser(clp);
-  Perf::stat::initmain(pinthreads);
   if (nlogdir == 0) {
     logdir[0] = ".";
     nlogdir = 1;
@@ -750,7 +748,6 @@ main(int argc, char *argv[])
         runtest("palmb", tcpthreads);
       } else
         runtest(dotest, tcpthreads);
-      print_stat();
       tree->stats(stderr);
       if (doprint)
 	  tree->print(stdout, 0);
@@ -852,18 +849,6 @@ inline const char *threadtype(int type) {
   };
 }
 
-void
-print_stat()
-{
-    int nstat = 0;
-    const Perf::stat *allstat[MaxCores * 2];
-    bzero(allstat, sizeof(allstat));
-    for (threadinfo *ti = threadinfo::allthreads; ti; ti = ti->ti_next)
-        if (ti->ti_purpose == threadinfo::TI_PROCESS)
-            allstat[nstat ++] = &ti->pstat;
-    Perf::stat::print(allstat, nstat);
-}
-
 void *
 canceling(void *)
 {
@@ -897,7 +882,6 @@ canceling(void *)
             int r = pthread_join(ti->ti_threadid, 0);
             mandatory_assert(r == 0);
         }
-    print_stat();
     tree->stats(stderr);
     exit(0);
 }

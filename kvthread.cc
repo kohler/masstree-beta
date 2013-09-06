@@ -79,7 +79,6 @@ threadinfo *threadinfo::make(int purpose, int index)
     ti->ti_purpose = purpose;
     ti->ti_index = index;
     ti->allthreads = ti;
-    ti->pstat.initialize(index);
     ti->ts_ = 2;
     void *limbo_space = ti->allocate(sizeof(limbo_group), memtag_limbo);
     ti->mark(tc_limbo_slots, limbo_group::capacity);

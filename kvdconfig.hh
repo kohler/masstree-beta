@@ -28,7 +28,4 @@ enum { CoresPerChip = MaxCores / MaxNumaNode };
 #define SUPERPAGE 1
 #endif
 
-//#define MEMSTATS 1
-//#define GCSTATS 1
-
 #endif

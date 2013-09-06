@@ -18,8 +18,8 @@
 #include "compiler.hh"
 #include "kvdconfig.hh"
 #include "shared_config.hh"
-#include "perfstat.hh"
 #include "circular_int.hh"
+#include "misc.hh"
 #include <pthread.h>
 #include <sys/mman.h>
 
@@ -246,8 +246,6 @@ class threadinfo {
     mutable kvtimestamp_t ts_;
 
   public:
-    Perf::stat pstat;
-
     static threadinfo *make(int purpose, int index);
     // XXX destructor
     static threadinfo *allthreads;
