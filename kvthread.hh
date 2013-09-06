@@ -174,17 +174,20 @@ struct limbo_group {
 };
 
 enum threadcounter {
-    tc_root_retry = 0,
-    tc_internode_retry = 1,
-    tc_leaf_retry = 2,
-    tc_leaf_walk = 3,
-    tc_stable = 4,
-    tc_stable_internode_insert = 4,
-    tc_stable_internode_split = 5,
-    tc_stable_leaf_insert = 6,
-    tc_stable_leaf_split = 7,
-    tc_internode_lock = 8,
-    tc_leaf_lock = 9,
+    tc_replay_create_delta,
+    tc_replay_remove_delta,
+    tc_root_retry,
+    tc_internode_retry,
+    tc_leaf_retry,
+    tc_leaf_walk,
+    // order is important among tc_stable_ constants:
+    tc_stable,
+    tc_stable_internode_insert = tc_stable + 0,
+    tc_stable_internode_split = tc_stable + 1,
+    tc_stable_leaf_insert = tc_stable + 2,
+    tc_stable_leaf_split = tc_stable + 3,
+    tc_internode_lock,
+    tc_leaf_lock,
     tc_max
 };
 

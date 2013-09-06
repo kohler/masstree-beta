@@ -39,7 +39,6 @@ struct stat {
 #endif
 #if GETSTATS
     bool getting;
-    uint64_t nprobe;
     uint64_t ngets;
     uint64_t ntsc;      // sum of tsc
     uint64_t tsc_start;
@@ -55,10 +54,6 @@ struct stat {
     double   t0_firstget;
     double   t1_lastget;
 #endif
-#endif
-#if !NDEBUG
-    uint64_t deltas_created;
-    uint64_t deltas_removed;
 #endif
     void initialize(int cid) {
         this->cid = cid;
@@ -117,21 +112,6 @@ struct stat {
 #endif
         ngets ++;
         getting = false;
-#endif
-    }
-    void mark_hash_probe() {
-#if GETSTATS
-        nprobe ++;
-#endif
-    }
-    void mark_delta_created() {
-#if !NDEBUG
-	++deltas_created;
-#endif
-    }
-    void mark_delta_removed() {
-#if !NDEBUG
-	++deltas_removed;
 #endif
     }
     static void print(const stat **s, int n);

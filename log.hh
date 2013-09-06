@@ -321,7 +321,7 @@ void replay_query<R>::apply(R*& value, bool has_value, threadinfo* ti) {
     if (qt_ != QT_Replay_Modify)
 	while (R* old_value = *cur_value) {
 	    if (row_is_delta_marker(old_value)) {
-		ti->pstat.mark_delta_removed();
+		ti->mark(tc_replay_remove_delta);
 		*cur_value = row_get_delta_marker(old_value)->prev_;
 	    } else
 		*cur_value = 0;
@@ -352,7 +352,7 @@ void replay_query<R>::apply(R*& value, bool has_value, threadinfo* ti) {
 	    dm->prev_ts_ = qtimes_.prev_ts;
 	    dm->prev_ = *cur_value;
 	    *cur_value = new_value;
-	    ti->pstat.mark_delta_created();
+	    ti->mark(tc_replay_create_delta);
 	}
     }
 
@@ -374,7 +374,7 @@ void replay_query<R>::apply(R*& value, bool has_value, threadinfo* ti) {
 	    if (*prev != *trav)
 		(*trav)->deallocate(*ti);
 	    old_prev->deallocate(*ti);
-	    ti->pstat.mark_delta_removed();
+	    ti->mark(tc_replay_remove_delta);
 	} else
 	    break;
     }

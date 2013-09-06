@@ -1567,8 +1567,8 @@ recover(threadinfo *)
   // markers and real values)
   uint64_t deltas_created = 0, deltas_removed = 0;
   for (threadinfo *ti = threadinfo::allthreads; ti; ti = ti->ti_next) {
-      deltas_created += ti->pstat.deltas_created;
-      deltas_removed += ti->pstat.deltas_removed;
+      deltas_created += ti->counter(tc_replay_create_delta);
+      deltas_removed += ti->counter(tc_replay_remove_delta);
   }
   if (deltas_created)
       fprintf(stderr, "deltas created: %" PRIu64 ", removed: %" PRIu64 "\n", deltas_created, deltas_removed);
