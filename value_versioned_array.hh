@@ -178,9 +178,8 @@ value_versioned_array* value_versioned_array::update(const CS& changeset, kvtime
 
     auto last = changeset.end();
     for (auto it = changeset.begin(); it != last; ++it) {
-        if (row->cols_[it->index()])
-            row->cols_[it->index()]->deallocate_rcu(ti);
-        row->cols_[it->index()] = lcdf::inline_string::allocate(it->value(), ti);
+        value_array::deallocate_column_rcu(row->cols_[it->index()], ti);
+        row->cols_[it->index()] = value_array::make_column(it->value(), ti);
     }
 
     if (row == this) {
@@ -201,7 +200,7 @@ inline value_versioned_array* value_versioned_array::create1(Str value, kvtimest
     row->ts_ = ts;
     row->ver_ = rowversion();
     row->ncol_ = row->ncol_cap_ = 1;
-    row->cols_[0] = lcdf::inline_string::allocate(value, ti);
+    row->cols_[0] = value_array::make_column(value, ti);
     return row;
 }
 

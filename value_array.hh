@@ -54,6 +54,11 @@ class value_array : public row_base<short> {
 		key.len, key.s, KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
+    static inline lcdf::inline_string* make_column(Str str, threadinfo& ti);
+    static inline lcdf::inline_string* read_column(kvin* in, threadinfo& ti);
+    static void deallocate_column(lcdf::inline_string* col, threadinfo& ti);
+    static void deallocate_column_rcu(lcdf::inline_string* col, threadinfo& ti);
+
   private:
     kvtimestamp_t ts_;
     short ncol_;
@@ -67,7 +72,7 @@ class value_array : public row_base<short> {
 	return c[c.size() - 1].c_fid + 1;
     }
     void update(const change_t &c, threadinfo &ti);
-    static value_array *make_sized_row(int ncol, kvtimestamp_t ts, threadinfo &ti);
+    static value_array* make_sized_row(int ncol, kvtimestamp_t ts, threadinfo& ti);
 };
 
 inline value_array::value_array()
@@ -97,6 +102,38 @@ inline size_t value_array::shallow_size() const {
     return shallow_size(ncol_);
 }
 
+inline lcdf::inline_string* value_array::make_column(Str str, threadinfo& ti) {
+    using lcdf::inline_string;
+    inline_string* col = (inline_string*) ti.allocate(inline_string::size(str.length()), memtag_none);
+    col->len = str.length();
+    memcpy(col->s, str.data(), str.length());
+    return col;
+}
+
+inline lcdf::inline_string* value_array::read_column(kvin* kv, threadinfo& ti) {
+    using lcdf::inline_string;
+    int len;
+    int r = KVR(kv, len);
+    mandatory_assert(r == sizeof(len) && len < MaxRowLen);
+    inline_string* col = (inline_string*) ti.allocate(inline_string::size(len), memtag_none);
+    col->len = len;
+    r = kvread(kv, col->s, len);
+    assert(r == len);
+    return col;
+}
+
+inline void value_array::deallocate_column(lcdf::inline_string* col,
+                                           threadinfo& ti) {
+    if (col)
+        ti.deallocate(col, col->size(), memtag_none);
+}
+
+inline void value_array::deallocate_column_rcu(lcdf::inline_string* col,
+                                               threadinfo& ti) {
+    if (col)
+        ti.deallocate_rcu(col, col->size(), memtag_none);
+}
+
 template <typename CS>
 value_array* value_array::update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const {
     precondition(ts >= ts_);
@@ -108,7 +145,7 @@ value_array* value_array::update(const CS& changeset, kvtimestamp_t ts, threadin
     memset(row->cols_ + ncol_, 0, (ncol - ncol_) * sizeof(cols_[0]));
     auto last = changeset.end();
     for (auto it = changeset.begin(); it != last; ++it)
-        row->cols_[it->index()] = lcdf::inline_string::allocate(it->value(), ti);
+        row->cols_[it->index()] = make_column(it->value(), ti);
     return row;
 }
 
@@ -122,7 +159,7 @@ inline value_array* value_array::create1(Str value, kvtimestamp_t ts, threadinfo
     value_array* row = (value_array*) ti.allocate(shallow_size(1), memtag_row_array);
     row->ts_ = ts;
     row->ncol_ = 1;
-    row->cols_[0] = lcdf::inline_string::allocate(value, ti);
+    row->cols_[0] = make_column(value, ti);
     return row;
 }
 
@@ -130,8 +167,7 @@ template <typename CS>
 void value_array::deallocate_rcu_after_update(const CS& changeset, threadinfo& ti) {
     auto last = changeset.end();
     for (auto it = changeset.begin(); it != last && it->index() < ncol_; ++it)
-        if (cols_[it->index()])
-            cols_[it->index()]->deallocate_rcu(ti);
+        deallocate_column_rcu(cols_[it->index()], ti);
     ti.deallocate_rcu(this, shallow_size(), memtag_row_array);
 }
 
@@ -139,8 +175,7 @@ template <typename CS>
 void value_array::deallocate_after_failed_update(const CS& changeset, threadinfo& ti) {
     auto last = changeset.end();
     for (auto it = changeset.begin(); it != last; ++it)
-        if (cols_[it->index()])
-            cols_[it->index()]->deallocate(ti);
+        deallocate_column(cols_[it->index()], ti);
     ti.deallocate(this, shallow_size(), memtag_row_array);
 }
 

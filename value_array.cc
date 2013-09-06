@@ -28,14 +28,14 @@ value_array* value_array::make_sized_row(int ncol, kvtimestamp_t ts,
 }
 
 value_array* value_array::checkpoint_read(Str str, kvtimestamp_t ts,
-                                                  threadinfo& ti) {
+                                          threadinfo& ti) {
     kvin kv;
     kvin_init(&kv, const_cast<char*>(str.s), str.len);
     short ncol;
     KVR(&kv, ncol);
     value_array* row = make_sized_row(ncol, ts, ti);
     for (short i = 0; i < ncol; i++)
-        row->cols_[i] = lcdf::inline_string::allocate_read(&kv, ti);
+        row->cols_[i] = read_column(&kv, ti);
     return row;
 }
 
@@ -51,14 +51,12 @@ void value_array::checkpoint_write(kvout* kv) const {
 
 void value_array::deallocate(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
-        if (cols_[i])
-	    cols_[i]->deallocate(ti);
+        deallocate_column(cols_[i], ti);
     ti.deallocate(this, shallow_size(), memtag_row_array);
 }
 
 void value_array::deallocate_rcu(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
-        if (cols_[i])
-	    cols_[i]->deallocate_rcu(ti);
+        deallocate_column_rcu(cols_[i], ti);
     ti.deallocate_rcu(this, shallow_size(), memtag_row_array);
 }

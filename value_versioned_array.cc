@@ -56,7 +56,7 @@ value_versioned_array::checkpoint_read(Str str, kvtimestamp_t ts,
     KVR(&kv, ncol);
     value_versioned_array* row = make_sized_row(ncol, ts, ti);
     for (short i = 0; i < ncol; i++)
-        row->cols_[i] = lcdf::inline_string::allocate_read(&kv, ti);
+        row->cols_[i] = value_array::read_column(&kv, ti);
     return row;
 }
 
@@ -72,14 +72,12 @@ void value_versioned_array::checkpoint_write(kvout* kv) const {
 
 void value_versioned_array::deallocate(threadinfo &ti) {
     for (short i = 0; i < ncol_; ++i)
-        if (cols_[i])
-	    cols_[i]->deallocate(ti);
+        value_array::deallocate_column(cols_[i], ti);
     ti.deallocate(this, shallow_size(), memtag_row_array_ver);
 }
 
 void value_versioned_array::deallocate_rcu(threadinfo &ti) {
     for (short i = 0; i < ncol_; ++i)
-        if (cols_[i])
-	    cols_[i]->deallocate_rcu(ti);
+        value_array::deallocate_column_rcu(cols_[i], ti);
     ti.deallocate_rcu(this, shallow_size(), memtag_row_array_ver);
 }

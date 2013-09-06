@@ -136,19 +136,4 @@ inline int kvread_row(struct kvin* kv, std::vector<std::string>& row) {
     return sizeof(n) + x;
 }
 
-namespace lcdf {
-template <typename ALLOC>
-inline inline_string* inline_string::allocate_read(kvin* kv, ALLOC& ti) {
-    int len;
-    int r = KVR(kv, len);
-    mandatory_assert(r == sizeof(len) && len < MaxRowLen);
-    inline_string* v = (inline_string*) ti.allocate(len + sizeof(inline_string));
-    assert(v);
-    v->len = len;
-    r = kvread(kv, v->s, len);
-    assert(r == len);
-    return v;
-}
-} // namespace lcdf
-
 #endif

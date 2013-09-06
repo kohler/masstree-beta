@@ -152,28 +152,6 @@ struct inline_string : public String_base<inline_string> {
     static size_t size(int len) {
 	return sizeof(inline_string) + len;
     }
-
-    template <typename ALLOC>
-    static inline_string *allocate(const char *s, int len, ALLOC &ti) {
-	inline_string *r = (inline_string *) ti.allocate(size(len));
-	r->len = len;
-	memcpy(r->s, s, len);
-	return r;
-    }
-    template <typename ALLOC>
-    static inline_string *allocate(Str s, ALLOC &ti) {
-	return allocate(s.s, s.len, ti);
-    }
-    template <typename ALLOC>
-    static inline_string *allocate_read(struct kvin *kvin, ALLOC &ti);
-    template <typename ALLOC>
-    void deallocate(ALLOC &ti) {
-	ti.deallocate(this, size());
-    }
-    template <typename ALLOC>
-    void deallocate_rcu(ALLOC &ti) {
-	ti.deallocate_rcu(this, size());
-    }
 };
 
 } // namespace lcdf
