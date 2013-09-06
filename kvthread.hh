@@ -333,7 +333,7 @@ class threadinfo {
     }
 
     // memory allocation
-    void *allocate(size_t sz, memtag tag = memtag_none,
+    void *allocate(size_t sz, memtag tag,
 		   allocationtag ta = ta_data, int line = 0) {
 	void *p = malloc(sz + memdebug_size);
 	p = memdebug::make(p, sz, tag << 8, line);
@@ -341,7 +341,7 @@ class threadinfo {
 	    pstat.mark_alloc(sz, ta);
 	return p;
     }
-    void deallocate(void *p, size_t sz, memtag tag = memtag_none,
+    void deallocate(void *p, size_t sz, memtag tag,
 		    allocationtag ta = ta_data, int line = 0) {
 	// in C++ allocators, 'p' must be nonnull
 	assert(p);
@@ -349,7 +349,7 @@ class threadinfo {
 	free(p);
 	pstat.mark_free(sz, ta);
     }
-    void deallocate_rcu(void *p, size_t sz, memtag tag = memtag_none,
+    void deallocate_rcu(void *p, size_t sz, memtag tag,
 			allocationtag ta = ta_data, int line = 0) {
 	assert(p);
 	memdebug::check_rcu(p, sz, tag << 8, line);
@@ -360,7 +360,7 @@ class threadinfo {
     static size_t aligned_size(size_t sz) {
 	return iceil(sz, int(CacheLineSize));
     }
-    void *allocate_aligned(size_t sz, memtag tag = memtag_none,
+    void *allocate_aligned(size_t sz, memtag tag,
 			   allocationtag ta = ta_data, int line = 0) {
 	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;
 	assert(nl < NMaxLines);
@@ -374,7 +374,7 @@ class threadinfo {
 	    pstat.mark_alloc(nl * CacheLineSize, ta);
 	return p;
     }
-    void deallocate_aligned(void *p, size_t sz, memtag tag = memtag_none,
+    void deallocate_aligned(void *p, size_t sz, memtag tag,
 			    allocationtag ta = ta_data, int line = 0) {
 	assert(p);
 	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;
@@ -383,7 +383,7 @@ class threadinfo {
 	arena[nl - 1] = p;
 	pstat.mark_free(nl * CacheLineSize, ta);
     }
-    void deallocate_aligned_rcu(void *p, size_t sz, memtag tag = memtag_none,
+    void deallocate_aligned_rcu(void *p, size_t sz, memtag tag,
 				allocationtag ta = ta_data, int line = 0) {
 	assert(p);
 	int nl = (sz + memdebug_size + CacheLineSize - 1) / CacheLineSize;

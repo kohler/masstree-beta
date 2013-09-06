@@ -123,12 +123,12 @@ inline Str value_bag<O>::row_string() const {
 
 template <typename O> template <typename ALLOC>
 inline void value_bag<O>::deallocate(ALLOC& ti) {
-    ti.deallocate(this, size());
+    ti.deallocate(this, size(), memtag_row_bag);
 }
 
 template <typename O> template <typename ALLOC>
 inline void value_bag<O>::deallocate_rcu(ALLOC& ti) {
-    ti.deallocate_rcu(this, size());
+    ti.deallocate_rcu(this, size(), memtag_row_bag);
 }
 
 template <typename O> template <typename CS, typename ALLOC>
@@ -149,7 +149,7 @@ value_bag<O>* value_bag<O>::update(const CS& changeset,
     if (ncol > d_.ncol_)
 	sz += (ncol - d_.ncol_) * sizeof(offset_type);
 
-    value_bag<O>* row = (value_bag<O>*) ti.allocate(sz);
+    value_bag<O>* row = (value_bag<O>*) ti.allocate(sz, memtag_row_bag);
     row->ts_ = ts;
 
     // Minor optimization: Replacing one small column without changing length
@@ -226,7 +226,7 @@ inline value_bag<O>* value_bag<O>::update(int col, Str value,
 template <typename O> template <typename ALLOC>
 inline value_bag<O>* value_bag<O>::create1(Str str, kvtimestamp_t ts,
                                            ALLOC& ti) {
-    value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + sizeof(bagdata) + sizeof(O) + str.length());
+    value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + sizeof(bagdata) + sizeof(O) + str.length(), memtag_row_bag);
     row->ts_ = ts;
     row->d_.ncol_ = 1;
     row->d_.pos_[0] = sizeof(bagdata) + sizeof(O);
@@ -249,7 +249,7 @@ template <typename O> template <typename ALLOC>
 inline value_bag<O>* value_bag<O>::checkpoint_read(Str str,
                                                    kvtimestamp_t ts,
                                                    ALLOC& ti) {
-    value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + str.len);
+    value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + str.len, memtag_row_bag);
     row->ts_ = ts;
     memcpy(row->d_.s_, str.s, str.len);
     return row;
