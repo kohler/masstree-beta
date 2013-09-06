@@ -30,24 +30,6 @@ struct stat {
     int gc_nfree;
     int gc_nalloc;
 #endif
-#if GETSTATS
-    bool getting;
-    uint64_t ngets;
-    uint64_t ntsc;      // sum of tsc
-    uint64_t tsc_start;
-#if PMC_ENABLED
-    // pmc profiling.
-    // Program pmc using amd10h_pmc - Linux profiling kernel module
-    // written by Silas:
-    // git+ssh://amsterdam.csail.mit.edu/home/am1/prof/proftools.git
-    uint64_t pmc_lookup[4];     // accumulates events happened between mark_get_begin
-                                // and mark_get_end
-    uint64_t pmc_start[4];
-    uint64_t pmc_firstget[4];
-    double   t0_firstget;
-    double   t1_lastget;
-#endif
-#endif
     void initialize(int cid) {
         this->cid = cid;
     }
@@ -60,32 +42,6 @@ struct stat {
         (void) nstub;
 #if GC_STATS
         gc_nalloc += nstub;
-#endif
-    }
-    void mark_get_begin() {
-#if GETSTATS
-#if PMC_ENABLED
-        for (int i = 0; i < 4; i++)
-            pmc_start[i] = read_pmc(i);
-        if (ngets == 0) {
-            t0_firstget = now();
-            memcpy(pmc_firstget, pmc_start, sizeof(pmc_start));
-        }
-#endif
-        getting = true;
-        tsc_start = read_tsc();
-#endif
-    }
-    void mark_get_end() {
-#if GETSTATS
-        ntsc += read_tsc() - tsc_start;
-#if PMC_ENABLED
-        for (int i = 0; i < 4; i++)
-            pmc_lookup[i] += read_pmc(i) - pmc_start[i];
-        t1_lastget = now();
-#endif
-        ngets ++;
-        getting = false;
 #endif
     }
     static void print(const stat **s, int n);

@@ -30,11 +30,5 @@ enum { CoresPerChip = MaxCores / MaxNumaNode };
 
 //#define MEMSTATS 1
 //#define GCSTATS 1
-#define GETSTATS 0
-
-#if GETSTATS
-#define COMPSTATS 0     // measure the cycles spend in computation only
-#define PMC_ENABLED  0  // enable pmc only if you have programmed pmc
-#endif
 
 #endif

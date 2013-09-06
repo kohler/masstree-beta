@@ -108,7 +108,7 @@ stat::print(const stat **s, int n) {
     sum_all_per_chip<typeof(s[0]->field[0])>(s, n, offsetof(Perf::stat, field) + \
                                              sizeof(s[0]->field[0]) * oa)
 
-#if GETSTATS
+#if GETSTATS && 0
     for (int i = 0; i < n; i++)
         if (s[i]->ngets < 1000) {
             s[i] = NULL;

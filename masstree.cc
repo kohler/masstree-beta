@@ -105,12 +105,10 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
 
 template <typename P>
 bool query_table<P>::get(query<row_type>& q, threadinfo* ti) const {
-    ti->pstat.mark_get_begin();
     unlocked_tcursor<P> lp(table_, q.key_);
     bool found = lp.find_unlocked(ti);
     if (found)
         found = q.emitrow(lp.datum_, ti);
-    ti->pstat.mark_get_end();
     return found;
 }
 
