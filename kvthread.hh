@@ -38,7 +38,8 @@ enum memtag {
     memtag_limbo = 0x5,
     memtag_masstree_leaf = 0x10,
     memtag_masstree_internode = 0x11,
-    memtag_masstree_ksuffixes = 0x12
+    memtag_masstree_ksuffixes = 0x12,
+    memtag_masstree_gclayer = 0x13
 };
 
 enum allocationtag {
@@ -389,26 +390,6 @@ class threadinfo {
 	memdebug::check_rcu(p, sz, (tag << 8) + nl, line);
 	record_rcu(p, (tag << 8) + nl, ta);
 	pstat.mark_free(nl * CacheLineSize, ta);
-    }
-
-    void *allocate(size_t sz, allocationtag ta) {
-	return allocate(sz, memtag_none, ta);
-    }
-    void deallocate(void *p, size_t sz, allocationtag ta) {
-	deallocate(p, sz, memtag_none, ta);
-    }
-    void deallocate_rcu(void *p, size_t sz, allocationtag ta) {
-	deallocate_rcu(p, sz, memtag_none, ta, 0);
-    }
-
-    void *allocate_aligned(size_t sz, allocationtag ta) {
-	return allocate_aligned(sz, memtag_none, ta);
-    }
-    void deallocate_aligned(void *p, size_t sz, allocationtag ta) {
-	deallocate_aligned(p, sz, memtag_none, ta, 0);
-    }
-    void deallocate_aligned_rcu(void *p, size_t sz, allocationtag ta) {
-	deallocate_aligned_rcu(p, sz, memtag_none, ta, 0);
     }
 
     // RCU

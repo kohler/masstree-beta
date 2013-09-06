@@ -117,7 +117,7 @@ void gc_layer_rcu_callback<P>::operator()(threadinfo *ti)
     bool do_remove = lp.gc_layer(ti);
     if (!do_remove || !lp.finish_remove(ti))
 	lp.n_->unlock();
-    ti->deallocate(this, size(), ta_rcu);
+    ti->deallocate(this, size(), memtag_masstree_gclayer, ta_rcu);
 }
 
 template <typename P>
@@ -125,7 +125,7 @@ void gc_layer_rcu_callback<P>::make(basic_table<P> &table, Str prefix,
                                     threadinfo *ti)
 {
     size_t sz = prefix.len + sizeof(gc_layer_rcu_callback);
-    void *data = ti->allocate(sz, ta_rcu);
+    void *data = ti->allocate(sz, memtag_masstree_gclayer, ta_rcu);
     gc_layer_rcu_callback *cb = new(data) gc_layer_rcu_callback;
     cb->tablep_ = &table;
     cb->len_ = prefix.len;
