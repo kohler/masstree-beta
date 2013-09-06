@@ -62,6 +62,12 @@
 /* Define to 1 if the system has the type `long long'. */
 #undef HAVE_LONG_LONG
 
+/* Define if MADV_HUGEPAGE is supported. */
+#undef HAVE_MADV_HUGEPAGE
+
+/* Define if MAP_HUGETLB is supported. */
+#undef HAVE_MAP_HUGETLB
+
 /* Define if memory debugging support is enabled. */
 #undef HAVE_MEMDEBUG
 
@@ -108,7 +114,7 @@
 #undef HAVE_STRING_H
 
 /* Define if superpage support is enabled. */
-#undef HAVE_SUPERPAGE_ENABLED
+#undef HAVE_SUPERPAGE
 
 /* Define to 1 if you have the <sys/epoll.h> header file. */
 #undef HAVE_SYS_EPOLL_H

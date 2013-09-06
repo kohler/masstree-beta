@@ -305,12 +305,39 @@ AC_ARG_ENABLE([max-key-len],
     [ac_cv_max_key_len=$enableval], [ac_cv_max_key_len=255])
 AC_DEFINE_UNQUOTED([KVDB_MAX_KEY_LEN], [$ac_cv_max_key_len], [Maximum key length])
 
+AC_MSG_CHECKING([whether MADV_HUGEPAGE is supported])
+AC_PREPROC_IFELSE([AC_LANG_PROGRAM([[#include <sys/mman.h>
+#ifndef MADV_HUGEPAGE
+#error "no"
+#endif]], [])],
+                  [have_madv_hugepage=yes], [have_madv_hugepage=no])
+AC_MSG_RESULT([$have_madv_hugepage])
+if test $have_madv_hugepage = yes; then
+    AC_DEFINE([HAVE_MADV_HUGEPAGE], [1], [Define if MADV_HUGEPAGE is supported.])
+fi
+
+AC_MSG_CHECKING([whether MAP_HUGETLB is supported])
+AC_PREPROC_IFELSE([AC_LANG_PROGRAM([[#include <sys/mman.h>
+#ifndef MAP_HUGETLB
+#error "no"
+#endif]], [])],
+                  [have_map_hugetlb=yes], [have_map_hugetlb=no])
+AC_MSG_RESULT([$have_map_hugetlb])
+if test $have_map_hugetlb = yes; then
+    AC_DEFINE([HAVE_MAP_HUGETLB], [1], [Define if MAP_HUGETLB is supported.])
+fi
+
 AC_ARG_ENABLE([superpage],
     [AS_HELP_STRING([--disable-superpage],
 	    [disable superpage support])],
-    [], [enable_superpage=yes])
-if test "$enable_superpage" != no; then
-    AC_DEFINE_UNQUOTED([HAVE_SUPERPAGE_ENABLED], [1], [Define if superpage support is enabled.])
+    [], [enable_superpage=maybe])
+if test "$enable_superpage $have_madv_hugepage $have_map_hugetlb" = "yes no no"; then
+    AC_MSG_ERROR([
+Error: superpages are not supported on this machine.
+Try again without --enable-superpage.
+])
+elif test "$enable_superpage $have_madv_hugepage $have_map_hugetlb" != "maybe no no" -a "$enable_superpage" != no; then
+    AC_DEFINE_UNQUOTED([HAVE_SUPERPAGE], [1], [Define if superpage support is enabled.])
 fi
 
 AC_ARG_ENABLE([memdebug],

@@ -19,8 +19,4 @@
 
 enum { CacheLineSize = 64 };
 
-#if !__APPLE__ && !defined(NOSUPERPAGE) && HAVE_SUPERPAGE_ENABLED
-#define SUPERPAGE 1
-#endif
-
 #endif

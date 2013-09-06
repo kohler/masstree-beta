@@ -108,7 +108,7 @@ struct allocator {
 };
 }
 
-#if SUPERPAGE
+#if HAVE_SUPERPAGE && !NOSUPERPAGE
 using namespace SuperPage;
 #else
 using namespace NormalPage;
