@@ -173,6 +173,8 @@ enum threadcounter {
     tc_alloc_value = tc_alloc,
     tc_alloc_other = tc_alloc + 1,
     // end tc_alloc constants
+    tc_gc,
+    tc_limbo_slots,
     tc_replay_create_delta,
     tc_replay_remove_delta,
     tc_root_retry,

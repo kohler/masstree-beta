@@ -28,21 +28,9 @@ struct stat {
     static void initmain(bool pinthreads);
 #if GCSTATS
     int gc_nfree;
-    int gc_nalloc;
 #endif
     void initialize(int cid) {
         this->cid = cid;
-    }
-    void mark_gc_object_freed() {
-#if GC_STATS
-        gc_nfree ++;
-#endif
-    }
-    void mark_gc_alloc(int nstub) {
-        (void) nstub;
-#if GC_STATS
-        gc_nalloc += nstub;
-#endif
     }
     static void print(const stat **s, int n);
     int cid;    // core index

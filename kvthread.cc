@@ -82,9 +82,8 @@ threadinfo *threadinfo::make(int purpose, int index)
     ti->pstat.initialize(index);
     ti->ts_ = 2;
     void *limbo_space = ti->allocate(sizeof(limbo_group), memtag_limbo);
+    ti->mark(tc_limbo_slots, limbo_group::capacity);
     ti->limbo_head_ = ti->limbo_tail_ = new(limbo_space) limbo_group;
-    ti->pstat.mark_gc_alloc(ti->limbo_tail_->capacity);
-
     return ti;
 }
 
@@ -95,9 +94,9 @@ void threadinfo::refill_rcu()
 	limbo_tail_->head_ = limbo_tail_->tail_ = 0;
     else if (!limbo_tail_->next_) {
 	void *limbo_space = allocate(sizeof(limbo_group), memtag_limbo);
+        mark(tc_limbo_slots, limbo_group::capacity);
 	limbo_tail_->next_ = new(limbo_space) limbo_group;
 	limbo_tail_ = limbo_tail_->next_;
-	pstat.mark_gc_alloc(limbo_tail_->capacity);
     } else
 	limbo_tail_ = limbo_tail_->next_;
 }
@@ -119,7 +118,7 @@ void threadinfo::hard_rcu_quiesce()
     if (lb != le && (int64_t) (lb->epoch_ - min_epoch) < 0) {
 	while (1) {
 	    free_rcu(lb->ptr_, lb->freetype_);
-	    pstat.mark_gc_object_freed();
+	    mark(tc_gc);
 
 	    ++lb;
 
