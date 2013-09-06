@@ -331,25 +331,6 @@ class threadinfo {
 	return accounting_relax_fence_function(this, ci);
     }
 
-    void *trysuperalloc(size_t sz, allocationtag ta) {
-#if SUPERPAGE && defined(MADV_HUGEPAGE)
-        static const size_t HugePageSize = get_hugepage_size();
-        size_t algsz = iceil(sz, size_t(HugePageSize)) + HugePageSize;
-        void *x = mmap(NULL, algsz, PROT_READ | PROT_WRITE,
-                       MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-        assert(x != MAP_FAILED);
-        x = (void *)iceil(uintptr_t(x), uintptr_t(HugePageSize));
-        if (madvise(x, algsz - HugePageSize, MADV_HUGEPAGE)) {
-            perror("madvise");
-            exit(EXIT_FAILURE);
-        }
-	pstat.mark_alloc(algsz, ta);
-        return x;
-#else
-        return allocate(sz, ta);
-#endif
-    }
-
     // memory allocation
     void *allocate(size_t sz, memtag tag = memtag_none,
 		   allocationtag ta = ta_data, int line = 0) {
