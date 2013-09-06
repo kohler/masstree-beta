@@ -26,13 +26,6 @@ struct stat {
     /** @brief An initialization call from main function
      */
     static void initmain(bool pinthreads);
-#if MEMSTATS
-    enum { n_tracked_alloc = 2 };
-    ssize_t tree_mem[n_tracked_alloc];
-    size_t tree_keys;
-#else
-    enum { n_tracked_alloc = 0 };
-#endif
 #if GCSTATS
     int gc_nfree;
     int gc_nalloc;
@@ -67,25 +60,6 @@ struct stat {
         (void) nstub;
 #if GC_STATS
         gc_nalloc += nstub;
-#endif
-    }
-    void mark_tree_key() {
-#if MEMSTATS
-        tree_keys++;
-#endif
-    }
-    void mark_alloc(size_t x, int alloc) {
-        (void) x, (void) alloc;
-#if MEMSTATS
-	if (unsigned(alloc) < unsigned(n_tracked_alloc))
-	    tree_mem[alloc] += x;
-#endif
-    }
-    void mark_free(size_t x, int alloc) {
-        (void) x, (void) alloc;
-#if MEMSTATS
-	if (unsigned(alloc) < unsigned(n_tracked_alloc))
-	    tree_mem[alloc] -= x;
 #endif
     }
     void mark_get_begin() {

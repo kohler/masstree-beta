@@ -171,7 +171,7 @@ class internode : public node_base<P> {
 
     void deallocate_rcu(threadinfo* ti) {
 	ti->deallocate_aligned_rcu(this, sizeof(*this),
-                                   memtag_masstree_internode, 0);
+                                   memtag_masstree_internode);
     }
 };
 
@@ -410,9 +410,9 @@ class leaf : public node_base<P> {
     void deallocate_rcu(threadinfo* ti) {
 	if (ksuf_)
 	    ti->deallocate_rcu(ksuf_, ksuf_->allocated_size(),
-			       memtag_masstree_ksuffixes, 0);
+			       memtag_masstree_ksuffixes);
 	ti->deallocate_aligned_rcu(this, allocated_size(),
-				   memtag_masstree_leaf, 0);
+				   memtag_masstree_leaf);
     }
 };
 

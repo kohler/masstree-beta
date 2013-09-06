@@ -270,9 +270,6 @@ struct kvtest_client {
 		counters.set(threadcounter_names[i], c);
 	if (counters)
 	    json_.set("counters", counters);
-#if MEMSTATS
-	json_.set("treesize", ti_->pstat.tree_mem);
-#endif
 	if (!quiet)
 	    fprintf(stderr, "%d: %s\n", ti_->ti_index, json_.unparse().c_str());
     }

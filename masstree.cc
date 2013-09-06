@@ -99,7 +99,7 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
 
     if (oksuf)
 	ti->deallocate_rcu(oksuf, oksuf->allocated_size(),
-			   memtag_masstree_ksuffixes, 0);
+                           memtag_masstree_ksuffixes);
 }
 
 

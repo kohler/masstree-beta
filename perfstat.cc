@@ -177,7 +177,7 @@ stat::print(const stat **s, int n) {
 #endif
 #endif
 
-#if MEMSTATS && HAVE_NUMA_H && HAVE_LIBNUMA
+#if MEMSTATS && HAVE_NUMA_H && HAVE_LIBNUMA && 0
     // collect tree memory
     kvstats tree_mem = sum_all_cores_of(tree_mem);
     kvstats tree_keys = sum_all_cores_of(tree_keys);
