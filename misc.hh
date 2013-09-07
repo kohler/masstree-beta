@@ -122,10 +122,6 @@ struct quick_istr {
 
 size_t get_hugepage_size();
 
-struct ckstate;
-class threadinfo;
-void checkpoint1(ckstate *c, lcdf::Str key, const row_type *row);
-
 struct Clp_Parser;
 int clp_parse_suffixdouble(struct Clp_Parser *clp, const char *vstr,
 			   int complain, void *user_data);

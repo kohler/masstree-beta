@@ -17,11 +17,12 @@
 #define KVROW_HH 1
 #include "vec.hh"
 #include "kvio.hh"
-#include "misc.hh"
 #include "kvthread.hh"
 #include "kvproto.hh"
 #include "log.hh"
 #include <algorithm>
+struct ckstate;
+void checkpoint1(ckstate* c, Str key, const row_type* v);
 
 template <typename IDX>
 struct valueindex {
