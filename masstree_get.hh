@@ -102,8 +102,7 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
 	    leafvalue_type entry(n_->lv_[kp_]);
 	    entry.node()->prefetch_full();
 	    fence();
-	    if (likely(!v.deleted()) && !n_->has_changed(oldv)
-		&& old_perm == n_->permutation_
+	    if (likely(!v.deleted()) && !n_->has_changed(oldv, old_perm)
 		&& !entry.node()->has_split()) {
 		ka_.shift();
 		return entry.node();
@@ -114,8 +113,7 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
 	v = n_->lock(oldv, ti->lock_fence(tc_leaf_lock));
 
 	// Maybe the old position works.
-	if (likely(!v.deleted()) && !n_->has_changed(oldv)
-	    && old_perm == n_->permutation_) {
+	if (likely(!v.deleted()) && !n_->has_changed(oldv, old_perm)) {
 	found:
 	    if (kp_ >= 0 && n_->is_stable_node(kp_)) {
 		root = n_->lv_[kp_].node();

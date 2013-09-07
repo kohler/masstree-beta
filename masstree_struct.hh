@@ -287,6 +287,12 @@ class leaf : public node_base<P> {
 	return permuter_type(permutation_);
     }
 
+    using node_base<P>::has_changed;
+    bool has_changed(typename node_base<P>::nodeversion_type oldv,
+                     typename permuter_type::storage_type oldperm) const {
+        return !this->has_changed(oldv) && oldperm == permutation_;
+    }
+
     key_type get_key(int p) const {
 	int kl = keylenx_[p];
 	if (!keylenx_has_ksuf(kl))
