@@ -18,7 +18,6 @@
 #define JSON_HH
 #include "straccum.hh"
 #include "str.hh"
-#include "hashtable.hh"
 #include <vector>
 #include <utility>
 #include <stdlib.h>
@@ -83,12 +82,11 @@ class Json {
     inline Json(unsigned long long x);
     inline Json(double x);
     inline Json(bool x);
-    inline Json(const String &x);
+    inline Json(const String& x);
     inline Json(Str x);
     inline Json(const char* x);
     template <typename T> inline Json(const std::vector<T>& x);
     template <typename T> inline Json(T first, T last);
-    template <typename T> inline Json(const HashTable<String, T>& x);
     inline ~Json();
 
     static inline const Json& make_null();
@@ -702,12 +700,10 @@ inline Json::const_array_iterator::difference_type operator-(const Json::const_a
 }
 
 class Json::const_iterator { public:
-    typedef Pair<const String, Json&> value_type;
+    typedef std::pair<const String, Json&> value_type;
     typedef const value_type* pointer_type;
     typedef const value_type& reference_type;
-#if CLICK_USERLEVEL
     typedef std::forward_iterator_tag iterator_category;
-#endif
 
     const_iterator()
 	: value_(String(), *(Json*) 0) {
@@ -757,7 +753,7 @@ class Json::const_iterator { public:
 		++i_;
 		goto retry;
 	    } else {
-		value_.~Pair();
+		value_.~pair();
 		new((void *) &value_) value_type(oj->item(i_).v_.first,
 						 oj->item(i_).v_.second);
 	    }
@@ -766,7 +762,7 @@ class Json::const_iterator { public:
 	    if (!aj || unsigned(i_) >= unsigned(aj->size))
 		i_ = -1;
 	    else {
-		value_.~Pair();
+		value_.~pair();
 		new((void *) &value_) value_type(String(i_), aj->a[i_]);
 	    }
 	}
@@ -1476,31 +1472,31 @@ inline Json::Json(const std::vector<T> &x) {
         ++u_.a.a->size;
     }
 }
+
+template <typename T> struct Json_iterator_initializer {
+    template <typename I>
+    static inline void run(Json& j, I first, I last) {
+        for (j = Json::make_array(); first != last; ++first)
+            j.push_back(Json(*first));
+    }
+};
+template <typename T, typename U>
+struct Json_iterator_initializer<std::pair<T, U> > {
+    template <typename I>
+    static inline void run(Json& j, I first, I last) {
+        for (j = Json::make_object(); first != last; ++first)
+            j.set((*first).first, (*first).second);
+    }
+};
+
 /** @brief Construct an array Json containing the elements in [@a first,
     @a last). */
 template <typename T>
 inline Json::Json(T first, T last) {
-    u_.a.type = j_array;
-    u_.a.a = ArrayJson::make(0);
-    while (first != last) {
-        if (u_.a.a->size == u_.a.a->capacity)
-            hard_uniqueify_array(false, u_.a.a->size + 1);
-        new((void*) &u_.a.a->a[u_.a.a->size]) Json(*first);
-        ++u_.a.a->size;
-	++first;
-    }
+    u_.a.type = 0;
+    Json_iterator_initializer<typename std::iterator_traits<T>::value_type>::run(*this, first, last);
 }
-/** @brief Construct an object Json containing the values in @a x. */
-template <typename T>
-inline Json::Json(const HashTable<String, T> &x) {
-    u_.o.type = j_object;
-    u_.o.o = new ObjectJson;
-    for (typename HashTable<String, T>::const_iterator it = x.begin();
-	 it != x.end(); ++it) {
-	Json& x = ojson()->get_insert(it.key());
-	x = Json(it.value());
-    }
-}
+
 inline Json::~Json() {
     if (u_.x.type < 0)
         u_.str.deref();
