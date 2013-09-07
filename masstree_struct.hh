@@ -121,8 +121,8 @@ class internode : public node_base<P> {
     }
 
     static internode<P>* make(threadinfo& ti) {
-	void* ptr = ti.allocate_aligned(sizeof(internode<P>),
-                                        memtag_masstree_internode);
+	void* ptr = ti.pool_allocate(sizeof(internode<P>),
+                                     memtag_masstree_internode);
 	internode<P>* n = new(ptr) internode<P>;
 	assert(n);
 	if (P::debug_level > 0)
@@ -173,7 +173,7 @@ class internode : public node_base<P> {
     void print(FILE* f, const char* prefix, int indent, int kdepth);
 
     void deallocate_rcu(threadinfo& ti) {
-	ti.deallocate_aligned_rcu(this, sizeof(*this), memtag_masstree_internode);
+	ti.pool_deallocate_rcu(this, sizeof(*this), memtag_masstree_internode);
     }
 };
 
@@ -270,8 +270,8 @@ class leaf : public node_base<P> {
     }
 
     static leaf<P>* make(int sb_size, kvtimestamp_t node_ts, threadinfo& ti) {
-	size_t sz = ti.aligned_size(sizeof(leaf<P>) + std::min(sb_size, 128));
-	void* ptr = ti.allocate_aligned(sz, memtag_masstree_leaf);
+	size_t sz = iceil(sizeof(leaf<P>) + std::min(sb_size, 128), 64);
+	void* ptr = ti.pool_allocate(sz, memtag_masstree_leaf);
 	leaf<P>* n = new(ptr) leaf<P>(sz, node_ts);
 	assert(n);
 	if (P::debug_level > 0)
@@ -420,7 +420,7 @@ class leaf : public node_base<P> {
 	if (ksuf_)
 	    ti.deallocate_rcu(ksuf_, ksuf_->allocated_size(),
                               memtag_masstree_ksuffixes);
-	ti.deallocate_aligned_rcu(this, allocated_size(), memtag_masstree_leaf);
+	ti.pool_deallocate_rcu(this, allocated_size(), memtag_masstree_leaf);
     }
 };
 

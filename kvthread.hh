@@ -324,10 +324,7 @@ class threadinfo {
         mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
     }
 
-    static size_t aligned_size(size_t sz) {
-	return iceil(sz, int(CACHE_LINE_SIZE));
-    }
-    void* allocate_aligned(size_t sz, memtag tag, int line = 0) {
+    void* pool_allocate(size_t sz, memtag tag, int line = 0) {
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
 	assert(nl < NMaxLines);
 	if (unlikely(!arena[nl - 1]))
@@ -341,7 +338,7 @@ class threadinfo {
                  nl * CACHE_LINE_SIZE);
 	return p;
     }
-    void deallocate_aligned(void* p, size_t sz, memtag tag, int line = 0) {
+    void pool_deallocate(void* p, size_t sz, memtag tag, int line = 0) {
 	assert(p);
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
 	p = memdebug::check_free(p, sz, (tag << 8) + nl, line);
@@ -350,7 +347,7 @@ class threadinfo {
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
              -nl * CACHE_LINE_SIZE);
     }
-    void deallocate_aligned_rcu(void* p, size_t sz, memtag tag, int line = 0) {
+    void pool_deallocate_rcu(void* p, size_t sz, memtag tag, int line = 0) {
 	assert(p);
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
 	memdebug::check_rcu(p, sz, (tag << 8) + nl, line);
