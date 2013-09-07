@@ -30,7 +30,7 @@ all: test_atomics mtd mtclient mttest
 %.S: %.o
 	objdump -S $< > $@
 
-libjson.a: json.o string.o straccum.o hashallocator.o clp.o kvrandom.o compiler.o kvthread.o str.o
+libjson.a: json.o string.o straccum.o str.o clp.o kvrandom.o compiler.o kvthread.o
 	@/bin/rm -f $@
 	$(AR) cru $@ $^
 
