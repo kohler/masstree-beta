@@ -40,7 +40,7 @@ int internode_split(internode<P> *nl, internode<P> *nr,
     //   nr is pre-insertion item mid.
     // If p > mid, then x goes into nr, pre-insertion item mid goes into
     //   split_ikey, and the first element of nr is post-insertion item mid+1.
-    precondition(!nl->concurrent || (nl->locked() && nr->locked()));
+    masstree_precondition(!nl->concurrent || (nl->locked() && nr->locked()));
 
     int mid = (split_type == 2 ? nl->width : (nl->width + 1) / 2);
     nr->nkeys_ = nl->width + 1 - (mid + 1);
@@ -103,8 +103,8 @@ int leaf_split(leaf<P> *nl, leaf<P> *nr,
     // If p < mid, then x goes into nl, and the first element of nr
     //   will be former item (mid - 1).
     // If p >= mid, then x goes into nr.
-    precondition(!nl->concurrent || (nl->locked() && nr->locked()));
-    precondition(nl->nremoved_ == 0 && nl->size() >= nl->width - 1);
+    masstree_precondition(!nl->concurrent || (nl->locked() && nr->locked()));
+    masstree_precondition(nl->nremoved_ == 0 && nl->size() >= nl->width - 1);
 
     int width = nl->size();	// == nl->width or nl->width - 1
     int mid = nl->width / 2 + 1;
@@ -130,7 +130,7 @@ int leaf_split(leaf<P> *nl, leaf<P> *nr,
 	    }
 	    --midl, ++midr;
 	}
-	invariant(mid > 0 && mid <= width);
+	masstree_invariant(mid > 0 && mid <= width);
     }
 
     typename leaf<P>::permuter_type::value_type pv = perml.value_from(mid - (p < mid));
@@ -165,7 +165,7 @@ node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
     bool sense = false;
 
     while (1) {
-	invariant(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
+	masstree_invariant(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
 	internode_type *next_child = 0;
 
 	internode_type *p = n->locked_parent(ti);

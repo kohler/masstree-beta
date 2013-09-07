@@ -385,6 +385,9 @@ fi
 
 AC_DEFINE_UNQUOTED([CACHE_LINE_SIZE], [64], [Assumed size of a cache line.])
 
+AH_TOP([#ifndef MASSTREE_CONFIG_H_INCLUDED
+#define MASSTREE_CONFIG_H_INCLUDED 1])
+
 AH_BOTTOM([#if !HAVE_ALL_ASSERTIONS_ENABLED && !HAVE_ASSERTIONS_ENABLED
 # define NDEBUG 1
 #endif
@@ -395,23 +398,33 @@ extern void fail_mandatory_assert(const char* file, int line, const char* assert
 
 /** @brief Assert macro for invariants.
 
-    invariant(x) is executed if --enable-invariants or --enable-assertions. */
-extern void fail_invariant(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+    masstree_invariant(x) is executed if --enable-invariants or
+    --enable-assertions. */
+extern void fail_masstree_invariant(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
 #if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_INVARIANTS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_INVARIANTS_ENABLED
-#define invariant(x, ...) do { if (!(x)) fail_invariant(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+#define masstree_invariant(x, ...) do { if (!(x)) fail_masstree_invariant(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
 #else
-#define invariant(x, ...) do { } while (0)
+#define masstree_invariant(x, ...) do { } while (0)
 #endif
 
 /** @brief Assert macro for preconditions.
 
-    precondition(x) is executed if --enable-preconditions or
+    masstree_precondition(x) is executed if --enable-preconditions or
     --enable-assertions. */
-extern void fail_precondition(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+extern void fail_masstree_precondition(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
 #if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_PRECONDITIONS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_PRECONDITIONS_ENABLED
-#define precondition(x, ...) do { if (!(x)) fail_precondition(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+#define masstree_precondition(x, ...) do { if (!(x)) fail_masstree_precondition(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
 #else
-#define precondition(x, ...) do { } while (0)
+#define masstree_precondition(x, ...) do { } while (0)
+#endif
+
+#ifndef invariant
+#define invariant masstree_invariant
+#endif
+#ifndef precondition
+#define precondition masstree_precondition
+#endif
+
 #endif])
 
 AC_DEFINE_UNQUOTED([HAVE_UNALIGNED_ACCESS], [1], [Define if unaligned accesses are OK.])

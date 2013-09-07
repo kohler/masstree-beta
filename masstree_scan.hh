@@ -308,7 +308,7 @@ int basic_table<P>::scan(H helper,
 	ikey_type x[(MASSTREE_MAXKEYSIZE + sizeof(ikey_type) - 1)/sizeof(ikey_type)];
 	char s[MASSTREE_MAXKEYSIZE];
     } keybuf;
-    precondition(firstkey.len <= (int) sizeof(keybuf));
+    masstree_precondition(firstkey.len <= (int) sizeof(keybuf));
     memcpy(keybuf.s, firstkey.s, firstkey.len);
     key_type ka(keybuf.s, firstkey.len);
 

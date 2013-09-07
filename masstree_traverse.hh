@@ -126,14 +126,14 @@ template <typename P>
 internode<P>* node_base<P>::locked_parent(threadinfo *ti) const
 {
     node_base<P>* p;
-    precondition(!this->concurrent || this->locked());
+    masstree_precondition(!this->concurrent || this->locked());
     while (1) {
 	p = this->parent();
 	if (!node_base<P>::parent_exists(p))
             break;
 	nodeversion_type pv = p->lock(*p, ti->lock_fence(tc_internode_lock));
 	if (p == this->parent()) {
-	    invariant(!p->isleaf());
+	    masstree_invariant(!p->isleaf());
 	    break;
 	}
 	p->unlock(pv);

@@ -28,8 +28,8 @@ void fail_mandatory_assert(const char* file, int line,
     abort();
 }
 
-void fail_invariant(const char* file, int line,
-                    const char* assertion, const char* message) {
+void fail_masstree_invariant(const char* file, int line,
+                             const char* assertion, const char* message) {
     if (message)
 	fprintf(stderr, "invariant \"%s\" [%s] failed: file \"%s\", line %d\n",
 		message, assertion, file, line);
@@ -39,8 +39,8 @@ void fail_invariant(const char* file, int line,
     abort();
 }
 
-void fail_precondition(const char* file, int line,
-                       const char* assertion, const char* message) {
+void fail_masstree_precondition(const char* file, int line,
+                                const char* assertion, const char* message) {
     if (message)
 	fprintf(stderr, "precondition \"%s\" [%s] failed: file \"%s\", line %d\n",
 		message, assertion, file, line);

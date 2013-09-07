@@ -52,11 +52,11 @@ class vec {
         return *this;
     }
     T &operator[](unsigned i) {
-        precondition(i < size_);
+        masstree_precondition(i < size_);
         return a_[i];
     }
     const T &operator[](unsigned i) const {
-        precondition(i < size_);
+        masstree_precondition(i < size_);
         return a_[i];
     }
     T &push_back(const T &t) {

@@ -107,7 +107,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 	// Position 0 is hard to reuse; ensure we reuse it last
 	permuter_type perm(n_->permutation_);
 	int zeroidx = find_lowest_zero_nibble(perm.value_from(0));
-	invariant(perm[zeroidx] == 0 && zeroidx < n_->width);
+	masstree_invariant(perm[zeroidx] == 0 && zeroidx < n_->width);
 	if (zeroidx > perm.size() && n_->prev_) {
 	    perm.exchange(perm.size(), zeroidx);
 	    n_->permutation_ = perm.value();
@@ -139,14 +139,14 @@ template <typename P>
 void tcursor<P>::finish_insert()
 {
     permuter_type perm(n_->permutation_);
-    invariant(perm.back() == kp_);
+    masstree_invariant(perm.back() == kp_);
     perm.insert_from_back(ki_);
     fence();
     n_->permutation_ = perm.value();
 }
 
 template <typename P>
-inline void tcursor<P>::finish(int state, threadinfo *ti)
+inline void tcursor<P>::finish(int state, threadinfo* ti)
 {
     if (state < 0 && (state_ & 1)) {
         if (finish_remove(ti))
@@ -157,7 +157,7 @@ inline void tcursor<P>::finish(int state, threadinfo *ti)
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::modify(Str key, F &f, threadinfo *ti)
+inline int basic_table<P>::modify(Str key, F& f, threadinfo* ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_locked(ti);
@@ -171,7 +171,7 @@ inline int basic_table<P>::modify(Str key, F &f, threadinfo *ti)
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::modify_insert(Str key, F &f, threadinfo *ti)
+inline int basic_table<P>::modify_insert(Str key, F& f, threadinfo* ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_insert(ti);

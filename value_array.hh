@@ -136,7 +136,7 @@ inline void value_array::deallocate_column_rcu(lcdf::inline_string* col,
 
 template <typename CS>
 value_array* value_array::update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const {
-    precondition(ts >= ts_);
+    masstree_precondition(ts >= ts_);
     int ncol = std::max(int(ncol_), int(changeset.last_index()) + 1);
     value_array* row = (value_array*) ti.allocate(shallow_size(ncol), memtag_value);
     row->ts_ = ts;

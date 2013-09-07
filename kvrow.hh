@@ -311,7 +311,7 @@ inline void query<R>::assign_timestamp(threadinfo* ti, kvtimestamp_t min_ts) {
 
 template <typename R>
 inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
-    precondition(qt_ == QT_Put);
+    masstree_precondition(qt_ == QT_Put);
     serial_changeset<typename R::index_type> changeset(val_);
 
     if (loginfo* log = ti->ti_log) {
@@ -343,7 +343,7 @@ inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
 
 template <typename R>
 inline void query<R>::apply_replace(R*& value, bool has_value, threadinfo* ti) {
-    precondition(qt_ == QT_Replace);
+    masstree_precondition(qt_ == QT_Replace);
 
     if (loginfo* log = ti->ti_log) {
 	log->acquire();

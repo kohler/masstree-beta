@@ -186,7 +186,7 @@ class key {
 	len_ = len;
     }
     void unshift() {
-	precondition(is_shifted());
+	masstree_precondition(is_shifted());
 	s_ -= ikey_size;
 	ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, ikey_size);
 	len_ = ikey_size + 1;
