@@ -1101,14 +1101,13 @@ struct tcpfds {
 };
 #else
 class tcpfds {
-    int pipefd_;
     int nfds_;
     fd_set rfds_;
     std::vector<conn *> conns_;
 
   public:
     tcpfds(int pipefd)
-        : pipefd_(pipefd), nfds_(pipefd + 1) {
+        : nfds_(pipefd + 1) {
 	mandatory_assert(pipefd < FD_SETSIZE);
 	FD_ZERO(&rfds_);
 	FD_SET(pipefd, &rfds_);

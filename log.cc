@@ -191,6 +191,8 @@ loginfo::loginfo(logset* ls, int logindex) {
     ti_ = 0;
     f_.logset_ = ls;
     logindex_ = logindex;
+
+    (void) padding1_;
 }
 
 loginfo::~loginfo() {
