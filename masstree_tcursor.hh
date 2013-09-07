@@ -35,7 +35,7 @@ class unlocked_tcursor {
         : ka_(s, len), tablep_(&table) {
     }
 
-    bool find_unlocked(threadinfo *ti);
+    bool find_unlocked(threadinfo& ti);
 
   private:
     key_type ka_;
@@ -80,10 +80,10 @@ class tcursor {
 	return n_->node_ts_;
     }
 
-    inline bool find_locked(threadinfo *ti);
-    inline bool find_insert(threadinfo *ti);
+    inline bool find_locked(threadinfo& ti);
+    inline bool find_insert(threadinfo& ti);
 
-    inline void finish(int answer, threadinfo *ti);
+    inline void finish(int answer, threadinfo& ti);
 
   private:
     leaf_type *n_;
@@ -98,31 +98,31 @@ class tcursor {
 	return tablep_->root_;
     }
 
-    inline node_type *get_leaf_locked(node_type *root, nodeversion_type &v, threadinfo *ti);
-    inline node_type *check_leaf_locked(node_type *root, nodeversion_type v, threadinfo *ti);
-    inline node_type *check_leaf_insert(node_type *root, nodeversion_type v, threadinfo *ti);
-    static inline node_type *insert_marker() {
-	return reinterpret_cast<node_type *>(uintptr_t(1));
+    inline node_type* get_leaf_locked(node_type* root, nodeversion_type& v, threadinfo& ti);
+    inline node_type* check_leaf_locked(node_type* root, nodeversion_type v, threadinfo& ti);
+    inline node_type* check_leaf_insert(node_type* root, nodeversion_type v, threadinfo& ti);
+    static inline node_type* insert_marker() {
+	return reinterpret_cast<node_type*>(uintptr_t(1));
     }
-    static inline node_type *found_marker() {
-	return reinterpret_cast<node_type *>(uintptr_t(0));
+    static inline node_type* found_marker() {
+	return reinterpret_cast<node_type*>(uintptr_t(0));
     }
 
-    node_type *finish_split(threadinfo *ti);
+    node_type* finish_split(threadinfo& ti);
     inline void finish_insert();
-    inline bool finish_remove(threadinfo *ti);
+    inline bool finish_remove(threadinfo& ti);
 
-    static void collapse(internode_type *p, ikey_type ikey,
-                         basic_table<P> &table, Str prefix, threadinfo *ti);
+    static void collapse(internode_type* p, ikey_type ikey,
+                         basic_table<P>& table, Str prefix, threadinfo& ti);
     /** Remove @a leaf from the Masstree rooted at @a rootp.
      * @param prefix String defining the path to the tree containing this leaf.
      *   If removing a leaf in layer 0, @a prefix is empty.
      *   If removing, for example, the node containing key "01234567ABCDEF" in the layer-1 tree
      *   rooted at "01234567", then @a prefix should equal "01234567". */
-    static bool remove_leaf(leaf_type *leaf,
-                            basic_table<P> &table, Str prefix, threadinfo *ti);
+    static bool remove_leaf(leaf_type* leaf,
+                            basic_table<P>& table, Str prefix, threadinfo& ti);
 
-    bool gc_layer(threadinfo *ti);
+    bool gc_layer(threadinfo& ti);
     friend struct gc_layer_rcu_callback<P>;
 };
 

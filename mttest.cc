@@ -299,7 +299,7 @@ template <typename T> inline void kvtest_print(const T &table, FILE *f, int inde
     table.print(f, indent);
 }
 
-template <typename T> inline void kvtest_json_stats(T &table, Json &j, threadinfo *ti) {
+template <typename T> inline void kvtest_json_stats(T& table, Json& j, threadinfo& ti) {
     table.json_stats(j, ti);
 }
 
@@ -307,19 +307,19 @@ template <typename T>
 void kvtest_client<T>::get(long ikey) {
     quick_istr key(ikey);
     q_[0].begin_get1(key.string());
-    (void) table_->get(q_[0], ti_);
+    (void) table_->get(q_[0], *ti_);
 }
 
 template <typename T>
 bool kvtest_client<T>::get_sync(const Str &key) {
     q_[0].begin_get1(key);
-    return table_->get(q_[0], ti_);
+    return table_->get(q_[0], *ti_);
 }
 
 template <typename T>
 bool kvtest_client<T>::get_sync(const Str &key, Str &value) {
     q_[0].begin_get1(key);
-    if (table_->get(q_[0], ti_)) {
+    if (table_->get(q_[0], *ti_)) {
 	value = q_[0].get1_value();
 	return true;
     } else
@@ -329,7 +329,7 @@ bool kvtest_client<T>::get_sync(const Str &key, Str &value) {
 template <typename T>
 void kvtest_client<T>::get_check(const Str &key, const Str &expected) {
     q_[0].begin_get1(key);
-    if (!table_->get(q_[0], ti_))
+    if (!table_->get(q_[0], *ti_))
 	fail("get(%.*s) failed (expected %.*s)\n", key.len, key.s,
 	     expected.len, expected.s);
     else {
@@ -345,7 +345,7 @@ template <typename T>
 void kvtest_client<T>::get_col_check(const Str &key, int col,
 				     const Str &expected) {
     q_[0].begin_get1(key, col);
-    if (!table_->get(q_[0], ti_))
+    if (!table_->get(q_[0], *ti_))
 	fail("get.%d(%.*s) failed (expected %.*s)\n",
 	     col, key.len, key.s, expected.len, expected.s);
     else {
@@ -365,7 +365,7 @@ void kvtest_client<T>::many_get_check(int nk, long ikey[], long iexpected[]) {
       ka[i+nk].set(iexpected[i]);
       q_[i].begin_get1(ka[i].string());
     }
-    table_->many_get(q_, nk, ti_);
+    table_->many_get(q_, nk, *ti_);
     for(int i = 0; i < nk; i++){
       Str val = q_[i].get1_value();
       if (ka[i+nk] != val){
@@ -384,7 +384,7 @@ void kvtest_client<T>::scan_sync(const Str &firstkey, int n,
 	kvo_ = new_kvout(-1, 2048);
     kvout_reset(kvo_);
     q_[0].begin_scan1(firstkey, n, kvo_);
-    table_->scan(q_[0], ti_);
+    table_->scan(q_[0], *ti_);
     output_scan(keys, values);
 }
 
@@ -396,7 +396,7 @@ void kvtest_client<T>::rscan_sync(const Str &firstkey, int n,
 	kvo_ = new_kvout(-1, 2048);
     kvout_reset(kvo_);
     q_[0].begin_scan1(firstkey, n, kvo_);
-    table_->rscan(q_[0], ti_);
+    table_->rscan(q_[0], *ti_);
     output_scan(keys, values);
 }
 
@@ -423,7 +423,7 @@ void kvtest_client<T>::output_scan(std::vector<Str> &keys,
 template <typename T>
 void kvtest_client<T>::put(const Str &key, const Str &value) {
     q_[0].begin_replace(key, value);
-    table_->replace(q_[0], ti_);
+    table_->replace(q_[0], *ti_);
 }
 
 template <typename T>
@@ -432,7 +432,7 @@ void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
     q_[0].begin_put(key, row_type::make_put_col_request(kvo_, col, value));
-    table_->put(q_[0], ti_);
+    table_->put(q_[0], *ti_);
 #else
     (void) key, (void) col, (void) value;
     assert(0);
@@ -441,7 +441,7 @@ void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
 
 template <typename T> inline bool kvtest_remove(kvtest_client<T> &client, const Str &key) {
     client.q_[0].begin_remove(key);
-    return client.table_->remove(client.q_[0], client.ti_);
+    return client.table_->remove(client.q_[0], *client.ti_);
 }
 
 template <typename T>
@@ -522,7 +522,7 @@ struct test_thread {
     static void *go(void *arg) {
 	if (!table_) {
 	    table_ = new T;
-	    table_->initialize((threadinfo *) arg);
+	    table_->initialize(*(threadinfo *) arg);
 	    //Masstree::default_table::test((threadinfo *) arg);
 	    return 0;
 	}
@@ -573,7 +573,7 @@ struct test_thread {
 	    kvtest_print(*table_, stdout, 0, tt.client_.ti_);
 	if (at == 1 && json_stats) {
 	    Json j;
-	    kvtest_json_stats(*table_, j, tt.client_.ti_);
+	    kvtest_json_stats(*table_, j, *tt.client_.ti_);
 	    if (j) {
 		fprintf(stderr, "%s\n", j.unparse(Json::indent_depth(4).tab_width(2).newline_terminator(true)).c_str());
 		tt.client_.json_.merge(j);

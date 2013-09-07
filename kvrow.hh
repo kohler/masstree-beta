@@ -386,8 +386,8 @@ struct query_scanner {
     query_scanner(query<R> &q)
 	: q_(q) {
     }
-    bool operator()(Str key, R* value, threadinfo* ti) {
-	return q_.scanemit(key, value, ti);
+    bool operator()(Str key, R* value, threadinfo& ti) {
+	return q_.scanemit(key, value, &ti);
     }
 };
 

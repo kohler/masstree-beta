@@ -17,7 +17,6 @@
 #define MASSTREE_PRINT_HH
 #include "masstree_struct.hh"
 #include <stdio.h>
-class threadinfo;
 
 namespace Masstree {
 

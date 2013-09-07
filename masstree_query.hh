@@ -37,33 +37,33 @@ class query_table {
 	return table_;
     }
 
-    void initialize(threadinfo* ti) {
+    void initialize(threadinfo& ti) {
         table_.initialize(ti);
     }
-    void reinitialize(threadinfo* ti) {
+    void reinitialize(threadinfo& ti) {
         table_.reinitialize(ti);
     }
 
-    bool get(query<row_type>& q, threadinfo* ti) const;
-    void scan(query<row_type>& q, threadinfo* ti) const;
-    void rscan(query<row_type>& q, threadinfo* ti) const;
+    bool get(query<row_type>& q, threadinfo& ti) const;
+    void scan(query<row_type>& q, threadinfo& ti) const;
+    void rscan(query<row_type>& q, threadinfo& ti) const;
 
-    result_t put(query<row_type>& q, threadinfo* ti);
-    void replace(query<row_type>& q, threadinfo* ti);
-    bool remove(query<row_type>& q, threadinfo* ti);
+    result_t put(query<row_type>& q, threadinfo& ti);
+    void replace(query<row_type>& q, threadinfo& ti);
+    bool remove(query<row_type>& q, threadinfo& ti);
 
-    void replay(replay_query<row_type>& q, threadinfo* ti);
+    void replay(replay_query<row_type>& q, threadinfo& ti);
     void checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
-                            threadinfo* ti);
+                            threadinfo& ti);
 
     void findpivots(Str* pv, int npv) const;
 
     void stats(FILE* f);
-    void json_stats(lcdf::Json& j, threadinfo* ti);
+    void json_stats(lcdf::Json& j, threadinfo& ti);
 
     void print(FILE* f, int indent) const;
 
-    static void test(threadinfo* ti);
+    static void test(threadinfo& ti);
 
     static const char* name() {
 	return "mb";

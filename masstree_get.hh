@@ -20,7 +20,7 @@
 namespace Masstree {
 
 template <typename P>
-bool unlocked_tcursor<P>::find_unlocked(threadinfo *ti)
+bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 {
     leafvalue<P> entry = leafvalue<P>::make_empty();
     bool ksuf_match = false;
@@ -46,7 +46,7 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo *ti)
 	ksuf_match = n->ksuf_equals(kp, ka_, keylenx);
     }
     if (n->has_changed(v)) {
-	ti->mark(threadcounter(tc_stable_leaf_insert + n->simple_has_split(v)));
+	ti.mark(threadcounter(tc_stable_leaf_insert + n->simple_has_split(v)));
 	n = forward_at_leaf(n, v, ka_, ti);
 	goto forward;
     }
@@ -69,7 +69,7 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo *ti)
 
 template <typename P>
 inline bool basic_table<P>::get(Str key, value_type &value,
-                                threadinfo *ti) const
+                                threadinfo& ti) const
 {
     unlocked_tcursor<P> lp(*this, key);
     bool found = lp.find_unlocked(ti);
@@ -79,9 +79,9 @@ inline bool basic_table<P>::get(Str key, value_type &value,
 }
 
 template <typename P>
-inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
-                                                 nodeversion_type &v,
-                                                 threadinfo *ti)
+inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
+                                                 nodeversion_type& v,
+                                                 threadinfo& ti)
 {
     nodeversion_type oldv = v;
     typename permuter_type::storage_type old_perm;
@@ -90,7 +90,7 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
     n_->prefetch();
 
     if (!ka_.has_suffix())
-	v = n_->lock(oldv, ti->lock_fence(tc_leaf_lock));
+	v = n_->lock(oldv, ti.lock_fence(tc_leaf_lock));
     else {
 	// First, look up without locking.
 	// The goal is to avoid dirtying cache lines on upper layers of a long
@@ -110,7 +110,7 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
 	}
 
 	// Otherwise lock.
-	v = n_->lock(oldv, ti->lock_fence(tc_leaf_lock));
+	v = n_->lock(oldv, ti.lock_fence(tc_leaf_lock));
 
 	// Maybe the old position works.
 	if (likely(!v.deleted()) && !n_->has_changed(oldv, old_perm)) {
@@ -143,22 +143,22 @@ inline node_base<P> *tcursor<P>::get_leaf_locked(node_type *root,
 		   || compare(ka_.ikey(), next->ikey_bound()) < 0)
 	    goto found;
 	n_->unlock(v);
-	ti->mark(tc_leaf_retry);
-	ti->mark(tc_leaf_walk);
+	ti.mark(tc_leaf_retry);
+	ti.mark(tc_leaf_walk);
 	do {
 	    n_ = next;
 	    oldv = n_->stable();
 	} while (!unlikely(oldv.deleted()) && (next = n_->safe_next())
 		 && compare(ka_.ikey(), next->ikey_bound()) >= 0);
 	n_->prefetch();
-	v = n_->lock(oldv, ti->lock_fence(tc_leaf_lock));
+	v = n_->lock(oldv, ti.lock_fence(tc_leaf_lock));
     }
 }
 
 template <typename P>
-inline node_base<P> *tcursor<P>::check_leaf_locked(node_type *root,
+inline node_base<P>* tcursor<P>::check_leaf_locked(node_type* root,
                                                    nodeversion_type v,
-                                                   threadinfo *ti)
+                                                   threadinfo& ti)
 {
     if (node_type *next_root = get_leaf_locked(root, v, ti))
 	return next_root;
@@ -173,7 +173,7 @@ inline node_base<P> *tcursor<P>::check_leaf_locked(node_type *root,
 }
 
 template <typename P>
-bool tcursor<P>::find_locked(threadinfo *ti)
+bool tcursor<P>::find_locked(threadinfo& ti)
 {
     nodeversion_type v;
     node_type *root = tablep_->root_;

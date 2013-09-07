@@ -19,11 +19,11 @@
 namespace Masstree {
 
 template <typename P>
-inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
+inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
                                                    nodeversion_type v,
-                                                   threadinfo *ti)
+                                                   threadinfo& ti)
 {
-    if (node_type *next_root = get_leaf_locked(root, v, ti))
+    if (node_type* next_root = get_leaf_locked(root, v, ti))
 	return next_root;
 
     if (kp_ >= 0) {
@@ -50,7 +50,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 	    nl->assign_initialize(1, kc <= 0 ? ka_ : oka, ti);
 	nl->lv_[kc > 0] = n_->lv_[kp_];
 	if (kc != 0) {
-	    nl->lock(*nl, ti->lock_fence(tc_leaf_lock));
+	    nl->lock(*nl, ti.lock_fence(tc_leaf_lock));
 	    nl->lv_[kc < 0] = leafvalue_type::make_empty();
 	}
 	if (kc <= 0)
@@ -121,7 +121,7 @@ inline node_base<P> *tcursor<P>::check_leaf_insert(node_type *root,
 }
 
 template <typename P>
-bool tcursor<P>::find_insert(threadinfo *ti)
+bool tcursor<P>::find_insert(threadinfo& ti)
 {
     node_type *root = tablep_->root_;
     nodeversion_type v;
@@ -146,7 +146,7 @@ void tcursor<P>::finish_insert()
 }
 
 template <typename P>
-inline void tcursor<P>::finish(int state, threadinfo* ti)
+inline void tcursor<P>::finish(int state, threadinfo& ti)
 {
     if (state < 0 && (state_ & 1)) {
         if (finish_remove(ti))
@@ -157,7 +157,7 @@ inline void tcursor<P>::finish(int state, threadinfo* ti)
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::modify(Str key, F& f, threadinfo* ti)
+inline int basic_table<P>::modify(Str key, F& f, threadinfo& ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_locked(ti);
@@ -171,12 +171,12 @@ inline int basic_table<P>::modify(Str key, F& f, threadinfo* ti)
 }
 
 template <typename P> template <typename F>
-inline int basic_table<P>::modify_insert(Str key, F& f, threadinfo* ti)
+inline int basic_table<P>::modify_insert(Str key, F& f, threadinfo& ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_insert(ti);
     if (!found)
-	ti->advance_timestamp(lp.node_timestamp());
+	ti.advance_timestamp(lp.node_timestamp());
     int answer = f(key, found, lp.value(), ti, lp.node_timestamp());
     lp.finish(answer, ti);
     return answer;

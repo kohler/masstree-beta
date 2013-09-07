@@ -208,7 +208,7 @@ template <> struct has_threadcounter<0> {
 struct rcu_callback {
     virtual ~rcu_callback() {
     }
-    virtual void operator()(threadinfo *ti) = 0;
+    virtual void operator()(threadinfo& ti) = 0;
 };
 
 class threadinfo {
@@ -411,7 +411,7 @@ class threadinfo {
 	if (limbo_epoch_ && (gc_epoch - limbo_epoch_) > 2)
 	    hard_rcu_quiesce();
     }
-    void rcu_register(rcu_callback *cb) {
+    void rcu_register(rcu_callback* cb) {
 	record_rcu(cb, -1);
     }
 
@@ -440,7 +440,7 @@ class threadinfo {
 	    p = memdebug::check_free_after_rcu(p, freetype);
 	    ::free(p);
 	} else if (freetype == -1)
-	    (*static_cast<rcu_callback *>(p))(this);
+	    (*static_cast<rcu_callback *>(p))(*this);
 	else {
 	    p = memdebug::check_free_after_rcu(p, freetype);
 	    int nl = freetype & 255;
@@ -449,7 +449,7 @@ class threadinfo {
 	}
     }
 
-    void record_rcu(void *ptr, int freetype) {
+    void record_rcu(void* ptr, int freetype) {
 	if (recovering && freetype == (memtag_value << 8)) {
 	    free_rcu(ptr, freetype);
 	    return;

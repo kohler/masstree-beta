@@ -253,7 +253,7 @@ void kvtest_client::get(long ikey, Str *value)
 {
     quick_istr key(ikey);
     q_[0].begin_get1(key.string());
-    if (tree->get(q_[0], ti_))
+    if (tree->get(q_[0], *ti_))
 	*value = q_[0].get1_value();
     else
 	*value = Str();
@@ -262,13 +262,13 @@ void kvtest_client::get(long ikey, Str *value)
 void kvtest_client::get(const Str &key)
 {
     q_[0].begin_get1(key);
-    (void) tree->get(q_[0], ti_);
+    (void) tree->get(q_[0], *ti_);
 }
 
 void kvtest_client::get_check(const Str &key, const Str &expected)
 {
     q_[0].begin_get1(key);
-    if (!tree->get(q_[0], ti_)) {
+    if (!tree->get(q_[0], *ti_)) {
 	fail("get(%.*s) failed (expected %.*s)\n", key.len, key.s, expected.len, expected.s);
         return;
     }
@@ -283,7 +283,7 @@ void kvtest_client::get_check(const Str &key, const Str &expected)
 void kvtest_client::get_col_check(const Str &key, int col, const Str &expected)
 {
     q_[0].begin_get1(key, col);
-    if (!tree->get(q_[0], ti_)) {
+    if (!tree->get(q_[0], *ti_)) {
 	fail("get.%d(%.*s) failed (expected %.*s)\n", col, key.len, key.s,
 	     expected.len, expected.s);
         return;
@@ -300,14 +300,14 @@ void kvtest_client::get_col_check(const Str &key, int col, const Str &expected)
 bool kvtest_client::get_sync(long ikey) {
     quick_istr key(ikey);
     q_[0].begin_get1(key.string());
-    return tree->get(q_[0], ti_);
+    return tree->get(q_[0], *ti_);
 }
 
 void kvtest_client::put(const Str &key, const Str &value) {
     while (failing)
 	/* do nothing */;
     q_[0].begin_replace(key, value);
-    (void) tree->replace(q_[0], ti_);
+    (void) tree->replace(q_[0], *ti_);
     if (ti_->ti_log) // NB may block
 	ti_->ti_log->record(logcmd_put1, q_[0].query_times(), key, value);
 }
@@ -320,7 +320,7 @@ void kvtest_client::put_col(const Str &key, int col, const Str &value) {
 	kvo_ = new_kvout(-1, 2048);
     Str req = row_type::make_put_col_request(kvo_, col, value);
     q_[0].begin_put(key, req);
-    (void) tree->put(q_[0], ti_);
+    (void) tree->put(q_[0], *ti_);
     if (ti_->ti_log) // NB may block
 	ti_->ti_log->record(logcmd_put, q_[0].query_times(), key, req);
 #else
@@ -332,7 +332,7 @@ void kvtest_client::put_col(const Str &key, int col, const Str &value) {
 bool kvtest_client::remove_sync(long ikey) {
     quick_istr key(ikey);
     q_[0].begin_remove(key.string());
-    bool removed = tree->remove(q_[0], ti_);
+    bool removed = tree->remove(q_[0], *ti_);
     if (removed && ti_->ti_log) // NB may block
 	ti_->ti_log->record(logcmd_remove, q_[0].query_times(), key.string(), Str());
     return removed;
@@ -724,7 +724,7 @@ main(int argc, char *argv[])
 
   initial_timestamp = timestamp();
   tree = new Masstree::default_table;
-  tree->initialize(main_ti);
+  tree->initialize(*main_ti);
   printf("%s, %s, pin-threads %s, ", tree->name(), row_type::name(),
          pinthreads ? "enabled" : "disabled");
   if(logging){
@@ -1024,7 +1024,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
     KVW(kvout, rsm.seq);
     q.begin_get(Str(rsm.key, rsm.keylen), Str(rsm.req, rsm.reqlen), kvout);
     // XXX: fix table_lookup, which should have its own row_type
-    bool val_exists = tree->get(q, ti);
+    bool val_exists = tree->get(q, *ti);
     if(!val_exists){
       //printf("no val for key %.*s\n", rsm.keylen, rsm.key);
       KVW(kvout, (short)-1);
@@ -1032,7 +1032,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
   } else if (rsm.cmd == Cmd_Put || rsm.cmd == Cmd_Put_Status) { // insert or update
       Str key(rsm.key, rsm.keylen), req(rsm.req, rsm.reqlen);
       q.begin_put(key, req);
-      int status = tree->put(q, ti);
+      int status = tree->put(q, *ti);
       if (ti->ti_log) // NB may block
 	  ti->ti_log->record(logcmd_put, q.query_times(), key, req);
       KVW(kvout, rsm.seq);
@@ -1041,7 +1041,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
   } else if(rsm.cmd == Cmd_Remove){ // remove
       Str key(rsm.key, rsm.keylen);
       q.begin_remove(key);
-      bool removed = tree->remove(q, ti);
+      bool removed = tree->remove(q, *ti);
       if (removed && ti->ti_log) // NB may block
 	  ti->ti_log->record(logcmd_remove, q.query_times(), key, Str());
       KVW(kvout, rsm.seq);
@@ -1051,7 +1051,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
     KVW(kvout, rsm.seq);
     if (rsm.numpairs > 0) {
       q.begin_scan(Str(rsm.key, rsm.keylen), rsm.numpairs, Str(rsm.req, rsm.reqlen), kvout);
-      tree->scan(q, ti);
+      tree->scan(q, *ti);
     }
     KVW(kvout, (int)0);
   }
@@ -1325,7 +1325,7 @@ void insert_from_checkpoint(char *p, threadinfo *ti) {
     int vlen = *(int*)(p + keylen + 1 + sizeof(ts));
     Str key(p, keylen);
     Str value(p + keylen + 1 + sizeof(ts) + sizeof(vlen), vlen);
-    tree->checkpoint_restore(key, value, ts, ti);
+    tree->checkpoint_restore(key, value, ts, *ti);
 }
 
 // read a checkpoint, insert key/value pairs into tree.
@@ -1617,7 +1617,7 @@ conc_filecheckpoint(threadinfo *ti)
   c->vals = new_bufkvout();
   c->ind = new_bufkvout();
   double t0 = now();
-  tree->scan(c->q, ti);
+  tree->scan(c->q, *ti);
   char path[256];
   sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d",
           ckpdirs[ti->ti_index % ckpdirs.size()],

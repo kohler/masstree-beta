@@ -77,7 +77,7 @@ class node_base : public make_nodeversion<P>::type {
     inline bool has_parent() const {
         return parent_exists(parent());
     }
-    inline internode_type* locked_parent(threadinfo* ti) const;
+    inline internode_type* locked_parent(threadinfo& ti) const;
     inline void set_parent(base_type* p) {
 	if (this->isleaf())
 	    static_cast<leaf_type*>(this)->parent_ = p;
@@ -117,13 +117,13 @@ class internode : public node_base<P> {
 	: node_base<P>(false), nkeys_(0), parent_() {
     }
 
-    static internode<P>* make(threadinfo* ti) {
-	void* ptr = ti->allocate_aligned(sizeof(internode<P>),
-                                         memtag_masstree_internode);
+    static internode<P>* make(threadinfo& ti) {
+	void* ptr = ti.allocate_aligned(sizeof(internode<P>),
+                                        memtag_masstree_internode);
 	internode<P>* n = new(ptr) internode<P>;
 	assert(n);
 	if (P::debug_level > 0)
-	    n->created_at_[0] = ti->operation_timestamp();
+	    n->created_at_[0] = ti.operation_timestamp();
 	return n;
     }
 
@@ -169,9 +169,8 @@ class internode : public node_base<P> {
 
     void print(FILE* f, const char* prefix, int indent, int kdepth);
 
-    void deallocate_rcu(threadinfo* ti) {
-	ti->deallocate_aligned_rcu(this, sizeof(*this),
-                                   memtag_masstree_internode);
+    void deallocate_rcu(threadinfo& ti) {
+	ti.deallocate_aligned_rcu(this, sizeof(*this), memtag_masstree_internode);
     }
 };
 
@@ -266,13 +265,13 @@ class leaf : public node_base<P> {
 	    new((void *)&iksuf_[0]) stringbag<uint16_t>(width, sz - sizeof(*this));
     }
 
-    static leaf<P>* make(int sb_size, kvtimestamp_t node_ts, threadinfo* ti) {
-	size_t sz = ti->aligned_size(sizeof(leaf<P>) + std::min(sb_size, 128));
-	void* ptr = ti->allocate_aligned(sz, memtag_masstree_leaf);
+    static leaf<P>* make(int sb_size, kvtimestamp_t node_ts, threadinfo& ti) {
+	size_t sz = ti.aligned_size(sizeof(leaf<P>) + std::min(sb_size, 128));
+	void* ptr = ti.allocate_aligned(sz, memtag_masstree_leaf);
 	leaf<P>* n = new(ptr) leaf<P>(sz, node_ts);
 	assert(n);
 	if (P::debug_level > 0)
-	    n->created_at_[0] = ti->operation_timestamp();
+	    n->created_at_[0] = ti.operation_timestamp();
 	return n;
     }
 
@@ -369,32 +368,32 @@ class leaf : public node_base<P> {
 	nremoved_ = width + 1;
     }
 
-    void assign(int p, const key_type& ka, threadinfo* ti) {
+    void assign(int p, const key_type& ka, threadinfo& ti) {
 	lv_[p] = leafvalue_type::make_empty();
 	if (ka.has_suffix())
 	    assign_ksuf(p, ka.suffix(), false, ti);
 	ikey0_[p] = ka.ikey();
 	keylenx_[p] = ka.ikeylen();
     }
-    void assign_initialize(int p, const key_type& ka, threadinfo* ti) {
+    void assign_initialize(int p, const key_type& ka, threadinfo& ti) {
 	lv_[p] = leafvalue_type::make_empty();
 	if (ka.has_suffix())
 	    assign_ksuf(p, ka.suffix(), true, ti);
 	ikey0_[p] = ka.ikey();
 	keylenx_[p] = ka.ikeylen();
     }
-    void assign_initialize(int p, leaf<P>* x, int xp, threadinfo* ti) {
+    void assign_initialize(int p, leaf<P>* x, int xp, threadinfo& ti) {
 	lv_[p] = x->lv_[xp];
 	if (x->has_ksuf(xp))
 	    assign_ksuf(p, x->ksuf(xp), true, ti);
 	ikey0_[p] = x->ikey0_[xp];
 	keylenx_[p] = x->keylenx_[xp];
     }
-    void assign_ksuf(int p, Str s, bool initializing, threadinfo* ti) {
+    void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
 	if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
 	    hard_assign_ksuf(p, s, initializing, ti);
     }
-    void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo* ti);
+    void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
 
     void prefetch() const {
 	for (int i = 64; i < std::min(16 * width + 1, 4 * 64); i += 64)
@@ -413,24 +412,23 @@ class leaf : public node_base<P> {
 	return reinterpret_cast<leaf<P>*>(next_.x & ~(uintptr_t) 1);
     }
 
-    void deallocate_rcu(threadinfo* ti) {
+    void deallocate_rcu(threadinfo& ti) {
 	if (ksuf_)
-	    ti->deallocate_rcu(ksuf_, ksuf_->allocated_size(),
-			       memtag_masstree_ksuffixes);
-	ti->deallocate_aligned_rcu(this, allocated_size(),
-				   memtag_masstree_leaf);
+	    ti.deallocate_rcu(ksuf_, ksuf_->allocated_size(),
+                              memtag_masstree_ksuffixes);
+	ti.deallocate_aligned_rcu(this, allocated_size(), memtag_masstree_leaf);
     }
 };
 
 
 template <typename P>
-void basic_table<P>::initialize(threadinfo *ti) {
+void basic_table<P>::initialize(threadinfo& ti) {
     masstree_precondition(!root_);
     reinitialize(ti);
 }
 
 template <typename P>
-void basic_table<P>::reinitialize(threadinfo *ti) {
+void basic_table<P>::reinitialize(threadinfo& ti) {
     typename node_type::leaf_type *n = node_type::leaf_type::make(0, 0, ti);
     n->next_.ptr = n->prev_ = 0;
     n->mark_root();
@@ -453,7 +451,7 @@ void basic_table<P>::reinitialize(threadinfo *ti) {
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
 void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
-			       threadinfo* ti) {
+			       threadinfo& ti) {
     if (ksuf_ && ksuf_->assign(p, s))
 	return;
 
@@ -475,7 +473,7 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
     while (sz < csz + stringbag<uint32_t>::overhead(width) + s.len)
 	sz *= 2;
 
-    void *ptr = ti->allocate(sz, memtag_masstree_ksuffixes);
+    void *ptr = ti.allocate(sz, memtag_masstree_ksuffixes);
     stringbag<uint32_t> *nksuf = new(ptr) stringbag<uint32_t>(width, sz);
     permuter_type perm(permutation_);
     int n = initializing ? p : perm.size();
@@ -501,8 +499,8 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
 	extrasize64_ = -extrasize64_ - 1;
 
     if (oksuf)
-	ti->deallocate_rcu(oksuf, oksuf->allocated_size(),
-                           memtag_masstree_ksuffixes);
+	ti.deallocate_rcu(oksuf, oksuf->allocated_size(),
+                          memtag_masstree_ksuffixes);
 }
 
 } // namespace Masstree

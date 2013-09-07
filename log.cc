@@ -596,16 +596,16 @@ logreplay::replayandclean1(replay_query<row_type> &q,
 	if (lr.key.len) { // skip empty entry
 	    if (lr.command == logcmd_put) {
 		q.begin_replay_put(lr.key, lr.val, lr.ts);
-		tree->replay(q, ti);
+		tree->replay(q, *ti);
 	    } else if (lr.command == logcmd_put1) {
 		q.begin_replay_put1(lr.key, lr.val, lr.ts);
-		tree->replay(q, ti);
+		tree->replay(q, *ti);
 	    } else if (lr.command == logcmd_modify) {
 		q.begin_replay_modify(lr.key, lr.val, lr.ts, lr.prev_ts);
-		tree->replay(q, ti);
+		tree->replay(q, *ti);
 	    } else if (lr.command == logcmd_remove) {
 		q.begin_replay_remove(lr.key, lr.ts, ti);
-		tree->replay(q, ti);
+		tree->replay(q, *ti);
 	    }
 	    ++nr;
 	    if (nr % 100000 == 0)

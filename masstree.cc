@@ -35,75 +35,75 @@
 namespace Masstree {
 
 template <typename P>
-bool query_table<P>::get(query<row_type>& q, threadinfo* ti) const {
+bool query_table<P>::get(query<row_type>& q, threadinfo& ti) const {
     unlocked_tcursor<P> lp(table_, q.key_);
     bool found = lp.find_unlocked(ti);
     if (found)
-        found = q.emitrow(lp.datum_, ti);
+        found = q.emitrow(lp.datum_, &ti);
     return found;
 }
 
 template <typename P>
-result_t query_table<P>::put(query<row_type>& q, threadinfo* ti) {
+result_t query_table<P>::put(query<row_type>& q, threadinfo& ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
     if (!found)
-	ti->advance_timestamp(lp.node_timestamp());
-    result_t r = q.apply_put(lp.value(), found, ti);
+	ti.advance_timestamp(lp.node_timestamp());
+    result_t r = q.apply_put(lp.value(), found, &ti);
     lp.finish(1, ti);
     return r;
 }
 
 template <typename P>
-void query_table<P>::replace(query<row_type>& q, threadinfo* ti) {
+void query_table<P>::replace(query<row_type>& q, threadinfo& ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
     if (!found)
-	ti->advance_timestamp(lp.node_timestamp());
-    q.apply_replace(lp.value(), found, ti);
+	ti.advance_timestamp(lp.node_timestamp());
+    q.apply_replace(lp.value(), found, &ti);
     lp.finish(1, ti);
 }
 
 template <typename P>
-void query_table<P>::replay(replay_query<row_type>& q, threadinfo* ti) {
+void query_table<P>::replay(replay_query<row_type>& q, threadinfo& ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
     if (!found)
-	ti->advance_timestamp(lp.node_timestamp());
-    q.apply(lp.value(), found, ti);
+	ti.advance_timestamp(lp.node_timestamp());
+    q.apply(lp.value(), found, &ti);
     lp.finish(1, ti);
 }
 
 template <typename P>
-void query_table<P>::scan(query<row_type>& q, threadinfo* ti) const {
+void query_table<P>::scan(query<row_type>& q, threadinfo& ti) const {
     query_scanner<row_type> scanf(q);
     table_.scan(q.key_, true, scanf, ti);
 }
 
 template <typename P>
-void query_table<P>::rscan(query<row_type>& q, threadinfo* ti) const {
+void query_table<P>::rscan(query<row_type>& q, threadinfo& ti) const {
     query_scanner<row_type> scanf(q);
     table_.rscan(q.key_, true, scanf, ti);
 }
 
 template <typename P>
-bool query_table<P>::remove(query<row_type>& q, threadinfo* ti) {
+bool query_table<P>::remove(query<row_type>& q, threadinfo& ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_locked(ti);
     bool removed = found
-	&& q.apply_remove(lp.value(), true, ti, &lp.node_timestamp());
+	&& q.apply_remove(lp.value(), true, &ti, &lp.node_timestamp());
     lp.finish(removed ? -1 : 0, ti);
     return removed;
 }
 
 template <typename P>
 void query_table<P>::checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
-                                        threadinfo* ti) {
+                                        threadinfo& ti) {
     tcursor<P> lp(table_, key);
     bool found = lp.find_insert(ti);
     masstree_invariant(!found);
-    ti->advance_timestamp(lp.node_timestamp());
-    lp.value() = row_type::checkpoint_read(value, ts, *ti);
+    ti.advance_timestamp(lp.node_timestamp());
+    lp.value() = row_type::checkpoint_read(value, ts, ti);
     lp.finish(1, ti);
 }
 
@@ -157,8 +157,8 @@ void query_table<P>::stats(FILE* f) {
 }
 
 template <typename P>
-static void json_stats1(node_base<P> *n, lcdf::Json &j, int layer, int depth,
-			threadinfo *ti)
+static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
+			threadinfo& ti)
 {
     if (!n)
 	return;
@@ -198,7 +198,7 @@ static void json_stats1(node_base<P> *n, lcdf::Json &j, int layer, int depth,
 }
 
 template <typename P>
-void query_table<P>::json_stats(lcdf::Json &j, threadinfo *ti)
+void query_table<P>::json_stats(lcdf::Json& j, threadinfo& ti)
 {
     using lcdf::Json;
     j["size"] = 0.0;
@@ -298,7 +298,7 @@ struct scan_tester {
 	    keylen_ = sizeof(key_);
 	}
     }
-    bool operator()(Str key, row_type *, threadinfo *) {
+    bool operator()(Str key, row_type*, threadinfo&) {
 	memcpy(key_, key.s, key.len);
 	keylen_ = key.len;
 	const char *pos = (reverse_ ? vend_[-1] : vbegin_[0]);
@@ -312,18 +312,18 @@ struct scan_tester {
 	return vbegin_ != vend_;
     }
     template <typename T>
-    int scan(T &table, threadinfo *ti) {
+    int scan(T& table, threadinfo& ti) {
 	return table.table().scan(Str(key_, keylen_), first_, *this, ti);
     }
     template <typename T>
-    int rscan(T &table, threadinfo *ti) {
+    int rscan(T& table, threadinfo& ti) {
 	return table.table().rscan(Str(key_, keylen_), first_, *this, ti);
     }
 };
 }
 
 template <typename P>
-void query_table<P>::test(threadinfo *ti) {
+void query_table<P>::test(threadinfo& ti) {
     query_table<P> t;
     t.initialize(ti);
     query<row_type> q;

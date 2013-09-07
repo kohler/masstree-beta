@@ -20,7 +20,7 @@
 namespace Masstree {
 
 template <typename P>
-bool tcursor<P>::gc_layer(threadinfo *ti)
+bool tcursor<P>::gc_layer(threadinfo& ti)
 {
     find_locked(ti);
     masstree_precondition(!n_->deleted() && !n_->deleted_layer());
@@ -56,7 +56,7 @@ bool tcursor<P>::gc_layer(threadinfo *ti)
 	internode_type *in = static_cast<internode_type *>(layer);
 	if (in->size() > 0 && !in->has_split())
 	    return false;
-	in->lock(*in, ti->lock_fence(tc_internode_lock));
+	in->lock(*in, ti.lock_fence(tc_internode_lock));
 	if (in->has_split() && !in->has_parent())
 	    in->mark_root();
 	if (in->size() > 0 || in->has_split()) {
@@ -78,7 +78,7 @@ bool tcursor<P>::gc_layer(threadinfo *ti)
     leaf_type *lf = static_cast<leaf_type *>(layer);
     if (lf->size() > 0 && !lf->has_split())
 	return false;
-    lf->lock(*lf, ti->lock_fence(tc_leaf_lock));
+    lf->lock(*lf, ti.lock_fence(tc_leaf_lock));
     if (lf->has_split() && !lf->has_parent())
 	lf->mark_root();
     if (lf->size() > 0 || lf->has_split()) {
@@ -103,38 +103,38 @@ struct gc_layer_rcu_callback : public rcu_callback {
     basic_table<P> *tablep_;
     int len_;
     char s_[0];
-    void operator()(threadinfo *ti);
+    void operator()(threadinfo& ti);
     size_t size() const {
 	return len_ + sizeof(*this);
     }
-    static void make(basic_table<P> &table, Str prefix, threadinfo *ti);
+    static void make(basic_table<P>& table, Str prefix, threadinfo& ti);
 };
 
 template <typename P>
-void gc_layer_rcu_callback<P>::operator()(threadinfo *ti)
+void gc_layer_rcu_callback<P>::operator()(threadinfo& ti)
 {
     tcursor<P> lp(*tablep_, s_, len_);
     bool do_remove = lp.gc_layer(ti);
     if (!do_remove || !lp.finish_remove(ti))
 	lp.n_->unlock();
-    ti->deallocate(this, size(), memtag_masstree_gclayer);
+    ti.deallocate(this, size(), memtag_masstree_gclayer);
 }
 
 template <typename P>
-void gc_layer_rcu_callback<P>::make(basic_table<P> &table, Str prefix,
-                                    threadinfo *ti)
+void gc_layer_rcu_callback<P>::make(basic_table<P>& table, Str prefix,
+                                    threadinfo& ti)
 {
-    size_t sz = prefix.len + sizeof(gc_layer_rcu_callback);
-    void *data = ti->allocate(sz, memtag_masstree_gclayer);
-    gc_layer_rcu_callback *cb = new(data) gc_layer_rcu_callback;
+    size_t sz = prefix.len + sizeof(gc_layer_rcu_callback<P>);
+    void *data = ti.allocate(sz, memtag_masstree_gclayer);
+    gc_layer_rcu_callback<P> *cb = new(data) gc_layer_rcu_callback<P>;
     cb->tablep_ = &table;
     cb->len_ = prefix.len;
     memcpy(cb->s_, prefix.s, cb->len_);
-    ti->rcu_register(cb);
+    ti.rcu_register(cb);
 }
 
 template <typename P>
-bool tcursor<P>::finish_remove(threadinfo *ti)
+bool tcursor<P>::finish_remove(threadinfo& ti)
 {
     permuter_type perm(n_->permutation_);
     perm.remove(ki_);
@@ -147,8 +147,8 @@ bool tcursor<P>::finish_remove(threadinfo *ti)
 }
 
 template <typename P>
-bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
-                             Str prefix, threadinfo *ti)
+bool tcursor<P>::remove_leaf(leaf_type* leaf, basic_table<P>& table,
+                             Str prefix, threadinfo& ti)
 {
     if (!leaf->prev_) {
 	if (!leaf->next_.ptr && !prefix.empty())
@@ -225,8 +225,8 @@ bool tcursor<P>::remove_leaf(leaf_type *leaf, basic_table<P> &table,
 }
 
 template <typename P>
-void tcursor<P>::collapse(internode_type *p, ikey_type ikey,
-                          basic_table<P> &table, Str prefix, threadinfo *ti)
+void tcursor<P>::collapse(internode_type* p, ikey_type ikey,
+                          basic_table<P>& table, Str prefix, threadinfo& ti)
 {
     masstree_precondition(p && p->locked());
 

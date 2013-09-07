@@ -41,12 +41,12 @@ struct scanstackelt {
     }
 
     template <typename H>
-    int find_initial(H &helper, key_type &ka, bool emit_equal,
-		     leafvalue_type &entry, threadinfo *ti);
+    int find_initial(H& helper, key_type& ka, bool emit_equal,
+		     leafvalue_type& entry, threadinfo& ti);
     template <typename H>
-    int find_retry(H &helper, key_type &ka, threadinfo *ti);
+    int find_retry(H& helper, key_type& ka, threadinfo& ti);
     template <typename H>
-    int find_next(H &helper, key_type &ka, leafvalue_type &entry);
+    int find_next(H& helper, key_type& ka, leafvalue_type& entry);
 
     permuter_type permutation() const {
 	return perm_;
@@ -166,8 +166,8 @@ struct reverse_scan_helper {
 
 
 template <typename P> template <typename H>
-int scanstackelt<P>::find_initial(H &helper, key_type &ka, bool emit_equal,
-				  leafvalue_type &entry, threadinfo *ti)
+int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
+				  leafvalue_type& entry, threadinfo& ti)
 {
     int kp, keylenx = 0;
     char suffixbuf[MASSTREE_MAXKEYSIZE];
@@ -196,7 +196,7 @@ int scanstackelt<P>::find_initial(H &helper, key_type &ka, bool emit_equal,
 	}
     }
     if (n_->has_changed(v_)) {
-	ti->mark(tc_leaf_retry);
+	ti.mark(tc_leaf_retry);
 	n_ = forward_at_leaf(n_, v_, ka, ti);
 	goto retry_node;
     }
@@ -225,7 +225,7 @@ int scanstackelt<P>::find_initial(H &helper, key_type &ka, bool emit_equal,
 }
 
 template <typename P> template <typename H>
-int scanstackelt<P>::find_retry(H &helper, key_type &ka, threadinfo *ti)
+int scanstackelt<P>::find_retry(H& helper, key_type& ka, threadinfo& ti)
 {
  retry:
     n_ = Masstree::reach_leaf(root_, ka, ti, v_);
@@ -298,8 +298,8 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 template <typename P> template <typename H, typename F>
 int basic_table<P>::scan(H helper,
                          Str firstkey, bool emit_firstkey,
-                         F &scanner,
-                         threadinfo *ti) const
+                         F& scanner,
+                         threadinfo& ti) const
 {
     typedef typename P::ikey_type ikey_type;
     typedef typename node_type::key_type key_type;
@@ -371,16 +371,16 @@ int basic_table<P>::scan(H helper,
 
 template <typename P> template <typename F>
 int basic_table<P>::scan(Str firstkey, bool emit_firstkey,
-                         F &scanner,
-                         threadinfo *ti) const
+                         F& scanner,
+                         threadinfo& ti) const
 {
     return scan(forward_scan_helper(), firstkey, emit_firstkey, scanner, ti);
 }
 
 template <typename P> template <typename F>
 int basic_table<P>::rscan(Str firstkey, bool emit_firstkey,
-                          F &scanner,
-                          threadinfo *ti) const
+                          F& scanner,
+                          threadinfo& ti) const
 {
     return scan(reverse_scan_helper(), firstkey, emit_firstkey, scanner, ti);
 }

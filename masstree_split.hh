@@ -89,10 +89,10 @@ typename P::ikey_type leaf_ikey(leaf<P> *nl,
 }
 
 template <typename P>
-int leaf_split(leaf<P> *nl, leaf<P> *nr,
-	       int p, const typename leaf<P>::key_type &ka,
-	       threadinfo *ti,
-	       typename P::ikey_type &split_ikey)
+int leaf_split(leaf<P>* nl, leaf<P>* nr,
+	       int p, const typename leaf<P>::key_type& ka,
+	       threadinfo& ti,
+	       typename P::ikey_type& split_ikey)
 {
     // B+tree leaf insertion.
     // Split nl, with items [0,T::width), into nl + nr, simultaneously
@@ -154,7 +154,7 @@ int leaf_split(leaf<P> *nl, leaf<P> *nr,
 
 
 template <typename P>
-node_base<P> *tcursor<P>::finish_split(threadinfo *ti)
+node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
 {
     node_type *n = n_;
     node_type *child = leaf_type::make(n_->ksuf_size(), n_->node_ts_, ti);

@@ -58,24 +58,24 @@ class basic_table {
         : root_(0) {
     }
 
-    void initialize(threadinfo *ti);
-    void reinitialize(threadinfo *ti);
+    void initialize(threadinfo& ti);
+    void reinitialize(threadinfo& ti);
 
     inline node_type *root() const {
         return root_;
     }
 
-    bool get(Str key, value_type& value, threadinfo* ti) const;
+    bool get(Str key, value_type& value, threadinfo& ti) const;
 
     template <typename F>
-    int scan(Str firstkey, bool matchfirst, F& scanner, threadinfo* ti) const;
+    int scan(Str firstkey, bool matchfirst, F& scanner, threadinfo& ti) const;
     template <typename F>
-    int rscan(Str firstkey, bool matchfirst, F& scanner, threadinfo* ti) const;
+    int rscan(Str firstkey, bool matchfirst, F& scanner, threadinfo& ti) const;
 
     template <typename F>
-    inline int modify(Str key, F& f, threadinfo* ti);
+    inline int modify(Str key, F& f, threadinfo& ti);
     template <typename F>
-    inline int modify_insert(Str key, F& f, threadinfo* ti);
+    inline int modify_insert(Str key, F& f, threadinfo& ti);
 
     inline void print(FILE* f = 0, int indent = 0) const;
 
@@ -84,7 +84,7 @@ class basic_table {
 
     template <typename H, typename F>
     int scan(H helper, Str firstkey, bool matchfirst,
-	     F& scanner, threadinfo* ti) const;
+	     F& scanner, threadinfo& ti) const;
 
     friend class unlocked_tcursor<P>;
     friend class tcursor<P>;
