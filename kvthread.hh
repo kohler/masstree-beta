@@ -203,7 +203,6 @@ class threadinfo {
 
   public:
     char buf_[64];
-    int64_t n_delta_markers_;
 
   private:
     limbo_group *limbo_head_;
