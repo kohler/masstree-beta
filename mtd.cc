@@ -45,6 +45,7 @@
 #ifdef __linux__
 #include <malloc.h>
 #endif
+#include "nodeversion.hh"
 #include "kvstats.hh"
 #include "json.hh"
 #include "kvtest.hh"
@@ -357,8 +358,8 @@ void kvtest_client::notice(const char *fmt, ...) {
 }
 
 void kvtest_client::fail(const char *fmt, ...) {
-    static spinlock failing_lock = {0};
-    static spinlock fail_message_lock = {0};
+    static nodeversion failing_lock(false);
+    static nodeversion fail_message_lock(false);
     static String fail_message;
     failing = 1;
 
@@ -369,15 +370,15 @@ void kvtest_client::fail(const char *fmt, ...) {
     if (!m)
 	m = "unknown failure";
 
-    acquire(&fail_message_lock);
+    fail_message_lock.lock();
     if (fail_message != m) {
 	fail_message = m;
 	fprintf(stderr, "%d: %s", ti_->ti_index, m.c_str());
     }
-    release(&fail_message_lock);
+    fail_message_lock.unlock();
 
     if (doprint) {
-	acquire(&failing_lock);
+	failing_lock.lock();
 	fprintf(stdout, "%d: %s", ti_->ti_index, m.c_str());
 	tree->print(stdout, 0);
 	fflush(stdout);

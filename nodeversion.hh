@@ -16,6 +16,7 @@
 #ifndef KVDB_NODEVERSION_HH
 #define KVDB_NODEVERSION_HH 1
 #include <assert.h>
+#include "compiler.hh"
 
 template <typename P>
 class basic_nodeversion { public:

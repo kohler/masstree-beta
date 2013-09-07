@@ -50,6 +50,7 @@
 #ifdef __linux__
 #include <malloc.h>
 #endif
+#include "nodeversion.hh"
 #include "kvstats.hh"
 #include "masstree_query.hh"
 #include "timestamp.hh"
@@ -476,8 +477,8 @@ void kvtest_client<T>::notice(const char *fmt, ...) {
 
 template <typename T>
 void kvtest_client<T>::fail(const char *fmt, ...) {
-    static spinlock failing_lock = {0};
-    static spinlock fail_message_lock = {0};
+    static nodeversion failing_lock(false);
+    static nodeversion fail_message_lock(false);
     static String fail_message;
 
     va_list val;
@@ -487,14 +488,14 @@ void kvtest_client<T>::fail(const char *fmt, ...) {
     if (!m)
 	m = "unknown failure";
 
-    acquire(&fail_message_lock);
+    fail_message_lock.lock();
     if (fail_message != m) {
 	fail_message = m;
 	fprintf(stderr, "%d: %s", ti_->ti_index, m.c_str());
     }
-    release(&fail_message_lock);
+    fail_message_lock.unlock();
 
-    acquire(&failing_lock);
+    failing_lock.lock();
     fprintf(stdout, "%d: %s", ti_->ti_index, m.c_str());
     kvtest_print(*table_, stdout, 0, ti_);
 

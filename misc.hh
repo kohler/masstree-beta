@@ -32,10 +32,6 @@
 #include <algorithm>
 #include <stdarg.h>
 
-struct spinlock {
-  uint8_t locked;   // Is the lock held?
-};
-
 inline void xalarm(double d) {
     double ip, fp = modf(d, &ip);
     struct itimerval x;
@@ -57,35 +53,6 @@ inline void napms(int n) /* nap n milliseconds */
     perror("nanosleep");
     exit(EXIT_FAILURE);
   }
-}
-
-inline void initlock(struct spinlock *lock)
-{
-  lock->locked = 0;
-}
-
-// Acquire the lock.
-// Loops (spins) until the lock is acquired.
-// Holding a lock for a long time may cause
-// other CPUs to waste time spinning to acquire it.
-inline void acquire(struct spinlock *lock)
-{
-  // The xchg is atomic.
-  // It also serializes, so that reads after acquire are not
-  // reordered before it.
-  while(xchg(&lock->locked, (uint8_t)1) == 1)
-    ;
-}
-
-// Release the lock.
-inline void release(struct spinlock *lock)
-{
-  // The xchg serializes, so that reads before release are
-  // not reordered after it.  (This reordering would be allowed
-  // by the Intel manuals, but does not happen on current
-  // Intel processors.  The xchg being asm volatile also keeps
-  // gcc from delaying the above assignments.)
-  xchg(&lock->locked, (uint8_t)0);
 }
 
 struct quick_istr {
