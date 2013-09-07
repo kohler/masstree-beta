@@ -13,13 +13,9 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#include "kvio.hh"
+#include "misc.hh"
+#include <unistd.h>
 #include "kvthread.hh"
-#include <stdio.h>
-#include <sys/mman.h>
-#include <algorithm>
-#include "clp.h"
-#include <ctype.h>
 
 static void *
 initialize_page(void *page, const size_t pagesize, const size_t unit)

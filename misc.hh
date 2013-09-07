@@ -15,22 +15,14 @@
  */
 #ifndef MISC_HH
 #define MISC_HH
-#include "compiler.hh"
-#include "shared_config.hh"
-#include "str.hh"
-#include "timestamp.hh"
 #include <stdio.h>
-#include <errno.h>
 #include <time.h>
 #include <sys/time.h>
-#include <math.h>
 #include <string.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <algorithm>
-#include <stdarg.h>
+#include <math.h>
+#include "str.hh"
+#include "timestamp.hh"
+#include "clp.h"
 
 inline void xalarm(double d) {
     double ip, fp = modf(d, &ip);
