@@ -356,7 +356,7 @@ inline std::ostream &operator<<(std::ostream &f, const String_base<T> &str) {
 }
 
 template <typename T>
-inline hashcode_t hashcode(const String_base<T> &x) {
+inline hashcode_t hashcode(const String_base<T>& x) {
     return String_generic::hashcode(x.data(), x.length());
 }
 
@@ -393,4 +393,15 @@ inline typename T::substring_type String_generic::trim(const T &str) {
 }
 
 } // namespace lcdf
+
+#if HAVE_STD_HASH
+# define LCDF_MAKE_STRING_HASH(type) \
+    namespace std { template <> struct hash<type>          \
+        : public unary_function<const type&, size_t> {     \
+        size_t operator()(const type& x) const noexcept {  \
+            return x.hashcode();                           \
+        } }; }
+#else
+# define LCDF_MAKE_STRING_HASH(type)
+#endif
 #endif

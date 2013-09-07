@@ -844,4 +844,6 @@ inline void swap(String& a, String& b) {
 }
 
 } // namespace lcdf
+
+LCDF_MAKE_STRING_HASH(lcdf::String)
 #endif

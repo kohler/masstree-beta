@@ -161,6 +161,14 @@ fi
 
 AC_CHECK_HEADERS([type_traits])
 
+AC_CACHE_CHECK([for std::hash], [ac_cv_have_std_hash], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <functional>],
+        [[std::hash<int> h; size_t x = h(1); return x == 0;]])],
+        [ac_cv_have_std_hash=yes], [ac_cv_have_std_hash=no])])
+if test $ac_cv_have_std_hash = yes; then
+    AC_DEFINE([HAVE_STD_HASH], [1], [Define if you have std::hash.])
+fi
+
 AC_CACHE_CHECK([for __has_trivial_copy], [ac_cv_have___has_trivial_copy], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [[long x = 1; if (__has_trivial_copy(long)) x = 0;]])], [ac_cv_have___has_trivial_copy=yes], [ac_cv_have___has_trivial_copy=no])])
 if test $ac_cv_have___has_trivial_copy = yes; then

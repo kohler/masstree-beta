@@ -104,6 +104,9 @@
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
 
+/* Define if you have std::hash. */
+#undef HAVE_STD_HASH
+
 /* Define if you have the std::is_rvalue_reference template. */
 #undef HAVE_STD_IS_RVALUE_REFERENCE
 

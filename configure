@@ -5156,6 +5156,38 @@ fi
 done
 
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for std::hash" >&5
+$as_echo_n "checking for std::hash... " >&6; }
+if ${ac_cv_have_std_hash+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <functional>
+int
+main ()
+{
+std::hash<int> h; size_t x = h(1); return x == 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  ac_cv_have_std_hash=yes
+else
+  ac_cv_have_std_hash=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have_std_hash" >&5
+$as_echo "$ac_cv_have_std_hash" >&6; }
+if test $ac_cv_have_std_hash = yes; then
+
+$as_echo "#define HAVE_STD_HASH 1" >>confdefs.h
+
+fi
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __has_trivial_copy" >&5
 $as_echo_n "checking for __has_trivial_copy... " >&6; }
 if ${ac_cv_have___has_trivial_copy+:} false; then :

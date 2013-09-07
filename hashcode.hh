@@ -17,6 +17,9 @@
 #define CLICK_HASHCODE_HH
 #include <stddef.h>
 #include <inttypes.h>
+#if HAVE_STD_HASH
+#include <functional>
+#endif
 
 // Notes about the hashcode template: On GCC 4.3.0, "template <>" is required
 // on the specializations or they aren't used.  Just plain overloaded

@@ -155,4 +155,7 @@ struct inline_string : public String_base<inline_string> {
 };
 
 } // namespace lcdf
+
+LCDF_MAKE_STRING_HASH(lcdf::Str)
+LCDF_MAKE_STRING_HASH(lcdf::inline_string)
 #endif
