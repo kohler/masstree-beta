@@ -22,7 +22,7 @@ template <typename P>
 static inline int stable_last_key_compare(const typename node_base<P>::key_type &ka,
 					  const internode<P> &n,
 					  typename internode<P>::nodeversion_type v,
-					  threadinfo& ti)
+					  typename P::threadinfo_type& ti)
 {
     while (1) {
 	int cmp = key_compare(ka, n, n.size() - 1);
@@ -36,7 +36,7 @@ template <typename P>
 static inline int stable_last_key_compare(const typename node_base<P>::key_type &ka,
 					  const leaf<P> &n,
 					  typename leaf<P>::nodeversion_type v,
-					  threadinfo& ti)
+					  typename P::threadinfo_type& ti)
 {
     while (1) {
 	typename leaf<P>::permuter_type perm(n.permutation_);
@@ -51,7 +51,7 @@ static inline int stable_last_key_compare(const typename node_base<P>::key_type 
 template <typename P>
 inline leaf<P> *reach_leaf(const node_base<P> *root,
 			   const typename node_base<P>::key_type &ka,
-			   threadinfo& ti,
+			   typename P::threadinfo_type& ti,
 			   typename node_base<P>::nodeversion_type &version)
 {
     const node_base<P> *n[2];
@@ -105,7 +105,7 @@ template <typename P>
 leaf<P> *forward_at_leaf(const leaf<P> *n,
 			 typename leaf<P>::nodeversion_type &v,
 			 const typename node_base<P>::key_type &ka,
-			 threadinfo& ti)
+			 typename P::threadinfo_type& ti)
 {
     typename leaf<P>::nodeversion_type oldv = v;
     v = n->stable_annotated(ti.stable_fence());

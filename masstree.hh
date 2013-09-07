@@ -18,7 +18,6 @@
 #include "compiler.hh"
 #include "str.hh"
 #include "ksearch.hh"
-class threadinfo;
 
 namespace Masstree {
 using lcdf::Str;
@@ -53,6 +52,7 @@ class basic_table {
     typedef P param_type;
     typedef node_base<P> node_type;
     typedef typename P::value_type value_type;
+    typedef typename P::threadinfo_type threadinfo;
 
     basic_table()
         : root_(0) {

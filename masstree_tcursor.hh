@@ -25,6 +25,7 @@ class unlocked_tcursor {
   public:
     typedef typename P::value_type value_type;
     typedef key<typename P::ikey_type> key_type;
+    typedef typename P::threadinfo_type threadinfo;
 
     value_type datum_;
 
@@ -54,6 +55,7 @@ class tcursor {
     typedef typename P::ikey_type ikey_type;
     typedef key<ikey_type> key_type;
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
+    typedef typename P::threadinfo_type threadinfo;
 
     tcursor(basic_table<P> &table, Str str)
 	: ka_(str), tablep_(&table) {

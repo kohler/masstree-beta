@@ -18,7 +18,8 @@
 #include "masstree.hh"
 #include "nodeversion.hh"
 #include "stringbag.hh"
-#include "kvthread.hh"
+#include "mtcounters.hh"
+#include "timestamp.hh"
 namespace Masstree {
 
 template <typename P>
@@ -48,6 +49,7 @@ class node_base : public make_nodeversion<P>::type {
     typedef typename P::ikey_type ikey_type;
     typedef key<ikey_type> key_type;
     typedef typename make_nodeversion<P>::type nodeversion_type;
+    typedef typename P::threadinfo_type threadinfo;
 
     node_base(bool isleaf)
 	: nodeversion_type(isleaf) {
@@ -106,6 +108,7 @@ class internode : public node_base<P> {
     typedef key<typename P::ikey_type> key_type;
     typedef typename P::ikey_type ikey_type;
     typedef typename key_bound<width, P::bound_method>::type bound_type;
+    typedef typename P::threadinfo_type threadinfo;
 
     uint8_t nkeys_;
     ikey_type ikey0_[width];
@@ -236,6 +239,7 @@ class leaf : public node_base<P> {
     typedef kpermuter<P::leaf_width> permuter_type;
     typedef typename P::ikey_type ikey_type;
     typedef typename key_bound<width, P::bound_method>::type bound_type;
+    typedef typename P::threadinfo_type threadinfo;
 
     int8_t extrasize64_;
     int8_t nremoved_;

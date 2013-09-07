@@ -28,6 +28,7 @@ struct scanstackelt {
     typedef typename P::ikey_type ikey_type;
     typedef key<ikey_type> key_type;
     typedef typename leaf_type::permuter_type permuter_type;
+    typedef typename P::threadinfo_type threadinfo;
 
     node_base<P> *root_;
     leaf<P> *n_;

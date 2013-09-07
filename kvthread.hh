@@ -15,6 +15,7 @@
  */
 #ifndef KVTHREAD_HH
 #define KVTHREAD_HH 1
+#include "mtcounters.hh"
 #include "compiler.hh"
 #include "circular_int.hh"
 #include "timestamp.hh"
@@ -25,20 +26,9 @@
 
 class threadinfo;
 class loginfo;
-extern uint64_t initial_timestamp;
 
 extern volatile uint64_t globalepoch;    // global epoch, updated regularly
 extern volatile bool recovering;
-
-enum memtag {
-    memtag_none = 0x0,
-    memtag_value = 0x1,
-    memtag_limbo = 0x5,
-    memtag_masstree_leaf = 0x10,
-    memtag_masstree_internode = 0x11,
-    memtag_masstree_ksuffixes = 0x12,
-    memtag_masstree_gclayer = 0x13
-};
 
 struct memdebug {
 #if HAVE_MEMDEBUG
@@ -166,32 +156,6 @@ struct limbo_group {
 	e_[tail_].epoch_ = epoch;
 	++tail_;
     }
-};
-
-enum threadcounter {
-    // order is important among tc_alloc constants:
-    tc_alloc,
-    tc_alloc_value = tc_alloc,
-    tc_alloc_other = tc_alloc + 1,
-    // end tc_alloc constants
-    tc_gc,
-    tc_limbo_slots,
-    tc_replay_create_delta,
-    tc_replay_remove_delta,
-    tc_root_retry,
-    tc_internode_retry,
-    tc_leaf_retry,
-    tc_leaf_walk,
-    // order is important among tc_stable constants:
-    tc_stable,
-    tc_stable_internode_insert = tc_stable + 0,
-    tc_stable_internode_split = tc_stable + 1,
-    tc_stable_leaf_insert = tc_stable + 2,
-    tc_stable_leaf_split = tc_stable + 3,
-    // end tc_stable constants
-    tc_internode_lock,
-    tc_leaf_lock,
-    tc_max
 };
 
 template <int N> struct has_threadcounter {
@@ -411,6 +375,7 @@ class threadinfo {
 	if (limbo_epoch_ && (gc_epoch - limbo_epoch_) > 2)
 	    hard_rcu_quiesce();
     }
+    typedef ::rcu_callback rcu_callback;
     void rcu_register(rcu_callback* cb) {
 	record_rcu(cb, -1);
     }

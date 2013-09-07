@@ -17,6 +17,7 @@
 #define MASSTREE_REMOVE_HH
 #include "masstree_tcursor.hh"
 #include "btree_leaflink.hh"
+#include "circular_int.hh"
 namespace Masstree {
 
 template <typename P>
@@ -99,7 +100,8 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
 }
 
 template <typename P>
-struct gc_layer_rcu_callback : public rcu_callback {
+struct gc_layer_rcu_callback : public P::threadinfo_type::rcu_callback {
+    typedef typename P::threadinfo_type threadinfo;
     basic_table<P> *tablep_;
     int len_;
     char s_[0];

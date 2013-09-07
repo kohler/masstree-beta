@@ -20,6 +20,7 @@
 #include "timestamp.hh"
 template <typename R> class query;
 template <typename R> class replay_query;
+class threadinfo;
 namespace lcdf { class Json; }
 
 namespace Masstree {
@@ -29,6 +30,7 @@ class query_table {
   public:
     typedef P param_type;
     typedef node_base<P> node_type;
+    typedef typename P::threadinfo_type threadinfo;
 
     query_table() {
     }
@@ -75,6 +77,7 @@ class query_table {
 
 struct default_query_table_params : public nodeparams<15, 15> {
     typedef row_type* value_type;
+    typedef ::threadinfo threadinfo_type;
 };
 
 typedef query_table<default_query_table_params> default_table;

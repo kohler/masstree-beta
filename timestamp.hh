@@ -45,6 +45,8 @@ inline kvtimestamp_t timestamp_sub(kvtimestamp_t a, kvtimestamp_t b) {
     return a;
 }
 
+extern kvtimestamp_t initial_timestamp;
+
 inline double now() {
     struct timeval tv;
     gettimeofday(&tv, 0);
