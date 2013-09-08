@@ -84,8 +84,8 @@ rest is the gnuplot source that plot the median per-core throughput. If you
 plot it, each candlestick has five points, each represents the
 min,20%,50%,70%,max of the corresponding metric among all threads.
 
-`mttest` can also write the output as JSON into file for further analysis. For
-example, `./mttest -b notebook.json` will create `notebook.json` containing:
+`mttest` also writes the output as JSON into file for further analysis. For
+example, after `./mttest`, `notebook-mttest.json` will contain:
 
 <pre>
 {
@@ -128,6 +128,8 @@ example, `./mttest -b notebook.json` will create `notebook.json` containing:
   }
 }
 </pre>
+
+Run `./mttest --help` for a list of tests and options.
 
 ## Network testing ##
 

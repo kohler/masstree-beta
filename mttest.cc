@@ -60,6 +60,7 @@
 #include "kvrow.hh"
 #include "clp.h"
 #include <algorithm>
+#include <numeric>
 
 static std::vector<int> cores;
 volatile bool timeout[2] = {false, false};
@@ -509,6 +510,81 @@ static FILE *test_output_file;
 static pthread_mutex_t subtest_mutex;
 static pthread_cond_t subtest_cond;
 
+class testrunner {
+  public:
+    testrunner(const char* name)
+        : name_(name), next_(0) {
+        !thefirst ? thefirst = this : thetail->next_ = this;
+        thetail = this;
+    }
+    virtual ~testrunner() {
+    }
+    const String& name() const {
+        return name_;
+    }
+    testrunner* next() const {
+        return next_;
+    }
+    static testrunner* first() {
+        return thefirst;
+    }
+    static testrunner* find(const String& name) {
+        testrunner* t = thefirst;
+        while (t && t->name_ != name)
+            t = t->next_;
+        return t;
+    }
+    virtual void run(kvtest_client<Masstree::default_table>&) = 0;
+  private:
+    static testrunner* thefirst;
+    static testrunner* thetail;
+    String name_;
+    testrunner* next_;
+};
+testrunner* testrunner::thefirst;
+testrunner* testrunner::thetail;
+
+#define MAKE_TESTRUNNER(name, text)                    \
+    namespace {                                        \
+    class testrunner_##name : public testrunner {      \
+    public:                                            \
+        testrunner_##name() : testrunner(#name) {}     \
+        void run(kvtest_client<Masstree::default_table>& client) { text; } \
+    }; static testrunner_##name testrunner_##name##_instance; }
+MAKE_TESTRUNNER(rw1, kvtest_rw1(client));
+// MAKE_TESTRUNNER(palma, kvtest_palma(client));
+// MAKE_TESTRUNNER(palmb, kvtest_palmb(client));
+MAKE_TESTRUNNER(rw1fixed, kvtest_rw1fixed(client));
+MAKE_TESTRUNNER(rw1long, kvtest_rw1long(client));
+MAKE_TESTRUNNER(rw2, kvtest_rw2(client));
+MAKE_TESTRUNNER(rw2fixed, kvtest_rw2fixed(client));
+MAKE_TESTRUNNER(rw2g90, kvtest_rw2g90(client));
+MAKE_TESTRUNNER(rw2fixedg90, kvtest_rw2fixedg90(client));
+MAKE_TESTRUNNER(rw2g98, kvtest_rw2g98(client));
+MAKE_TESTRUNNER(rw2fixedg98, kvtest_rw2fixedg98(client));
+MAKE_TESTRUNNER(rw3, kvtest_rw3(client));
+MAKE_TESTRUNNER(rw4, kvtest_rw4(client));
+MAKE_TESTRUNNER(rw4fixed, kvtest_rw4fixed(client));
+MAKE_TESTRUNNER(wd1, kvtest_wd1(10000000, 1, client));
+MAKE_TESTRUNNER(wd1m1, kvtest_wd1(100000000, 1, client));
+MAKE_TESTRUNNER(wd1m2, kvtest_wd1(1000000000, 4, client));
+MAKE_TESTRUNNER(same, kvtest_same(client));
+MAKE_TESTRUNNER(rwsmall24, kvtest_rwsmall24(client));
+MAKE_TESTRUNNER(rwsep24, kvtest_rwsep24(client));
+MAKE_TESTRUNNER(wscale, kvtest_wscale(client));
+MAKE_TESTRUNNER(ruscale_init, kvtest_ruscale_init(client));
+MAKE_TESTRUNNER(rscale, if (client.ti_->ti_index < ::rscale_ncores) kvtest_rscale(client));
+MAKE_TESTRUNNER(uscale, kvtest_uscale(client));
+MAKE_TESTRUNNER(bdb, kvtest_bdb(client));
+MAKE_TESTRUNNER(wcol1, kvtest_wcol1(client, 31949 + client.id() % 48, 5000000));
+MAKE_TESTRUNNER(rcol1, kvtest_rcol1(client, 31949 + client.id() % 48, 5000000));
+MAKE_TESTRUNNER(scan1, kvtest_scan1(client, 0));
+MAKE_TESTRUNNER(scan1q80, kvtest_scan1(client, 0.8));
+MAKE_TESTRUNNER(rscan1, kvtest_rscan1(client, 0));
+MAKE_TESTRUNNER(rscan1q80, kvtest_rscan1(client, 0.8));
+MAKE_TESTRUNNER(splitremove1, kvtest_splitremove1(client));
+
+
 template <typename T>
 struct test_thread {
     test_thread(void *arg) {
@@ -551,9 +627,13 @@ struct test_thread {
 	    int comma = test.find_left(',', pos);
 	    comma = (comma < 0 ? test.length() : comma);
 	    String subtest = test.substring(pos, comma - pos), tname;
+            testrunner* tr = testrunner::find(subtest);
 	    tname = (subtest == test ? subtest : test + String("@") + String(subtestno));
 	    tt.client_.reset(tname, ::current_trial);
-	    tt.run(subtest);
+            if (tr)
+                tr->run(tt.client_);
+            else
+                tt.client_.fail("unknown test %s", subtest.c_str());
 	    if (comma == test.length())
 		break;
 	    pthread_mutex_lock(&subtest_mutex);
@@ -587,75 +667,6 @@ struct test_thread {
 	    timeout[i] = false;
 	if (!lazy_timer && duration[0])
 	    xalarm(duration[0]);
-    }
-    void run(const String &test) {
-	if (test == "rw1")
-	    kvtest_rw1(client_);
-	else if (test == "palma")
-	    kvtest_palma(client_);
-	else if (test == "palmb")
-	    kvtest_palmb(client_);
-	else if (test == "rw1fixed")
-	    kvtest_rw1fixed(client_);
-	else if (test == "rw1long")
-	    kvtest_rw1long(client_);
-	else if (test == "rw2")
-	    kvtest_rw2(client_);
-	else if (test == "rw2fixed")
-	    kvtest_rw2fixed(client_);
-	else if (test == "rw2g90")
-	    kvtest_rw2g90(client_);
-	else if (test == "rw2fixedg90")
-	    kvtest_rw2fixedg90(client_);
-	else if (test == "rw2g98")
-	    kvtest_rw2g98(client_);
-	else if (test == "rw2fixedg98")
-	    kvtest_rw2fixedg98(client_);
-	else if (test == "rw3")
-	    kvtest_rw3(client_);
-	else if (test == "rw4")
-	    kvtest_rw4(client_);
-	else if (test == "rw4fixed")
-	    kvtest_rw4fixed(client_);
-	else if (test == "wd1")
-	    kvtest_wd1(10000000, 1, client_);
-	else if (test == "wd1m1")
-	    kvtest_wd1(100000000, 1, client_);
-	else if (test == "wd1m2")
-	    kvtest_wd1(1000000000, 4, client_);
-	else if (test == "same")
-	    kvtest_same(client_);
-	else if (test == "rwsmall24")
-	    kvtest_rwsmall24(client_);
-	else if (test == "rwsep24")
-	    kvtest_rwsep24(client_);
-        else if (test == "wscale")
-            kvtest_wscale(client_);
-        else if (test == "ruscale_init")
-            kvtest_ruscale_init(client_);
-        else if (test == "rscale") {
-            if (client_.ti_->ti_index < ::rscale_ncores)
-                kvtest_rscale(client_);
-        } else if (test == "uscale")
-            kvtest_uscale(client_);
-        else if (test == "bdb")
-            kvtest_bdb(client_);
-	else if (test == "wcol1")
-	    kvtest_wcol1(client_, 31949 + client_.id() % 48, 5000000);
-	else if (test == "rcol1")
-	    kvtest_rcol1(client_, 31949 + client_.id() % 48, 5000000);
-	else if (test == "scan1")
-	    kvtest_scan1(client_, 0);
-	else if (test == "rscan1")
-	    kvtest_rscan1(client_, 0);
-	else if (test == "scan1q80")
-	    kvtest_scan1(client_, 0.8);
-	else if (test == "rscan1q80")
-	    kvtest_rscan1(client_, 0.8);
-	else if (test == "splitremove1")
-	    kvtest_splitremove1(client_);
-	else
-	    client_.fail("unknown test %s", test.c_str());
     }
     static T *table_;
     static unsigned active_threads_;
@@ -722,7 +733,7 @@ enum { opt_pin = 1, opt_port, opt_duration,
        opt_test, opt_test_name, opt_threads, opt_trials, opt_quiet, opt_print,
        opt_normalize, opt_limit, opt_notebook, opt_compare, opt_no_run,
        opt_lazy_timer, opt_gid, opt_tree_stats, opt_rscale_ncores, opt_cores,
-       opt_stats };
+       opt_stats, opt_help };
 static const Clp_Option options[] = {
     { "pin", 'p', opt_pin, 0, Clp_Negate },
     { "port", 0, opt_port, Clp_ValInt, 0 },
@@ -747,8 +758,60 @@ static const Clp_Option options[] = {
     { "stats", 0, opt_stats, 0, 0 },
     { "compare", 'c', opt_compare, Clp_ValString, 0 },
     { "cores", 0, opt_cores, Clp_ValString, 0 },
-    { "no-run", 0, opt_no_run, 0, 0 }
+    { "no-run", 'n', opt_no_run, 0, 0 },
+    { "help", 0, opt_help, 0, 0 }
 };
+
+static void help() {
+    printf("Masstree-beta mttest\n\
+Usage: mttest [-jTHREADS] [OPTIONS] TEST...\n\
+       mttest -n -c TESTNAME...\n\
+\n\
+Options:\n\
+  -j, --threads=THREADS    Run with THREADS threads (default %d).\n\
+  -p, --pin                Pin each thread to its own core.\n\
+  -T, --trials=TRIALS      Run each test TRIALS times.\n\
+  -q, --quiet              Do not generate verbose and Gnuplot output.\n\
+  -l, --limit=LIMIT        Limit relevant tests to LIMIT operations.\n\
+  -d, --duration=TIME      Limit relevant tests to TIME seconds.\n\
+  -b, --notebook=FILE      Record JSON results in FILE (notebook-mttest.json).\n\
+      --no-notebook        Do not record JSON results.\n\
+\n\
+  -n, --no-run             Do not run new tests.\n\
+  -c, --compare=EXPERIMENT Generated plot compares to EXPERIMENT.\n\
+\n\
+Known TESTs:\n",
+           (int) sysconf(_SC_NPROCESSORS_ONLN));
+    std::vector<String> names;
+    for (testrunner* tr = testrunner::first(); tr; tr = tr->next())
+        names.push_back(tr->name());
+    int ncol = 5;
+    size_t percol;
+    std::vector<int> colwidth;
+    while (1) {
+        percol = (names.size() + ncol - 1) / ncol;
+        colwidth.assign(ncol, 0);
+        for (size_t i = 0; i != names.size(); ++i)
+            colwidth[i/percol] = std::max(colwidth[i/percol], names[i].length());
+        if (ncol == 1
+            || std::accumulate(colwidth.begin(), colwidth.end(), 0)
+               + ncol * 3 <= 78)
+            break;
+        --ncol;
+    }
+    for (size_t row = 0; row != percol; ++row) {
+        size_t off = row;
+        for (int col = 0; col != ncol; ++col, off += percol)
+            if (off < names.size())
+                printf("%*s   %s",
+                       col ? colwidth[col-1] - names[off-percol].length() : 0, "",
+                       names[off].c_str());
+        printf("\n");
+    }
+    printf("Or say TEST1,TEST2,... to run several tests in sequence\n\
+on the same tree.\n");
+    exit(0);
+}
 
 static void run_one_test(int trial, const char *treetype, const char *test,
 			 const int *collectorpipe, int nruns);
@@ -773,7 +836,7 @@ main(int argc, char *argv[])
     int ret, ntrials = 1, normtype = normtype_pertest, firstcore = -1, corestride = 1;
     std::vector<const char *> tests, treetypes;
     std::vector<String> comparisons;
-    const char *notebook = "notebook-kvtest.json";
+    const char *notebook = "notebook-mttest.json";
     tcpthreads = udpthreads = sysconf(_SC_NPROCESSORS_ONLN);
 
     Clp_Parser *clp = Clp_NewParser(argc, argv, (int) arraysize(options), options);
@@ -841,7 +904,7 @@ main(int argc, char *argv[])
 	    else if (clp->have_val)
 		notebook = clp->vstr;
 	    else
-		notebook = "notebook-kvtest.json";
+		notebook = "notebook-mttest.json";
 	    break;
 	case opt_compare:
 	    comparisons.push_back(clp->vstr);
@@ -875,6 +938,9 @@ main(int argc, char *argv[])
 	      }
 	  }
 	  break;
+        case opt_help:
+            help();
+            break;
 	case Clp_NotOption: {
 	    bool is_treetype = false;
 	    for (int i = 0; i < (int) arraysize(test_thread_map) && !is_treetype; ++i)
@@ -883,7 +949,8 @@ main(int argc, char *argv[])
 	    break;
 	}
 	default:
-	    fprintf(stderr, "Usage: kvtest [-n] [-jN] TREETYPE TESTNAME\n");
+	    fprintf(stderr, "Usage: mttest [-jN] TESTS...\n\
+Try 'mttest --help' for options.\n");
 	    exit(EXIT_FAILURE);
 	}
     }
