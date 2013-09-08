@@ -346,7 +346,7 @@ int basic_table<P>::scan(H helper,
 	switch (state) {
 	case mystack_type::scan_emit:
 	    ++scancount;
-	    if (!scanner(ka.full_string(), entry.value(), stack[stackpos], ti))
+	    if (!scanner(ka, entry.value(), stack[stackpos], ti))
 		goto done;
 	    stack[stackpos].ki_ = helper.next(stack[stackpos].ki_);
 	    goto find_next;

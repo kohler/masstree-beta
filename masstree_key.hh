@@ -163,6 +163,9 @@ class key {
     Str full_string() const {
 	return Str(first_, s_ + len_);
     }
+    operator Str() const {
+        return full_string();
+    }
     bool increment() {
 	// Return true iff wrapped.
 	if (has_suffix()) {
