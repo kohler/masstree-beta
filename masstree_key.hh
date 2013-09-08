@@ -160,6 +160,9 @@ class key {
     Str prefix_string() const {
 	return Str(first_, s_);
     }
+    int prefix_length() const {
+        return s_ - first_;
+    }
     Str full_string() const {
 	return Str(first_, s_ + len_);
     }
