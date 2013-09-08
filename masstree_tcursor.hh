@@ -26,6 +26,8 @@ class unlocked_tcursor {
     typedef typename P::value_type value_type;
     typedef key<typename P::ikey_type> key_type;
     typedef typename P::threadinfo_type threadinfo;
+    typedef typename leaf<P>::nodeversion_type nodeversion_type;
+    typedef typename nodeversion_type::value_type nodeversion_value_type;
 
     inline unlocked_tcursor(const basic_table<P> &table, Str str)
         : ka_(str), lv_(leafvalue<P>::make_empty()), tablep_(&table) {
@@ -35,8 +37,16 @@ class unlocked_tcursor {
     }
 
     bool find_unlocked(threadinfo& ti);
+
     inline value_type value() const {
         return lv_.value();
+    }
+    inline leaf<P>* node() const {
+        return n_;
+    }
+    inline nodeversion_value_type full_version_value() const {
+        static_assert(nodeversion_type::traits_type::top_stable_bits >= leaf<P>::permuter_type::size_bits, "not enough bits to add size to version");
+        return (v_.value() << leaf<P>::permuter_type::size_bits) + perm_.size();
     }
 
   private:

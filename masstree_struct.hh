@@ -237,6 +237,7 @@ template <typename P>
 class leaf : public node_base<P> {
   public:
     static constexpr int width = P::leaf_width;
+    typedef typename node_base<P>::nodeversion_type nodeversion_type;
     typedef key<typename P::ikey_type> key_type;
     typedef typename node_base<P>::leafvalue_type leafvalue_type;
     typedef kpermuter<P::leaf_width> permuter_type;
@@ -299,9 +300,13 @@ class leaf : public node_base<P> {
     permuter_type permutation() const {
 	return permuter_type(permutation_);
     }
+    typename nodeversion_type::value_type full_version_value() const {
+        static_assert(nodeversion_type::traits_type::top_stable_bits >= permuter_type::size_bits, "not enough bits to add size to version");
+        return (this->version_value() << permuter_type::size_bits) + size();
+    }
 
     using node_base<P>::has_changed;
-    bool has_changed(typename node_base<P>::nodeversion_type oldv,
+    bool has_changed(nodeversion_type oldv,
                      typename permuter_type::storage_type oldperm) const {
         return this->has_changed(oldv) || oldperm != permutation_;
     }

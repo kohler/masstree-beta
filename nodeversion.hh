@@ -19,7 +19,9 @@
 #include "compiler.hh"
 
 template <typename P>
-class basic_nodeversion { public:
+class basic_nodeversion {
+  public:
+    typedef P traits_type;
     typedef typename P::value_type value_type;
 
     basic_nodeversion() {
@@ -166,18 +168,18 @@ class basic_nodeversion { public:
     }
 
   private:
-
     value_type v_;
 
     basic_nodeversion(value_type v)
 	: v_(v) {
     }
-
 };
 
 
 template <typename P>
-class basic_singlethreaded_nodeversion { public:
+class basic_singlethreaded_nodeversion {
+  public:
+    typedef P traits_type;
     typedef typename P::value_type value_type;
 
     basic_singlethreaded_nodeversion() {
@@ -274,9 +276,7 @@ class basic_singlethreaded_nodeversion { public:
     }
 
   private:
-
     value_type v_;
-
 };
 
 
@@ -294,7 +294,8 @@ struct nodeversion32_parameters {
 	root_bit = (1U << 30),
 	isleaf_bit = (1U << 31),
 	split_unlock_mask = ~(root_bit | unused1_bit | (vsplit_lowbit - 1)),
-	unlock_mask = ~(unused1_bit | (vinsert_lowbit - 1))
+	unlock_mask = ~(unused1_bit | (vinsert_lowbit - 1)),
+        top_stable_bits = 4
     };
 
     typedef uint32_t value_type;
@@ -315,7 +316,8 @@ struct nodeversion64_parameters {
 	root_bit = (1ULL << 62),
 	isleaf_bit = (1ULL << 63),
 	split_unlock_mask = ~(root_bit | unused1_bit | (vsplit_lowbit - 1)),
-	unlock_mask = ~(unused1_bit | (vinsert_lowbit - 1))
+	unlock_mask = ~(unused1_bit | (vinsert_lowbit - 1)),
+        top_stable_bits = 4
     };
 
     typedef uint64_t value_type;

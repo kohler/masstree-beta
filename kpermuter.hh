@@ -56,6 +56,7 @@ template <int width> class kpermuter {
     typedef typename info::storage_type storage_type;
     typedef typename info::value_type value_type;
     enum { max_width = (int) (sizeof(storage_type) * 2 - 1) };
+    enum { size_bits = 4 };
 
     /** @brief Construct an uninitialized permuter. */
     kpermuter() {
