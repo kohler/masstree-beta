@@ -15,7 +15,7 @@
  */
 #ifndef MASSTREE_KEY_HH
 #define MASSTREE_KEY_HH
-#include "str.hh"
+#include "masstree.hh"
 #include "string_slice.hh"
 
 namespace Masstree {
