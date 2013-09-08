@@ -24,17 +24,6 @@ struct key_comparator {
     }
 };
 
-template <typename KA, typename T, typename V>
-struct versioned_key_comparator {
-    V version_;
-    versioned_key_comparator(V version)
-	: version_(version) {
-    }
-    int operator()(const KA &ka, const T &n, int p) {
-	return key_compare(ka, n, p, version_);
-    }
-};
-
 
 template <typename KA, typename T, typename F>
 int key_upper_bound_by(const KA &ka, const T &n, F comparator)
@@ -61,12 +50,6 @@ inline int key_upper_bound(const KA &ka, const T &n)
     return key_upper_bound_by(ka, n, key_comparator<KA, T>());
 }
 
-template <typename KA, typename T, typename V>
-inline int key_upper_bound(const KA &ka, const T &n, V version)
-{
-    return key_upper_bound_by(ka, n, versioned_key_comparator<KA, T, V>(version));
-}
-
 template <typename KA, typename T, typename F>
 int key_lower_bound_by(const KA &ka, const T &n, F comparator)
 {
@@ -90,12 +73,6 @@ template <typename KA, typename T>
 inline int key_lower_bound(const KA &ka, const T &n)
 {
     return key_lower_bound_by(ka, n, key_comparator<KA, T>());
-}
-
-template <typename KA, typename T, typename V>
-inline int key_lower_bound(const KA &ka, const T &n, V version)
-{
-    return key_lower_bound_by(ka, n, versioned_key_comparator<KA, T, V>(version));
 }
 
 template <typename KA, typename T, typename F>
@@ -125,12 +102,6 @@ inline int key_lower_bound_with_position(const KA &ka, const T &n, int &position
     return key_lower_bound_with_position_by(ka, n, position, key_comparator<KA, T>());
 }
 
-template <typename KA, typename T, typename V>
-inline int key_lower_bound_with_position(const KA &ka, const T &n, V version, int &position)
-{
-    return key_lower_bound_with_position_by(ka, n, position, versioned_key_comparator<KA, T, V>(version));
-}
-
 template <typename KA, typename T, typename F>
 int key_lower_bound_check_by(const KA &ka, const T &n, F comparator)
 {
@@ -154,12 +125,6 @@ template <typename KA, typename T>
 inline int key_lower_bound_check(const KA &ka, const T &n)
 {
     return key_lower_bound_check_by(ka, n, key_comparator<KA, T>());
-}
-
-template <typename KA, typename T, typename V>
-inline int key_lower_bound_check(const KA &ka, const T &n, V version)
-{
-    return key_lower_bound_check_by(ka, n, versioned_key_comparator<KA, T, V>(version));
 }
 
 
@@ -239,10 +204,6 @@ struct key_bound_binary {
     static inline int upper(const KA &ka, const T &n) {
 	return key_upper_bound_by(ka, n, key_comparator<KA, T>());
     }
-    template <typename KA, typename T, typename V>
-    static inline int upper(const KA &ka, const T &n, V version) {
-	return key_upper_bound_by(ka, n, versioned_key_comparator<KA, T, V>(version));
-    }
     template <typename KA, typename T>
     static inline int lower(const KA &ka, const T &n) {
 	return key_lower_bound_by(ka, n, key_comparator<KA, T>());
@@ -255,10 +216,6 @@ struct key_bound_binary {
     static inline int lower_with_position(const KA &ka, const T &n, int &position) {
 	return key_lower_bound_with_position_by(ka, n, position, key_comparator<KA, T>());
     }
-    template <typename KA, typename T, typename V>
-    static inline int lower_with_position(const KA &ka, const T &n, V version, int &position) {
-	return key_lower_bound_with_position_by(ka, n, position, versioned_key_comparator<KA, T, V>(version));
-    }
     template <typename KA, typename T, typename F>
     static inline int lower_with_position_by(const KA &ka, const T &n, int &position, F comparator) {
 	return key_lower_bound_with_position_by(ka, n, position, comparator);
@@ -267,10 +224,6 @@ struct key_bound_binary {
     static inline int lower_check(const KA &ka, const T &n) {
 	return key_lower_bound_check_by(ka, n, key_comparator<KA, T>());
     }
-    template <typename KA, typename T, typename V>
-    static inline int lower_check(const KA &ka, const T &n, V version) {
-	return key_lower_bound_check_by(ka, n, versioned_key_comparator<KA, T, V>(version));
-    }
 };
 
 struct key_bound_linear {
@@ -278,29 +231,25 @@ struct key_bound_linear {
     static inline int upper(const KA &ka, const T &n) {
 	return key_find_upper_bound_by(ka, n, key_comparator<KA, T>());
     }
-    template <typename KA, typename T, typename V>
-    static inline int upper(const KA &ka, const T &n, V version) {
-	return key_find_upper_bound_by(ka, n, versioned_key_comparator<KA, T, V>(version));
-    }
     template <typename KA, typename T>
     static inline int lower(const KA &ka, const T &n) {
 	return key_find_lower_bound_by(ka, n, key_comparator<KA, T>());
+    }
+    template <typename KA, typename T, typename F>
+    static inline int lower_by(const KA &ka, const T &n, F comparator) {
+	return key_find_lower_bound_by(ka, n, comparator);
     }
     template <typename KA, typename T>
     static inline int lower_with_position(const KA &ka, const T &n, int &position) {
 	return key_find_lower_bound_with_position_by(ka, n, position, key_comparator<KA, T>());
     }
-    template <typename KA, typename T, typename V>
-    static inline int lower_with_position(const KA &ka, const T &n, V version, int &position) {
-	return key_find_lower_bound_with_position_by(ka, n, position, versioned_key_comparator<KA, T, V>(version));
+    template <typename KA, typename T, typename F>
+    static inline int lower_with_position_by(const KA &ka, const T &n, int &position, F comparator) {
+	return key_find_lower_bound_with_position_by(ka, n, position, comparator);
     }
     template <typename KA, typename T>
     static inline int lower_check(const KA &ka, const T &n) {
 	return key_find_lower_bound_check_by(ka, n, key_comparator<KA, T>());
-    }
-    template <typename KA, typename T, typename V>
-    static inline int lower_check(const KA &ka, const T &n, V version) {
-	return key_find_lower_bound_check_by(ka, n, versioned_key_comparator<KA, T, V>(version));
     }
 };
 
