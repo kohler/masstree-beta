@@ -567,7 +567,7 @@ inline void prefetch(const void *ptr) {
 #ifdef NOPREFETCH
     (void) ptr;
 #else
-    typedef struct { char x[64]; } cacheline_t;
+    typedef struct { char x[CACHE_LINE_SIZE]; } cacheline_t;
     asm volatile("prefetcht0 %0" : : "m" (*(const cacheline_t *)ptr));
 #endif
 }
@@ -575,7 +575,7 @@ inline void prefetchnta(const void *ptr) {
 #ifdef NOPREFETCH
     (void) ptr;
 #else
-    typedef struct { char x[64]; } cacheline_t;
+    typedef struct { char x[CACHE_LINE_SIZE]; } cacheline_t;
     asm volatile("prefetchnta %0" : : "m" (*(const cacheline_t *)ptr));
 #endif
 }
