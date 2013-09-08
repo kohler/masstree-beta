@@ -42,13 +42,13 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
 	return false;
     permuter_type perm(n_->permutation_);
     kp_ = perm[ki_];
-    if (n_->ikey0_[kp_] != ka_.ikey() || !n_->is_stable_node(kp_))
+    if (n_->ikey0_[kp_] != ka_.ikey() || !n_->is_stable_layer(kp_))
 	return false;
 
     // remove redundant internode layers
     node_type *layer;
     while (1) {
-	layer = n_->lv_[kp_].node();
+	layer = n_->lv_[kp_].layer();
 	if (layer->has_split())
 	    n_->lv_[kp_] = layer = layer->unsplit_ancestor();
 	if (layer->isleaf())

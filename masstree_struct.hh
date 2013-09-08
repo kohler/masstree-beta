@@ -211,7 +211,7 @@ class leafvalue {
 	return u_.v;
     }
 
-    node_base<P>* node() const {
+    node_base<P>* layer() const {
 	return reinterpret_cast<node_base<P>*>(u_.x);
     }
 
@@ -312,11 +312,11 @@ class leaf : public node_base<P> {
     int ikeylen(int p) const {
 	return keylenx_ikeylen(keylenx_[p]);
     }
-    bool is_node(int p) const {
-	return keylenx_is_node(keylenx_[p]);
+    bool is_layer(int p) const {
+	return keylenx_is_layer(keylenx_[p]);
     }
-    bool is_stable_node(int p) const {
-	return keylenx_is_stable_node(keylenx_[p]);
+    bool is_stable_layer(int p) const {
+	return keylenx_is_stable_layer(keylenx_[p]);
     }
     bool has_ksuf(int p) const {
 	return keylenx_has_ksuf(keylenx_[p]);
@@ -328,13 +328,13 @@ class leaf : public node_base<P> {
     static int keylenx_ikeylen(int keylenx) {
 	return keylenx & 63;
     }
-    static bool keylenx_is_node(int keylenx) {
+    static bool keylenx_is_layer(int keylenx) {
 	return keylenx > 63;
     }
-    static bool keylenx_is_unstable_node(int keylenx) {
+    static bool keylenx_is_unstable_layer(int keylenx) {
 	return keylenx & 64;
     }
-    static bool keylenx_is_stable_node(int keylenx) {
+    static bool keylenx_is_stable_layer(int keylenx) {
 	return keylenx > 127;	// see also leafvalue
     }
     static bool keylenx_has_ksuf(int keylenx) {

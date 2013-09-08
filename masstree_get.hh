@@ -53,10 +53,10 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 
     if (kp < 0)
 	return false;
-    else if (n->keylenx_is_node(keylenx)) {
-	if (likely(n->keylenx_is_stable_node(keylenx))) {
+    else if (n->keylenx_is_layer(keylenx)) {
+	if (likely(n->keylenx_is_stable_layer(keylenx))) {
 	    ka_.shift();
-	    root = entry.node();
+	    root = entry.layer();
 	    goto retry;
 	} else
 	    goto forward;
@@ -97,15 +97,15 @@ inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
 	// key walk. But we do lock if the next layer has split.
 	old_perm = n_->permutation_;
 	ki_ = leaf_type::bound_type::lower_with_position(ka_, *n_, kp_);
-	if (kp_ >= 0 && n_->is_stable_node(kp_)) {
+	if (kp_ >= 0 && n_->is_stable_layer(kp_)) {
 	    fence();
 	    leafvalue_type entry(n_->lv_[kp_]);
-	    entry.node()->prefetch_full();
+	    entry.layer()->prefetch_full();
 	    fence();
 	    if (likely(!v.deleted()) && !n_->has_changed(oldv, old_perm)
-		&& !entry.node()->has_split()) {
+		&& !entry.layer()->has_split()) {
 		ka_.shift();
-		return entry.node();
+		return entry.layer();
 	    }
 	}
 
@@ -115,8 +115,8 @@ inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
 	// Maybe the old position works.
 	if (likely(!v.deleted()) && !n_->has_changed(oldv, old_perm)) {
 	found:
-	    if (kp_ >= 0 && n_->is_stable_node(kp_)) {
-		root = n_->lv_[kp_].node();
+	    if (kp_ >= 0 && n_->is_stable_layer(kp_)) {
+		root = n_->lv_[kp_].layer();
 		if (root->has_split())
 		    n_->lv_[kp_] = root = root->unsplit_ancestor();
 		n_->unlock(v);
