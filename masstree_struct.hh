@@ -172,6 +172,9 @@ class internode : public node_base<P> {
 
     void print(FILE* f, const char* prefix, int indent, int kdepth);
 
+    void deallocate(threadinfo& ti) {
+	ti.pool_deallocate(this, sizeof(*this), memtag_masstree_internode);
+    }
     void deallocate_rcu(threadinfo& ti) {
 	ti.pool_deallocate_rcu(this, sizeof(*this), memtag_masstree_internode);
     }
@@ -423,6 +426,12 @@ class leaf : public node_base<P> {
 	return reinterpret_cast<leaf<P>*>(next_.x & ~(uintptr_t) 1);
     }
 
+    void deallocate(threadinfo& ti) {
+	if (ksuf_)
+	    ti.deallocate(ksuf_, ksuf_->allocated_size(),
+                              memtag_masstree_ksuffixes);
+	ti.pool_deallocate(this, allocated_size(), memtag_masstree_leaf);
+    }
     void deallocate_rcu(threadinfo& ti) {
 	if (ksuf_)
 	    ti.deallocate_rcu(ksuf_, ksuf_->allocated_size(),
