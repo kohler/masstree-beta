@@ -15,7 +15,7 @@
  */
 #ifndef MASSTREE_REMOVE_HH
 #define MASSTREE_REMOVE_HH
-#include "masstree_tcursor.hh"
+#include "masstree_get.hh"
 #include "btree_leaflink.hh"
 #include "circular_int.hh"
 namespace Masstree {

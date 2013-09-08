@@ -301,7 +301,7 @@ class leaf : public node_base<P> {
 	return permuter_type(permutation_);
     }
     typename nodeversion_type::value_type full_version_value() const {
-        static_assert(nodeversion_type::traits_type::top_stable_bits >= permuter_type::size_bits, "not enough bits to add size to version");
+        static_assert(int(nodeversion_type::traits_type::top_stable_bits) >= int(permuter_type::size_bits), "not enough bits to add size to version");
         return (this->version_value() << permuter_type::size_bits) + size();
     }
 

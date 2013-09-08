@@ -15,8 +15,8 @@
  */
 #ifndef MASSTREE_TCURSOR_HH
 #define MASSTREE_TCURSOR_HH 1
-#include "masstree.hh"
 #include "masstree_key.hh"
+#include "masstree_struct.hh"
 namespace Masstree {
 template <typename P> struct gc_layer_rcu_callback;
 
@@ -32,8 +32,14 @@ class unlocked_tcursor {
     inline unlocked_tcursor(const basic_table<P> &table, Str str)
         : ka_(str), lv_(leafvalue<P>::make_empty()), tablep_(&table) {
     }
-    inline unlocked_tcursor(const basic_table<P> &table, const char *s, int len)
+    inline unlocked_tcursor(const basic_table<P> &table,
+                            const char *s, int len)
         : ka_(s, len), lv_(leafvalue<P>::make_empty()), tablep_(&table) {
+    }
+    inline unlocked_tcursor(const basic_table<P> &table,
+                            const unsigned char *s, int len)
+        : ka_(reinterpret_cast<const char*>(s), len),
+          lv_(leafvalue<P>::make_empty()), tablep_(&table) {
     }
 
     bool find_unlocked(threadinfo& ti);
@@ -45,8 +51,8 @@ class unlocked_tcursor {
         return n_;
     }
     inline nodeversion_value_type full_version_value() const {
-        static_assert(nodeversion_type::traits_type::top_stable_bits >= leaf<P>::permuter_type::size_bits, "not enough bits to add size to version");
-        return (v_.value() << leaf<P>::permuter_type::size_bits) + perm_.size();
+        static_assert(int(nodeversion_type::traits_type::top_stable_bits) >= int(leaf<P>::permuter_type::size_bits), "not enough bits to add size to version");
+        return (v_.version_value() << leaf<P>::permuter_type::size_bits) + perm_.size();
     }
 
   private:
@@ -81,6 +87,9 @@ class tcursor {
     tcursor(basic_table<P> &table, const char *s, int len)
 	: ka_(s, len), tablep_(&table) {
     }
+    tcursor(basic_table<P> &table, const unsigned char *s, int len)
+	: ka_(reinterpret_cast<const char*>(s), len), tablep_(&table) {
+    }
 
     inline bool has_value() const {
 	return kp_ >= 0;
@@ -93,6 +102,9 @@ class tcursor {
 	return !ka_.is_shifted();
     }
 
+    inline leaf<P>* node() const {
+        return n_;
+    }
     inline kvtimestamp_t node_timestamp() const {
 	return n_->node_ts_;
     }

@@ -88,10 +88,10 @@ typename P::ikey_type leaf_ikey(leaf<P> *nl,
 	return nl->ikey0_[perml[i - 1]];
 }
 
-template <typename P>
+template <typename P, typename TI>
 int leaf_split(leaf<P>* nl, leaf<P>* nr,
 	       int p, const typename leaf<P>::key_type& ka,
-	       threadinfo& ti,
+	       TI& ti,
 	       typename P::ikey_type& split_ikey)
 {
     // B+tree leaf insertion.

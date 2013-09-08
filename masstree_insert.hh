@@ -15,7 +15,8 @@
  */
 #ifndef MASSTREE_INSERT_HH
 #define MASSTREE_INSERT_HH
-#include "masstree_tcursor.hh"
+#include "masstree_get.hh"
+#include "masstree_split.hh"
 namespace Masstree {
 
 template <typename P>
