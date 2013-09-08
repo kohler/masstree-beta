@@ -17,54 +17,88 @@
 #define MASSTREE_GET_HH 1
 #include "masstree_tcursor.hh"
 #include "masstree_traverse.hh"
+#include "masstree_key.hh"
 namespace Masstree {
+
+template <typename P>
+inline int unlocked_tcursor<P>::lower_bound_binary() const
+{
+    int l = 0, r = perm_.size();
+    while (l < r) {
+        int m = (l + r) >> 1;
+        int mp = perm_[m];
+        int cmp = key_compare(ka_, *n_, mp);
+        if (cmp < 0)
+            r = m;
+        else if (cmp == 0)
+            return mp;
+        else
+            l = m + 1;
+    }
+    return -1;
+}
+
+template <typename P>
+inline int unlocked_tcursor<P>::lower_bound_linear() const
+{
+    int l = 0, r = perm_.size();
+    while (l < r) {
+        int lp = perm_[l];
+        int cmp = key_compare(ka_, *n_, lp);
+        if (cmp < 0)
+            break;
+        else if (cmp == 0)
+            return lp;
+        else
+            ++l;
+    }
+    return -1;
+}
 
 template <typename P>
 bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 {
-    leafvalue<P> entry = leafvalue<P>::make_empty();
     bool ksuf_match = false;
     int kp, keylenx = 0;
-    leaf<P> *n;
-    typename leaf<P>::nodeversion_type v;
     node_base<P> *root = tablep_->root_;
 
  retry:
-    n = reach_leaf(root, ka_, ti, v);
+    n_ = reach_leaf(root, ka_, ti, v_);
 
  forward:
-    if (v.deleted())
+    if (v_.deleted())
 	goto retry;
 
-    n->prefetch();
-    kp = leaf<P>::bound_type::lower_check(ka_, *n);
+    n_->prefetch();
+    perm_ = n_->permutation();
+    if (leaf<P>::bound_type::is_binary)
+        kp = lower_bound_binary();
+    else
+        kp = lower_bound_linear();
     if (kp >= 0) {
-	keylenx = n->keylenx_[kp];
+	keylenx = n_->keylenx_[kp];
 	fence();		// see note in check_leaf_insert()
-	entry = n->lv_[kp];
-	entry.prefetch(keylenx);
-	ksuf_match = n->ksuf_equals(kp, ka_, keylenx);
+	lv_ = n_->lv_[kp];
+	lv_.prefetch(keylenx);
+	ksuf_match = n_->ksuf_equals(kp, ka_, keylenx);
     }
-    if (n->has_changed(v)) {
-	ti.mark(threadcounter(tc_stable_leaf_insert + n->simple_has_split(v)));
-	n = forward_at_leaf(n, v, ka_, ti);
+    if (n_->has_changed(v_)) {
+	ti.mark(threadcounter(tc_stable_leaf_insert + n_->simple_has_split(v_)));
+	n_ = forward_at_leaf(n_, v_, ka_, ti);
 	goto forward;
     }
 
     if (kp < 0)
 	return false;
-    else if (n->keylenx_is_layer(keylenx)) {
-	if (likely(n->keylenx_is_stable_layer(keylenx))) {
+    else if (n_->keylenx_is_layer(keylenx)) {
+	if (likely(n_->keylenx_is_stable_layer(keylenx))) {
 	    ka_.shift();
-	    root = entry.layer();
+	    root = lv_.layer();
 	    goto retry;
 	} else
 	    goto forward;
-    } else if (ksuf_match) {
-	datum_ = entry.value();
-	return true;
     } else
-	return false;
+        return ksuf_match;
 }
 
 template <typename P>
@@ -74,7 +108,7 @@ inline bool basic_table<P>::get(Str key, value_type &value,
     unlocked_tcursor<P> lp(*this, key);
     bool found = lp.find_unlocked(ti);
     if (found)
-	value = lp.datum_;
+	value = lp.value();
     return found;
 }
 

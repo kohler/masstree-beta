@@ -102,31 +102,6 @@ inline int key_lower_bound_with_position(const KA &ka, const T &n, int &position
     return key_lower_bound_with_position_by(ka, n, position, key_comparator<KA, T>());
 }
 
-template <typename KA, typename T, typename F>
-int key_lower_bound_check_by(const KA &ka, const T &n, F comparator)
-{
-    typename key_permuter<T>::type perm = key_permuter<T>::permutation(n);
-    int l = 0, r = perm.size();
-    while (l < r) {
-	int m = (l + r) >> 1;
-	int mp = perm[m];
-	int cmp = comparator(ka, n, mp);
-	if (cmp < 0)
-	    r = m;
-	else if (cmp == 0)
-	    return mp;
-	else
-	    l = m + 1;
-    }
-    return -l - 1;
-}
-
-template <typename KA, typename T>
-inline int key_lower_bound_check(const KA &ka, const T &n)
-{
-    return key_lower_bound_check_by(ka, n, key_comparator<KA, T>());
-}
-
 
 template <typename KA, typename T, typename F>
 int key_find_upper_bound_by(const KA &ka, const T &n, F comparator)
@@ -180,26 +155,9 @@ int key_find_lower_bound_with_position_by(const KA &ka, const T &n, int &positio
     return l;
 }
 
-template <typename KA, typename T, typename F>
-int key_find_lower_bound_check_by(const KA &ka, const T &n, F comparator)
-{
-    typename key_permuter<T>::type perm = key_permuter<T>::permutation(n);
-    int l = 0, r = perm.size();
-    while (l < r) {
-	int lp = perm[l];
-	int cmp = comparator(ka, n, lp);
-	if (cmp < 0)
-	    break;
-	else if (cmp == 0)
-	    return lp;
-	else
-	    ++l;
-    }
-    return -l - 1;
-}
-
 
 struct key_bound_binary {
+    static constexpr bool is_binary = true;
     template <typename KA, typename T>
     static inline int upper(const KA &ka, const T &n) {
 	return key_upper_bound_by(ka, n, key_comparator<KA, T>());
@@ -220,13 +178,10 @@ struct key_bound_binary {
     static inline int lower_with_position_by(const KA &ka, const T &n, int &position, F comparator) {
 	return key_lower_bound_with_position_by(ka, n, position, comparator);
     }
-    template <typename KA, typename T>
-    static inline int lower_check(const KA &ka, const T &n) {
-	return key_lower_bound_check_by(ka, n, key_comparator<KA, T>());
-    }
 };
 
 struct key_bound_linear {
+    static constexpr bool is_binary = false;
     template <typename KA, typename T>
     static inline int upper(const KA &ka, const T &n) {
 	return key_find_upper_bound_by(ka, n, key_comparator<KA, T>());
@@ -246,10 +201,6 @@ struct key_bound_linear {
     template <typename KA, typename T, typename F>
     static inline int lower_with_position_by(const KA &ka, const T &n, int &position, F comparator) {
 	return key_find_lower_bound_with_position_by(ka, n, position, comparator);
-    }
-    template <typename KA, typename T>
-    static inline int lower_check(const KA &ka, const T &n) {
-	return key_find_lower_bound_check_by(ka, n, key_comparator<KA, T>());
     }
 };
 

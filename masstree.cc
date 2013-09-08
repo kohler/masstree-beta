@@ -39,7 +39,7 @@ bool query_table<P>::get(query<row_type>& q, threadinfo& ti) const {
     unlocked_tcursor<P> lp(table_, q.key_);
     bool found = lp.find_unlocked(ti);
     if (found)
-        found = q.emitrow(lp.datum_, &ti);
+        found = q.emitrow(lp.value(), &ti);
     return found;
 }
 

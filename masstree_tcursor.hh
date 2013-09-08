@@ -27,20 +27,28 @@ class unlocked_tcursor {
     typedef key<typename P::ikey_type> key_type;
     typedef typename P::threadinfo_type threadinfo;
 
-    value_type datum_;
-
-    unlocked_tcursor(const basic_table<P> &table, Str str)
-        : ka_(str), tablep_(&table) {
+    inline unlocked_tcursor(const basic_table<P> &table, Str str)
+        : ka_(str), lv_(leafvalue<P>::make_empty()), tablep_(&table) {
     }
-    unlocked_tcursor(const basic_table<P> &table, const char *s, int len)
-        : ka_(s, len), tablep_(&table) {
+    inline unlocked_tcursor(const basic_table<P> &table, const char *s, int len)
+        : ka_(s, len), lv_(leafvalue<P>::make_empty()), tablep_(&table) {
     }
 
     bool find_unlocked(threadinfo& ti);
+    inline value_type value() const {
+        return lv_.value();
+    }
 
   private:
+    leaf<P>* n_;
     key_type ka_;
+    typename leaf<P>::nodeversion_type v_;
+    typename leaf<P>::permuter_type perm_;
+    leafvalue<P> lv_;
     const basic_table<P> *tablep_;
+
+    inline int lower_bound_binary() const;
+    inline int lower_bound_linear() const;
 };
 
 template <typename P>
