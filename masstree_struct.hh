@@ -269,14 +269,21 @@ class leaf : public node_base<P> {
 	    new((void *)&iksuf_[0]) stringbag<uint16_t>(width, sz - sizeof(*this));
     }
 
-    static leaf<P>* make(int sb_size, kvtimestamp_t node_ts, threadinfo& ti) {
-	size_t sz = iceil(sizeof(leaf<P>) + std::min(sb_size, 128), 64);
+    static leaf<P>* make(int ksufsize, kvtimestamp_t node_ts, threadinfo& ti) {
+	size_t sz = iceil(sizeof(leaf<P>) + std::min(ksufsize, 128), 64);
 	void* ptr = ti.pool_allocate(sz, memtag_masstree_leaf);
 	leaf<P>* n = new(ptr) leaf<P>(sz, node_ts);
 	assert(n);
 	if (P::debug_level > 0)
 	    n->created_at_[0] = ti.operation_timestamp();
 	return n;
+    }
+    static leaf<P>* make_root(int ksufsize, leaf<P>* parent, threadinfo& ti) {
+        leaf<P>* n = make(ksufsize, parent ? parent->node_ts_ : 0, ti);
+        n->next_.ptr = n->prev_ = 0;
+        n->parent_ = node_base<P>::parent_for_layer_root(parent);
+        n->mark_root();
+        return n;
     }
 
     size_t allocated_size() const {
@@ -433,10 +440,7 @@ void basic_table<P>::initialize(threadinfo& ti) {
 
 template <typename P>
 void basic_table<P>::reinitialize(threadinfo& ti) {
-    typename node_type::leaf_type *n = node_type::leaf_type::make(0, 0, ti);
-    n->next_.ptr = n->prev_ = 0;
-    n->mark_root();
-    root_ = n;
+    root_ = node_type::leaf_type::make_root(0, 0, ti);
 }
 
 /** @brief Assign position @a p's keysuffix to @a s.
