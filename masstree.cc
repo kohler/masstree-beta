@@ -123,7 +123,7 @@ static void treestats1(node_base<P>* n, unsigned height) {
         for (int idx = 0; idx < perm.size(); ++idx) {
 	    int p = perm[idx];
     	    typename leaf<P>::leafvalue_type lv = lf->lv_[p];
-            if (!lv || !lf->is_layer(p))
+            if (!lv || !lf->value_is_layer(p))
                 heightcounts[height] ++;
  	    else {
                 node_base<P> *in = lv.layer()->unsplit_ancestor();
@@ -170,7 +170,7 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
 	typename leaf<P>::permuter_type perm(lf->permutation_);
 	int n = 0;
 	for (int i = 0; i < perm.size(); ++i)
-	    if (lf->is_layer(perm[i])) {
+	    if (lf->value_is_layer(perm[i])) {
 		lcdf::Json x = j["l1_size"];
 		j["l1_size"] = 0;
 		json_stats1(lf->lv_[perm[i]].layer(), j, layer + 1, 0, ti);

@@ -75,7 +75,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 	    break;
 	} else if (!lv)
 	    fprintf(f, "%s%*s%.*s = []%s\n", prefix, indent + 2, "", l, keybuf, xbuf);
-	else if (is_layer(p)) {
+	else if (value_is_layer(p)) {
 	    fprintf(f, "%s%*s%.*s = SUBTREE%s\n", prefix, indent + 2, "", l, keybuf, xbuf);
 	    node_base<P> *n = lv.layer()->unsplit_ancestor();
 	    n->print(f, prefix, indent + 4, kdepth + key_type::ikey_size);

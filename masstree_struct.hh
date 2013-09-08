@@ -322,10 +322,10 @@ class leaf : public node_base<P> {
     int ikeylen(int p) const {
 	return keylenx_ikeylen(keylenx_[p]);
     }
-    bool is_layer(int p) const {
+    bool value_is_layer(int p) const {
 	return keylenx_is_layer(keylenx_[p]);
     }
-    bool is_stable_layer(int p) const {
+    bool value_is_stable_layer(int p) const {
 	return keylenx_is_stable_layer(keylenx_[p]);
     }
     bool has_ksuf(int p) const {

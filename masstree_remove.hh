@@ -42,7 +42,7 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
 	return false;
     permuter_type perm(n_->permutation_);
     kp_ = perm[ki_];
-    if (n_->ikey0_[kp_] != ka_.ikey() || !n_->is_stable_layer(kp_))
+    if (n_->ikey0_[kp_] != ka_.ikey() || !n_->value_is_stable_layer(kp_))
 	return false;
 
     // remove redundant internode layers
