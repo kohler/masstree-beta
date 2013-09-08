@@ -498,11 +498,11 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
 	int mp = initializing ? i : perm[i];
 	if (mp != p && has_ksuf(mp)) {
 	    bool ok = nksuf->assign(mp, ksuf(mp));
-            assert(ok);
+            assert(ok); (void) ok;
         }
     }
     bool ok = nksuf->assign(p, s);
-    assert(ok);
+    assert(ok); (void) ok;
     fence();
 
     if (nremoved_ > 0)		// removed ksufs are not copied to the new ksuf,
