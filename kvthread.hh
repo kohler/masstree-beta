@@ -41,26 +41,35 @@ struct memdebug {
     size_t size;
     int after_rcu;
     int line;
+    const char* file;
 
-    static void *make(void *p, size_t size, int freetype, int line = 0) {
+    static void* make(void* p, size_t size, int freetype) {
 	if (p) {
 	    memdebug *m = reinterpret_cast<memdebug *>(p);
 	    m->magic = magic_value;
 	    m->freetype = freetype;
 	    m->size = size;
 	    m->after_rcu = 0;
-	    m->line = line;
+	    m->line = 0;
+            m->file = 0;
 	    return m + 1;
 	} else
 	    return p;
     }
-    static void *check_free(void *p, size_t size, int freetype, int line = 0) {
+    static void set_landmark(void* p, const char* file, int line) {
+        if (p) {
+            memdebug* m = reinterpret_cast<memdebug*>(p) - 1;
+            m->file = file;
+            m->line = line;
+        }
+    }
+    static void *check_free(void *p, size_t size, int freetype) {
 	memdebug *m = reinterpret_cast<memdebug *>(p) - 1;
 	free_checks(m, size, freetype, line, false, "deallocate");
 	m->magic = magic_free_value;
 	return m;
     }
-    static void check_rcu(void *p, size_t size, int freetype, int line = 0) {
+    static void check_rcu(void *p, size_t size, int freetype) {
 	memdebug *m = reinterpret_cast<memdebug *>(p) - 1;
 	free_checks(m, size, freetype, line, false, "deallocate_rcu");
 	m->after_rcu = 1;
@@ -98,17 +107,20 @@ struct memdebug {
 	    || m->after_rcu != after_rcu)
 	    hard_free_checks(m, freetype, size, line, after_rcu, op);
     }
-    static void hard_free_checks(const memdebug *m, size_t size, int freetype,
-				 int line, int after_rcu, const char *op);
-    static void hard_assert_use(const void *ptr, memtag tag1, memtag tag2);
+    void landmark(char* buf, size_t size) const;
+    static void hard_free_checks(const memdebug* m, size_t size, int freetype,
+				 int line, int after_rcu, const char* op);
+    static void hard_assert_use(const void* ptr, memtag tag1, memtag tag2);
 #else
-    static void *make(void *p, size_t, int, int = 0) {
+    static void *make(void *p, size_t, int) {
 	return p;
     }
-    static void *check_free(void *p, size_t, int, int = 0) {
+    static void set_landmark(void*, const char*, int) {
+    }
+    static void *check_free(void *p, size_t, int) {
 	return p;
     }
-    static void check_rcu(void *, size_t, int, int = 0) {
+    static void check_rcu(void *, size_t, int) {
     }
     static void *check_free_after_rcu(void *p, int) {
 	return p;
@@ -303,28 +315,28 @@ class threadinfo {
     }
 
     // memory allocation
-    void* allocate(size_t sz, memtag tag, int line = 0) {
+    void* allocate(size_t sz, memtag tag) {
 	void *p = malloc(sz + memdebug_size);
-	p = memdebug::make(p, sz, tag << 8, line);
+	p = memdebug::make(p, sz, tag << 8);
 	if (p)
             mark(threadcounter(tc_alloc + (tag > memtag_value)), sz);
 	return p;
     }
-    void deallocate(void* p, size_t sz, memtag tag, int line = 0) {
+    void deallocate(void* p, size_t sz, memtag tag) {
 	// in C++ allocators, 'p' must be nonnull
 	assert(p);
-	p = memdebug::check_free(p, sz, tag << 8, line);
+	p = memdebug::check_free(p, sz, tag << 8);
 	free(p);
         mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
     }
-    void deallocate_rcu(void *p, size_t sz, memtag tag, int line = 0) {
+    void deallocate_rcu(void *p, size_t sz, memtag tag) {
 	assert(p);
-	memdebug::check_rcu(p, sz, tag << 8, line);
+	memdebug::check_rcu(p, sz, tag << 8);
 	record_rcu(p, tag << 8);
         mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
     }
 
-    void* pool_allocate(size_t sz, memtag tag, int line = 0) {
+    void* pool_allocate(size_t sz, memtag tag) {
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
 	assert(nl < NMaxLines);
 	if (unlikely(!arena[nl - 1]))
@@ -332,25 +344,25 @@ class threadinfo {
 	void *p = arena[nl - 1];
 	if (p)
 	    arena[nl - 1] = *reinterpret_cast<void **>(p);
-	p = memdebug::make(p, sz, (tag << 8) + nl, line);
+	p = memdebug::make(p, sz, (tag << 8) + nl);
 	if (p)
             mark(threadcounter(tc_alloc + (tag > memtag_value)),
                  nl * CACHE_LINE_SIZE);
 	return p;
     }
-    void pool_deallocate(void* p, size_t sz, memtag tag, int line = 0) {
+    void pool_deallocate(void* p, size_t sz, memtag tag) {
 	assert(p);
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
-	p = memdebug::check_free(p, sz, (tag << 8) + nl, line);
+	p = memdebug::check_free(p, sz, (tag << 8) + nl);
 	*reinterpret_cast<void **>(p) = arena[nl - 1];
 	arena[nl - 1] = p;
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
              -nl * CACHE_LINE_SIZE);
     }
-    void pool_deallocate_rcu(void* p, size_t sz, memtag tag, int line = 0) {
+    void pool_deallocate_rcu(void* p, size_t sz, memtag tag) {
 	assert(p);
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
-	memdebug::check_rcu(p, sz, (tag << 8) + nl, line);
+	memdebug::check_rcu(p, sz, (tag << 8) + nl);
 	record_rcu(p, (tag << 8) + nl);
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
              -nl * CACHE_LINE_SIZE);
