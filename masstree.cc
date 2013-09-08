@@ -298,7 +298,8 @@ struct scan_tester {
 	    keylen_ = sizeof(key_);
 	}
     }
-    bool operator()(Str key, row_type*, threadinfo&) {
+    template <typename SS>
+    bool operator()(Str key, row_type*, const SS&, threadinfo&) {
 	memcpy(key_, key.s, key.len);
 	keylen_ = key.len;
 	const char *pos = (reverse_ ? vend_[-1] : vbegin_[0]);

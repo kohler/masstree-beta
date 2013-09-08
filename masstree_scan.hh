@@ -21,7 +21,8 @@
 namespace Masstree {
 
 template <typename P>
-struct scanstackelt {
+class scanstackelt {
+  public:
     typedef leaf<P> leaf_type;
     typedef typename leaf_type::leafvalue_type leafvalue_type;
     typedef typename leaf_type::bound_type bound_type;
@@ -29,10 +30,28 @@ struct scanstackelt {
     typedef key<ikey_type> key_type;
     typedef typename leaf_type::permuter_type permuter_type;
     typedef typename P::threadinfo_type threadinfo;
+    typedef typename node_base<P>::nodeversion_type nodeversion_type;
 
+    leaf<P>* node() const {
+        return n_;
+    }
+    typename nodeversion_type::value_type full_version_value() const {
+        return (v_.version_value() << permuter_type::size_bits) + perm_.size();
+    }
+    int size() const {
+	return perm_.size();
+    }
+    permuter_type permutation() const {
+	return perm_;
+    }
+    int operator()(const key_type &k, const scanstackelt<P> &n, int p) {
+	return ::key_compare(k, *n.n_, p);
+    }
+
+  private:
     node_base<P> *root_;
     leaf<P> *n_;
-    typename node_base<P>::nodeversion_type v_;
+    nodeversion_type v_;
     permuter_type perm_;
     int ki_;
 
@@ -49,22 +68,14 @@ struct scanstackelt {
     template <typename H>
     int find_next(H& helper, key_type& ka, leafvalue_type& entry);
 
-    permuter_type permutation() const {
-	return perm_;
-    }
-    int size() const {
-	return perm_.size();
-    }
-    int operator()(const key_type &k, const scanstackelt<P> &n, int p) {
-	return ::key_compare(k, *n.n_, p);
-    }
-
     int kp() const {
 	if (unsigned(ki_) < unsigned(perm_.size()))
 	    return perm_[ki_];
 	else
 	    return -1;
     }
+
+    template <typename PX> friend class basic_table;
 };
 
 struct forward_scan_helper {
@@ -335,7 +346,7 @@ int basic_table<P>::scan(H helper,
 	switch (state) {
 	case mystack_type::scan_emit:
 	    ++scancount;
-	    if (!scanner(ka.full_string(), entry.value(), ti))
+	    if (!scanner(ka.full_string(), entry.value(), stack[stackpos], ti))
 		goto done;
 	    stack[stackpos].ki_ = helper.next(stack[stackpos].ki_);
 	    goto find_next;
