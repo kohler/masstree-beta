@@ -299,7 +299,9 @@ struct scan_tester {
 	}
     }
     template <typename SS>
-    bool operator()(Str key, row_type*, const SS&, threadinfo&) {
+    void visit_leaf(const SS&, int, threadinfo&) {
+    }
+    bool visit_value(Str key, row_type*, threadinfo&) {
 	memcpy(key_, key.s, key.len);
 	keylen_ = key.len;
 	const char *pos = (reverse_ ? vend_[-1] : vbegin_[0]);

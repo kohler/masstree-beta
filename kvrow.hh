@@ -387,7 +387,9 @@ struct query_scanner {
 	: q_(q) {
     }
     template <typename SS>
-    bool operator()(Str key, R* value, const SS&, threadinfo& ti) {
+    void visit_leaf(const SS&, int, threadinfo&) {
+    }
+    bool visit_value(Str key, R* value, threadinfo& ti) {
 	return q_.scanemit(key, value, &ti);
     }
 };

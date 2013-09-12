@@ -255,7 +255,6 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 {
     int kp;
 
- retry_node:
     if (v_.deleted())
 	return scan_retry;
 
@@ -304,7 +303,7 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
     v_ = helper.stable(n_, ka);
     perm_ = n_->permutation();
     ki_ = helper.lower(ka, this);
-    goto retry_node;
+    return scan_find_next;
 }
 
 template <typename P> template <typename H, typename F>
@@ -336,6 +335,8 @@ int basic_table<P>::scan(H helper,
     while (1) {
 	state = stack[stackpos].find_initial(helper, ka, emit_firstkey,
 					     entry, ti);
+        if (state != mystack_type::scan_find_next)
+            scanner.visit_leaf(stack[stackpos], stackpos, ti);
 	if (state != mystack_type::scan_down)
 	    break;
 	ka.shift();
@@ -346,14 +347,16 @@ int basic_table<P>::scan(H helper,
 	switch (state) {
 	case mystack_type::scan_emit:
 	    ++scancount;
-	    if (!scanner(ka, entry.value(), stack[stackpos], ti))
+	    if (!scanner.visit_value(ka, entry.value(), ti))
 		goto done;
 	    stack[stackpos].ki_ = helper.next(stack[stackpos].ki_);
-	    goto find_next;
+            state = stack[stackpos].find_next(helper, ka, entry);
+            break;
 
 	case mystack_type::scan_find_next:
-	find_next:
+        find_next:
 	    state = stack[stackpos].find_next(helper, ka, entry);
+            scanner.visit_leaf(stack[stackpos], stackpos, ti);
 	    break;
 
 	case mystack_type::scan_up:
@@ -373,6 +376,7 @@ int basic_table<P>::scan(H helper,
 	case mystack_type::scan_retry:
 	retry:
 	    state = stack[stackpos].find_retry(helper, ka, ti);
+            scanner.visit_leaf(stack[stackpos], stackpos, ti);
 	    break;
 	}
     }
