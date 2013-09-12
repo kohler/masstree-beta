@@ -166,6 +166,9 @@ class basic_nodeversion {
     value_type version_value() const {
 	return v_;
     }
+    value_type unlocked_version_value() const {
+        return v_ & P::unlock_mask;
+    }
 
   private:
     value_type v_;
@@ -273,6 +276,9 @@ class basic_singlethreaded_nodeversion {
 
     value_type version_value() const {
 	return v_;
+    }
+    value_type unlocked_version_value() const {
+        return v_;
     }
 
   private:

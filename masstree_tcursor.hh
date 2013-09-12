@@ -79,6 +79,7 @@ class tcursor {
     typedef typename P::ikey_type ikey_type;
     typedef key<ikey_type> key_type;
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
+    typedef typename nodeversion_type::value_type nodeversion_value_type;
     typedef typename P::threadinfo_type threadinfo;
 
     tcursor(basic_table<P> &table, Str str)
@@ -116,6 +117,9 @@ class tcursor {
     inline bool find_insert(threadinfo& ti);
 
     inline void finish(int answer, threadinfo& ti);
+
+    inline nodeversion_value_type previous_full_version_value() const;
+    inline nodeversion_value_type next_full_version_value(int state) const;
 
   private:
     leaf_type *n_;
@@ -157,6 +161,28 @@ class tcursor {
     bool gc_layer(threadinfo& ti);
     friend struct gc_layer_rcu_callback<P>;
 };
+
+template <typename P>
+inline typename tcursor<P>::nodeversion_value_type
+tcursor<P>::previous_full_version_value() const {
+    static_assert(int(nodeversion_type::traits_type::top_stable_bits) >= int(leaf<P>::permuter_type::size_bits), "not enough bits to add size to version");
+    return (n_->unlocked_version_value() << leaf<P>::permuter_type::size_bits) + n_->size();
+}
+
+template <typename P>
+inline typename tcursor<P>::nodeversion_value_type
+tcursor<P>::next_full_version_value(int state) const {
+    static_assert(int(nodeversion_type::traits_type::top_stable_bits) >= int(leaf<P>::permuter_type::size_bits), "not enough bits to add size to version");
+    typename node_base<P>::nodeversion_type v(*n_);
+    v.unlock();
+    nodeversion_value_type result = (v.version_value() << leaf<P>::permuter_type::size_bits) + n_->size();
+    if (state < 0 && (state_ & 1))
+        return result - 1;
+    else if (state > 0 && state_ == 2)
+        return result + 1;
+    else
+        return result;
+}
 
 } // namespace Masstree
 #endif
