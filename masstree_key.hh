@@ -151,6 +151,12 @@ class key {
 	unparse(s.mutable_data(), s.length());
 	return s;
     }
+    int unparse_printable(char* data, int datalen) const {
+        String s = unparse().printable();
+        int cplen = std::min(s.length(), datalen);
+        memcpy(data, s.data(), cplen);
+        return cplen;
+    }
     static String unparse_ikey(ikey_type ikey) {
 	key<ikey_type> k(ikey);
 	return k.unparse();

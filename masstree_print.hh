@@ -64,9 +64,10 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
     } while (this->has_changed(v));
 
     char keybuf[MASSTREE_MAXKEYSIZE];
-    fprintf(f, "%s%*sleaf %p: %d keys, version %x, permutation %s, ",
-	    prefix, indent, "", this, perm.size(), v.version_value(),
-	    perm.unparse().c_str());
+    fprintf(f, "%s%*sleaf %p: %d %s, version %x, permutation %s, ",
+	    prefix, indent, "", this,
+            perm.size(), perm.size() == 1 ? "key" : "keys",
+            v.version_value(), perm.unparse().c_str());
     if (nremoved_)
 	fprintf(f, "removed %d, ", nremoved_);
     fprintf(f, "parent %p, prev %p, next %p ", parent_, prev_, next_.ptr);
@@ -87,8 +88,11 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 
     char xbuf[15];
     for (int idx = 0; idx < perm.size(); ++idx) {
-	int p = perm[idx];
-	int l = this->get_key(p).unparse(keybuf, sizeof(keybuf));
+	int p = perm[idx], l;
+        if (P::printable_keys)
+            l = this->get_key(p).unparse_printable(keybuf, sizeof(keybuf));
+        else
+            l = this->get_key(p).unparse(keybuf, sizeof(keybuf));
 	sprintf(xbuf, " #%x/%d", p, keylenx_[p]);
 	leafvalue_type lv = lv_[p];
 	if (this->has_changed(v)) {
@@ -133,7 +137,11 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 	    copy.child_[p]->print(f, prefix, indent + 4, kdepth);
 	else
 	    fprintf(f, "%s%*s[]\n", prefix, indent + 4, "");
-	int l = copy.get_key(p).unparse(keybuf, sizeof(keybuf));
+        int l;
+        if (P::printable_keys)
+            l = copy.get_key(p).unparse_printable(keybuf, sizeof(keybuf));
+        else
+            l = copy.get_key(p).unparse(keybuf, sizeof(keybuf));
 	fprintf(f, "%s%*s%.*s\n", prefix, indent + 2, "", l, keybuf);
     }
     if (copy.child_[copy.size()])
