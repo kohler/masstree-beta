@@ -23,6 +23,8 @@ namespace Masstree {
 using lcdf::Str;
 using lcdf::String;
 
+template <typename T> class value_print;
+
 template <int LW = 15, int IW = LW> struct nodeparams {
     static constexpr int leaf_width = LW;
     static constexpr int internode_width = IW;

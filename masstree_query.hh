@@ -77,6 +77,7 @@ class query_table {
 
 struct default_query_table_params : public nodeparams<15, 15> {
     typedef row_type* value_type;
+    typedef value_print<value_type> value_print_type;
     typedef ::threadinfo threadinfo_type;
 };
 

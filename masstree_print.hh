@@ -20,6 +20,27 @@
 
 namespace Masstree {
 
+template <typename T>
+class value_print {
+  public:
+    static void print(T value, FILE* f, const char* prefix,
+                      int indent, Str key, kvtimestamp_t initial_timestamp,
+                      char* suffix) {
+        value->print(f, prefix, indent, key, initial_timestamp, suffix);
+    }
+};
+
+template <>
+class value_print<unsigned char*> {
+  public:
+    static void print(unsigned char* value, FILE* f, const char* prefix,
+                      int indent, Str key, kvtimestamp_t,
+                      char* suffix) {
+	fprintf(f, "%s%*s%.*s = %p%s\n",
+                prefix, indent, "", key.len, key.s, value, suffix);
+    }
+};
+
 template <typename P>
 void node_base<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 {
@@ -81,7 +102,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 	    n->print(f, prefix, indent + 4, kdepth + key_type::ikey_size);
 	} else {
 	    typename P::value_type tvx = lv.value();
-            tvx->print(f, prefix, indent + 2, Str(keybuf, l), initial_timestamp, xbuf);
+            P::value_print_type::print(tvx, f, prefix, indent + 2, Str(keybuf, l), initial_timestamp, xbuf);
 	}
     }
 
