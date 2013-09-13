@@ -335,8 +335,7 @@ int basic_table<P>::scan(H helper,
     while (1) {
 	state = stack[stackpos].find_initial(helper, ka, emit_firstkey,
 					     entry, ti);
-        if (state != mystack_type::scan_find_next)
-            scanner.visit_leaf(stack[stackpos], stackpos, ti);
+        scanner.visit_leaf(stack[stackpos], ka, ti);
 	if (state != mystack_type::scan_down)
 	    break;
 	ka.shift();
@@ -356,7 +355,8 @@ int basic_table<P>::scan(H helper,
 	case mystack_type::scan_find_next:
         find_next:
 	    state = stack[stackpos].find_next(helper, ka, entry);
-            scanner.visit_leaf(stack[stackpos], stackpos, ti);
+            if (state != mystack_type::scan_up)
+                scanner.visit_leaf(stack[stackpos], ka, ti);
 	    break;
 
 	case mystack_type::scan_up:
@@ -376,7 +376,6 @@ int basic_table<P>::scan(H helper,
 	case mystack_type::scan_retry:
 	retry:
 	    state = stack[stackpos].find_retry(helper, ka, ti);
-            scanner.visit_leaf(stack[stackpos], stackpos, ti);
 	    break;
 	}
     }

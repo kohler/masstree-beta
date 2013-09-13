@@ -298,8 +298,8 @@ struct scan_tester {
 	    keylen_ = sizeof(key_);
 	}
     }
-    template <typename SS>
-    void visit_leaf(const SS&, int, threadinfo&) {
+    template <typename SS, typename K>
+    void visit_leaf(const SS&, const K&, threadinfo&) {
     }
     bool visit_value(Str key, row_type*, threadinfo&) {
 	memcpy(key_, key.s, key.len);
