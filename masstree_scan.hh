@@ -17,7 +17,6 @@
 #define MASSTREE_SCAN_HH
 #include "masstree_tcursor.hh"
 #include "masstree_struct.hh"
-#include "masstree_traverse.hh"
 namespace Masstree {
 
 template <typename P>
@@ -186,7 +185,7 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
     Str suffix;
 
  retry_root:
-    n_ = Masstree::reach_leaf(root_, ka, ti, v_);
+    n_ = root_->reach_leaf(ka, v_, ti);
 
  retry_node:
     if (v_.deleted())
@@ -209,7 +208,7 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
     }
     if (n_->has_changed(v_)) {
 	ti.mark(tc_leaf_retry);
-	n_ = forward_at_leaf(n_, v_, ka, ti);
+	n_ = n_->advance_to_key(ka, v_, ti);
 	goto retry_node;
     }
 
@@ -240,7 +239,7 @@ template <typename P> template <typename H>
 int scanstackelt<P>::find_retry(H& helper, key_type& ka, threadinfo& ti)
 {
  retry:
-    n_ = Masstree::reach_leaf(root_, ka, ti, v_);
+    n_ = root_->reach_leaf(ka, v_, ti);
     if (v_.deleted())
 	goto retry;
 

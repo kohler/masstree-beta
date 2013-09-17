@@ -93,6 +93,9 @@ class node_base : public make_nodeversion<P>::type {
 	return x;
     }
 
+    inline leaf_type* reach_leaf(const key_type& k, nodeversion_type& version,
+                                 threadinfo& ti) const;
+
     void prefetch_full() const {
 	for (int i = 0; i < std::min(16 * std::min(P::leaf_width, P::internode_width) + 1, 4 * 64); i += 64)
 	    ::prefetch((const char *) this + i);
@@ -333,6 +336,9 @@ class leaf : public node_base<P> {
     inline int stable_last_key_compare(const key_type& k, nodeversion_type v,
                                        threadinfo& ti) const;
 
+    inline leaf<P>* advance_to_key(const key_type& k, nodeversion_type& version,
+                                   threadinfo& ti) const;
+
     bool value_is_layer(int p) const {
 	return keylenx_is_layer(keylenx_[p]);
     }
@@ -462,6 +468,145 @@ template <typename P>
 void basic_table<P>::reinitialize(threadinfo& ti) {
     root_ = node_type::leaf_type::make_root(0, 0, ti);
 }
+
+
+/** @brief Return this node's parent in locked state.
+    @pre this->locked()
+    @post this->parent() == result && (!result || result->locked()) */
+template <typename P>
+internode<P>* node_base<P>::locked_parent(threadinfo& ti) const
+{
+    node_base<P>* p;
+    masstree_precondition(!this->concurrent || this->locked());
+    while (1) {
+	p = this->parent();
+	if (!node_base<P>::parent_exists(p))
+            break;
+	nodeversion_type pv = p->lock(*p, ti.lock_fence(tc_internode_lock));
+	if (p == this->parent()) {
+	    masstree_invariant(!p->isleaf());
+	    break;
+	}
+	p->unlock(pv);
+	relax_fence();
+    }
+    return static_cast<internode<P>*>(p);
+}
+
+
+/** @brief Return the result of key_compare(k, LAST KEY IN NODE).
+
+    Reruns the comparison until a stable comparison is obtained. */
+template <typename P>
+inline int
+internode<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
+                                      threadinfo& ti) const
+{
+    while (1) {
+	int cmp = key_compare(k, *this, size() - 1);
+	if (likely(!this->has_changed(v)))
+	    return cmp;
+	v = this->stable_annotated(ti.stable_fence());
+    }
+}
+
+template <typename P>
+inline int
+leaf<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
+                                 threadinfo& ti) const
+{
+    while (1) {
+	typename leaf<P>::permuter_type perm(permutation_);
+	int p = perm[perm.size() - 1];
+	int cmp = key_compare(k, *this, p);
+	if (likely(!this->has_changed(v)))
+	    return cmp;
+	v = this->stable_annotated(ti.stable_fence());
+    }
+}
+
+
+/** @brief Return the leaf in this tree layer responsible for @a ka.
+
+    Returns a stable leaf. Sets @a version to the stable version. */
+template <typename P>
+inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
+                                         nodeversion_type& version,
+                                         threadinfo& ti) const
+{
+    const node_base<P> *n[2];
+    typename node_base<P>::nodeversion_type v[2];
+    bool sense;
+
+    // Get a non-stale root.
+    // Detect staleness by checking whether n has ever split.
+    // The true root has never split.
+ retry:
+    sense = false;
+    n[sense] = this;
+    while (1) {
+	v[sense] = n[sense]->stable_annotated(ti.stable_fence());
+	if (!v[sense].has_split())
+	    break;
+	ti.mark(tc_root_retry);
+	n[sense] = n[sense]->unsplit_ancestor();
+    }
+
+    // Loop over internal nodes.
+    while (!v[sense].isleaf()) {
+	const internode<P> *in = static_cast<const internode<P> *>(n[sense]);
+	in->prefetch();
+	int kp = internode<P>::bound_type::upper(ka, *in);
+	n[!sense] = in->child_[kp];
+	if (!n[!sense])
+	    goto retry;
+	v[!sense] = n[!sense]->stable_annotated(ti.stable_fence());
+
+	if (likely(!in->has_changed(v[sense]))) {
+	    sense = !sense;
+	    continue;
+	}
+
+	typename node_base<P>::nodeversion_type oldv = v[sense];
+	v[sense] = in->stable_annotated(ti.stable_fence());
+	if (oldv.has_split(v[sense])
+	    && in->stable_last_key_compare(ka, v[sense], ti) > 0) {
+	    ti.mark(tc_root_retry);
+	    goto retry;
+	} else
+	    ti.mark(tc_internode_retry);
+    }
+
+    version = v[sense];
+    return const_cast<leaf<P> *>(static_cast<const leaf<P> *>(n[sense]));
+}
+
+/** @brief Return the leaf at or after *this responsible for @a ka.
+    @pre *this was responsible for @a ka at version @a v
+
+    Checks whether *this has split since version @a v. If it has split, then
+    advances through the leaves using the B^link-tree pointers and returns
+    the relevant leaf, setting @a v to the stable version for that leaf. */
+template <typename P>
+leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
+                                 threadinfo& ti) const
+{
+    const leaf<P>* n = this;
+    nodeversion_type oldv = v;
+    v = n->stable_annotated(ti.stable_fence());
+    if (v.has_split(oldv)
+	&& n->stable_last_key_compare(ka, v, ti) > 0) {
+	leaf<P> *next;
+	ti.mark(tc_leaf_walk);
+	while (likely(!v.deleted()) && (next = n->safe_next())
+	       && compare(ka.ikey(), next->ikey_bound()) >= 0) {
+	    n = next;
+	    v = n->stable_annotated(ti.stable_fence());
+	}
+    }
+    return const_cast<leaf<P>*>(n);
+}
+
 
 /** @brief Assign position @a p's keysuffix to @a s.
 

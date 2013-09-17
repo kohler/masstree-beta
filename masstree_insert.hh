@@ -124,7 +124,7 @@ bool tcursor<P>::find_insert(threadinfo& ti)
     node_type *root = tablep_->root_;
     nodeversion_type v;
     while (1) {
-	n_ = reach_leaf(root, ka_, ti, v);
+	n_ = root->reach_leaf(ka_, v, ti);
 	root = check_leaf_insert(root, v, ti);
 	if (reinterpret_cast<uintptr_t>(root) <= reinterpret_cast<uintptr_t>(insert_marker())) {
             state_ = 2 + (root == found_marker());

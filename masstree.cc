@@ -17,7 +17,6 @@
 #include "masstree_key.hh"
 #include "masstree_struct.hh"
 #include "masstree_tcursor.hh"
-#include "masstree_traverse.hh"
 #include "masstree_get.hh"
 #include "masstree_insert.hh"
 #include "masstree_split.hh"

@@ -16,7 +16,6 @@
 #ifndef MASSTREE_GET_HH
 #define MASSTREE_GET_HH 1
 #include "masstree_tcursor.hh"
-#include "masstree_traverse.hh"
 #include "masstree_key.hh"
 namespace Masstree {
 
@@ -63,7 +62,7 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
     node_base<P> *root = tablep_->root_;
 
  retry:
-    n_ = reach_leaf(root, ka_, ti, v_);
+    n_ = root->reach_leaf(ka_, v_, ti);
 
  forward:
     if (v_.deleted())
@@ -84,7 +83,7 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
     }
     if (n_->has_changed(v_)) {
 	ti.mark(threadcounter(tc_stable_leaf_insert + n_->simple_has_split(v_)));
-	n_ = forward_at_leaf(n_, v_, ka_, ti);
+	n_ = n_->advance_to_key(ka_, v_, ti);
 	goto forward;
     }
 
@@ -212,7 +211,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
     nodeversion_type v;
     node_type *root = tablep_->root_;
     while (1) {
-	n_ = reach_leaf(root, ka_, ti, v);
+	n_ = root->reach_leaf(ka_, v, ti);
 	root = check_leaf_locked(root, v, ti);
 	if (!root) {
             state_ = kp_ >= 0;
