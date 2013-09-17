@@ -105,6 +105,7 @@ template <typename P>
 class internode : public node_base<P> {
   public:
     static constexpr int width = P::internode_width;
+    typedef typename node_base<P>::nodeversion_type nodeversion_type;
     typedef key<typename P::ikey_type> key_type;
     typedef typename P::ikey_type ikey_type;
     typedef typename key_bound<width, P::bound_method>::type bound_type;
@@ -140,6 +141,8 @@ class internode : public node_base<P> {
     ikey_type ikey(int p) const {
 	return ikey0_[p];
     }
+    inline int stable_last_key_compare(const key_type& k, nodeversion_type v,
+                                       threadinfo& ti) const;
 
     void assign(int p, ikey_type ikey, node_base<P>* child) {
 	child->set_parent(this);
@@ -327,6 +330,9 @@ class leaf : public node_base<P> {
     int ikeylen(int p) const {
 	return keylenx_ikeylen(keylenx_[p]);
     }
+    inline int stable_last_key_compare(const key_type& k, nodeversion_type v,
+                                       threadinfo& ti) const;
+
     bool value_is_layer(int p) const {
 	return keylenx_is_layer(keylenx_[p]);
     }
@@ -459,7 +465,7 @@ void basic_table<P>::reinitialize(threadinfo& ti) {
 
 /** @brief Assign position @a p's keysuffix to @a s.
 
-    This version of assign_ksuf() is be called when @a s might not fit into
+    This version of assign_ksuf() is called when @a s might not fit into
     the current keysuffix container. It may allocate a new container, copying
     suffixes over.
 

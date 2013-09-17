@@ -19,32 +19,30 @@
 namespace Masstree {
 
 template <typename P>
-static inline int stable_last_key_compare(const typename node_base<P>::key_type &ka,
-					  const internode<P> &n,
-					  typename internode<P>::nodeversion_type v,
-					  typename P::threadinfo_type& ti)
+inline int
+internode<P>::stable_last_key_compare(const key_type& ka, nodeversion_type v,
+                                      threadinfo& ti) const
 {
     while (1) {
-	int cmp = key_compare(ka, n, n.size() - 1);
-	if (likely(!n.has_changed(v)))
+	int cmp = key_compare(ka, *this, size() - 1);
+	if (likely(!this->has_changed(v)))
 	    return cmp;
-	v = n.stable_annotated(ti.stable_fence());
+	v = this->stable_annotated(ti.stable_fence());
     }
 }
 
 template <typename P>
-static inline int stable_last_key_compare(const typename node_base<P>::key_type &ka,
-					  const leaf<P> &n,
-					  typename leaf<P>::nodeversion_type v,
-					  typename P::threadinfo_type& ti)
+inline int
+leaf<P>::stable_last_key_compare(const key_type& ka, nodeversion_type v,
+                                 threadinfo& ti) const
 {
     while (1) {
-	typename leaf<P>::permuter_type perm(n.permutation_);
+	typename leaf<P>::permuter_type perm(permutation_);
 	int p = perm[perm.size() - 1];
-	int cmp = key_compare(ka, n, p);
-	if (likely(!n.has_changed(v)))
+	int cmp = key_compare(ka, *this, p);
+	if (likely(!this->has_changed(v)))
 	    return cmp;
-	v = n.stable_annotated(ti.stable_fence());
+	v = this->stable_annotated(ti.stable_fence());
     }
 }
 
@@ -90,7 +88,7 @@ inline leaf<P> *reach_leaf(const node_base<P> *root,
 	typename node_base<P>::nodeversion_type oldv = v[sense];
 	v[sense] = in->stable_annotated(ti.stable_fence());
 	if (oldv.has_split(v[sense])
-	    && stable_last_key_compare(ka, *in, v[sense], ti) > 0) {
+	    && in->stable_last_key_compare(ka, v[sense], ti) > 0) {
 	    ti.mark(tc_root_retry);
 	    goto retry;
 	} else
@@ -110,7 +108,7 @@ leaf<P> *forward_at_leaf(const leaf<P> *n,
     typename leaf<P>::nodeversion_type oldv = v;
     v = n->stable_annotated(ti.stable_fence());
     if (v.has_split(oldv)
-	&& stable_last_key_compare(ka, *n, v, ti) > 0) {
+	&& n->stable_last_key_compare(ka, v, ti) > 0) {
 	leaf<P> *next;
 	ti.mark(tc_leaf_walk);
 	while (likely(!v.deleted()) && (next = n->safe_next())
