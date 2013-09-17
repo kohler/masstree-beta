@@ -34,7 +34,7 @@ libjson.a: json.o string.o straccum.o str.o clp.o kvrandom.o compiler.o kvthread
 	@/bin/rm -f $@
 	$(AR) cru $@ $^
 
-KVTREES = masstree.o \
+KVTREES = query_masstree.o \
 	value_string.o value_array.o value_versioned_array.o \
 	string_slice.o
 

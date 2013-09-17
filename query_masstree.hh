@@ -13,8 +13,8 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#ifndef MASSTREE_QUERY_HH
-#define MASSTREE_QUERY_HH 1
+#ifndef QUERY_MASSTREE_HH
+#define QUERY_MASSTREE_HH 1
 #include "masstree.hh"
 #include "kvproto.hh"
 #include "timestamp.hh"

@@ -52,7 +52,7 @@
 #endif
 #include "nodeversion.hh"
 #include "kvstats.hh"
-#include "masstree_query.hh"
+#include "query_masstree.hh"
 #include "timestamp.hh"
 #include "json.hh"
 #include "kvtest.hh"

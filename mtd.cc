@@ -55,7 +55,7 @@
 #include "checkpoint.hh"
 #include "file.hh"
 #include "kvproto.hh"
-#include "masstree_query.hh"
+#include "query_masstree.hh"
 #include <algorithm>
 using lcdf::StringAccum;
 

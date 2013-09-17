@@ -23,7 +23,7 @@
 #include "masstree_remove.hh"
 #include "masstree_scan.hh"
 #include "masstree_print.hh"
-#include "masstree_query.hh"
+#include "query_masstree.hh"
 #include "string_slice.hh"
 #include "kpermuter.hh"
 #include "ksearch.hh"
