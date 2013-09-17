@@ -103,7 +103,7 @@ int leaf<P>::split_into(leaf<P>* nr, int p, const key_type& ka,
 	permr.remove_to_back(p - mid);
     nr->permutation_ = permr.value();
 
-    btree_leaflink<leaf<P> >::link_split(this, nr);
+    btree_leaflink<leaf<P>, P::concurrent>::link_split(this, nr);
 
     split_ikey = nr->ikey0_[0];
     return p >= mid ? 1 + (mid == width) : 0;
