@@ -17,8 +17,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void fail_mandatory_assert(const char* file, int line,
-                           const char* assertion, const char* message) {
+void fail_always_assert(const char* file, int line,
+                        const char* assertion, const char* message) {
     if (message)
 	fprintf(stderr, "assertion \"%s\" [%s] failed: file \"%s\", line %d\n",
 		message, assertion, file, line);

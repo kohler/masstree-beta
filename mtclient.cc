@@ -370,7 +370,7 @@ main(int argc, char *argv[])
       for(i = 0; i < children; i++){
 	  int ptmp[2];
 	  int r = pipe(ptmp);
-	  mandatory_assert(r == 0);
+	  always_assert(r == 0);
 	  fflush(stdout);
 	  pid = fork();
 	  if(pid < 0){
@@ -512,11 +512,11 @@ get(struct child *c, const Str &key, char *val, int max)
   unsigned int rseq = 0;
   vector<string> row;
   int r = c->conn->recvget(row, &rseq, false);
-  mandatory_assert(r == 0);
-  mandatory_assert(rseq == sseq);
+  always_assert(r == 0);
+  always_assert(rseq == sseq);
   if (row.size() == 0)
     return -1;
-  mandatory_assert(row.size() == 1 && row[0].length() <= (unsigned)max);
+  always_assert(row.size() == 1 && row[0].length() <= (unsigned)max);
   memcpy(val, row[0].data(), row[0].length());
   return row[0].length();
 }
@@ -571,8 +571,8 @@ defaultget(struct child *, struct async *a, bool have_val, const Str &val)
 	fprintf(stderr, "oops wanted %.*s(%d) got %.*s(%d)\n",
 		wanted_avail, a->wanted, a->wantedlen, val.len, val.s, val.len);
     else {
-	mandatory_assert(a->wantedlen == val.len);
-	mandatory_assert(memcmp(val.s, a->wanted, wanted_avail) == 0);
+	always_assert(a->wantedlen == val.len);
+	always_assert(memcmp(val.s, a->wanted, wanted_avail) == 0);
     }
 }
 
@@ -608,12 +608,12 @@ checkasync(struct child *c, int force)
           break;
       if(nn >= c->nw)
         fprintf(stderr, "rseq %d nr %qd nw %qd\n", rseq, c->nr, c->nw);
-      mandatory_assert(nn < c->nw);
+      always_assert(nn < c->nw);
       struct async *a = &c->a[nn % window];
-      mandatory_assert(a->seq == rseq);
+      always_assert(a->seq == rseq);
 
       // advance the nr..nw window
-      mandatory_assert(a->acked == 0);
+      always_assert(a->acked == 0);
       a->acked = 1;
       while(c->nr < c->nw && c->a[c->nr % window].acked)
         c->nr += 1;
@@ -626,19 +626,19 @@ checkasync(struct child *c, int force)
         // this is a reply to a get
         vector<string> row;
 	int r = c->conn->recvget(row, NULL, true);
-	mandatory_assert(r == 0);
+	always_assert(r == 0);
 	Str s = (row.size() ? Str(row[0].data(), row[0].length()) : Str());
 	if (tmpa.get_fn)
 	    (tmpa.get_fn)(c, &tmpa, row.size(), s);
       } else if(tmpa.cmd == Cmd_Put){
 	  // this is a reply to a put
 	  int r = c->conn->recvput(NULL, true);
-	  mandatory_assert(r >= 0);
+	  always_assert(r >= 0);
       } else if(tmpa.cmd == Cmd_Put_Status){
 	  // this is a reply to a put
 	  int status;
 	  int r = c->conn->recvputstatus(&status, NULL, true);
-	  mandatory_assert(r >= 0);
+	  always_assert(r >= 0);
 	  if (tmpa.put_fn)
 	      (tmpa.put_fn)(c, &tmpa, status);
       } else if(tmpa.cmd == Cmd_Scan){
@@ -646,17 +646,17 @@ checkasync(struct child *c, int force)
         vector<string> keys;
         vector< vector<string> > rows;
 	int r = c->conn->recvscan(keys, rows, NULL, true);
-	mandatory_assert(r == 0);
-        mandatory_assert(keys.size() <= (unsigned)tmpa.wantedlen);
+	always_assert(r == 0);
+        always_assert(keys.size() <= (unsigned)tmpa.wantedlen);
       } else if (tmpa.cmd == Cmd_Remove) {
 	  // this is a reply to a remove
 	  int status;
 	  int r = c->conn->recvremove(&status, NULL, true);
-	  mandatory_assert(r == 0);
+	  always_assert(r == 0);
 	  if (tmpa.remove_fn)
 	      (tmpa.remove_fn)(c, &tmpa, status);
       } else {
-        mandatory_assert(0);
+        always_assert(0);
       }
 
       if(force < 2)
@@ -706,7 +706,7 @@ aget(struct child *c, long ikey, long iwanted, get_async_cb fn)
 int
 put(struct child *c, const Str &key, const Str &val)
 {
-  mandatory_assert(c->nw == c->nr);
+  always_assert(c->nw == c->nr);
 
   unsigned int sseq = key.s[0]; // XXX
   c->conn->sendputwhole(key, val, sseq);
@@ -714,8 +714,8 @@ put(struct child *c, const Str &key, const Str &val)
 
   unsigned int rseq = 0;
   int ret = c->conn->recvput(&rseq, false);
-  mandatory_assert(ret == 0);
-  mandatory_assert(rseq == sseq);
+  always_assert(ret == 0);
+  always_assert(rseq == sseq);
 
   return 0;
 }
@@ -756,7 +756,7 @@ aput(struct child *c, const Str &key, const Str &val,
 bool
 remove(struct child *c, const Str &key)
 {
-  mandatory_assert(c->nw == c->nr);
+  always_assert(c->nw == c->nr);
 
   unsigned int sseq = key.s[0]; // XXX
   c->conn->sendremove(key, sseq);
@@ -765,8 +765,8 @@ remove(struct child *c, const Str &key)
   unsigned int rseq = 0;
   int status = 0;
   int ret = c->conn->recvremove(&status, &rseq, false);
-  mandatory_assert(ret == 0);
-  mandatory_assert(rseq == sseq);
+  always_assert(ret == 0);
+  always_assert(rseq == sseq);
 
   return status;
 }
@@ -903,7 +903,7 @@ struct kvtest_client {
 	::get(c_, Str(key), got, sizeof(got));
         if (strcmp(val, got)) {
             fprintf(stderr, "key %s, expected %s, got %s\n", key, val, got);
-            mandatory_assert(0);
+            always_assert(0);
         }
     }
 
@@ -1162,7 +1162,7 @@ w1b(struct child *c)
   else
       n = std::min(limit, (uint64_t) INT_MAX);
   long *a = (long *) malloc(sizeof(long) * n);
-  mandatory_assert(a);
+  always_assert(a);
   char *done = (char *) malloc(n);
 
   srandom(first_seed + c->childno);
@@ -1176,7 +1176,7 @@ w1b(struct child *c)
   }
 
   qsort(a, n, sizeof(a[0]), xcompar);
-  mandatory_assert(a[0] <= a[1] && a[1] <= a[2] && a[2] <= a[3]);
+  always_assert(a[0] <= a[1] && a[1] <= a[2] && a[2] <= a[3]);
 
   double t0 = now(), t1;
 
@@ -1367,7 +1367,7 @@ over1(struct child *c)
     put(c, Str(key1), Str(val1));
     napms(500);
     ret = get(c, Str(key1), val2, sizeof(val2));
-    mandatory_assert(ret > 0);
+    always_assert(ret > 0);
     sprintf(key2, "%d-%d", iter, c->childno);
     put(c, Str(key2), Str(val2));
     if(c->childno == 0)
@@ -1397,7 +1397,7 @@ over2(struct child *c)
       break;
     if(c->childno == 0)
       printf("%d: %s\n", iter, val2);
-    mandatory_assert(strcmp(val1, val2) == 0);
+    always_assert(strcmp(val1, val2) == 0);
   }
 
   checkasync(c, 2);
@@ -1497,7 +1497,7 @@ volt1a(struct child *c)
   int i, j;
   double t0 = now(), t1;
   char *val = (char *) malloc(VOLT1SIZE + 1);
-  mandatory_assert(val);
+  always_assert(val);
 
   srandom(first_seed + c->childno);
 
@@ -1508,7 +1508,7 @@ volt1a(struct child *c)
   // XXX insert the keys in a random order to maintain
   // tree balance.
   int *keys = (int *) malloc(sizeof(int) * VOLT1N);
-  mandatory_assert(keys);
+  always_assert(keys);
   for(i = 0; i < VOLT1N; i++)
     keys[i] = i;
   for(i = 0; i < VOLT1N; i++){
@@ -1526,9 +1526,9 @@ volt1a(struct child *c)
     sprintf(val, ">%d", keys[i]);
     int j = strlen(val);
     val[j] = '<';
-    mandatory_assert(strlen(val) == VOLT1SIZE);
-    mandatory_assert(strlen(key) == 50);
-    mandatory_assert(isdigit(key[0]));
+    always_assert(strlen(val) == VOLT1SIZE);
+    always_assert(strlen(key) == 50);
+    always_assert(isdigit(key[0]));
     aput(c, Str(key), Str(val));
   }
   checkasync(c, 2);
@@ -1554,7 +1554,7 @@ volt1b(struct child *c)
   int i, n, j;
   double t0 = now(), t1;
   char *wanted = (char *) malloc(VOLT1SIZE + 1);
-  mandatory_assert(wanted);
+  always_assert(wanted);
 
   for(i = 0; i < VOLT1SIZE; i++)
     wanted[i] = 'a' + (i % 26);
@@ -1607,7 +1607,7 @@ volt2a(struct child *c)
   // XXX insert the keys in a random order to maintain
   // tree balance.
   int *keys = (int *) malloc(sizeof(int) * VOLT2N);
-  mandatory_assert(keys);
+  always_assert(keys);
   for(i = 0; i < VOLT2N; i++)
     keys[i] = i;
   for(i = 0; i < VOLT2N; i++){
@@ -1718,14 +1718,14 @@ scantest(struct child *c)
     keys.clear();
     vals.clear();
     ret = c->conn->recvscan(keys, vals, NULL, false);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
     n = keys.size();
     if(i <= 200 - wanted){
-      mandatory_assert(n == wanted);
+      always_assert(n == wanted);
     } else if(i <= 200){
-      mandatory_assert(n == 200 - i);
+      always_assert(n == 200 - i);
     } else {
-      mandatory_assert(n == 0);
+      always_assert(n == 0);
     }
     int k0 = (i < 100 ? 100 : i);
     int j, ki;
@@ -1735,9 +1735,9 @@ scantest(struct child *c)
       sprintf(xval, "v%04d", j);
       if (strcmp(keys[ki].c_str(), xkey) != 0) {
 	fprintf(stderr, "Assertion failed @%d: strcmp(%s, %s) == 0\n", ki, keys[ki].c_str(), xkey);
-	mandatory_assert(0);
+	always_assert(0);
       }
-      mandatory_assert(strcmp(vals[ki][0].c_str(), xval) == 0);
+      always_assert(strcmp(vals[ki][0].c_str(), xval) == 0);
     }
 
     sprintf(key, "k%04d-a", i);
@@ -1746,12 +1746,12 @@ scantest(struct child *c)
     keys.clear();
     vals.clear();
     ret = c->conn->recvscan(keys, vals, NULL, false);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
     n = keys.size();
     if(i >= 100 && i < 199){
-      mandatory_assert(n == 1);
+      always_assert(n == 1);
       sprintf(key, "k%04d", i+1);
-      mandatory_assert(strcmp(keys[0].c_str(), key) == 0);
+      always_assert(strcmp(keys[0].c_str(), key) == 0);
     }
   }
 
@@ -1760,11 +1760,11 @@ scantest(struct child *c)
   keys.clear();
   vals.clear();
   ret = c->conn->recvscan(keys, vals, NULL, false);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
   n = keys.size();
-  mandatory_assert(n == 10);
-  mandatory_assert(strcmp(keys[0].c_str(), "k0150") == 0);
-  mandatory_assert(strcmp(vals[0][0].c_str(), "v0150") == 0);
+  always_assert(n == 10);
+  always_assert(strcmp(keys[0].c_str(), "k0150") == 0);
+  always_assert(strcmp(vals[0][0].c_str(), "v0150") == 0);
 
   fprintf(stderr, "scantest OK\n");
   printf("0\n");

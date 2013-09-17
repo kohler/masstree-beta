@@ -135,8 +135,8 @@ struct kvtest_client {
 	    .set("thread", ti_->ti_index);
     }
     static void start_timer() {
-        mandatory_assert(lazy_timer && "Cannot start timer without lazy_timer option");
-        mandatory_assert(duration[0] && "Must specify timeout[0]");
+        always_assert(lazy_timer && "Cannot start timer without lazy_timer option");
+        always_assert(duration[0] && "Must specify timeout[0]");
         xalarm(duration[0]);
     }
     bool timeout(int which) const {
@@ -500,7 +500,7 @@ void kvtest_client<T>::fail(const char *fmt, ...) {
     fprintf(stdout, "%d: %s", ti_->ti_index, m.c_str());
     kvtest_print(*table_, stdout, 0, ti_);
 
-    mandatory_assert(0);
+    always_assert(0);
 }
 
 
@@ -612,10 +612,10 @@ struct test_thread {
             CPU_ZERO(&cs);
             CPU_SET(cores[((threadinfo *)arg)->ti_index], &cs);
 	    int r = sched_setaffinity(0, sizeof(cs), &cs);
-	    mandatory_assert(r == 0);
+	    always_assert(r == 0);
         }
 #else
-        mandatory_assert(!pinthreads && "pinthreads not supported\n");
+        always_assert(!pinthreads && "pinthreads not supported\n");
 #endif
 
 	test_thread<T> tt(arg);
@@ -694,7 +694,7 @@ void runtest(int nthreads, void *(*func)(void *)) {
     signal(SIGALRM, test_timeout);
     for (int i = 0; i < nthreads; ++i) {
 	int r = pthread_create(&tis[i]->ti_threadid, 0, func, tis[i]);
-	mandatory_assert(r == 0);
+	always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i)
 	pthread_join(tis[i]->ti_threadid, 0);
@@ -961,7 +961,7 @@ Try 'mttest --help' for options.\n");
         cores.push_back(firstcore);
 
 #if PMC_ENABLED
-    mandatory_assert(pinthreads && "Using performance counter requires pinning threads to cores!");
+    always_assert(pinthreads && "Using performance counter requires pinning threads to cores!");
 #endif
 #if MEMSTATS && HAVE_NUMA_H && HAVE_LIBNUMA
     if (numa_available() != -1)
@@ -977,19 +977,19 @@ Try 'mttest --help' for options.\n");
 
     // arrange for a per-thread threadinfo pointer
     ret = pthread_key_create(&threadinfo::key, 0);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
     pthread_mutex_init(&subtest_mutex, 0);
     pthread_cond_init(&subtest_cond, 0);
 
     // pipe for them to write back to us
     int p[2];
     ret = pipe(p);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
     test_output_file = fdopen(p[1], "w");
 
     pthread_t collector;
     ret = pthread_create(&collector, 0, stat_collector, (void *) (intptr_t) p[0]);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
     initial_timestamp = timestamp();
 
     // run tests

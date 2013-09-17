@@ -182,7 +182,7 @@ loginfo::loginfo(logset* ls, int logindex) {
     len_ = 20 * 1024 * 1024;
     pos_ = 0;
     buf_ = (char *) malloc(len_);
-    mandatory_assert(buf_);
+    always_assert(buf_);
     log_epoch_ = 0;
     quiescent_epoch_ = 0;
     wake_epoch_ = 0;
@@ -209,7 +209,7 @@ void loginfo::initialize(const String& logfile) {
 
     ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_);
     int r = pthread_create(&ti_->ti_threadid, 0, ::logger, this);
-    mandatory_assert(r == 0);
+    always_assert(r == 0);
 }
 
 // one logger thread per logs[].
@@ -239,9 +239,9 @@ void loginfo::logger() {
 
     int fd = open(String(f_.filename_).c_str(),
                   O_WRONLY | O_APPEND | O_CREAT, 0666);
-    mandatory_assert(fd >= 0);
+    always_assert(fd >= 0);
     char *x_buf = (char *) malloc(len_);
-    mandatory_assert(x_buf);
+    always_assert(x_buf);
 
     while (1) {
 	uint32_t nb = 0;
@@ -271,7 +271,7 @@ void loginfo::logger() {
 	    kvepoch_t x_epoch = log_epoch_;
 	    release();
 	    ssize_t r = write(fd, x_buf, x_pos);
-	    mandatory_assert(r == ssize_t(x_pos));
+	    always_assert(r == ssize_t(x_pos));
 	    fsync(fd);
 	    flushed_epoch_ = x_epoch;
 	    // printf("log %d %d\n", ti_->ti_index, x_pos);
@@ -577,7 +577,7 @@ logreplay::replayandclean1(replay_query<row_type> &q,
 		|| (!min_epoch && !repbegin))
 		repbegin = pos;
 	    if (lr.epoch >= max_epoch) {
-		mandatory_assert(repbegin);
+		always_assert(repbegin);
 		repend = nextpos;
 		break;
 	    }
@@ -626,7 +626,7 @@ logreplay::replayandclean1(replay_query<row_type> &q,
 
     char tmplog[256];
     int r = snprintf(tmplog, sizeof(tmplog), "%s.tmp", filename_.c_str());
-    mandatory_assert(r >= 0 && size_t(r) < sizeof(tmplog));
+    always_assert(r >= 0 && size_t(r) < sizeof(tmplog));
 
     printf("replay %s: truncate from %" PRIdOFF_T " to %" PRIdSIZE_T " [%" PRIdSIZE_T ",%" PRIdSIZE_T ")\n",
 	   filename_.c_str(), size_, repend - repbegin,
@@ -640,9 +640,9 @@ logreplay::replayandclean1(replay_query<row_type> &q,
 	fd = replay_copy(tmplog, repbegin, repend);
 
     r = fsync(fd);
-    mandatory_assert(r == 0);
+    always_assert(r == 0);
     r = close(fd);
-    mandatory_assert(r == 0);
+    always_assert(r == 0);
 
     // replace old log with rewritten log
     if (unmap() != 0)
@@ -703,7 +703,7 @@ logreplay::replay_copy(const char *tmpname, const char *first, const char *last)
     }
 
     ssize_t w = safe_write(fd, first, last - first);
-    mandatory_assert(w >= 0 && w == last - first);
+    always_assert(w >= 0 && w == last - first);
 
     return fd;
 }

@@ -62,7 +62,7 @@ inline void
 checked_write(int fd, const void *buf, size_t count)
 {
     ssize_t x = safe_write(fd, buf, count);
-    mandatory_assert(size_t(x) == count);
+    always_assert(size_t(x) == count);
 }
 
 template <typename T> inline void

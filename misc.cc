@@ -98,7 +98,7 @@ struct allocator {
         return initialize_page(x, HugePageSize, nl * CACHE_LINE_SIZE);
 #else
 	(void) HugePageSize, (void) nl;
-	mandatory_assert(0 && "No hugepage support is detected");
+	always_assert(0 && "No hugepage support is detected");
 #endif
     }
 };

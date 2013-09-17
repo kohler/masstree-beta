@@ -37,11 +37,11 @@ void
 stat::initmain(bool pinthreads) {
     (void) pinthreads;
 #if PMC_ENABLED
-    mandatory_assert(pinthreads && "Using performance counter requires pinning threads to cores!");
+    always_assert(pinthreads && "Using performance counter requires pinning threads to cores!");
 #endif
 #if MEMSTATS && HAVE_NUMA_H && HAVE_LIBNUMA
     if (numa_available() != -1) {
-        mandatory_assert(numa_max_node() <= MaxNumaNode);
+        always_assert(numa_max_node() <= MaxNumaNode);
         for (int i = 0; i <= numa_max_node(); i++)
             numa[i].size = numa_node_size64(i, &numa[i].free);
     }
@@ -136,8 +136,8 @@ stat::print(const stat **s, int n) {
         for (int pi = 0; pi < 4; pi++) {
             fprintf(stderr, "\tpmc[%d]: %016" PRIx64 "->%016" PRIx64 "\n",
                     pi, s[i]->pmc_firstget[pi], s[i]->pmc_start[pi]);
-            mandatory_assert(s[i]->pmc_start[pi] >= s[i]->pmc_firstget[pi]);
-            mandatory_assert(s[i]->t1_lastget >= s[i]->t0_firstget);
+            always_assert(s[i]->pmc_start[pi] >= s[i]->pmc_firstget[pi]);
+            always_assert(s[i]->t1_lastget >= s[i]->t0_firstget);
         }
     }
     // Compute the start and end time of get phase

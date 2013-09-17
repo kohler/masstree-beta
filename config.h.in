@@ -286,8 +286,9 @@
 #endif
 
 /** @brief Assert macro that always runs. */
-extern void fail_mandatory_assert(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
-#define mandatory_assert(x, ...) do { if (!(x)) fail_mandatory_assert(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+extern void fail_always_assert(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
+#define always_assert(x, ...) do { if (!(x)) fail_always_assert(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
+#define mandatory_assert always_assert
 
 /** @brief Assert macro for invariants.
 

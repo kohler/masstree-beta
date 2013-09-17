@@ -156,7 +156,7 @@ struct kvtest_client {
 	ti_ = ti;
     }
     void register_timeouts(int n) {
-	mandatory_assert(n <= (int) arraysize(::timeout));
+	always_assert(n <= (int) arraysize(::timeout));
 	for (int i = 1; i < n; ++i)
 	    if (duration[i] == 0)
 		duration[i] = 0;//duration[i - 1];
@@ -384,7 +384,7 @@ void kvtest_client::fail(const char *fmt, ...) {
 	fflush(stdout);
     }
 
-    mandatory_assert(0);
+    always_assert(0);
 }
 
 static void *testgo(void *arg) {
@@ -446,7 +446,7 @@ void runtest(const char *testname, int nthreads) {
 	xalarm(duration[0]);
     for (int i = 0; i < nthreads; ++i) {
 	int r = pthread_create(&clients[i].ti_->ti_threadid, 0, testgo, &clients[i]);
-	mandatory_assert(r == 0);
+	always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i)
 	pthread_join(clients[i].ti_->ti_threadid, 0);
@@ -700,24 +700,24 @@ main(int argc, char *argv[])
       etimer.it_value.tv_sec = 1;
       etimer.it_value.tv_usec = 0;
       ret = setitimer(ITIMER_REAL, &etimer, NULL);
-      mandatory_assert(ret == 0);
+      always_assert(ret == 0);
   }
 
   // arrange for a per-thread threadinfo pointer
   ret = pthread_key_create(&threadinfo::key, 0);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
 
   // for parallel recovery
   ret = pthread_cond_init(&rec_cond, 0);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
   ret = pthread_mutex_init(&rec_mu, 0);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
 
   // for waking up the checkpoint thread
   ret = pthread_cond_init(&checkpoint_cond, 0);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
   ret = pthread_mutex_init(&checkpoint_mu, 0);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
 
   threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
   main_ti->enter();
@@ -745,7 +745,7 @@ main(int argc, char *argv[])
   for(i = 0; i < udpthreads; i++){
     threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
     ret = pthread_create(&ti->ti_threadid, 0, udpgo, ti);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
   }
 
   if (dotest) {
@@ -763,7 +763,7 @@ main(int argc, char *argv[])
   // TCP socket and threads
 
   s = socket(AF_INET, SOCK_STREAM, 0);
-  mandatory_assert(s >= 0);
+  always_assert(s >= 0);
   setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
   setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
 
@@ -788,9 +788,9 @@ main(int argc, char *argv[])
   for(i = 0; i < tcpthreads; i++){
     threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
     ret = pipe(ti->ti_pipe);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
     ret = pthread_create(&ti->ti_threadid, 0, tcpgo, ti);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
     tcpti[i] = ti;
   }
   // Create a canceling thread.
@@ -807,7 +807,7 @@ main(int argc, char *argv[])
 
     bzero(&sin1, sizeof(sin1));
     s1 = accept(s, (struct sockaddr *) &sin1, &sinlen);
-    mandatory_assert(s1 >= 0);
+    always_assert(s1 >= 0);
     // Bind the connection to a particular core if required.
     int target_core;
     if (read(s1, &target_core, sizeof(target_core)) != sizeof(target_core)) {
@@ -825,7 +825,7 @@ main(int argc, char *argv[])
         ti = tcpti[target_core];
     }
     ssize_t w = write(ti->ti_pipe[1], &s1, sizeof(s1));
-    mandatory_assert((size_t) w == sizeof(s1));
+    always_assert((size_t) w == sizeof(s1));
   }
 }
 
@@ -850,7 +850,7 @@ inline const char *threadtype(int type) {
     case threadinfo::TI_CHECKPOINT:
       return "checkpoint";
     default:
-      mandatory_assert(0 && "Unknown threadtype");
+      always_assert(0 && "Unknown threadtype");
       break;
   };
 }
@@ -876,7 +876,7 @@ canceling(void *)
             && ti->ti_purpose != threadinfo::TI_CHECKPOINT
 	    && !pthread_equal(me, ti->ti_threadid)) {
             int r = pthread_cancel(ti->ti_threadid);
-            mandatory_assert(r == 0);
+            always_assert(r == 0);
         }
 
     // join canceled threads
@@ -886,7 +886,7 @@ canceling(void *)
             fprintf(stderr, "joining thread %s:%d\n",
                     threadtype(ti->ti_purpose), ti->ti_index);
             int r = pthread_join(ti->ti_threadid, 0);
-            mandatory_assert(r == 0);
+            always_assert(r == 0);
         }
     tree->stats(stderr);
     exit(0);
@@ -1073,7 +1073,7 @@ struct tcpfds {
 	ev.events = EPOLLIN;
 	ev.data.ptr = (void *) 1;
 	int r = epoll_ctl(epollfd, EPOLL_CTL_ADD, pipefd, &ev);
-	mandatory_assert(r == 0);
+	always_assert(r == 0);
     }
 
     enum { max_events = 100 };
@@ -1091,12 +1091,12 @@ struct tcpfds {
 	ev.events = EPOLLIN;
 	ev.data.ptr = c;
 	int r = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
-	mandatory_assert(r == 0);
+	always_assert(r == 0);
     }
 
     void remove(int fd) {
 	int r = epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
-	mandatory_assert(r == 0);
+	always_assert(r == 0);
     }
 };
 #else
@@ -1108,7 +1108,7 @@ class tcpfds {
   public:
     tcpfds(int pipefd)
         : nfds_(pipefd + 1) {
-	mandatory_assert(pipefd < FD_SETSIZE);
+	always_assert(pipefd < FD_SETSIZE);
 	FD_ZERO(&rfds_);
 	FD_SET(pipefd, &rfds_);
 	conns_.resize(nfds_, 0);
@@ -1127,7 +1127,7 @@ class tcpfds {
     }
 
     void add(int fd, conn *c) {
-	mandatory_assert(fd < FD_SETSIZE);
+	always_assert(fd < FD_SETSIZE);
 	FD_SET(fd, &rfds_);
 	if (fd >= nfds_) {
 	    nfds_ = fd + 1;
@@ -1137,7 +1137,7 @@ class tcpfds {
     }
 
     void remove(int fd) {
-	mandatory_assert(fd < FD_SETSIZE);
+	always_assert(fd < FD_SETSIZE);
 	FD_CLR(fd, &rfds_);
 	if (fd == nfds_ - 1) {
 	    while (nfds_ > 0 && !FD_ISSET(nfds_ - 1, &rfds_))
@@ -1156,10 +1156,10 @@ prepare_thread(threadinfo *ti)
 	cpu_set_t cs;
 	CPU_ZERO(&cs);
 	CPU_SET(cores[ti->ti_index], &cs);
-	mandatory_assert(sched_setaffinity(0, sizeof(cs), &cs) == 0);
+	always_assert(sched_setaffinity(0, sizeof(cs), &cs) == 0);
     }
 #else
-    mandatory_assert(!pinthreads && "pinthreads not supported\n");
+    always_assert(!pinthreads && "pinthreads not supported\n");
 #endif
     if (logging)
 	ti->ti_log = &logs->log(ti->ti_index % nlogger);
@@ -1184,7 +1184,7 @@ tcpgo(void *xarg)
 #define MAX_NEWCONN 100
         int ss[MAX_NEWCONN];
         ssize_t len = read(ti->ti_pipe[0], ss, sizeof(ss));
-        mandatory_assert(len > 0 && len % sizeof(int) == 0);
+        always_assert(len > 0 && len % sizeof(int) == 0);
         for (int j = 0; j * sizeof(int) < (size_t) len; ++j){
           struct conn *c = new conn(ss[j]);
           c->kvin = new_kvin(ss[j], 20*1024);
@@ -1239,15 +1239,15 @@ udpgo(void *xarg)
   sin.sin_port = htons(port + ti->ti_index);
 
   int s = socket(AF_INET, SOCK_DGRAM, 0);
-  mandatory_assert(s >= 0);
+  always_assert(s >= 0);
   ret = bind(s, (struct sockaddr *) &sin, sizeof(sin));
-  mandatory_assert(ret == 0 && "bind failed");
+  always_assert(ret == 0 && "bind failed");
   int sobuflen = 512*1024;
   setsockopt(s, SOL_SOCKET, SO_RCVBUF, &sobuflen, sizeof(sobuflen));
 
   int buflen = 4096;
   char *inbuf = (char *) malloc(buflen);
-  mandatory_assert(inbuf);
+  always_assert(inbuf);
   struct kvin *kvin = new_bufkvin(inbuf);
   struct kvout *kvout = new_bufkvout();
 
@@ -1274,7 +1274,7 @@ udpgo(void *xarg)
     if(onego(q, kvin, kvout, rsm, ti) == 1){
       if(kvout->n > 0){
         cc = sendto(s, kvout->buf, kvout->n, 0, (struct sockaddr *) &sin, sinlen);
-        mandatory_assert(cc == (ssize_t) kvout->n);
+        always_assert(cc == (ssize_t) kvout->n);
       }
     } else {
       printf("onego failed\n");
@@ -1291,7 +1291,7 @@ static String log_filename(const char* logdir, int logindex) {
 	r = mkdir(logdir, 0777);
 	if (r < 0) {
 	    fprintf(stderr, "%s: %s\n", logdir, strerror(errno));
-	    mandatory_assert(0);
+	    always_assert(0);
 	}
     }
 
@@ -1313,14 +1313,14 @@ void log_init() {
     cks[i].state = CKState_Uninit;
     cks[i].ti = ti;
     ret = pthread_create(&ti->ti_threadid, 0, conc_checkpointer, ti);
-    mandatory_assert(ret == 0);
+    always_assert(ret == 0);
   }
 }
 
 // p points to key\0val\0
 void insert_from_checkpoint(char *p, threadinfo *ti) {
     int keylen = strlen(p);
-    mandatory_assert(keylen >= 0 && keylen < MaxKeyLen);
+    always_assert(keylen >= 0 && keylen < MaxKeyLen);
     kvtimestamp_t ts = *(kvtimestamp_t*)(p + keylen + 1);
     int vlen = *(int*)(p + keylen + 1 + sizeof(ts));
     Str key(p, keylen);
@@ -1344,9 +1344,9 @@ kvepoch_t read_checkpoint(threadinfo *ti, const char *path) {
   }
   struct stat sb;
   int ret = fstat(fd, &sb);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
   char *p = (char *) mmap(0, sb.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
-  mandatory_assert(p != MAP_FAILED);
+  always_assert(p != MAP_FAILED);
   close(fd);
 
   uint64_t gen = *(uint64_t *)p;
@@ -1360,7 +1360,7 @@ kvepoch_t read_checkpoint(threadinfo *ti, const char *path) {
 
   // round n up to power of two
   uint64_t n2 = pow(2, ceil(log(n) / log(2)));
-  mandatory_assert(n2 >= n);
+  always_assert(n2 >= n);
   traverse_checkpoint_inorder(0, n2, keyval, ind, n, ti);
   munmap(p, sb.st_size);
 
@@ -1377,19 +1377,19 @@ kvepoch_t read_checkpoint(threadinfo *ti, const char *path) {
 void
 waituntilphase(int phase)
 {
-  mandatory_assert(pthread_mutex_lock(&rec_mu) == 0);
+  always_assert(pthread_mutex_lock(&rec_mu) == 0);
   while (rec_state != phase)
-    mandatory_assert(pthread_cond_wait(&rec_cond, &rec_mu) == 0);
-  mandatory_assert(pthread_mutex_unlock(&rec_mu) == 0);
+    always_assert(pthread_cond_wait(&rec_cond, &rec_mu) == 0);
+  always_assert(pthread_mutex_unlock(&rec_mu) == 0);
 }
 
 void
 inactive(void)
 {
-  mandatory_assert(pthread_mutex_lock(&rec_mu) == 0);
+  always_assert(pthread_mutex_lock(&rec_mu) == 0);
   rec_nactive --;
-  mandatory_assert(pthread_cond_broadcast(&rec_cond) == 0);
-  mandatory_assert(pthread_mutex_unlock(&rec_mu) == 0);
+  always_assert(pthread_cond_broadcast(&rec_cond) == 0);
+  always_assert(pthread_mutex_unlock(&rec_mu) == 0);
 }
 
 uint64_t
@@ -1397,7 +1397,7 @@ traverse_checkpoint_inorder(uint64_t off, uint64_t n,
                             char *base, uint64_t *ind, uint64_t max,
                             threadinfo *ti)
 {
-    mandatory_assert(off == 0);
+    always_assert(off == 0);
     for (uint64_t i = 0; i < max; i++)
         insert_from_checkpoint(base + ind[i], ti);
     return n;
@@ -1410,7 +1410,7 @@ void recovercheckpoint(threadinfo *ti) {
             ckpdirs[ti->ti_index % ckpdirs.size()],
             ckp_gen.value(), ti->ti_index);
     kvepoch_t gen = read_checkpoint(ti, path);
-    mandatory_assert(ckp_gen == gen);
+    always_assert(ckp_gen == gen);
     inactive();
 }
 
@@ -1419,9 +1419,9 @@ recphase(int nactive, int state)
 {
   rec_nactive = nactive;
   rec_state = state;
-  mandatory_assert(pthread_cond_broadcast(&rec_cond) == 0);
+  always_assert(pthread_cond_broadcast(&rec_cond) == 0);
   while (rec_nactive)
-    mandatory_assert(pthread_cond_wait(&rec_cond, &rec_mu) == 0);
+    always_assert(pthread_cond_wait(&rec_cond, &rec_mu) == 0);
 }
 
 // read the checkpoint file.
@@ -1453,7 +1453,7 @@ recover(threadinfo *)
   } else {
     printf("no %s\n", path);
   }
-  mandatory_assert(pthread_mutex_lock(&rec_mu) == 0);
+  always_assert(pthread_mutex_lock(&rec_mu) == 0);
 
   // recover from checkpoint, and set timestamp of the checkpoint
   recphase(nckthreads, REC_CKP);
@@ -1536,9 +1536,9 @@ recover(threadinfo *)
 
   // Checks.
   if (rec_ckp_min_epoch) {
-      mandatory_assert(rec_ckp_min_epoch > max_first_epoch);
-      mandatory_assert(rec_ckp_min_epoch < rec_replay_max_epoch);
-      mandatory_assert(rec_ckp_max_epoch < rec_replay_max_epoch);
+      always_assert(rec_ckp_min_epoch > max_first_epoch);
+      always_assert(rec_ckp_min_epoch < rec_replay_max_epoch);
+      always_assert(rec_ckp_max_epoch < rec_replay_max_epoch);
       fprintf(stderr, "replay [%" PRIu64 ",%" PRIu64 ") from [%" PRIu64 ",%" PRIu64 ") into ckp [%" PRIu64 ",%" PRIu64 "]\n",
 	      rec_replay_min_epoch.value(), rec_replay_max_epoch.value(),
 	      max_first_epoch.value(), max_epoch.value(),
@@ -1562,12 +1562,12 @@ recover(threadinfo *)
   }
   if (deltas_created)
       fprintf(stderr, "deltas created: %" PRIu64 ", removed: %" PRIu64 "\n", deltas_created, deltas_removed);
-  mandatory_assert(deltas_created == deltas_removed);
+  always_assert(deltas_created == deltas_removed);
 #endif
 
   global_log_epoch = rec_replay_max_epoch.next_nonzero();
 
-  mandatory_assert(pthread_mutex_unlock(&rec_mu) == 0);
+  always_assert(pthread_mutex_unlock(&rec_mu) == 0);
   recovering = false;
   if (recovery_only)
       exit(0);
@@ -1580,7 +1580,7 @@ writecheckpoint(const char *path, ckstate *c, double t0)
   printf("memory phase: %" PRIu64 " nodes, %.2f sec\n", c->count, t1 - t0);
 
   int fd = creat(path, 0666);
-  mandatory_assert(fd >= 0);
+  always_assert(fd >= 0);
 
   // checkpoint file format:
   //   ckp_gen (64 bits)
@@ -1596,9 +1596,9 @@ writecheckpoint(const char *path, ckstate *c, double t0)
   checked_write(fd, c->vals->buf, c->vals->n);
 
   int ret = fsync(fd);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
   ret = close(fd);
-  mandatory_assert(ret == 0);
+  always_assert(ret == 0);
 
   double t2 = now();
   c->bytes = c->keys->n + c->ind->n + c->vals->n;
@@ -1655,7 +1655,7 @@ commit_checkpoint(Json ckpj)
     char path[256];
     sprintf(path, "%s/kvd-ckp-gen", ckpdirs[0]);
     int r = atomic_write_file_contents(path, ckpj.unparse());
-    mandatory_assert(r == 0);
+    always_assert(r == 0);
     fprintf(stderr, "kvd-ckp-%" PRIu64 " [%s,%s]: committed\n",
 	    ckp_gen.value(), ckpj["min_epoch"].to_s().c_str(),
 	    ckpj["max_epoch"].to_s().c_str());

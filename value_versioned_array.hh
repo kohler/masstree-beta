@@ -211,7 +211,7 @@ inline void value_versioned_array::deallocate_rcu_after_update(const CS&, thread
 
 template <typename CS>
 inline void value_versioned_array::deallocate_after_failed_update(const CS&, threadinfo&) {
-    mandatory_assert(0);
+    always_assert(0);
 }
 
 #endif

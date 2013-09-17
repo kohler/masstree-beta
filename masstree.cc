@@ -368,27 +368,27 @@ void query_table<P>::test(threadinfo& ti) {
 
     scanner = scan_tester(values + 10, values + 11);
     int r = t.table_.scan(Str(values[10]), true, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
     r = t.table_.scan(Str(values[10] + 1), true, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
     r = t.table_.scan(Str(values[10]), false, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
     r = t.table_.scan(Str("aaaaaaaaaaaaaaaaaaaaaaaaaZ"), true, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
     r = t.table_.scan(Str(values[11]), true, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 12, values + 13);
     r = t.table_.scan(Str(values[11]), false, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
 
     scanner = scan_tester(end_values - 3, end_values, true);
@@ -399,11 +399,11 @@ void query_table<P>::test(threadinfo& ti) {
 
     scanner = scan_tester(end_values - 2, end_values, true);
     r = scanner.rscan(t, ti);
-    mandatory_assert(r == 2);
+    always_assert(r == 2);
     scanner.vbegin_ = std::max(scanner.vbegin_ - 2, (const char * const *) values);
     fprintf(stderr, "-scanbreak-\n");
     r = scanner.rscan(t, ti);
-    mandatory_assert(r == 2);
+    always_assert(r == 2);
 
     scanner = scan_tester(end_values - 8, end_values, true);
     while (scanner.rscan(t, ti)) {
@@ -413,27 +413,27 @@ void query_table<P>::test(threadinfo& ti) {
 
     scanner = scan_tester(values + 10, values + 11);
     r = t.table_.rscan(Str(values[10]), true, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
     r = t.table_.rscan(Str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 9, values + 10);
     r = t.table_.rscan(Str(values[10]), false, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
     r = t.table_.rscan(Str("aaaaaaaaaaaaaaaaaaaaaaaaab"), true, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 11, values + 12);
     r = t.table_.rscan(Str(values[11]), true, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
     scanner = scan_tester(values + 10, values + 11);
     r = t.table_.rscan(Str(values[11]), false, scanner, ti);
-    mandatory_assert(r == 1);
+    always_assert(r == 1);
 
 
     Str pv[10];

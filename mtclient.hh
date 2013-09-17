@@ -71,12 +71,12 @@ class KVConn {
     KVConn(const char *server, int port, int target_core = -1) {
         kvbuf = new_bufkvout();
         struct hostent *ent = gethostbyname(server);
-        mandatory_assert(ent);
+        always_assert(ent);
         int fd = socket(AF_INET, SOCK_STREAM, 0);
-        mandatory_assert(fd > 0);
+        always_assert(fd > 0);
         this->fdtoclose = fd;
         int yes = 1;
-        mandatory_assert(fd >= 0);
+        always_assert(fd >= 0);
         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
 
         struct sockaddr_in sin;
@@ -271,7 +271,7 @@ class KVConn {
         }
     }
     void cp(int childno) {
-	mandatory_assert(childno == 0);
+	always_assert(childno == 0);
         fprintf(stderr, "asking for a checkpoint\n");
         KVW(out, (int)Cmd_Checkpoint);
         KVW(out, (int)0);
@@ -284,7 +284,7 @@ class KVConn {
     }
     void readseq(unsigned int *seq) {
         ssize_t r = kvread(in, (char*)seq, sizeof(*seq));
-        mandatory_assert((size_t) r == sizeof(*seq));
+        always_assert((size_t) r == sizeof(*seq));
     }
     int getPartition() {
 	return partition;
@@ -323,31 +323,31 @@ class KVConn {
             if(cb->_cmd == Cmd_Get){
                 vector<string> row;
                 int r = recvget(row, NULL, true);
-	        mandatory_assert(r == 0);
+	        always_assert(r == 0);
                 cb->callback_get(0, row);
             } else if(cb->_cmd == Cmd_Put){
 	        int r = recvput(NULL, true);
-	        mandatory_assert(r >= 0);
+	        always_assert(r >= 0);
                 cb->callback_put(0);
             } else if (cb->_cmd == Cmd_Put_Status) {
 		int status;
 	        int r = recvputstatus(&status, NULL, true);
-	        mandatory_assert(r >= 0);
+	        always_assert(r >= 0);
                 cb->callback_put(status);
             } else if(cb->_cmd == Cmd_Scan){
                 vector<string> keys;
                 vector< vector<string> > rows;
                 int r = recvscan(keys, rows, NULL, true);
-	        mandatory_assert(r == 0);
-                mandatory_assert(keys.size() <= cb->_wantedlen);
+	        always_assert(r == 0);
+                always_assert(keys.size() <= cb->_wantedlen);
                 cb->callback_scan(0, keys, rows);
             } else if (cb->_cmd == Cmd_Remove) {
 		int status;
 	        int r = recvremove(&status, NULL, true);
-	        mandatory_assert(r >= 0);
+	        always_assert(r >= 0);
                 cb->callback_remove(0);
             } else {
-                mandatory_assert(0 && "Unknown request");
+                always_assert(0 && "Unknown request");
             }
             cb->decref();
         }

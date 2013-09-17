@@ -114,7 +114,7 @@ inline lcdf::inline_string* value_array::read_column(kvin* kv, threadinfo& ti) {
     using lcdf::inline_string;
     int len;
     int r = KVR(kv, len);
-    mandatory_assert(r == sizeof(len));
+    always_assert(r == sizeof(len));
     inline_string* col = (inline_string*) ti.allocate(inline_string::size(len), memtag_value);
     col->len = len;
     r = kvread(kv, col->s, len);

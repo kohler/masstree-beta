@@ -695,7 +695,7 @@ void kvtest_wd2(C &client)
     quick_istr xstr(0);
 
     client.put(Str("n"), client.nthreads());
-    mandatory_assert(client.nthreads() > 1);
+    always_assert(client.nthreads() > 1);
 
     // set up status keys
     snprintf(sbuf, sizeof(sbuf), "s%03d", client.id());
@@ -764,7 +764,7 @@ void kvtest_wd2_check(C &client)
     int n;
     client.get(Str("n"), &n);
     client.wait_all();
-    mandatory_assert(n > 1);
+    always_assert(n > 1);
     Json result;
 
     char buf[32];
@@ -1076,7 +1076,7 @@ kvtest_ruscale_init(C &client)
     const int firstkey = ruscale_partsz * client.ruscale_init_part_no();
     // Insert in random order
     int *keys = (int *) malloc(sizeof(int) * ruscale_partsz);
-    mandatory_assert(keys);
+    always_assert(keys);
     for(int i = 0; i < ruscale_partsz; i++)
         keys[i] = i + firstkey;
     for(int i = 0; i < ruscale_partsz; i++)
@@ -1213,7 +1213,7 @@ void kvtest_r1_seed(C &client, int seed)
     else
 	n = std::min(client.limit(), (uint64_t) INT_MAX);
     long *a = (long *) malloc(sizeof(long) * n);
-    mandatory_assert(a);
+    always_assert(a);
 
     client.rand.reset(seed);
     for (int i = 0; i < n; i++)
@@ -1279,7 +1279,7 @@ void kvtest_rcol1(C &client, int seed, long maxkeys)
 	n = std::min(client.limit(), (uint64_t) INT_MAX);
     int col = client.id() % 24;
     long *a = (long *) malloc(sizeof(long) * n);
-    mandatory_assert(a);
+    always_assert(a);
 
     client.rand.reset(seed);
     for (int i = 0; i < n; i++)

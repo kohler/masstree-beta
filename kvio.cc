@@ -132,7 +132,7 @@ int kvcheck(kvin* kv, int tryhard) {
                 return -1;
         } else if (tryhard == 1) {
             // non-blocking read
-            mandatory_assert(kv->fd < FD_SETSIZE);
+            always_assert(kv->fd < FD_SETSIZE);
             fd_set rfds;
             FD_ZERO(&rfds);
             FD_SET(kv->fd, &rfds);

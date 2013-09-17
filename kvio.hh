@@ -96,7 +96,7 @@ inline int kvread_str_alloc(kvin* kv, lcdf::Str& v) {
 
 inline int kvread_str(kvin* kv, char* buf, int max, int& vlen) {
     KVR(kv, vlen);
-    mandatory_assert(vlen <= max);
+    always_assert(vlen <= max);
     kvread(kv, buf, vlen);
     return sizeof(vlen) + vlen;
 }
