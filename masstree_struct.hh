@@ -147,6 +147,21 @@ class internode : public node_base<P> {
     inline int stable_last_key_compare(const key_type& k, nodeversion_type v,
                                        threadinfo& ti) const;
 
+    void prefetch() const {
+	for (int i = 64; i < std::min(16 * width + 1, 4 * 64); i += 64)
+	    ::prefetch((const char *) this + i);
+    }
+
+    void print(FILE* f, const char* prefix, int indent, int kdepth);
+
+    void deallocate(threadinfo& ti) {
+	ti.pool_deallocate(this, sizeof(*this), memtag_masstree_internode);
+    }
+    void deallocate_rcu(threadinfo& ti) {
+	ti.pool_deallocate_rcu(this, sizeof(*this), memtag_masstree_internode);
+    }
+
+  private:
     void assign(int p, ikey_type ikey, node_base<P>* child) {
 	child->set_parent(this);
 	child_[p + 1] = child;
@@ -171,19 +186,10 @@ class internode : public node_base<P> {
 	    *a = *b;
     }
 
-    void prefetch() const {
-	for (int i = 64; i < std::min(16 * width + 1, 4 * 64); i += 64)
-	    ::prefetch((const char *) this + i);
-    }
+    int split_into(internode<P>* nr, int p, ikey_type ka, node_base<P>* value,
+                   ikey_type& split_ikey, int split_type);
 
-    void print(FILE* f, const char* prefix, int indent, int kdepth);
-
-    void deallocate(threadinfo& ti) {
-	ti.pool_deallocate(this, sizeof(*this), memtag_masstree_internode);
-    }
-    void deallocate_rcu(threadinfo& ti) {
-	ti.pool_deallocate_rcu(this, sizeof(*this), memtag_masstree_internode);
-    }
+    template <typename PP> friend class tcursor;
 };
 
 template <typename P>
@@ -395,36 +401,6 @@ class leaf : public node_base<P> {
     bool deleted_layer() const {
 	return nremoved_ > width;
     }
-    void mark_deleted_layer() {
-	nremoved_ = width + 1;
-    }
-
-    void assign(int p, const key_type& ka, threadinfo& ti) {
-	lv_[p] = leafvalue_type::make_empty();
-	if (ka.has_suffix())
-	    assign_ksuf(p, ka.suffix(), false, ti);
-	ikey0_[p] = ka.ikey();
-	keylenx_[p] = ka.ikeylen();
-    }
-    void assign_initialize(int p, const key_type& ka, threadinfo& ti) {
-	lv_[p] = leafvalue_type::make_empty();
-	if (ka.has_suffix())
-	    assign_ksuf(p, ka.suffix(), true, ti);
-	ikey0_[p] = ka.ikey();
-	keylenx_[p] = ka.ikeylen();
-    }
-    void assign_initialize(int p, leaf<P>* x, int xp, threadinfo& ti) {
-	lv_[p] = x->lv_[xp];
-	if (x->has_ksuf(xp))
-	    assign_ksuf(p, x->ksuf(xp), true, ti);
-	ikey0_[p] = x->ikey0_[xp];
-	keylenx_[p] = x->keylenx_[xp];
-    }
-    void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
-	if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
-	    hard_assign_ksuf(p, s, initializing, ti);
-    }
-    void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
 
     void prefetch() const {
 	for (int i = 64; i < std::min(16 * width + 1, 4 * 64); i += 64)
@@ -455,6 +431,45 @@ class leaf : public node_base<P> {
                               memtag_masstree_ksuffixes);
 	ti.pool_deallocate_rcu(this, allocated_size(), memtag_masstree_leaf);
     }
+
+  private:
+    inline void mark_deleted_layer() {
+	nremoved_ = width + 1;
+    }
+
+    inline void assign(int p, const key_type& ka, threadinfo& ti) {
+	lv_[p] = leafvalue_type::make_empty();
+	if (ka.has_suffix())
+	    assign_ksuf(p, ka.suffix(), false, ti);
+	ikey0_[p] = ka.ikey();
+	keylenx_[p] = ka.ikeylen();
+    }
+    inline void assign_initialize(int p, const key_type& ka, threadinfo& ti) {
+	lv_[p] = leafvalue_type::make_empty();
+	if (ka.has_suffix())
+	    assign_ksuf(p, ka.suffix(), true, ti);
+	ikey0_[p] = ka.ikey();
+	keylenx_[p] = ka.ikeylen();
+    }
+    inline void assign_initialize(int p, leaf<P>* x, int xp, threadinfo& ti) {
+	lv_[p] = x->lv_[xp];
+	if (x->has_ksuf(xp))
+	    assign_ksuf(p, x->ksuf(xp), true, ti);
+	ikey0_[p] = x->ikey0_[xp];
+	keylenx_[p] = x->keylenx_[xp];
+    }
+    inline void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
+	if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
+	    hard_assign_ksuf(p, s, initializing, ti);
+    }
+    void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
+
+    inline ikey_type ikey_after_insert(const permuter_type& perm, int i,
+                                       const key_type& ka, int ka_i) const;
+    int split_into(leaf<P>* nr, int p, const key_type& ka, ikey_type& split_ikey,
+                   threadinfo& ti);
+
+    template <typename PP> friend class tcursor;
 };
 
 

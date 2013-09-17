@@ -19,112 +19,69 @@
 #include "btree_leaflink.hh"
 namespace Masstree {
 
+/** @brief Return ikey at position @a i, assuming insert of @a ka at @a ka_i. */
 template <typename P>
-int internode_split(internode<P> *nl, internode<P> *nr,
-		    int p, typename internode<P>::ikey_type ka,
-		    node_base<P> *value,
-		    typename internode<P>::ikey_type &split_ikey,
-		    int split_type)
-{
-    // B+tree internal node insertion.
-    // Split nl, with items [0,T::width), into nl + nr, simultaneously
-    // inserting "ka:value" at position "p" (0 <= p <= T::width).
-    // The midpoint element of the result is stored in "split_ikey".
-
-    // Let mid = ceil(T::width / 2). After the split, the key at
-    // post-insertion position mid is stored in split_ikey. nl contains keys
-    // [0,mid) and nr contains keys [mid+1,T::width+1).
-    // If p < mid, then x goes into nl, pre-insertion item mid-1 goes into
-    //   split_ikey, and the first element of nr is pre-insertion item mid.
-    // If p == mid, then x goes into split_ikey and the first element of
-    //   nr is pre-insertion item mid.
-    // If p > mid, then x goes into nr, pre-insertion item mid goes into
-    //   split_ikey, and the first element of nr is post-insertion item mid+1.
-    masstree_precondition(!nl->concurrent || (nl->locked() && nr->locked()));
-
-    int mid = (split_type == 2 ? nl->width : (nl->width + 1) / 2);
-    nr->nkeys_ = nl->width + 1 - (mid + 1);
-
-    if (p < mid) {
-	nr->child_[0] = nl->child_[mid];
-	nr->shift_from(0, nl, mid, nl->width - mid);
-	split_ikey = nl->ikey0_[mid - 1];
-    } else if (p == mid) {
-	nr->child_[0] = value;
-	nr->shift_from(0, nl, mid, nl->width - mid);
-	split_ikey = ka;
-    } else {
-	nr->child_[0] = nl->child_[mid + 1];
-	nr->shift_from(0, nl, mid + 1, p - (mid + 1));
-	nr->assign(p - (mid + 1), ka, value);
-	nr->shift_from(p + 1 - (mid + 1), nl, p, nl->width - p);
-	split_ikey = nl->ikey0_[mid];
-    }
-
-    for (int i = 0; i <= nr->nkeys_; ++i)
-	nr->child_[i]->set_parent(nr);
-
-    nl->mark_split();
-    if (p < mid) {
-	nl->nkeys_ = mid - 1;
-	return p;
-    } else {
-	nl->nkeys_ = mid;
-	return -1;
-    }
-}
-
-template <typename P>
-typename P::ikey_type leaf_ikey(leaf<P> *nl,
-                                const typename leaf<P>::permuter_type &perml,
-				const typename leaf<P>::key_type &ka,
-				int ka_i, int i)
+inline typename P::ikey_type
+leaf<P>::ikey_after_insert(const permuter_type& perm, int i,
+                           const key_type& ka, int ka_i) const
 {
     if (i < ka_i)
-	return nl->ikey0_[perml[i]];
+	return this->ikey0_[perm[i]];
     else if (i == ka_i)
 	return ka.ikey();
     else
-	return nl->ikey0_[perml[i - 1]];
+	return this->ikey0_[perm[i - 1]];
 }
 
-template <typename P, typename TI>
-int leaf_split(leaf<P>* nl, leaf<P>* nr,
-	       int p, const typename leaf<P>::key_type& ka,
-	       TI& ti,
-	       typename P::ikey_type& split_ikey)
+/** @brief Split this node into *@a nr and insert @a ka at position @a p.
+    @pre *@a nr is a new empty leaf
+    @pre this->locked() && @a nr->locked()
+    @post split_ikey is the first key in *@a nr
+    @return split type
+
+    If @a p == this->size() and *this is the rightmost node in the layer,
+    then this code assumes we're inserting nodes in sequential order, and
+    the split does not move any keys.
+
+    The split type is 0 if @a ka went into *this, 1 if the @a ka went into
+    *@a nr, and 2 for the sequential-order optimization (@a ka went into *@a
+    nr and no other keys were moved). */
+template <typename P>
+int leaf<P>::split_into(leaf<P>* nr, int p, const key_type& ka,
+                        ikey_type& split_ikey, threadinfo& ti)
 {
     // B+tree leaf insertion.
-    // Split nl, with items [0,T::width), into nl + nr, simultaneously
+    // Split *this, with items [0,T::width), into *this + nr, simultaneously
     // inserting "ka:value" at position "p" (0 <= p <= T::width).
 
     // Let mid = floor(T::width / 2) + 1. After the split,
-    // "nl" contains [0,mid) and "nr" contains [mid,T::width+1).
-    // If p < mid, then x goes into nl, and the first element of nr
+    // "*this" contains [0,mid) and "nr" contains [mid,T::width+1).
+    // If p < mid, then x goes into *this, and the first element of nr
     //   will be former item (mid - 1).
     // If p >= mid, then x goes into nr.
-    masstree_precondition(!nl->concurrent || (nl->locked() && nr->locked()));
-    masstree_precondition(nl->nremoved_ == 0 && nl->size() >= nl->width - 1);
+    masstree_precondition(!this->concurrent || (this->locked() && nr->locked()));
+    masstree_precondition(this->nremoved_ == 0);
+    masstree_precondition(this->size() >= this->width - 1);
 
-    int width = nl->size();	// == nl->width or nl->width - 1
-    int mid = nl->width / 2 + 1;
-    if (p == 0 && !nl->prev_)
+    int width = this->size();	// == this->width or this->width - 1
+    int mid = this->width / 2 + 1;
+    if (p == 0 && !this->prev_)
 	mid = 1;
-    else if (p == width && !nl->next_.ptr)
+    else if (p == width && !this->next_.ptr)
 	mid = width;
 
-    // Never split apart keys with the same ikey0.
-    typename leaf<P>::permuter_type perml(nl->permutation_);
-    typename P::ikey_type mid_ikey = leaf_ikey(nl, perml, ka, p, mid);
-    if (mid_ikey == leaf_ikey(nl, perml, ka, p, mid - 1)) {
+    // Never separate keys with the same ikey0.
+    permuter_type perml(this->permutation_);
+    ikey_type mid_ikey = ikey_after_insert(perml, mid, ka, p);
+    if (mid_ikey == ikey_after_insert(perml, mid - 1, ka, p)) {
 	int midl = mid - 2, midr = mid + 1;
 	while (1) {
 	    if (midr <= width
-		&& mid_ikey != leaf_ikey(nl, perml, ka, p, midr)) {
+		&& mid_ikey != ikey_after_insert(perml, midr, ka, p)) {
 		mid = midr;
 		break;
 	    } else if (midl >= 0
-		       && mid_ikey != leaf_ikey(nl, perml, ka, p, midl)) {
+		       && mid_ikey != ikey_after_insert(perml, midl, ka, p)) {
 		mid = midl + 1;
 		break;
 	    }
@@ -133,23 +90,76 @@ int leaf_split(leaf<P>* nl, leaf<P>* nr,
 	masstree_invariant(mid > 0 && mid <= width);
     }
 
-    typename leaf<P>::permuter_type::value_type pv = perml.value_from(mid - (p < mid));
+    typename permuter_type::value_type pv = perml.value_from(mid - (p < mid));
     for (int x = mid; x <= width; ++x)
 	if (x == p)
 	    nr->assign_initialize(x - mid, ka, ti);
 	else {
-	    nr->assign_initialize(x - mid, nl, pv & 15, ti);
+	    nr->assign_initialize(x - mid, this, pv & 15, ti);
 	    pv >>= 4;
 	}
-    typename leaf<P>::permuter_type permr = leaf<P>::permuter_type::make_sorted(width + 1 - mid);
+    permuter_type permr = permuter_type::make_sorted(width + 1 - mid);
     if (p >= mid)
 	permr.remove_to_back(p - mid);
     nr->permutation_ = permr.value();
 
-    btree_leaflink<leaf<P> >::link_split(nl, nr);
+    btree_leaflink<leaf<P> >::link_split(this, nr);
 
     split_ikey = nr->ikey0_[0];
     return p >= mid ? 1 + (mid == width) : 0;
+}
+
+template <typename P>
+int internode<P>::split_into(internode<P> *nr, int p, ikey_type ka,
+                             node_base<P> *value, ikey_type& split_ikey,
+                             int split_type)
+{
+    // B+tree internal node insertion.
+    // Split *this, with items [0,T::width), into *this + nr, simultaneously
+    // inserting "ka:value" at position "p" (0 <= p <= T::width).
+    // The midpoint element of the result is stored in "split_ikey".
+
+    // Let mid = ceil(T::width / 2). After the split, the key at
+    // post-insertion position mid is stored in split_ikey. *this contains keys
+    // [0,mid) and nr contains keys [mid+1,T::width+1).
+    // If p < mid, then x goes into *this, pre-insertion item mid-1 goes into
+    //   split_ikey, and the first element of nr is pre-insertion item mid.
+    // If p == mid, then x goes into split_ikey and the first element of
+    //   nr is pre-insertion item mid.
+    // If p > mid, then x goes into nr, pre-insertion item mid goes into
+    //   split_ikey, and the first element of nr is post-insertion item mid+1.
+    masstree_precondition(!this->concurrent || (this->locked() && nr->locked()));
+
+    int mid = (split_type == 2 ? this->width : (this->width + 1) / 2);
+    nr->nkeys_ = this->width + 1 - (mid + 1);
+
+    if (p < mid) {
+	nr->child_[0] = this->child_[mid];
+	nr->shift_from(0, this, mid, this->width - mid);
+	split_ikey = this->ikey0_[mid - 1];
+    } else if (p == mid) {
+	nr->child_[0] = value;
+	nr->shift_from(0, this, mid, this->width - mid);
+	split_ikey = ka;
+    } else {
+	nr->child_[0] = this->child_[mid + 1];
+	nr->shift_from(0, this, mid + 1, p - (mid + 1));
+	nr->assign(p - (mid + 1), ka, value);
+	nr->shift_from(p + 1 - (mid + 1), this, p, this->width - p);
+	split_ikey = this->ikey0_[mid];
+    }
+
+    for (int i = 0; i <= nr->nkeys_; ++i)
+	nr->child_[i]->set_parent(nr);
+
+    this->mark_split();
+    if (p < mid) {
+	this->nkeys_ = mid - 1;
+	return p;
+    } else {
+	this->nkeys_ = mid;
+	return -1;
+    }
 }
 
 
@@ -160,8 +170,8 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
     node_type *child = leaf_type::make(n_->ksuf_size(), n_->node_ts_, ti);
     child->assign_version(*n_);
     ikey_type xikey[2];
-    int split_type = leaf_split(n_, static_cast<leaf_type *>(child),
-				ki_, ka_, ti, xikey[0]);
+    int split_type = n_->split_into(static_cast<leaf_type *>(child),
+                                    ki_, ka_, xikey[0], ti);
     bool sense = false;
 
     while (1) {
@@ -190,8 +200,8 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
 		next_child = internode_type::make(ti);
 		next_child->assign_version(*p);
 		next_child->mark_nonroot();
-		kp = internode_split(p, next_child, kp, xikey[sense],
-				     child, xikey[!sense], split_type);
+		kp = p->split_into(next_child, kp, xikey[sense],
+                                   child, xikey[!sense], split_type);
 	    }
 
 	    if (kp >= 0) {
