@@ -3,14 +3,11 @@
 #ifndef MASSTREE_CONFIG_H_INCLUDED
 #define MASSTREE_CONFIG_H_INCLUDED 1
 
+/* Define if building universal (internal helper macro) */
+#undef AC_APPLE_UNIVERSAL_BUILD
+
 /* Assumed size of a cache line. */
 #undef CACHE_LINE_SIZE
-
-/* big endian */
-#undef ENDIAN_BIG
-
-/* little endian */
-#undef ENDIAN_LITTLE
 
 /* Define to enable debugging assertions. */
 #undef HAVE_ASSERTIONS_ENABLED
@@ -280,6 +277,9 @@
 #  undef WORDS_BIGENDIAN
 # endif
 #endif
+
+/* Define if WORDS_BIGENDIAN has been set. */
+#undef WORDS_BIGENDIAN_SET
 
 #if !HAVE_ALL_ASSERTIONS_ENABLED && !HAVE_ASSERTIONS_ENABLED
 # define NDEBUG 1

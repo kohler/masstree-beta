@@ -12,10 +12,8 @@ AC_PROG_CC
 AC_PROG_CXX
 AC_LANG_CPLUSPLUS
 
-AC_C_BIGENDIAN([AC_DEFINE([ENDIAN_BIG], [1], [big endian])],
-               [AC_DEFINE([ENDIAN_LITTLE], [1], [little endian])],
-               [AC_MSG_ERROR([Unknown endian])],
-               [AC_MSG_ERROR([Universal endian])])
+AC_DEFINE([WORDS_BIGENDIAN_SET], [1], [Define if WORDS_BIGENDIAN has been set.])
+AC_C_BIGENDIAN()
 
 AC_CHECK_HEADERS([sys/epoll.h numa.h])
 

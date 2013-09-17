@@ -73,10 +73,12 @@ template <typename T> struct string_slice {
 #if HAVE_UNALIGNED_ACCESS
 	if (len >= size)
 	    return *reinterpret_cast<const T *>(s);
-# if ENDIAN_BIG
+# if WORDS_BIGENDIAN
 	return *reinterpret_cast<const T *>(s) & (~T(0) << (8 * (size - len)));
-# else
+# elif WORDS_BIGENDIAN_SET
 	return *reinterpret_cast<const T *>(s - (size - len)) >> (8 * (size - len));
+# else
+#  error "WORDS_BIGENDIAN has not been set!"
 # endif
 #else
 	union_type u(0);
@@ -146,7 +148,7 @@ template <typename T> struct string_slice {
 		^ *reinterpret_cast<const T *>(b);
 	    if (unlikely(len <= 0))
 		return true;
-# if ENDIAN_BIG
+# if WORDS_BIGENDIAN
 	    return (delta >> (8 * (size - len))) == 0;
 # else
 	    return (delta << (8 * (size - len))) == 0;

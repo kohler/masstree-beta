@@ -3498,6 +3498,9 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
 
+$as_echo "#define WORDS_BIGENDIAN_SET 1" >>confdefs.h
+
+
 ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
 ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -4101,18 +4104,18 @@ fi
 $as_echo "$ac_cv_c_bigendian" >&6; }
  case $ac_cv_c_bigendian in #(
    yes)
-
-$as_echo "#define ENDIAN_BIG 1" >>confdefs.h
+     $as_echo "#define WORDS_BIGENDIAN 1" >>confdefs.h
 ;; #(
    no)
-
-$as_echo "#define ENDIAN_LITTLE 1" >>confdefs.h
- ;; #(
+      ;; #(
    universal)
-     as_fn_error $? "Universal endian" "$LINENO" 5
+
+$as_echo "#define AC_APPLE_UNIVERSAL_BUILD 1" >>confdefs.h
+
      ;; #(
    *)
-     as_fn_error $? "Unknown endian" "$LINENO" 5 ;;
+     as_fn_error $? "unknown endianness
+ presetting ac_cv_c_bigendian=no (or yes) will help" "$LINENO" 5 ;;
  esac
 
 
@@ -6397,6 +6400,7 @@ done
 LIBOBJS=$ac_libobjs
 
 LTLIBOBJS=$ac_ltlibobjs
+
 
 
 
