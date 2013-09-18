@@ -34,17 +34,6 @@
 namespace Masstree {
 
 template <typename P>
-result_t query_table<P>::put(query<row_type>& q, threadinfo& ti) {
-    tcursor<P> lp(table_, q.key_);
-    bool found = lp.find_insert(ti);
-    if (!found)
-	ti.advance_timestamp(lp.node_timestamp());
-    result_t r = q.apply_put(lp.value(), found, &ti);
-    lp.finish(1, ti);
-    return r;
-}
-
-template <typename P>
 void query_table<P>::replace(query<row_type>& q, threadinfo& ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);

@@ -144,8 +144,9 @@ class query {
     bool run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti);
     template <typename T>
     bool run_get1(T& table, Str key, int col, Str& value, threadinfo& ti);
+    template <typename T>
+    result_t run_put(T& table, Str key, Str req, threadinfo& ti);
 
-    void begin_put(Str key, Str req);
     void begin_replace(Str key, Str value);
     void begin_remove(Str key);
     void begin_scan(Str startkey, int npairs, Str req,
@@ -164,7 +165,6 @@ class query {
     /** @return whether the scan should continue or not */
     bool scanemit(Str k, const R* v, threadinfo* ti);
 
-    inline result_t apply_put(R*& value, bool has_value, threadinfo* ti);
     inline void apply_replace(R*& value, bool has_value, threadinfo* ti);
     inline bool apply_remove(R*& value, bool has_value, threadinfo* ti, kvtimestamp_t* node_ts = 0);
 
@@ -183,16 +183,10 @@ class query {
     Str val_;			// value for Get1 and CkpPut
 
     void emit(const R* row, kvout* kv);
-    void assign_timestamp(threadinfo* ti);
-    void assign_timestamp(threadinfo* ti, kvtimestamp_t t);
+    void assign_timestamp(threadinfo& ti);
+    void assign_timestamp(threadinfo& ti, kvtimestamp_t t);
+    inline result_t apply_put(R*& value, bool found, Str req, threadinfo& ti);
 };
-
-template <typename R>
-void query<R>::begin_put(Str key, Str req) {
-    qt_ = QT_Put;
-    key_ = key;
-    val_ = req;
-}
 
 template <typename R>
 void query<R>::begin_replace(Str key, Str val) {
@@ -291,49 +285,60 @@ bool query<R>::run_get1(T& table, Str key, int col, Str& value, threadinfo& ti) 
     return found;
 }
 
-
-template <typename R>
-inline void query<R>::assign_timestamp(threadinfo *ti) {
-    qtimes_.ts = ti->update_timestamp();
-    qtimes_.prev_ts = 0;
+template <typename R> template <typename T>
+result_t query<R>::run_put(T& table, Str key, Str req, threadinfo& ti) {
+    typename T::cursor_type lp(table, key);
+    bool found = lp.find_insert(ti);
+    if (!found)
+        ti.advance_timestamp(lp.node_timestamp());
+    result_t r = apply_put(lp.value(), found, req, ti);
+    lp.finish(1, ti);
+    return r;
 }
 
 template <typename R>
-inline void query<R>::assign_timestamp(threadinfo* ti, kvtimestamp_t min_ts) {
-    qtimes_.ts = ti->update_timestamp(min_ts);
-    qtimes_.prev_ts = min_ts;
-}
+inline result_t query<R>::apply_put(R*& value, bool found, Str req,
+                                    threadinfo& ti) {
+    serial_changeset<typename R::index_type> changeset(req);
 
-template <typename R>
-inline result_t query<R>::apply_put(R*& value, bool has_value, threadinfo* ti) {
-    masstree_precondition(qt_ == QT_Put);
-    serial_changeset<typename R::index_type> changeset(val_);
-
-    if (loginfo* log = ti->ti_log) {
+    if (loginfo* log = ti.ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
 
-    if (!has_value) {
+    if (!found) {
     insert:
 	assign_timestamp(ti);
-        value = R::create(changeset, qtimes_.ts, *ti);
+        value = R::create(changeset, qtimes_.ts, ti);
 	return Inserted;
     }
 
     R* old_value = value;
     assign_timestamp(ti, old_value->timestamp());
     if (row_is_marker(old_value)) {
-	old_value->deallocate_rcu(*ti);
+	old_value->deallocate_rcu(ti);
 	goto insert;
     }
 
-    R* updated = old_value->update(changeset, qtimes_.ts, *ti);
+    R* updated = old_value->update(changeset, qtimes_.ts, ti);
     if (updated != old_value) {
 	value = updated;
-	old_value->deallocate_rcu_after_update(changeset, *ti);
+	old_value->deallocate_rcu_after_update(changeset, ti);
     }
     return Updated;
+}
+
+
+template <typename R>
+inline void query<R>::assign_timestamp(threadinfo& ti) {
+    qtimes_.ts = ti.update_timestamp();
+    qtimes_.prev_ts = 0;
+}
+
+template <typename R>
+inline void query<R>::assign_timestamp(threadinfo& ti, kvtimestamp_t min_ts) {
+    qtimes_.ts = ti.update_timestamp(min_ts);
+    qtimes_.prev_ts = min_ts;
 }
 
 template <typename R>
@@ -346,9 +351,9 @@ inline void query<R>::apply_replace(R*& value, bool has_value, threadinfo* ti) {
     }
 
     if (!has_value)
-	assign_timestamp(ti);
+	assign_timestamp(*ti);
     else {
-        assign_timestamp(ti, value->timestamp());
+        assign_timestamp(*ti, value->timestamp());
         value->deallocate_rcu(*ti);
     }
 
@@ -367,7 +372,7 @@ inline bool query<R>::apply_remove(R *&value, bool has_value, threadinfo *ti,
     }
 
     R* old_value = value;
-    assign_timestamp(ti, old_value->timestamp());
+    assign_timestamp(*ti, old_value->timestamp());
     if (node_ts && circular_int<kvtimestamp_t>::less_equal(*node_ts, qtimes_.ts))
 	*node_ts = qtimes_.ts + 2;
     old_value->deallocate_rcu(*ti);

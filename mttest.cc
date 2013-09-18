@@ -54,6 +54,7 @@
 #include "kvstats.hh"
 #include "query_masstree.hh"
 #include "masstree_tcursor.hh"
+#include "masstree_insert.hh"
 #include "timestamp.hh"
 #include "json.hh"
 #include "kvtest.hh"
@@ -422,8 +423,9 @@ void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
 #if !KVDB_ROW_TYPE_STR
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
-    q_[0].begin_put(key, row_type::make_put_col_request(kvo_, col, value));
-    table_->put(q_[0], *ti_);
+    q_[0].run_put(table_->table(), key,
+                  row_type::make_put_col_request(kvo_, col, value),
+                  *ti_);
 #else
     (void) key, (void) col, (void) value;
     assert(0);

@@ -57,6 +57,7 @@
 #include "kvproto.hh"
 #include "query_masstree.hh"
 #include "masstree_tcursor.hh"
+#include "masstree_insert.hh"
 #include <algorithm>
 using lcdf::StringAccum;
 
@@ -315,8 +316,7 @@ void kvtest_client::put_col(const Str &key, int col, const Str &value) {
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
     Str req = row_type::make_put_col_request(kvo_, col, value);
-    q_[0].begin_put(key, req);
-    (void) tree->put(q_[0], *ti_);
+    (void) q_[0].run_put(tree->table(), key, req, *ti_);
     if (ti_->ti_log) // NB may block
 	ti_->ti_log->record(logcmd_put, q_[0].query_times(), key, req);
 #else
@@ -1026,8 +1026,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
     }
   } else if (rsm.cmd == Cmd_Put || rsm.cmd == Cmd_Put_Status) { // insert or update
       Str key(rsm.key, rsm.keylen), req(rsm.req, rsm.reqlen);
-      q.begin_put(key, req);
-      int status = tree->put(q, *ti);
+      int status = q.run_put(tree->table(), key, req, *ti);
       if (ti->ti_log) // NB may block
 	  ti->ti_log->record(logcmd_put, q.query_times(), key, req);
       KVW(kvout, rsm.seq);
