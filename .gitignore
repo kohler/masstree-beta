@@ -15,6 +15,7 @@ kvd-ckp-*
 mttest
 notebook-kvtest.json
 stamp-h
+jsontest
 test_atomics
 test_binsearch
 test_string
