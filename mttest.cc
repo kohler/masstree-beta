@@ -433,8 +433,7 @@ void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
 }
 
 template <typename T> inline bool kvtest_remove(kvtest_client<T> &client, const Str &key) {
-    client.q_[0].begin_remove(key);
-    return client.table_->remove(client.q_[0], *client.ti_);
+    return client.q_[0].run_remove(client.table_->table(), key, *client.ti_);
 }
 
 template <typename T>

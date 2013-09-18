@@ -133,28 +133,25 @@ class query {
     enum {
 	QT_None = 0,
 	QT_Scan = 2,
-	QT_Ckp_Scan = 3,
-
-	QT_Put = 4,
-        QT_Replace = 5,
-	QT_Remove = 6
+	QT_Ckp_Scan = 3
     };
 
     template <typename T>
     bool run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti);
     template <typename T>
     bool run_get1(T& table, Str key, int col, Str& value, threadinfo& ti);
+
     template <typename T>
     result_t run_put(T& table, Str key, Str req, threadinfo& ti);
     template <typename T>
     void run_replace(T& table, Str key, Str value, threadinfo& ti);
+    template <typename T>
+    bool run_remove(T& table, Str key, threadinfo& ti);
 
-    void begin_remove(Str key);
     void begin_scan(Str startkey, int npairs, Str req,
 		    struct kvout* kvout);
-    void begin_checkpoint(ckstate* ck, Str startkey, Str endkey);
-
     void begin_scan1(Str startkey, int npairs, kvout* kv);
+    void begin_checkpoint(ckstate* ck, Str startkey, Str endkey);
 
     int query_type() const {
 	return qt_;
@@ -165,8 +162,6 @@ class query {
 
     /** @return whether the scan should continue or not */
     bool scanemit(Str k, const R* v, threadinfo* ti);
-
-    inline bool apply_remove(R*& value, bool has_value, threadinfo* ti, kvtimestamp_t* node_ts = 0);
 
   private:
     typename R::fields_type f_;
@@ -187,6 +182,7 @@ class query {
     inline result_t apply_put(R*& value, bool found, Str req, threadinfo& ti);
     inline void apply_replace(R*& value, bool found, Str new_value,
                               threadinfo& ti);
+    inline void apply_remove(R*& value, kvtimestamp_t& node_ts, threadinfo& ti);
 };
 
 template <typename R>
@@ -215,12 +211,6 @@ void query<R>::begin_checkpoint(ckstate* ck, Str startkey, Str endkey) {
     key_ = startkey;
     ck_ = ck;
     endkey_ = endkey;
-}
-
-template <typename R>
-void query<R>::begin_remove(Str key) {
-    qt_ = QT_Remove;
-    key_ = key;
 }
 
 template <typename R>
@@ -364,23 +354,29 @@ inline void query<R>::apply_replace(R*& value, bool found, Str new_value,
     value = R::create1(new_value, qtimes_.ts, ti);
 }
 
-template <typename R>
-inline bool query<R>::apply_remove(R *&value, bool has_value, threadinfo *ti,
-				   kvtimestamp_t *node_ts) {
-    if (!has_value)
-	return false;
+template <typename R> template <typename T>
+bool query<R>::run_remove(T& table, Str key, threadinfo& ti) {
+    typename T::cursor_type lp(table, key);
+    bool found = lp.find_locked(ti);
+    if (found)
+        apply_remove(lp.value(), lp.node_timestamp(), ti);
+    lp.finish(-1, ti);
+    return found;
+}
 
-    if (loginfo* log = ti->ti_log) {
+template <typename R>
+inline void query<R>::apply_remove(R*& value, kvtimestamp_t& node_ts,
+                                   threadinfo& ti) {
+    if (loginfo* log = ti.ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
 
     R* old_value = value;
-    assign_timestamp(*ti, old_value->timestamp());
-    if (node_ts && circular_int<kvtimestamp_t>::less_equal(*node_ts, qtimes_.ts))
-	*node_ts = qtimes_.ts + 2;
-    old_value->deallocate_rcu(*ti);
-    return true;
+    assign_timestamp(ti, old_value->timestamp());
+    if (circular_int<kvtimestamp_t>::less_equal(node_ts, qtimes_.ts))
+	node_ts = qtimes_.ts + 2;
+    old_value->deallocate_rcu(ti);
 }
 
 

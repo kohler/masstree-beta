@@ -327,8 +327,7 @@ void kvtest_client::put_col(const Str &key, int col, const Str &value) {
 
 bool kvtest_client::remove_sync(long ikey) {
     quick_istr key(ikey);
-    q_[0].begin_remove(key.string());
-    bool removed = tree->remove(q_[0], *ti_);
+    bool removed = q_[0].run_remove(tree->table(), key.string(), *ti_);
     if (removed && ti_->ti_log) // NB may block
 	ti_->ti_log->record(logcmd_remove, q_[0].query_times(), key.string(), Str());
     return removed;
@@ -1034,8 +1033,7 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
 	  KVW(kvout, status);
   } else if(rsm.cmd == Cmd_Remove){ // remove
       Str key(rsm.key, rsm.keylen);
-      q.begin_remove(key);
-      bool removed = tree->remove(q, *ti);
+      bool removed = q.run_remove(tree->table(), key, *ti);
       if (removed && ti->ti_log) // NB may block
 	  ti->ti_log->record(logcmd_remove, q.query_times(), key, Str());
       KVW(kvout, rsm.seq);

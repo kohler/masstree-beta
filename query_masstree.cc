@@ -56,16 +56,6 @@ void query_table<P>::rscan(query<row_type>& q, threadinfo& ti) const {
 }
 
 template <typename P>
-bool query_table<P>::remove(query<row_type>& q, threadinfo& ti) {
-    tcursor<P> lp(table_, q.key_);
-    bool found = lp.find_locked(ti);
-    bool removed = found
-	&& q.apply_remove(lp.value(), true, &ti, &lp.node_timestamp());
-    lp.finish(removed ? -1 : 0, ti);
-    return removed;
-}
-
-template <typename P>
 void query_table<P>::checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
                                         threadinfo& ti) {
     tcursor<P> lp(table_, key);
