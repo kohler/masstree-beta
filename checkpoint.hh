@@ -29,7 +29,13 @@ struct ckstate {
     pthread_cond_t state_cond;
     volatile int state;
     threadinfo *ti;
-    query<row_type> q;
+    Str startkey;
+    Str endkey;
+
+    template <typename SS, typename K>
+    void visit_leaf(const SS&, const K&, threadinfo&) {
+    }
+    bool visit_value(Str key, const row_type* value, threadinfo& ti);
 };
 
 #endif

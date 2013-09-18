@@ -59,6 +59,7 @@
 #include "masstree_tcursor.hh"
 #include "masstree_insert.hh"
 #include "masstree_remove.hh"
+#include "masstree_scan.hh"
 #include <algorithm>
 using lcdf::StringAccum;
 
@@ -1042,8 +1043,8 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
     assert(rsm.cmd == Cmd_Scan);
     KVW(kvout, rsm.seq);
     if (rsm.numpairs > 0) {
-      q.begin_scan(Str(rsm.key, rsm.keylen), rsm.numpairs, Str(rsm.req, rsm.reqlen), kvout);
-      tree->scan(q, *ti);
+        q.run_scan(tree->table(), Str(rsm.key, rsm.keylen), rsm.numpairs,
+                   Str(rsm.req, rsm.reqlen), kvout, *ti);
     }
     KVW(kvout, (int)0);
   }
@@ -1609,7 +1610,7 @@ conc_filecheckpoint(threadinfo *ti)
   c->vals = new_bufkvout();
   c->ind = new_bufkvout();
   double t0 = now();
-  tree->scan(c->q, *ti);
+  tree->table().scan(c->startkey, true, *c, *ti);
   char path[256];
   sprintf(path, "%s/kvd-ckp-%" PRId64 "-%d",
           ckpdirs[ti->ti_index % ckpdirs.size()],
@@ -1734,8 +1735,8 @@ conc_checkpointer(void *xarg)
       pthread_mutex_lock(&checkpoint_mu);
       ckp_gen = ckp_gen.next_nonzero();
       for (int i = 0; i < nckthreads; i++) {
-	  Str endkey = (i == nckthreads - 1 ? Str() : pv[i + 1]);
-	  cks[i].q.begin_checkpoint(&cks[i], pv[i], endkey);
+          cks[i].startkey = pv[i];
+          cks[i].endkey = (i == nckthreads - 1 ? Str() : pv[i + 1]);
 	  cks[i].state = CKState_Go;
 	  pthread_cond_signal(&cks[i].state_cond);
       }

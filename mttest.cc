@@ -56,6 +56,7 @@
 #include "masstree_tcursor.hh"
 #include "masstree_insert.hh"
 #include "masstree_remove.hh"
+#include "masstree_scan.hh"
 #include "timestamp.hh"
 #include "json.hh"
 #include "kvtest.hh"
@@ -376,8 +377,7 @@ void kvtest_client<T>::scan_sync(const Str &firstkey, int n,
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
     kvout_reset(kvo_);
-    q_[0].begin_scan1(firstkey, n, kvo_);
-    table_->scan(q_[0], *ti_);
+    q_[0].run_scan1(table_->table(), firstkey, n, kvo_, *ti_);
     output_scan(keys, values);
 }
 
@@ -388,8 +388,7 @@ void kvtest_client<T>::rscan_sync(const Str &firstkey, int n,
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
     kvout_reset(kvo_);
-    q_[0].begin_scan1(firstkey, n, kvo_);
-    table_->rscan(q_[0], *ti_);
+    q_[0].run_rscan1(table_->table(), firstkey, n, kvo_, *ti_);
     output_scan(keys, values);
 }
 

@@ -44,18 +44,6 @@ void query_table<P>::replay(replay_query<row_type>& q, threadinfo& ti) {
 }
 
 template <typename P>
-void query_table<P>::scan(query<row_type>& q, threadinfo& ti) const {
-    query_scanner<row_type> scanf(q);
-    table_.scan(q.key_, true, scanf, ti);
-}
-
-template <typename P>
-void query_table<P>::rscan(query<row_type>& q, threadinfo& ti) const {
-    query_scanner<row_type> scanf(q);
-    table_.rscan(q.key_, true, scanf, ti);
-}
-
-template <typename P>
 void query_table<P>::checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
                                         threadinfo& ti) {
     tcursor<P> lp(table_, key);

@@ -127,15 +127,11 @@ struct query_helper {
     }
 };
 
+template <typename R> class query_scanner;
+
 template <typename R>
 class query {
   public:
-    enum {
-	QT_None = 0,
-	QT_Scan = 2,
-	QT_Ckp_Scan = 3
-    };
-
     template <typename T>
     bool run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti);
     template <typename T>
@@ -148,99 +144,48 @@ class query {
     template <typename T>
     bool run_remove(T& table, Str key, threadinfo& ti);
 
-    void begin_scan(Str startkey, int npairs, Str req,
-		    struct kvout* kvout);
-    void begin_scan1(Str startkey, int npairs, kvout* kv);
-    void begin_checkpoint(ckstate* ck, Str startkey, Str endkey);
+    template <typename T>
+    void run_scan(T& table, Str startkey, int npairs, Str req, kvout* kv,
+                  threadinfo& ti);
+    template <typename T>
+    void run_scan1(T& table, Str startkey, int npairs, kvout* kv,
+                   threadinfo& ti);
+    template <typename T>
+    void run_rscan1(T& table, Str startkey, int npairs, kvout* kv,
+                    threadinfo& ti);
 
-    int query_type() const {
-	return qt_;
-    }
     const loginfo::query_times& query_times() const {
         return qtimes_;
     }
 
-    /** @return whether the scan should continue or not */
-    bool scanemit(Str k, const R* v, threadinfo* ti);
-
   private:
     typename R::fields_type f_;
-    unsigned long scan_npairs_;
     loginfo::query_times qtimes_;
-  public:
-    Str key_;   // startkey for scan; key for others
-    kvout* kvout_;
     query_helper<R> helper_;
-  private:
-    int qt_;    // query type
-    ckstate* ck_;
-    Str endkey_;
 
-    void emit(const R* row, kvout* kv);
+    void emit_fields(const R* value, kvout* kv, threadinfo& ti);
     void assign_timestamp(threadinfo& ti);
     void assign_timestamp(threadinfo& ti, kvtimestamp_t t);
     inline result_t apply_put(R*& value, bool found, Str req, threadinfo& ti);
     inline void apply_replace(R*& value, bool found, Str new_value,
                               threadinfo& ti);
     inline void apply_remove(R*& value, kvtimestamp_t& node_ts, threadinfo& ti);
+
+    template <typename RR> friend class query_scanner;
 };
 
-template <typename R>
-void query<R>::begin_scan(Str startkey, int npairs, Str req, kvout* kv) {
-    assert(npairs > 0);
-    qt_ = QT_Scan;
-    key_ = startkey;
-    R::parse_fields(req, f_);
-    scan_npairs_ = npairs;
-    kvout_ = kv;
-}
 
 template <typename R>
-void query<R>::begin_scan1(Str startkey, int npairs, kvout* kv) {
-    assert(npairs > 0);
-    qt_ = QT_Scan;
-    key_ = startkey;
-    R::make_get1_fields(f_);
-    scan_npairs_ = npairs;
-    kvout_ = kv;
-}
-
-template <typename R>
-void query<R>::begin_checkpoint(ckstate* ck, Str startkey, Str endkey) {
-    qt_ = QT_Ckp_Scan;
-    key_ = startkey;
-    ck_ = ck;
-    endkey_ = endkey;
-}
-
-template <typename R>
-void query<R>::emit(const R* row, kvout* kv) {
+void query<R>::emit_fields(const R* value, kvout* kv, threadinfo& ti) {
+    const R* snapshot = helper_.snapshot(value, f_, ti);
     if (f_.size() == 0) {
-        KVW(kv, (short) row->ncol());
-        for (int i = 0; i != row->ncol(); ++i)
-            KVW(kv, row->col(i));
+        KVW(kv, (short) snapshot->ncol());
+        for (int i = 0; i != snapshot->ncol(); ++i)
+            KVW(kv, snapshot->col(i));
     } else {
         KVW(kv, (short) f_.size());
         for (int i = 0; i != (int) f_.size(); ++i)
-            KVW(kv, row->col(f_[i]));
-    }
-}
-
-template <typename R>
-bool query<R>::scanemit(Str k, const R* v, threadinfo* ti) {
-    if (row_is_marker(v))
-	return true;
-    if (qt_ == QT_Ckp_Scan) {
-        if (endkey_ && k >= endkey_)
-            return false;
-        ::checkpoint1(ck_, k, v);
-        return true;
-    } else {
-        assert(qt_ == QT_Scan);
-	KVW(kvout_, k);
-        emit(helper_.snapshot(v, f_, *ti), kvout_);
-        --scan_npairs_;
-        return scan_npairs_ > 0;
+            KVW(kv, snapshot->col(f_[i]));
     }
 }
 
@@ -253,7 +198,7 @@ bool query<R>::run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti) {
         found = false;
     if (found) {
         R::parse_fields(req, f_);
-        emit(helper_.snapshot(lp.value(), f_, ti), kv);
+        emit_fields(lp.value(), kv, ti);
     }
     return found;
 }
@@ -381,18 +326,54 @@ inline void query<R>::apply_remove(R*& value, kvtimestamp_t& node_ts,
 
 
 template <typename R>
-struct query_scanner {
-    query<R> &q_;
-    query_scanner(query<R> &q)
-	: q_(q) {
+class query_scanner {
+  public:
+    query_scanner(query<R> &q, int nleft, kvout* kv)
+	: q_(q), nleft_(nleft), kv_(kv) {
     }
     template <typename SS, typename K>
     void visit_leaf(const SS&, const K&, threadinfo&) {
     }
     bool visit_value(Str key, R* value, threadinfo& ti) {
-	return q_.scanemit(key, value, &ti);
+        if (row_is_marker(value))
+            return true;
+	KVW(kv_, key);
+        q_.emit_fields(value, kv_, ti);
+        --nleft_;
+        return nleft_ != 0;
     }
+  private:
+    query<R> &q_;
+    int nleft_;
+    kvout* kv_;
 };
+
+template <typename R> template <typename T>
+void query<R>::run_scan(T& table, Str startkey, int npairs, Str req, kvout* kv,
+                        threadinfo& ti) {
+    assert(npairs > 0);
+    query_scanner<R> scanf(*this, npairs, kv);
+    R::parse_fields(req, f_);
+    table.scan(startkey, true, scanf, ti);
+}
+
+template <typename R> template <typename T>
+void query<R>::run_scan1(T& table, Str startkey, int npairs, kvout* kv,
+                         threadinfo& ti) {
+    assert(npairs > 0);
+    query_scanner<R> scanf(*this, npairs, kv);
+    R::make_get1_fields(f_);
+    table.scan(startkey, true, scanf, ti);
+}
+
+template <typename R> template <typename T>
+void query<R>::run_rscan1(T& table, Str startkey, int npairs, kvout* kv,
+                          threadinfo& ti) {
+    assert(npairs > 0);
+    query_scanner<R> scanf(*this, npairs, kv);
+    R::make_get1_fields(f_);
+    table.rscan(startkey, true, scanf, ti);
+}
 
 #include KVDB_ROW_TYPE_INCLUDE
 #endif

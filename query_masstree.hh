@@ -51,9 +51,6 @@ class query_table {
         table_.reinitialize(ti);
     }
 
-    void scan(query<row_type>& q, threadinfo& ti) const;
-    void rscan(query<row_type>& q, threadinfo& ti) const;
-
     void replay(replay_query<row_type>& q, threadinfo& ti);
     void checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
                             threadinfo& ti);

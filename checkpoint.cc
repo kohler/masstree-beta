@@ -17,15 +17,20 @@
 
 // add one key/value to a checkpoint.
 // called by checkpoint_tree() for each node.
-void checkpoint1(ckstate* c, Str key, const row_type* v) {
-    int n = std::min((int)CkpKeyPrefixLen, key.len);
-    kvwrite(c->keys, key.s, n);
-    for (int i = n; i < CkpKeyPrefixLen; i++)
-        KVW(c->keys, (char)0);
-    KVW(c->ind, c->vals->n); // remember the offset of the next two
-    kvwrite(c->vals, key.s, key.len);
-    KVW(c->vals, (char)0);
-    KVW(c->vals, v->timestamp());
-    v->checkpoint_write(c->vals);
-    c->count += 1;
+bool ckstate::visit_value(Str key, const row_type* value, threadinfo&) {
+    if (endkey && key >= endkey)
+        return false;
+    if (!row_is_marker(value)) {
+        int n = std::min((int) CkpKeyPrefixLen, key.len);
+        kvwrite(keys, key.s, n);
+        for (int i = n; i < CkpKeyPrefixLen; i++)
+            KVW(keys, (char) 0);
+        KVW(ind, vals->n); // remember the offset of the next two
+        kvwrite(vals, key.s, key.len);
+        KVW(vals, (char)0);
+        KVW(vals, value->timestamp());
+        value->checkpoint_write(vals);
+        ++count;
+    }
+    return true;
 }
