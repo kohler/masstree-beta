@@ -125,14 +125,14 @@ struct do_nothing {
 
 /** @brief Function object that calls fence(). */
 struct fence_function {
-    void operator()() {
+    void operator()() const {
 	fence();
     }
 };
 
 /** @brief Function object that calls relax_fence(). */
 struct relax_fence_function {
-    void operator()() {
+    void operator()() const {
 	relax_fence();
     }
 };
@@ -692,11 +692,17 @@ inline T iceil(T x, U y) {
     return x + (mod ? y - mod : 0);
 }
 
+/** @brief Return the smallest power of 2 greater than or equal to @a x.
+    @pre @a x != 0
+    @pre the result is representable in type T (that is, @a x can't be
+    larger than the largest power of 2 representable in type T) */
 template <typename T>
 inline T iceil_log2(T x) {
     return T(1) << (sizeof(T) * 8 - clz(x) - !(x & (x - 1)));
 }
 
+/** @brief Return the largest power of 2 less than or equal to @a x.
+    @pre @a x != 0 */
 template <typename T>
 inline T ifloor_log2(T x) {
     return T(1) << (sizeof(T) * 8 - 1 - clz(x));
@@ -707,6 +713,7 @@ inline T ifloor_log2(T x) {
  * 0 is the lowest-order nibble. Returns -1 if no nibbles are 0. */
 template <typename T>
 inline int find_lowest_zero_nibble(T x) {
+    static_assert(sizeof(T) <= sizeof(unsigned long long), "T is too big");
 #if SIZEOF_LONG_LONG == 16
     T h = T(0x88888888888888888888888888888888ULL), l = T(0x11111111111111111111111111111111ULL);
 #else
@@ -787,6 +794,20 @@ inline uint64_t host_to_net_order(uint64_t x) {
     return htonq(x);
 }
 #endif
+/** @overload */
+inline double host_to_net_order(float x) {
+    union { float f; uint32_t i; } v;
+    v.f = x;
+    v.i = host_to_net_order(v.i);
+    return v.f;
+}
+/** @overload */
+inline double host_to_net_order(double x) {
+    union { double d; uint64_t i; } v;
+    v.d = x;
+    v.i = host_to_net_order(v.i);
+    return v.d;
+}
 
 /** @brief Translate @a x to host byte order.
  *
@@ -859,6 +880,71 @@ inline uint64_t net_to_host_order(uint64_t x) {
     return ntohq(x);
 }
 #endif
+/** @overload */
+inline double net_to_host_order(float x) {
+    return host_to_net_order(x);
+}
+/** @overload */
+inline double net_to_host_order(double x) {
+    return host_to_net_order(x);
+}
+
+template <typename T> struct make_aliasable {};
+#define MAKE_ALIASABLE(T) template <> struct make_aliasable<T> { typedef T type __attribute__((__may_alias__)); }
+MAKE_ALIASABLE(unsigned char);
+MAKE_ALIASABLE(signed char);
+MAKE_ALIASABLE(char);
+MAKE_ALIASABLE(unsigned short);
+MAKE_ALIASABLE(short);
+MAKE_ALIASABLE(int);
+MAKE_ALIASABLE(unsigned);
+MAKE_ALIASABLE(long);
+MAKE_ALIASABLE(unsigned long);
+MAKE_ALIASABLE(long long);
+MAKE_ALIASABLE(unsigned long long);
+MAKE_ALIASABLE(float);
+MAKE_ALIASABLE(double);
+#undef MAKE_ALIASABLE
+
+template <typename T>
+inline void write_in_host_order(char* s, T x) {
+    *reinterpret_cast<typename make_aliasable<T>::type*>(s) = x;
+}
+
+template <typename T>
+inline void write_in_host_order(uint8_t* s, T x) {
+    write_in_host_order(reinterpret_cast<char*>(s), x);
+}
+
+template <typename T>
+inline T read_in_host_order(const char* s) {
+    return *reinterpret_cast<const typename make_aliasable<T>::type*>(s);
+}
+
+template <typename T>
+inline T read_in_host_order(const uint8_t* s) {
+    return read_in_host_order<T>(reinterpret_cast<const char*>(s));
+}
+
+template <typename T>
+inline void write_in_net_order(char* s, T x) {
+    write_in_host_order<T>(s, host_to_net_order(x));
+}
+
+template <typename T>
+inline void write_in_net_order(uint8_t* s, T x) {
+    write_in_net_order(reinterpret_cast<char*>(s), x);
+}
+
+template <typename T>
+inline T read_in_net_order(const char* s) {
+    return net_to_host_order(read_in_host_order<T>(s));
+}
+
+template <typename T>
+inline T read_in_net_order(const uint8_t* s) {
+    return read_in_net_order<T>(reinterpret_cast<const char*>(s));
+}
 
 
 inline uint64_t read_pmc(uint32_t ecx) {
