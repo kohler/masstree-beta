@@ -79,7 +79,7 @@ class value_versioned_array : public row_base<value_array::index_type> {
     void deallocate_rcu(threadinfo &ti);
 
     void snapshot(value_versioned_array*& storage,
-                  const fields_t& f, threadinfo& ti) const;
+                  const fields_type& f, threadinfo& ti) const;
 
     template <typename CS>
     value_versioned_array* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti, bool always_copy = false);
@@ -121,7 +121,7 @@ struct query_helper<value_versioned_array> {
     query_helper()
         : snapshot_() {
     }
-    inline const value_versioned_array* snapshot(const value_versioned_array* row, const value_versioned_array::fields_t& f, threadinfo& ti) {
+    inline const value_versioned_array* snapshot(const value_versioned_array* row, const value_versioned_array::fields_type& f, threadinfo& ti) {
         row->snapshot(snapshot_, f, ti);
         return snapshot_;
     }

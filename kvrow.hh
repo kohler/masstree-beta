@@ -37,21 +37,22 @@ struct valueindex {
 
 template <typename IDX>
 struct row_base {
-    struct cell_t {
-        IDX c_fid;
+    typedef IDX index_type;
+    struct cell_type {
+        index_type c_fid;
         Str c_value;
-	friend bool operator<(const cell_t &a, const cell_t &b) {
+	friend bool operator<(const cell_type& a, const cell_type& b) {
 	    return a.c_fid < b.c_fid;
 	}
     };
-    typedef KUtil::vec<cell_t> change_t;
-    typedef KUtil::vec<IDX> fields_t;
-    static int parse_fields(Str v, fields_t &f) {
+    typedef KUtil::vec<cell_type> change_type;
+    typedef KUtil::vec<index_type> fields_type;
+    static int parse_fields(Str v, fields_type& f) {
 	struct kvin kvin;
         kvin_init(&kvin, const_cast<char *>(v.s), v.len);
         return kvread_fields(&kvin, f);
     }
-    static int kvread_fields(struct kvin *kvin, fields_t &f) {
+    static int kvread_fields(struct kvin* kvin, fields_type& f) {
         short n;
         KVR(kvin, n);
         f.resize(n);
@@ -59,7 +60,7 @@ struct row_base {
             KVR(kvin, f[i]);
         return 0;
     }
-    static int kvwrite_fields(struct kvout *kvout, const fields_t &f) {
+    static int kvwrite_fields(struct kvout* kvout, const fields_type& f) {
         short n = f.size();
 	for (short i = 1; i < n; i++)
 	    if (!(f[i - 1] < f[i])) {
@@ -71,13 +72,13 @@ struct row_base {
             KVW(kvout, f[i]);
         return 0;
     }
-    static void sort(change_t &c) {
+    static void sort(change_type& c) {
 	std::sort(c.begin(), c.end());
     }
-    static void sort(fields_t &f) {
+    static void sort(fields_type& f) {
 	std::sort(f.begin(), f.end());
     }
-    static int kvwrite_change(struct kvout *kvout, const change_t &c) {
+    static int kvwrite_change(struct kvout* kvout, const change_type& c) {
         short n = c.size();
 	for (short i = 1; i < n; i++)
 	    if (!(c[i - 1] < c[i])) {
@@ -91,25 +92,25 @@ struct row_base {
         return 0;
     }
 
-    static cell_t make_cell(IDX fid, Str value) {
-	cell_t c;
+    static cell_type make_cell(index_type fid, Str value) {
+	cell_type c;
 	c.c_fid = fid;
 	c.c_value = value;
 	return c;
     }
 
     /** @brief Interfaces for column-less key/value store. */
-    static void make_get1_fields(fields_t &f) {
+    static void make_get1_fields(fields_type& f) {
         f.resize(1);
-        f[0] = valueindex<IDX>::make_full();
+        f[0] = valueindex<index_type>::make_full();
     }
-    static void make_put1_change(change_t &c, Str val) {
+    static void make_put1_change(change_type& c, Str val) {
         c.resize(1);
-        c[0].c_fid = valueindex<IDX>::make_full();
+        c[0].c_fid = valueindex<index_type>::make_full();
         c[0].c_value = val;
     }
     static Str make_put_col_request(struct kvout *kvout,
-				    IDX fid, Str value) {
+				    index_type fid, Str value) {
 	kvout_reset(kvout);
 	KVW(kvout, short(1));
 	KVW(kvout, fid);
@@ -121,7 +122,7 @@ struct row_base {
 
 template <typename R>
 struct query_helper {
-    inline const R* snapshot(const R* row, const typename R::fields_t&, threadinfo&) {
+    inline const R* snapshot(const R* row, const typename R::fields_type&, threadinfo&) {
         return row;
     }
 };
@@ -178,7 +179,7 @@ class query {
     inline bool apply_remove(R*& value, bool has_value, threadinfo* ti, kvtimestamp_t* node_ts = 0);
 
   private:
-    typename R::fields_t f_;
+    typename R::fields_type f_;
     unsigned long scan_npairs_;
     loginfo::query_times qtimes_;
   public:

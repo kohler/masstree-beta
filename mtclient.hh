@@ -111,22 +111,22 @@ class KVConn {
         free_kvout(out);
         free_kvout(kvbuf);
     }
-    void aput(const Str &key, row_type::change_t &c, KVCallback *cb) {
+    void aput(const Str &key, row_type::change_type& c, KVCallback *cb) {
         cb->incref();
         cb->_cmd = Cmd_Put;
         reqs.push(cb);
         sendput(key, c, 0);
     }
-    void aget(const Str &key, row_type::fields_t &f, KVCallback *cb) {
+    void aget(const Str &key, row_type::fields_type& f, KVCallback *cb) {
         cb->incref();
         cb->_cmd = Cmd_Get;
         reqs.push(cb);
         sendget(key, f, 0);
     }
-    void aget(const char *key, row_type::fields_t &f, KVCallback *cb) {
+    void aget(const char *key, row_type::fields_type& f, KVCallback *cb) {
 	aget(Str(key, strlen(key)), f, cb);
     }
-    void ascan(int numpairs, const char *key, row_type::fields_t &f,
+    void ascan(int numpairs, const char *key, row_type::fields_type& f,
                KVCallback *cb) {
         cb->incref();
         cb->_cmd = Cmd_Scan;
@@ -149,11 +149,11 @@ class KVConn {
         return false;
     }
     void sendgetwhole(const Str &key, unsigned int seq) {
-        row_type::fields_t f;
+        row_type::fields_type f;
         row_type::make_get1_fields(f);
         sendget(key, f, seq);
     }
-    void sendget(const Str &key, row_type::fields_t &f, unsigned int seq) {
+    void sendget(const Str &key, row_type::fields_type& f, unsigned int seq) {
         KVW(out, (int)Cmd_Get);
         KVW(out, seq);
 	if (key.len > MaxKeyLen) {
@@ -166,7 +166,7 @@ class KVConn {
         row_type::kvwrite_fields(kvbuf, f);
         kvwrite_str(out, Str(kvbuf->buf, kvbuf->n));
     }
-    void sendget(const char *key, row_type::fields_t &f, unsigned int seq) {
+    void sendget(const char *key, row_type::fields_type& f, unsigned int seq) {
 	sendget(Str(key, strlen(key)), f, seq);
     }
 
@@ -183,11 +183,11 @@ class KVConn {
 
     void sendputwhole(const Str &key, const Str &val, unsigned int seq,
 		      bool need_status = false) {
-        row_type::change_t c;
+        row_type::change_type c;
         row_type::make_put1_change(c, val);
         sendput(key, c, seq, need_status);
     }
-    void sendput(const Str &key, row_type::change_t &c, unsigned int seq,
+    void sendput(const Str &key, row_type::change_type& c, unsigned int seq,
 		 bool need_status = false) {
 	row_type::sort(c);
         KVW(out, (int) (need_status ? Cmd_Put_Status : Cmd_Put));
@@ -231,11 +231,11 @@ class KVConn {
         return 0;
     }
     void sendscanwhole(int numpairs, const char *key, unsigned int seq) {
-        row_type::fields_t f;
+        row_type::fields_type f;
         row_type::make_get1_fields(f);
         sendscan(numpairs, key, f, seq);
     }
-    void sendscan(int numpairs, const char *key, row_type::fields_t &f,
+    void sendscan(int numpairs, const char *key, row_type::fields_type& f,
                   unsigned int seq) {
         KVW(out, (int)Cmd_Scan);
         KVW(out, seq);

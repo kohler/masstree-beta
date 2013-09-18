@@ -27,7 +27,7 @@ value_versioned_array* value_versioned_array::make_sized_row(int ncol, kvtimesta
 }
 
 void value_versioned_array::snapshot(value_versioned_array*& storage,
-                                   const fields_t& f, threadinfo& ti) const {
+                                   const fields_type& f, threadinfo& ti) const {
     if (!storage || storage->ncol_cap_ < ncol_) {
         if (storage)
             storage->deallocate(ti);

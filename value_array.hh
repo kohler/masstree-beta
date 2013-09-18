@@ -66,12 +66,12 @@ class value_array : public row_base<short> {
 
     static inline size_t shallow_size(int ncol);
     inline size_t shallow_size() const;
-    static inline int count_columns(const change_t &c) {
+    static inline int count_columns(const change_type& c) {
 	// Changes are sorted by field! Cheers!
 	assert(c.size() && "Change can not be empty");
 	return c[c.size() - 1].c_fid + 1;
     }
-    void update(const change_t &c, threadinfo &ti);
+    void update(const change_type& c, threadinfo& ti);
     static value_array* make_sized_row(int ncol, kvtimestamp_t ts, threadinfo& ti);
 };
 

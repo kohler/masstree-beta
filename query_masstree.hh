@@ -35,6 +35,9 @@ class query_table {
     query_table() {
     }
 
+    const basic_table<P>& table() const {
+        return table_;
+    }
     basic_table<P>& table() {
 	return table_;
     }
