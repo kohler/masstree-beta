@@ -22,7 +22,7 @@ enum { CkpKeyPrefixLen = 8 };
 
 struct ckstate {
     kvout *keys; // array of first CkpKeyPrefixLen bytes of each key
-    kvout *vals; // key \0 val \0
+    kvout *vals; // key \0 [timestamp:8] [vallen:4] val
     kvout *ind; // array of indices into vals
     uint64_t count; // total nodes written
     uint64_t bytes;
