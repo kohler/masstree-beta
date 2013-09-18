@@ -32,6 +32,9 @@ class vec {
         init(0);
         assign(v);
     }
+    bool empty() const {
+        return size_ == 0;
+    }
     size_t size() const {
         return size_;
     }
