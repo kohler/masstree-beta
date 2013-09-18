@@ -69,24 +69,35 @@ struct async {
     int wantedlen;
     int acked;
 };
-#define MAXWINDOW 500
-int window = MAXWINDOW;
-
-#define SEQMOD 10000000
+#define MAXWINDOW 512
+unsigned window = MAXWINDOW;
 
 struct child {
-  int s;
-  int udp; // 1 -> udp, 0 -> tcp
-  KVConn *conn;
+    int s;
+    int udp; // 1 -> udp, 0 -> tcp
+    KVConn *conn;
 
-  struct async a[MAXWINDOW];
-  long long nw; // # sent
-  long long nr; // # we're seen replies for
-  int childno;
+    struct async a[MAXWINDOW];
+
+    unsigned seq0_;
+    unsigned seq1_;
+    unsigned long long nsent_;
+    int childno;
+
+    void check_flush();
 };
-void aget(struct child *, const Str &key, const Str &wanted, get_async_cb fn);
-void child(void (*fn)(struct child *), int childno);
+
+void run_child(void (*fn)(struct child *), int childno);
 void checkasync(struct child *c, int force);
+
+inline void child::check_flush() {
+    if ((seq1_ & ((window - 1) >> 1)) == 0)
+        conn->flush();
+    while (seq1_ - seq0_ >= window)
+        checkasync(this, 1);
+}
+
+void aget(struct child *, const Str &key, const Str &wanted, get_async_cb fn);
 
 void sync_rw1(struct child *);
 void rw1(struct child *);
@@ -240,7 +251,7 @@ static const Clp_Option options[] = {
     { "duration", 'd', opt_duration, Clp_ValDouble, 0 },
     { "duration2", 0, opt_duration2, Clp_ValDouble, 0 },
     { "d2", 0, opt_duration2, Clp_ValDouble, 0 },
-    { "window", 'w', opt_window, Clp_ValInt, 0 },
+    { "window", 'w', opt_window, Clp_ValUnsigned, 0 },
     { "server-ip", 's', opt_server, Clp_ValString, 0 },
     { "first-server-port", 0, opt_first_server_port, Clp_ValInt, 0 },
     { "fsp", 0, opt_first_server_port, Clp_ValInt, 0 },
@@ -291,7 +302,9 @@ main(int argc, char *argv[])
 	  duration2 = clp->val.d;
 	  break;
       case opt_window:
-	  window = clp->val.i;
+	  window = clp->val.u;
+          always_assert(window <= MAXWINDOW);
+          always_assert((window & (window - 1)) == 0); // power of 2
 	  break;
       case opt_server:
 	  serverip = clp->vstr;
@@ -382,7 +395,7 @@ main(int argc, char *argv[])
 	      close(ptmp[1]);
 	      signal(SIGALRM, settimeout);
 	      alarm((int) ceil(duration));
-	      child(tests[test].fn, i);
+	      run_child(tests[test].fn, i);
 	      exit(0);
 	  }
 	  pipes[i] = ptmp[0];
@@ -397,7 +410,7 @@ main(int argc, char *argv[])
 	      fprintf(stderr, "child %d died by signal %d\n", i, WTERMSIG(status));
       }
   } else
-      child(tests[test].fn, 0);
+      run_child(tests[test].fn, 0);
 
   long long total = 0;
   kvstats puts, gets, scans, puts_per_sec, gets_per_sec, scans_per_sec;
@@ -444,7 +457,7 @@ main(int argc, char *argv[])
 }
 
 void
-child(void (*fn)(struct child *), int childno)
+run_child(void (*fn)(struct child *), int childno)
 {
   struct sockaddr_in sin;
   int ret, yes = 1;
@@ -499,20 +512,21 @@ child(void (*fn)(struct child *), int childno)
 int
 get(struct child *c, const Str &key, char *val, int max)
 {
-  assert(c->nr == c->nw);
+    assert(c->seq0_ == c->seq1_);
 
-  unsigned int sseq = c->nw % SEQMOD;
-  c->nw++;
-  c->nr++;
+    unsigned sseq = c->seq1_;
+    ++c->seq1_;
+    ++c->nsent_;
 
   c->conn->sendgetwhole(key, sseq);
   c->conn->flush();
 
-  unsigned int rseq = 0;
+  unsigned rseq = 0;
   std::vector<std::string> row;
   int r = c->conn->recvget(row, &rseq, false);
   always_assert(r == 0);
   always_assert(rseq == sseq);
+  ++c->seq0_;
   if (row.size() == 0)
     return -1;
   always_assert(row.size() == 1 && row[0].length() <= (unsigned)max);
@@ -592,78 +606,72 @@ asyncputcb(struct child *, struct async *a, int status)
 void
 checkasync(struct child *c, int force)
 {
-  while(c->nw > c->nr){
-    if(force)
-      c->conn->flush();
-    if(c->conn->check(force ? 2 : 1) > 0){
-      unsigned int rseq = 0;
-      c->conn->readseq(&rseq);
+    while (c->seq0_ != c->seq1_) {
+        if(force)
+            c->conn->flush();
+        if(c->conn->check(force ? 2 : 1) > 0){
+            unsigned rseq = 0;
+            c->conn->readseq(&rseq);
 
-      // is rseq in the nr..nw window?
-      // replies might arrive out of order if UDP
-      int nn;
-      for(nn = c->nr; nn < c->nw; nn++)
-        if((int) rseq == (nn % SEQMOD))
-          break;
-      if(nn >= c->nw)
-        fprintf(stderr, "rseq %d nr %qd nw %qd\n", rseq, c->nr, c->nw);
-      always_assert(nn < c->nw);
-      struct async *a = &c->a[nn % window];
-      always_assert(a->seq == rseq);
+            // is rseq in the nr..nw window?
+            // replies might arrive out of order if UDP
+            always_assert(rseq - c->seq0_ < c->seq1_ - c->seq0_);
+            struct async *a = &c->a[rseq & (window - 1)];
+            always_assert(a->seq == rseq);
 
-      // advance the nr..nw window
-      always_assert(a->acked == 0);
-      a->acked = 1;
-      while(c->nr < c->nw && c->a[c->nr % window].acked)
-        c->nr += 1;
+            // advance the nr..nw window
+            always_assert(a->acked == 0);
+            a->acked = 1;
+            while (c->seq0_ != c->seq1_ && c->a[c->seq0_ & (window - 1)].acked)
+                ++c->seq0_;
 
-      // might have been the last free slot,
-      // don't want to re-use it underfoot.
-      struct async tmpa = *a;
+            // might have been the last free slot,
+            // don't want to re-use it underfoot.
+            struct async tmpa = *a;
 
-      if(tmpa.cmd == Cmd_Get){
-        // this is a reply to a get
-        std::vector<std::string> row;
-	int r = c->conn->recvget(row, NULL, true);
-	always_assert(r == 0);
-	Str s = (row.size() ? Str(row[0].data(), row[0].length()) : Str());
-	if (tmpa.get_fn)
-	    (tmpa.get_fn)(c, &tmpa, row.size(), s);
-      } else if(tmpa.cmd == Cmd_Put){
-	  // this is a reply to a put
-	  int r = c->conn->recvput(NULL, true);
-	  always_assert(r >= 0);
-      } else if(tmpa.cmd == Cmd_Put_Status){
-	  // this is a reply to a put
-	  int status;
-	  int r = c->conn->recvputstatus(&status, NULL, true);
-	  always_assert(r >= 0);
-	  if (tmpa.put_fn)
-	      (tmpa.put_fn)(c, &tmpa, status);
-      } else if(tmpa.cmd == Cmd_Scan){
-        // this is a reply to a scan
-        std::vector<std::string> keys;
-        std::vector<std::vector<std::string> > rows;
-	int r = c->conn->recvscan(keys, rows, NULL, true);
-	always_assert(r == 0);
-        always_assert(keys.size() <= (unsigned)tmpa.wantedlen);
-      } else if (tmpa.cmd == Cmd_Remove) {
-	  // this is a reply to a remove
-	  int status;
-	  int r = c->conn->recvremove(&status, NULL, true);
-	  always_assert(r == 0);
-	  if (tmpa.remove_fn)
-	      (tmpa.remove_fn)(c, &tmpa, status);
-      } else {
-        always_assert(0);
-      }
+            if(tmpa.cmd == Cmd_Get){
+                // this is a reply to a get
+                std::vector<std::string> row;
+                int r = c->conn->recvget(row, NULL, true);
+                always_assert(r == 0);
+                Str s = (row.size() ? Str(row[0].data(), row[0].length()) : Str());
+                if (tmpa.get_fn)
+                    (tmpa.get_fn)(c, &tmpa, row.size(), s);
+            } else if(tmpa.cmd == Cmd_Put){
+                // this is a reply to a put
+                int r = c->conn->recvput(NULL, true);
+                always_assert(r >= 0);
+            } else if(tmpa.cmd == Cmd_Put_Status){
+                // this is a reply to a put
+                int status;
+                int r = c->conn->recvputstatus(&status, NULL, true);
+                always_assert(r >= 0);
+                if (tmpa.put_fn)
+                    (tmpa.put_fn)(c, &tmpa, status);
+            } else if(tmpa.cmd == Cmd_Scan){
+                // this is a reply to a scan
+                std::vector<std::string> keys;
+                std::vector<std::vector<std::string> > rows;
+                int r = c->conn->recvscan(keys, rows, NULL, true);
+                always_assert(r == 0);
+                always_assert(keys.size() <= (unsigned)tmpa.wantedlen);
+            } else if (tmpa.cmd == Cmd_Remove) {
+                // this is a reply to a remove
+                int status;
+                int r = c->conn->recvremove(&status, NULL, true);
+                always_assert(r == 0);
+                if (tmpa.remove_fn)
+                    (tmpa.remove_fn)(c, &tmpa, status);
+            } else {
+                always_assert(0);
+            }
 
-      if(force < 2)
-        force = 0;
-    } else if(force == 0){
-      break;
+            if(force < 2)
+                force = 0;
+        } else if(force == 0){
+            break;
+        }
     }
-  }
 }
 
 // async get, checkasync() will eventually check reply
@@ -671,28 +679,26 @@ checkasync(struct child *c, int force)
 void
 aget(struct child *c, const Str &key, const Str &wanted, get_async_cb fn)
 {
-  if((c->nw % (window/2)) == 0)
-    c->conn->flush();
-  while(c->nw - c->nr >= window)
-    checkasync(c, 1);
+    c->check_flush();
 
-  c->conn->sendgetwhole(key, c->nw % SEQMOD);
-  if (c->udp)
-    c->conn->flush();
+    c->conn->sendgetwhole(key, c->seq1_);
+    if (c->udp)
+        c->conn->flush();
 
-  struct async *a = &c->a[c->nw % window];
-  a->cmd = Cmd_Get;
-  a->seq = c->nw % SEQMOD;
-  a->get_fn = (fn ? fn : defaultget);
-  assert(key.len < int(sizeof(a->key)) - 1);
-  memcpy(a->key, key.s, key.len);
-  a->key[key.len] = 0;
-  a->wantedlen = wanted.len;
-  int wantedavail = std::min(wanted.len, int(sizeof(a->wanted)));
-  memcpy(a->wanted, wanted.s, wantedavail);
-  a->acked = 0;
+    struct async *a = &c->a[c->seq1_ & (window - 1)];
+    a->cmd = Cmd_Get;
+    a->seq = c->seq1_;
+    a->get_fn = (fn ? fn : defaultget);
+    assert(key.len < int(sizeof(a->key)) - 1);
+    memcpy(a->key, key.s, key.len);
+    a->key[key.len] = 0;
+    a->wantedlen = wanted.len;
+    int wantedavail = std::min(wanted.len, int(sizeof(a->wanted)));
+    memcpy(a->wanted, wanted.s, wantedavail);
+    a->acked = 0;
 
-  c->nw += 1;
+    ++c->seq1_;
+    ++c->nsent_;
 }
 
 void
@@ -705,93 +711,95 @@ aget(struct child *c, long ikey, long iwanted, get_async_cb fn)
 int
 put(struct child *c, const Str &key, const Str &val)
 {
-  always_assert(c->nw == c->nr);
+    always_assert(c->seq0_ == c->seq1_);
 
-  unsigned int sseq = key.s[0]; // XXX
-  c->conn->sendputwhole(key, val, sseq);
-  c->conn->flush();
+    unsigned int sseq = c->seq1_;
+    c->conn->sendputwhole(key, val, sseq);
+    c->conn->flush();
 
-  unsigned int rseq = 0;
-  int ret = c->conn->recvput(&rseq, false);
-  always_assert(ret == 0);
-  always_assert(rseq == sseq);
+    unsigned int rseq = 0;
+    int ret = c->conn->recvput(&rseq, false);
+    always_assert(ret == 0);
+    always_assert(rseq == sseq);
 
-  return 0;
+    ++c->seq0_;
+    ++c->seq1_;
+    ++c->nsent_;
+    return 0;
 }
 
 void
 aput(struct child *c, const Str &key, const Str &val,
      put_async_cb fn = 0, const Str &wanted = Str())
 {
-  if((c->nw % (window/2)) == 0)
-    c->conn->flush();
-  while(c->nw - c->nr >= window)
-    checkasync(c, 1);
+    c->check_flush();
 
-  c->conn->sendputwhole(key, val, c->nw % SEQMOD, fn != 0);
-  if (c->udp)
-    c->conn->flush();
+    c->conn->sendputwhole(key, val, c->seq1_, fn != 0);
+    if (c->udp)
+        c->conn->flush();
 
-  struct async *a = &c->a[c->nw % window];
-  a->cmd = (fn != 0 ? Cmd_Put_Status : Cmd_Put);
-  a->seq = c->nw % SEQMOD;
-  assert(key.len < int(sizeof(a->key)) - 1);
-  memcpy(a->key, key.s, key.len);
-  a->key[key.len] = 0;
-  a->put_fn = fn;
-  if (fn) {
-      assert(wanted.len <= int(sizeof(a->wanted)));
-      a->wantedlen = wanted.len;
-      memcpy(a->wanted, wanted.s, wanted.len);
-  } else {
-      a->wantedlen = -1;
-      a->wanted[0] = 0;
-  }
-  a->acked = 0;
+    struct async *a = &c->a[c->seq1_ & (window - 1)];
+    a->cmd = (fn != 0 ? Cmd_Put_Status : Cmd_Put);
+    a->seq = c->seq1_;
+    assert(key.len < int(sizeof(a->key)) - 1);
+    memcpy(a->key, key.s, key.len);
+    a->key[key.len] = 0;
+    a->put_fn = fn;
+    if (fn) {
+        assert(wanted.len <= int(sizeof(a->wanted)));
+        a->wantedlen = wanted.len;
+        memcpy(a->wanted, wanted.s, wanted.len);
+    } else {
+        a->wantedlen = -1;
+        a->wanted[0] = 0;
+    }
+    a->acked = 0;
 
-  c->nw += 1;
+    ++c->seq1_;
+    ++c->nsent_;
 }
 
 bool
 remove(struct child *c, const Str &key)
 {
-  always_assert(c->nw == c->nr);
+    always_assert(c->seq0_ == c->seq1_);
 
-  unsigned int sseq = key.s[0]; // XXX
-  c->conn->sendremove(key, sseq);
-  c->conn->flush();
+    unsigned int sseq = c->seq1_;
+    c->conn->sendremove(key, sseq);
+    c->conn->flush();
 
-  unsigned int rseq = 0;
-  int status = 0;
-  int ret = c->conn->recvremove(&status, &rseq, false);
-  always_assert(ret == 0);
-  always_assert(rseq == sseq);
+    unsigned int rseq = 0;
+    int status = 0;
+    int ret = c->conn->recvremove(&status, &rseq, false);
+    always_assert(ret == 0);
+    always_assert(rseq == sseq);
 
-  return status;
+    ++c->seq0_;
+    ++c->seq1_;
+    ++c->nsent_;
+    return status;
 }
 
 void
 aremove(struct child *c, const Str &key, remove_async_cb fn)
 {
-  if((c->nw % (window/2)) == 0)
-    c->conn->flush();
-  while(c->nw - c->nr >= window)
-    checkasync(c, 1);
+    c->check_flush();
 
-  c->conn->sendremove(key, c->nw % SEQMOD);
-  if (c->udp)
-    c->conn->flush();
+    c->conn->sendremove(key, c->seq1_);
+    if (c->udp)
+        c->conn->flush();
 
-  struct async *a = &c->a[c->nw % window];
-  a->cmd = Cmd_Remove;
-  a->seq = c->nw % SEQMOD;
-  assert(key.len < int(sizeof(a->key)) - 1);
-  memcpy(a->key, key.s, key.len);
-  a->key[key.len] = 0;
-  a->acked = 0;
-  a->remove_fn = fn;
+    struct async *a = &c->a[c->seq1_ & (window - 1)];
+    a->cmd = Cmd_Remove;
+    a->seq = c->seq1_;
+    assert(key.len < int(sizeof(a->key)) - 1);
+    memcpy(a->key, key.s, key.len);
+    a->key[key.len] = 0;
+    a->acked = 0;
+    a->remove_fn = fn;
 
-  c->nw += 1;
+    ++c->seq1_;
+    ++c->nsent_;
 }
 
 struct kvtest_client {
@@ -1797,4 +1805,3 @@ long_init(struct child *c)
     kvtest_client cl(c, first_seed + c->childno);
     kvtest_long_init(cl);
 }
-
