@@ -66,24 +66,12 @@ inline const serial_changeset_iterator<IDX>* serial_changeset_iterator<IDX>::ope
 
 template <typename IDX>
 inline IDX serial_changeset_iterator<IDX>::index() const {
-#if HAVE_INDIFFERENT_ALIGNMENT
-    return *reinterpret_cast<const IDX*>(p_);
-#else
-    IDX idx;
-    memcpy(&idx, p_, sizeof(IDX));
-    return idx;
-#endif
+    return read_in_host_order<IDX>(p_);
 }
 
 template <typename IDX>
 inline int32_t serial_changeset_iterator<IDX>::value_length() const {
-#if HAVE_INDIFFERENT_ALIGNMENT
-    return *reinterpret_cast<const int32_t*>(p_ + sizeof(IDX));
-#else
-    int32_t len;
-    memcpy(&len, p_ + sizeof(IDX), sizeof(int32_t));
-    return len;
-#endif
+    return read_in_host_order<int32_t>(p_ + sizeof(IDX));
 }
 
 template <typename IDX>
