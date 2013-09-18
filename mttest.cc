@@ -201,7 +201,7 @@ struct kvtest_client {
 	quick_istr key(ikey, 10), value(ivalue);
 	get_col_check(key.string(), col, value.string());
     }
-    void many_get_check(int nk, long ikey[], long iexpected[]);
+    //void many_get_check(int nk, long ikey[], long iexpected[]);
 
     void scan_sync(const Str &firstkey, int n,
 		   std::vector<Str> &keys, std::vector<Str> &values);
@@ -351,7 +351,7 @@ void kvtest_client<T>::get_col_check(const Str &key, int col,
              expected.len, expected.s);
 }
 
-template <typename T>
+/*template <typename T>
 void kvtest_client<T>::many_get_check(int nk, long ikey[], long iexpected[]) {
     std::vector<quick_istr> ka(2*nk, quick_istr());
     for(int i = 0; i < nk; i++){
@@ -368,7 +368,7 @@ void kvtest_client<T>::many_get_check(int nk, long ikey[], long iexpected[]) {
         exit(1);
       }
     }
-}
+}*/
 
 template <typename T>
 void kvtest_client<T>::scan_sync(const Str &firstkey, int n,
