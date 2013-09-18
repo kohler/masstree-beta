@@ -51,7 +51,6 @@ class query_table {
         table_.reinitialize(ti);
     }
 
-    bool get(query<row_type>& q, threadinfo& ti) const;
     void scan(query<row_type>& q, threadinfo& ti) const;
     void rscan(query<row_type>& q, threadinfo& ti) const;
 

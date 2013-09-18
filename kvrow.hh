@@ -132,10 +132,8 @@ class query {
   public:
     enum {
 	QT_None = 0,
-	QT_Get = 1,
 	QT_Scan = 2,
 	QT_Ckp_Scan = 3,
-	QT_Get1_Col0 = 4, /* + column index */
 
 	QT_Put = 4,
         QT_Replace = 5,
@@ -147,7 +145,6 @@ class query {
     template <typename T>
     bool run_get1(T& table, Str key, int col, Str& value, threadinfo& ti);
 
-    void begin_get(Str key, Str req, struct kvout* kvout);
     void begin_put(Str key, Str req);
     void begin_replace(Str key, Str value);
     void begin_remove(Str key);
@@ -155,16 +152,6 @@ class query {
 		    struct kvout* kvout);
     void begin_checkpoint(ckstate* ck, Str startkey, Str endkey);
 
-    /** @brief interfaces where the value is a single column,
-     *    and where "get" does not emit but save a copy locally.
-     */
-    void begin_get1(Str key, int col = 0) {
-	qt_ = QT_Get1_Col0 + col;
-	key_ = key;
-    }
-    Str get1_value() const {
-	return val_;
-    }
     void begin_scan1(Str startkey, int npairs, kvout* kv);
 
     int query_type() const {
@@ -174,9 +161,7 @@ class query {
         return qtimes_;
     }
 
-    inline bool emitrow(const R* v, threadinfo* ti);
-    /** @return whether the scan should continue or not
-     */
+    /** @return whether the scan should continue or not */
     bool scanemit(Str k, const R* v, threadinfo* ti);
 
     inline result_t apply_put(R*& value, bool has_value, threadinfo* ti);
@@ -201,14 +186,6 @@ class query {
     void assign_timestamp(threadinfo* ti);
     void assign_timestamp(threadinfo* ti, kvtimestamp_t t);
 };
-
-template <typename R>
-void query<R>::begin_get(Str key, Str req, kvout* kv) {
-    qt_ = QT_Get;
-    key_ = key;
-    R::parse_fields(req, f_);
-    kvout_ = kv;
-}
 
 template <typename R>
 void query<R>::begin_put(Str key, Str req) {
@@ -286,20 +263,6 @@ bool query<R>::scanemit(Str k, const R* v, threadinfo* ti) {
         emit(helper_.snapshot(v, f_, *ti), kvout_);
         --scan_npairs_;
         return scan_npairs_ > 0;
-    }
-}
-
-template <typename R>
-inline bool query<R>::emitrow(const R* v, threadinfo* ti) {
-    if (row_is_marker(v))
-	return false;
-    else if (qt_ >= QT_Get1_Col0) {
-	val_ = v->col(qt_ - QT_Get1_Col0);
-	return true;
-    } else {
-        assert(qt_ == QT_Get);
-        emit(helper_.snapshot(v, f_, *ti), kvout_);
-	return true;
     }
 }
 

@@ -34,15 +34,6 @@
 namespace Masstree {
 
 template <typename P>
-bool query_table<P>::get(query<row_type>& q, threadinfo& ti) const {
-    unlocked_tcursor<P> lp(table_, q.key_);
-    bool found = lp.find_unlocked(ti);
-    if (found)
-        found = q.emitrow(lp.value(), &ti);
-    return found;
-}
-
-template <typename P>
 result_t query_table<P>::put(query<row_type>& q, threadinfo& ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
