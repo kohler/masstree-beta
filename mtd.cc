@@ -253,27 +253,23 @@ volatile int kvtest_client::failing;
 void kvtest_client::get(long ikey, Str *value)
 {
     quick_istr key(ikey);
-    q_[0].begin_get1(key.string());
-    if (tree->get(q_[0], *ti_))
-	*value = q_[0].get1_value();
-    else
-	*value = Str();
+    if (!q_[0].run_get1(tree->table(), key.string(), 0, *value, *ti_))
+        *value = Str();
 }
 
 void kvtest_client::get(const Str &key)
 {
-    q_[0].begin_get1(key);
-    (void) tree->get(q_[0], *ti_);
+    Str val;
+    (void) q_[0].run_get1(tree->table(), key, 0, val, *ti_);
 }
 
 void kvtest_client::get_check(const Str &key, const Str &expected)
 {
-    q_[0].begin_get1(key);
-    if (!tree->get(q_[0], *ti_)) {
+    Str val;
+    if (!q_[0].run_get1(tree->table(), key, 0, val, *ti_)) {
 	fail("get(%.*s) failed (expected %.*s)\n", key.len, key.s, expected.len, expected.s);
         return;
     }
-    Str val = q_[0].get1_value();
     if (val.len != expected.len || memcmp(val.s, expected.s, val.len) != 0)
 	fail("get(%.*s) returned unexpected value %.*s (expected %.*s)\n", key.len, key.s,
 	     std::min(val.len, 40), val.s, std::min(expected.len, 40), expected.s);
@@ -283,13 +279,12 @@ void kvtest_client::get_check(const Str &key, const Str &expected)
 
 void kvtest_client::get_col_check(const Str &key, int col, const Str &expected)
 {
-    q_[0].begin_get1(key, col);
-    if (!tree->get(q_[0], *ti_)) {
+    Str val;
+    if (!q_[0].run_get1(tree->table(), key, col, val, *ti_)) {
 	fail("get.%d(%.*s) failed (expected %.*s)\n", col, key.len, key.s,
 	     expected.len, expected.s);
         return;
     }
-    Str val = q_[0].get1_value();
     if (val.len != expected.len || memcmp(val.s, expected.s, val.len) != 0)
 	fail("get.%d(%.*s) returned unexpected value %.*s (expected %.*s)\n",
 	     col, key.len, key.s, std::min(val.len, 40), val.s,
@@ -300,8 +295,8 @@ void kvtest_client::get_col_check(const Str &key, int col, const Str &expected)
 
 bool kvtest_client::get_sync(long ikey) {
     quick_istr key(ikey);
-    q_[0].begin_get1(key.string());
-    return tree->get(q_[0], *ti_);
+    Str val;
+    return q_[0].run_get1(tree->table(), key.string(), 0, val, *ti_);
 }
 
 void kvtest_client::put(const Str &key, const Str &value) {

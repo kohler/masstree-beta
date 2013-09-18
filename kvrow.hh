@@ -144,6 +144,8 @@ class query {
 
     template <typename T>
     bool run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti);
+    template <typename T>
+    bool run_get1(T& table, Str key, int col, Str& value, threadinfo& ti);
 
     void begin_get(Str key, Str req, struct kvout* kvout);
     void begin_put(Str key, Str req);
@@ -312,6 +314,17 @@ bool query<R>::run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti) {
         R::parse_fields(req, f_);
         emit(helper_.snapshot(lp.value(), f_, ti), kv);
     }
+    return found;
+}
+
+template <typename R> template <typename T>
+bool query<R>::run_get1(T& table, Str key, int col, Str& value, threadinfo& ti) {
+    typename T::unlocked_cursor_type lp(table, key);
+    bool found = lp.find_unlocked(ti);
+    if (found && row_is_marker(lp.value()))
+        found = false;
+    if (found)
+        value = lp.value()->col(col);
     return found;
 }
 

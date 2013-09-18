@@ -53,6 +53,7 @@
 #include "nodeversion.hh"
 #include "kvstats.hh"
 #include "query_masstree.hh"
+#include "masstree_tcursor.hh"
 #include "timestamp.hh"
 #include "json.hh"
 #include "kvtest.hh"
@@ -307,55 +308,44 @@ template <typename T> inline void kvtest_json_stats(T& table, Json& j, threadinf
 template <typename T>
 void kvtest_client<T>::get(long ikey) {
     quick_istr key(ikey);
-    q_[0].begin_get1(key.string());
-    (void) table_->get(q_[0], *ti_);
+    Str val;
+    (void) q_[0].run_get1(table_->table(), key.string(), 0, val, *ti_);
 }
 
 template <typename T>
-bool kvtest_client<T>::get_sync(const Str &key) {
-    q_[0].begin_get1(key);
-    return table_->get(q_[0], *ti_);
+bool kvtest_client<T>::get_sync(const Str& key) {
+    Str val;
+    return q_[0].run_get1(table_->table(), key, 0, val, *ti_);
 }
 
 template <typename T>
 bool kvtest_client<T>::get_sync(const Str &key, Str &value) {
-    q_[0].begin_get1(key);
-    if (table_->get(q_[0], *ti_)) {
-	value = q_[0].get1_value();
-	return true;
-    } else
-	return false;
+    return q_[0].run_get1(table_->table(), key, 0, value, *ti_);
 }
 
 template <typename T>
 void kvtest_client<T>::get_check(const Str &key, const Str &expected) {
-    q_[0].begin_get1(key);
-    if (!table_->get(q_[0], *ti_))
+    Str val;
+    if (!q_[0].run_get1(table_->table(), key, 0, val, *ti_))
 	fail("get(%.*s) failed (expected %.*s)\n", key.len, key.s,
 	     expected.len, expected.s);
-    else {
-        Str val = q_[0].get1_value();
-        if (expected != val)
-	    fail("get(%.*s) returned unexpected value %.*s (expected %.*s)\n",
-		 key.len, key.s, std::min(val.len, 40), val.s,
-		 expected.len, expected.s);
-    }
+    else if (expected != val)
+        fail("get(%.*s) returned unexpected value %.*s (expected %.*s)\n",
+             key.len, key.s, std::min(val.len, 40), val.s,
+             expected.len, expected.s);
 }
 
 template <typename T>
 void kvtest_client<T>::get_col_check(const Str &key, int col,
 				     const Str &expected) {
-    q_[0].begin_get1(key, col);
-    if (!table_->get(q_[0], *ti_))
+    Str val;
+    if (!q_[0].run_get1(table_->table(), key, col, val, *ti_))
 	fail("get.%d(%.*s) failed (expected %.*s)\n",
 	     col, key.len, key.s, expected.len, expected.s);
-    else {
-        Str val = q_[0].get1_value();
-        if (expected != val)
-	    fail("get.%d(%.*s) returned unexpected value %.*s (expected %.*s)\n",
-		 col, key.len, key.s, std::min(val.len, 40), val.s,
-		 expected.len, expected.s);
-    }
+    else if (expected != val)
+        fail("get.%d(%.*s) returned unexpected value %.*s (expected %.*s)\n",
+             col, key.len, key.s, std::min(val.len, 40), val.s,
+             expected.len, expected.s);
 }
 
 template <typename T>
