@@ -146,8 +146,9 @@ class query {
     bool run_get1(T& table, Str key, int col, Str& value, threadinfo& ti);
     template <typename T>
     result_t run_put(T& table, Str key, Str req, threadinfo& ti);
+    template <typename T>
+    void run_replace(T& table, Str key, Str value, threadinfo& ti);
 
-    void begin_replace(Str key, Str value);
     void begin_remove(Str key);
     void begin_scan(Str startkey, int npairs, Str req,
 		    struct kvout* kvout);
@@ -165,7 +166,6 @@ class query {
     /** @return whether the scan should continue or not */
     bool scanemit(Str k, const R* v, threadinfo* ti);
 
-    inline void apply_replace(R*& value, bool has_value, threadinfo* ti);
     inline bool apply_remove(R*& value, bool has_value, threadinfo* ti, kvtimestamp_t* node_ts = 0);
 
   private:
@@ -180,20 +180,14 @@ class query {
     int qt_;    // query type
     ckstate* ck_;
     Str endkey_;
-    Str val_;			// value for Get1 and CkpPut
 
     void emit(const R* row, kvout* kv);
     void assign_timestamp(threadinfo& ti);
     void assign_timestamp(threadinfo& ti, kvtimestamp_t t);
     inline result_t apply_put(R*& value, bool found, Str req, threadinfo& ti);
+    inline void apply_replace(R*& value, bool found, Str new_value,
+                              threadinfo& ti);
 };
-
-template <typename R>
-void query<R>::begin_replace(Str key, Str val) {
-    qt_ = QT_Replace;
-    key_ = key;
-    val_ = val;
-}
 
 template <typename R>
 void query<R>::begin_scan(Str startkey, int npairs, Str req, kvout* kv) {
@@ -285,6 +279,20 @@ bool query<R>::run_get1(T& table, Str key, int col, Str& value, threadinfo& ti) 
     return found;
 }
 
+
+template <typename R>
+inline void query<R>::assign_timestamp(threadinfo& ti) {
+    qtimes_.ts = ti.update_timestamp();
+    qtimes_.prev_ts = 0;
+}
+
+template <typename R>
+inline void query<R>::assign_timestamp(threadinfo& ti, kvtimestamp_t min_ts) {
+    qtimes_.ts = ti.update_timestamp(min_ts);
+    qtimes_.prev_ts = min_ts;
+}
+
+
 template <typename R> template <typename T>
 result_t query<R>::run_put(T& table, Str key, Str req, threadinfo& ti) {
     typename T::cursor_type lp(table, key);
@@ -328,36 +336,32 @@ inline result_t query<R>::apply_put(R*& value, bool found, Str req,
     return Updated;
 }
 
-
-template <typename R>
-inline void query<R>::assign_timestamp(threadinfo& ti) {
-    qtimes_.ts = ti.update_timestamp();
-    qtimes_.prev_ts = 0;
+template <typename R> template <typename T>
+void query<R>::run_replace(T& table, Str key, Str value, threadinfo& ti) {
+    typename T::cursor_type lp(table, key);
+    bool found = lp.find_insert(ti);
+    if (!found)
+        ti.advance_timestamp(lp.node_timestamp());
+    apply_replace(lp.value(), found, value, ti);
+    lp.finish(1, ti);
 }
 
 template <typename R>
-inline void query<R>::assign_timestamp(threadinfo& ti, kvtimestamp_t min_ts) {
-    qtimes_.ts = ti.update_timestamp(min_ts);
-    qtimes_.prev_ts = min_ts;
-}
-
-template <typename R>
-inline void query<R>::apply_replace(R*& value, bool has_value, threadinfo* ti) {
-    masstree_precondition(qt_ == QT_Replace);
-
-    if (loginfo* log = ti->ti_log) {
+inline void query<R>::apply_replace(R*& value, bool found, Str new_value,
+                                    threadinfo& ti) {
+    if (loginfo* log = ti.ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
 
-    if (!has_value)
-	assign_timestamp(*ti);
+    if (!found)
+	assign_timestamp(ti);
     else {
-        assign_timestamp(*ti, value->timestamp());
-        value->deallocate_rcu(*ti);
+        assign_timestamp(ti, value->timestamp());
+        value->deallocate_rcu(ti);
     }
 
-    value = R::create1(val_, qtimes_.ts, *ti);
+    value = R::create1(new_value, qtimes_.ts, ti);
 }
 
 template <typename R>

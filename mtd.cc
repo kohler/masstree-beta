@@ -58,6 +58,7 @@
 #include "query_masstree.hh"
 #include "masstree_tcursor.hh"
 #include "masstree_insert.hh"
+#include "masstree_remove.hh"
 #include <algorithm>
 using lcdf::StringAccum;
 
@@ -303,8 +304,7 @@ bool kvtest_client::get_sync(long ikey) {
 void kvtest_client::put(const Str &key, const Str &value) {
     while (failing)
 	/* do nothing */;
-    q_[0].begin_replace(key, value);
-    (void) tree->replace(q_[0], *ti_);
+    q_[0].run_replace(tree->table(), key, value, *ti_);
     if (ti_->ti_log) // NB may block
 	ti_->ti_log->record(logcmd_put1, q_[0].query_times(), key, value);
 }

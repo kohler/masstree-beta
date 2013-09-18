@@ -55,6 +55,7 @@
 #include "query_masstree.hh"
 #include "masstree_tcursor.hh"
 #include "masstree_insert.hh"
+#include "masstree_remove.hh"
 #include "timestamp.hh"
 #include "json.hh"
 #include "kvtest.hh"
@@ -414,8 +415,7 @@ void kvtest_client<T>::output_scan(std::vector<Str> &keys,
 
 template <typename T>
 void kvtest_client<T>::put(const Str &key, const Str &value) {
-    q_[0].begin_replace(key, value);
-    table_->replace(q_[0], *ti_);
+    q_[0].run_replace(table_->table(), key, value, *ti_);
 }
 
 template <typename T>

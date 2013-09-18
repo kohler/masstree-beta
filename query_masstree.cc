@@ -34,16 +34,6 @@
 namespace Masstree {
 
 template <typename P>
-void query_table<P>::replace(query<row_type>& q, threadinfo& ti) {
-    tcursor<P> lp(table_, q.key_);
-    bool found = lp.find_insert(ti);
-    if (!found)
-	ti.advance_timestamp(lp.node_timestamp());
-    q.apply_replace(lp.value(), found, &ti);
-    lp.finish(1, ti);
-}
-
-template <typename P>
 void query_table<P>::replay(replay_query<row_type>& q, threadinfo& ti) {
     tcursor<P> lp(table_, q.key_);
     bool found = lp.find_insert(ti);
@@ -325,8 +315,7 @@ void query_table<P>::test(threadinfo& ti) {
 
     for (int i = arraysize(values); i > 0; --i) {
 	int x = rand() % i;
-        q.begin_replace(Str(values_copy[x]), Str(values_copy[x]));
-	t.replace(q, ti);
+        q.run_replace(t.table(), Str(values_copy[x]), Str(values_copy[x]), ti);
 	values_copy[x] = values_copy[i - 1];
     }
 
