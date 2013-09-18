@@ -64,6 +64,8 @@ class String : public String_base<String> {
     static inline String make_stable(const char* cstr);
     static inline String make_stable(const char* s, int len);
     static inline String make_stable(const char* first, const char* last);
+    template <typename T>
+    static inline String make_stable(const String_base<T>& str);
     static String make_fill(int c, int n);
     static inline const String& make_zero();
 
@@ -503,6 +505,12 @@ inline String String::make_stable(const char* s, int len) {
     remain constant even though it's not part of the String. */
 inline String String::make_stable(const char* first, const char* last) {
     return String(first, (first < last ? last - first : 0), null_memo());
+}
+
+/** @overload */
+template <typename T>
+inline String String::make_stable(const String_base<T>& str) {
+    return String(str.data(), str.length(), null_memo());
 }
 
 /** @brief Return a pointer to the string's data.
