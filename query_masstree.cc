@@ -34,16 +34,6 @@
 namespace Masstree {
 
 template <typename P>
-void query_table<P>::replay(replay_query<row_type>& q, threadinfo& ti) {
-    tcursor<P> lp(table_, q.key_);
-    bool found = lp.find_insert(ti);
-    if (!found)
-	ti.advance_timestamp(lp.node_timestamp());
-    q.apply(lp.value(), found, &ti);
-    lp.finish(1, ti);
-}
-
-template <typename P>
 void query_table<P>::checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
                                         threadinfo& ti) {
     tcursor<P> lp(table_, key);

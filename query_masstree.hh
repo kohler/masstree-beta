@@ -19,7 +19,6 @@
 #include "kvproto.hh"
 #include "timestamp.hh"
 template <typename R> class query;
-template <typename R> class replay_query;
 class threadinfo;
 namespace lcdf { class Json; }
 
@@ -51,7 +50,6 @@ class query_table {
         table_.reinitialize(ti);
     }
 
-    void replay(replay_query<row_type>& q, threadinfo& ti);
     void checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
                             threadinfo& ti);
 

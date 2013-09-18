@@ -20,7 +20,6 @@
 #include "kvproto.hh"
 #include "serial_changeset.hh"
 #include <pthread.h>
-template <typename R> class replay_query;
 class logset;
 using lcdf::Str;
 
@@ -151,8 +150,7 @@ class logreplay {
     off_t size_;
     char *buf_;
 
-    uint64_t replayandclean1(replay_query<row_type> &q,
-			     kvepoch_t min_epoch, kvepoch_t max_epoch,
+    uint64_t replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
 			     threadinfo *ti);
     int replay_truncate(size_t len);
     int replay_copy(const char *tmpname, const char *first, const char *last);
@@ -226,158 +224,6 @@ inline row_delta_marker<R>* row_get_delta_marker(const R* row, bool force = fals
     assert(force || row_is_delta_marker(row));
     return reinterpret_cast<row_delta_marker<R>*>
 	(const_cast<char*>(row->col(0).s));
-}
-
-template <typename R>
-class replay_query {
-  public:
-    enum {
-	QT_Replay_Put = 1,
-        QT_Replay_Put1 = 2,
-	QT_Replay_Remove = 3,
-	QT_Replay_Modify = 4
-    };
-
-    void begin_replay_put(Str key, Str req, kvtimestamp_t ts);
-    void begin_replay_put1(Str key, Str value, kvtimestamp_t ts);
-    void begin_replay_modify(Str key, Str req, kvtimestamp_t ts,
-			     kvtimestamp_t prev_ts);
-    void begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti);
-
-    int query_type() const {
-	return qt_;
-    }
-    const loginfo::query_times& query_times() const {
-        return qtimes_;
-    }
-
-    void apply(R*& value, bool has_value, threadinfo* ti);
-
-  private:
-    loginfo::query_times qtimes_;
-  public:
-    Str key_;   // startkey for scan; key for others
-  private:
-    int qt_;    // query type
-    Str val_;			// value for Get1 and CkpPut
-};
-
-template <typename R>
-void replay_query<R>::begin_replay_put(Str key, Str req, kvtimestamp_t ts) {
-    qt_ = QT_Replay_Put;
-    key_ = key;
-    val_ = req;
-    qtimes_.ts = ts;
-}
-
-template <typename R>
-void replay_query<R>::begin_replay_put1(Str key, Str value, kvtimestamp_t ts) {
-    qt_ = QT_Replay_Put1;
-    key_ = key;
-    val_ = value;
-    qtimes_.ts = ts;
-}
-
-template <typename R>
-void replay_query<R>::begin_replay_modify(Str key, Str req,
-					  kvtimestamp_t ts, kvtimestamp_t prev_ts) {
-    // XXX We assume that sizeof(row_delta_marker<R>) memory exists before
-    // 'req's string data. We don't modify this memory but it must be
-    // readable. This is OK for conventional log replay, but that's an ugly
-    // interface
-    qt_ = QT_Replay_Modify;
-    key_ = key;
-    val_ = req;
-    qtimes_.ts = ts;
-    qtimes_.prev_ts = prev_ts;
-}
-
-template <typename R>
-void replay_query<R>::begin_replay_remove(Str key, kvtimestamp_t ts, threadinfo* ti) {
-    qt_ = QT_Replay_Remove;
-    key_ = key;
-    qtimes_.ts = ts | 1;        // marker timestamp
-    row_marker *m = reinterpret_cast<row_marker *>(ti->buf_);
-    m->marker_type_ = row_marker::mt_remove;
-    val_ = Str(ti->buf_, sizeof(*m));
-}
-
-template <typename R>
-void replay_query<R>::apply(R*& value, bool has_value, threadinfo* ti) {
-    R** cur_value = &value;
-    if (!has_value)
-	*cur_value = 0;
-
-    // find point to insert change (may be after some delta markers)
-    while (*cur_value && row_is_delta_marker(*cur_value)
-	   && (*cur_value)->timestamp() > qtimes_.ts)
-	cur_value = &row_get_delta_marker(*cur_value)->prev_;
-
-    // check out of date
-    if (*cur_value && (*cur_value)->timestamp() >= qtimes_.ts)
-	return;
-
-    // if not modifying, delete everything earlier
-    if (qt_ != QT_Replay_Modify)
-	while (R* old_value = *cur_value) {
-	    if (row_is_delta_marker(old_value)) {
-		ti->mark(tc_replay_remove_delta);
-		*cur_value = row_get_delta_marker(old_value)->prev_;
-	    } else
-		*cur_value = 0;
-	    old_value->deallocate(*ti);
-	}
-
-    // actually apply change
-    if (qt_ == QT_Replay_Put1)
-        *cur_value = R::create1(val_, qtimes_.ts, *ti);
-    else if (qt_ != QT_Replay_Modify) {
-        serial_changeset<typename R::index_type> changeset(val_);
-	*cur_value = R::create(changeset, qtimes_.ts, *ti);
-    } else {
-	if (*cur_value && (*cur_value)->timestamp() == qtimes_.prev_ts) {
-	    R* old_value = *cur_value;
-            serial_changeset<typename R::index_type> changeset(val_);
-	    *cur_value = old_value->update(changeset, qtimes_.ts, *ti);
-	    if (*cur_value != old_value)
-		old_value->deallocate(*ti);
-	} else {
-	    // XXX assume that memory exists before saved request -- it does
-	    // in conventional log replay, but that's an ugly interface
-	    val_.s -= sizeof(row_delta_marker<R>);
-	    val_.len += sizeof(row_delta_marker<R>);
-	    R* new_value = R::create1(val_, qtimes_.ts | 1, *ti);
-	    row_delta_marker<R>* dm = row_get_delta_marker(new_value, true);
-	    dm->marker_type_ = row_marker::mt_delta;
-	    dm->prev_ts_ = qtimes_.prev_ts;
-	    dm->prev_ = *cur_value;
-	    *cur_value = new_value;
-	    ti->mark(tc_replay_create_delta);
-	}
-    }
-
-    // clean up
-    while (value && row_is_delta_marker(value)) {
-	R **prev = 0, **trav = &value;
-	while (*trav && row_is_delta_marker(*trav)) {
-	    prev = trav;
-	    trav = &row_get_delta_marker(*trav)->prev_;
-	}
-	if (prev && *trav
-	    && row_get_delta_marker(*prev)->prev_ts_ == (*trav)->timestamp()) {
-	    R *old_prev = *prev;
-	    Str req = old_prev->col(0);
-	    req.s += sizeof(row_delta_marker<R>);
-	    req.len -= sizeof(row_delta_marker<R>);
-	    serial_changeset<typename R::index_type> changeset(req);
-	    *prev = (*trav)->update(changeset, old_prev->timestamp() - 1, *ti);
-	    if (*prev != *trav)
-		(*trav)->deallocate(*ti);
-	    old_prev->deallocate(*ti);
-	    ti->mark(tc_replay_remove_delta);
-	} else
-	    break;
-    }
 }
 
 #endif

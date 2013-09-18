@@ -18,6 +18,8 @@
 #include "kvrow.hh"
 #include "file.hh"
 #include "query_masstree.hh"
+#include "masstree_tcursor.hh"
+#include "masstree_insert.hh"
 #include "misc.hh"
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -423,6 +425,12 @@ struct logrecord {
     kvepoch_t epoch;
 
     const char *extract(const char *buf, const char *end);
+
+    template <typename T>
+    void run(T& table, threadinfo& ti);
+
+  private:
+    inline void apply(row_type*& value, bool found, threadinfo& ti);
 };
 
 const char *
@@ -466,6 +474,105 @@ logrecord::extract(const char *buf, const char *end)
     }
 
     return buf + lr->size_;
+}
+
+template <typename T>
+void logrecord::run(T& table, threadinfo& ti) {
+    // XXX For command == logcmd_modify, we assume that
+    // sizeof(row_delta_marker<R>) memory exists before 'req's string data.
+    // We don't modify this memory but it must be readable. This is OK for
+    // conventional log replay, but that's an ugly interface
+
+    if (command == logcmd_remove) {
+        ts |= 1;
+        row_marker* m = reinterpret_cast<row_marker*>(ti.buf_);
+        m->marker_type_ = row_marker::mt_remove;
+        val = Str(ti.buf_, sizeof(*m));
+    }
+
+    typename T::cursor_type lp(table, key);
+    bool found = lp.find_insert(ti);
+    if (!found)
+        ti.advance_timestamp(lp.node_timestamp());
+    apply(lp.value(), found, ti);
+    lp.finish(1, ti);
+}
+
+inline void logrecord::apply(row_type*& value, bool found, threadinfo& ti) {
+    row_type** cur_value = &value;
+    if (!found)
+        *cur_value = 0;
+
+    // find point to insert change (may be after some delta markers)
+    while (*cur_value && row_is_delta_marker(*cur_value)
+           && (*cur_value)->timestamp() > ts)
+        cur_value = &row_get_delta_marker(*cur_value)->prev_;
+
+    // check out of date
+    if (*cur_value && (*cur_value)->timestamp() >= ts)
+        return;
+
+    // if not modifying, delete everything earlier
+    if (command != logcmd_modify)
+        while (row_type* old_value = *cur_value) {
+            if (row_is_delta_marker(old_value)) {
+                ti.mark(tc_replay_remove_delta);
+                *cur_value = row_get_delta_marker(old_value)->prev_;
+            } else
+                *cur_value = 0;
+            old_value->deallocate(ti);
+        }
+
+    // actually apply change
+    if (command == logcmd_put1)
+        *cur_value = row_type::create1(val, ts, ti);
+    else if (command != logcmd_modify) {
+        serial_changeset<row_type::index_type> changeset(val);
+        *cur_value = row_type::create(changeset, ts, ti);
+    } else {
+        if (*cur_value && (*cur_value)->timestamp() == prev_ts) {
+            row_type* old_value = *cur_value;
+            serial_changeset<row_type::index_type> changeset(val);
+            *cur_value = old_value->update(changeset, ts, ti);
+            if (*cur_value != old_value)
+                old_value->deallocate(ti);
+        } else {
+            // XXX assume that memory exists before saved request -- it does
+            // in conventional log replay, but that's an ugly interface
+            val.s -= sizeof(row_delta_marker<row_type>);
+            val.len += sizeof(row_delta_marker<row_type>);
+            row_type* new_value = row_type::create1(val, ts | 1, ti);
+            row_delta_marker<row_type>* dm = row_get_delta_marker(new_value, true);
+            dm->marker_type_ = row_marker::mt_delta;
+            dm->prev_ts_ = prev_ts;
+            dm->prev_ = *cur_value;
+            *cur_value = new_value;
+            ti.mark(tc_replay_create_delta);
+        }
+    }
+
+    // clean up
+    while (value && row_is_delta_marker(value)) {
+        row_type **prev = 0, **trav = &value;
+        while (*trav && row_is_delta_marker(*trav)) {
+            prev = trav;
+            trav = &row_get_delta_marker(*trav)->prev_;
+        }
+        if (prev && *trav
+            && row_get_delta_marker(*prev)->prev_ts_ == (*trav)->timestamp()) {
+            row_type *old_prev = *prev;
+            Str req = old_prev->col(0);
+            req.s += sizeof(row_delta_marker<row_type>);
+            req.len -= sizeof(row_delta_marker<row_type>);
+            serial_changeset<row_type::index_type> changeset(req);
+            *prev = (*trav)->update(changeset, old_prev->timestamp() - 1, ti);
+            if (*prev != *trav)
+                (*trav)->deallocate(ti);
+            old_prev->deallocate(ti);
+            ti.mark(tc_replay_remove_delta);
+        } else
+            break;
+    }
 }
 
 
@@ -555,8 +662,7 @@ logreplay::min_post_quiescent_wake_epoch(kvepoch_t quiescent_epoch) const
 }
 
 uint64_t
-logreplay::replayandclean1(replay_query<row_type> &q,
-			   kvepoch_t min_epoch, kvepoch_t max_epoch,
+logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
 			   threadinfo *ti)
 {
     uint64_t nr = 0;
@@ -594,19 +700,11 @@ logreplay::replayandclean1(replay_query<row_type> &q,
 	assert(repbegin);
 	repend = nextpos;
 	if (lr.key.len) { // skip empty entry
-	    if (lr.command == logcmd_put) {
-		q.begin_replay_put(lr.key, lr.val, lr.ts);
-		tree->replay(q, *ti);
-	    } else if (lr.command == logcmd_put1) {
-		q.begin_replay_put1(lr.key, lr.val, lr.ts);
-		tree->replay(q, *ti);
-	    } else if (lr.command == logcmd_modify) {
-		q.begin_replay_modify(lr.key, lr.val, lr.ts, lr.prev_ts);
-		tree->replay(q, *ti);
-	    } else if (lr.command == logcmd_remove) {
-		q.begin_replay_remove(lr.key, lr.ts, ti);
-		tree->replay(q, *ti);
-	    }
+            if (lr.command == logcmd_put
+                || lr.command == logcmd_put1
+                || lr.command == logcmd_modify
+                || lr.command == logcmd_remove)
+                lr.run(tree->table(), *ti);
 	    ++nr;
 	    if (nr % 100000 == 0)
 		fprintf(stderr,
@@ -712,7 +810,6 @@ void
 logreplay::replay(int which, threadinfo *ti)
 {
     waituntilphase(REC_LOG_TS);
-    replay_query<row_type> q;
     // find the maximum timestamp of entries in the log
     if (buf_) {
 	info_type x = info();
@@ -734,7 +831,7 @@ logreplay::replay(int which, threadinfo *ti)
     waituntilphase(REC_LOG_REPLAY);
     if (buf_) {
 	ti->rcu_start();
-	uint64_t nr = replayandclean1(q, rec_replay_min_epoch, rec_replay_max_epoch, ti);
+	uint64_t nr = replayandclean1(rec_replay_min_epoch, rec_replay_max_epoch, ti);
 	ti->rcu_stop();
 	printf("recovered %" PRIu64 " records from %s\n", nr, filename_.c_str());
     }
