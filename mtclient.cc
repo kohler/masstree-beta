@@ -378,12 +378,13 @@ main(int argc, char *argv[])
          udpflag ? "udp" : "tcp", window,
          tests[test].name, children);
 
-  if (dofork)  {
+  fflush(stdout);
+
+  if (dofork) {
       for(i = 0; i < children; i++){
 	  int ptmp[2];
 	  int r = pipe(ptmp);
 	  always_assert(r == 0);
-	  fflush(stdout);
 	  pid = fork();
 	  if(pid < 0){
 	      perror("fork");
@@ -409,8 +410,17 @@ main(int argc, char *argv[])
 	  if (WIFSIGNALED(status))
 	      fprintf(stderr, "child %d died by signal %d\n", i, WTERMSIG(status));
       }
-  } else
+  } else {
+      int ptmp[2];
+      int r = pipe(ptmp);
+      always_assert(r == 0);
+      pipes[0] = ptmp[0];
+      int stdout_fd = dup(STDOUT_FILENO);
+      dup2(ptmp[1], STDOUT_FILENO);
+      close(ptmp[1]);
       run_child(tests[test].fn, 0);
+      dup2(stdout_fd, STDOUT_FILENO);
+  }
 
   long long total = 0;
   kvstats puts, gets, scans, puts_per_sec, gets_per_sec, scans_per_sec;
