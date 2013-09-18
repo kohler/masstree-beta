@@ -36,6 +36,27 @@ struct ckstate {
     void visit_leaf(const SS&, const K&, threadinfo&) {
     }
     bool visit_value(Str key, const row_type* value, threadinfo& ti);
+
+    template <typename T>
+    static void insert(T& table, const char* data, threadinfo& ti);
 };
+
+template <typename T>
+void ckstate::insert(T& table, const char* data, threadinfo& ti) {
+    int keylen = strlen(data);
+    always_assert(keylen >= 0 && keylen < MaxKeyLen);
+    Str key(data, keylen);
+    data += keylen + 1;
+    kvtimestamp_t ts = read_in_host_order<kvtimestamp_t>(data);
+    int vallen = read_in_host_order<int>(data + sizeof(ts));
+    Str value(data + sizeof(ts) + sizeof(vallen), vallen);
+
+    typename T::cursor_type lp(table, key);
+    bool found = lp.find_insert(ti);
+    masstree_invariant(!found); (void) found;
+    ti.advance_timestamp(lp.node_timestamp());
+    lp.value() = row_type::checkpoint_read(value, ts, ti);
+    lp.finish(1, ti);
+}
 
 #endif

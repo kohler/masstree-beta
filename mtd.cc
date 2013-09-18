@@ -1310,17 +1310,6 @@ void log_init() {
   }
 }
 
-// p points to key\0val\0
-void insert_from_checkpoint(char *p, threadinfo *ti) {
-    int keylen = strlen(p);
-    always_assert(keylen >= 0 && keylen < MaxKeyLen);
-    kvtimestamp_t ts = *(kvtimestamp_t*)(p + keylen + 1);
-    int vlen = *(int*)(p + keylen + 1 + sizeof(ts));
-    Str key(p, keylen);
-    Str value(p + keylen + 1 + sizeof(ts) + sizeof(vlen), vlen);
-    tree->checkpoint_restore(key, value, ts, *ti);
-}
-
 // read a checkpoint, insert key/value pairs into tree.
 // must be followed by a read of the log!
 // since checkpoint is not consistent
@@ -1392,7 +1381,7 @@ traverse_checkpoint_inorder(uint64_t off, uint64_t n,
 {
     always_assert(off == 0);
     for (uint64_t i = 0; i < max; i++)
-        insert_from_checkpoint(base + ind[i], ti);
+        ckstate::insert(tree->table(), base + ind[i], *ti);
     return n;
 }
 

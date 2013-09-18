@@ -50,9 +50,6 @@ class query_table {
         table_.reinitialize(ti);
     }
 
-    void checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
-                            threadinfo& ti);
-
     void findpivots(Str* pv, int npv) const;
 
     void stats(FILE* f);

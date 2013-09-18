@@ -33,18 +33,6 @@
 
 namespace Masstree {
 
-template <typename P>
-void query_table<P>::checkpoint_restore(Str key, Str value, kvtimestamp_t ts,
-                                        threadinfo& ti) {
-    tcursor<P> lp(table_, key);
-    bool found = lp.find_insert(ti);
-    masstree_invariant(!found); (void) found;
-    ti.advance_timestamp(lp.node_timestamp());
-    lp.value() = row_type::checkpoint_read(value, ts, ti);
-    lp.finish(1, ti);
-}
-
-
 static uint64_t heightcounts[300], fillcounts[100];
 
 template <typename P>
