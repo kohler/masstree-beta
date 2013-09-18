@@ -85,7 +85,6 @@ struct child {
   int childno;
 };
 void aget(struct child *, const Str &key, const Str &wanted, get_async_cb fn);
-void ascan(struct child *c, int numpairs, const char *key);
 void child(void (*fn)(struct child *), int childno);
 void checkasync(struct child *c, int force);
 
@@ -510,7 +509,7 @@ get(struct child *c, const Str &key, char *val, int max)
   c->conn->flush();
 
   unsigned int rseq = 0;
-  vector<string> row;
+  std::vector<std::string> row;
   int r = c->conn->recvget(row, &rseq, false);
   always_assert(r == 0);
   always_assert(rseq == sseq);
@@ -596,7 +595,7 @@ checkasync(struct child *c, int force)
   while(c->nw > c->nr){
     if(force)
       c->conn->flush();
-    if(kvcheck(c->conn->in, force ? 2 : 1) > 0){
+    if(c->conn->check(force ? 2 : 1) > 0){
       unsigned int rseq = 0;
       c->conn->readseq(&rseq);
 
@@ -624,7 +623,7 @@ checkasync(struct child *c, int force)
 
       if(tmpa.cmd == Cmd_Get){
         // this is a reply to a get
-        vector<string> row;
+        std::vector<std::string> row;
 	int r = c->conn->recvget(row, NULL, true);
 	always_assert(r == 0);
 	Str s = (row.size() ? Str(row[0].data(), row[0].length()) : Str());
@@ -643,8 +642,8 @@ checkasync(struct child *c, int force)
 	      (tmpa.put_fn)(c, &tmpa, status);
       } else if(tmpa.cmd == Cmd_Scan){
         // this is a reply to a scan
-        vector<string> keys;
-        vector< vector<string> > rows;
+        std::vector<std::string> keys;
+        std::vector<std::vector<std::string> > rows;
 	int r = c->conn->recvscan(keys, rows, NULL, true);
 	always_assert(r == 0);
         always_assert(keys.size() <= (unsigned)tmpa.wantedlen);
@@ -791,28 +790,6 @@ aremove(struct child *c, const Str &key, remove_async_cb fn)
   a->key[key.len] = 0;
   a->acked = 0;
   a->remove_fn = fn;
-
-  c->nw += 1;
-}
-
-void
-ascan(struct child *c, int numpairs, const char *key)
-{
-  if((c->nw % (window/2)) == 0)
-    c->conn->flush();
-  while(c->nw - c->nr >= window)
-    checkasync(c, 1);
-
-  c->conn->sendscanwhole(numpairs, key, c->nw % SEQMOD);
-  if (c->udp)
-    c->conn->flush();
-
-  struct async *a = &c->a[c->nw % window];
-  a->cmd = Cmd_Scan;
-  a->seq = c->nw % SEQMOD;
-  strncpy(a->key, key, sizeof(a->key));
-  a->wantedlen = numpairs;
-  a->acked = 0;
 
   c->nw += 1;
 }
@@ -1478,7 +1455,7 @@ rec2(struct child *c)
 void
 cpb(struct child *c)
 {
-  c->conn->cp(c->childno);
+  c->conn->checkpoint(c->childno);
 }
 
 // mimic the first benchmark from the VoltDB blog:
@@ -1689,6 +1666,9 @@ volt2b(struct child *c)
   printf("%s\n", result.unparse().c_str());
 }
 
+using std::vector;
+using std::string;
+
 void
 scantest(struct child *c)
 {
@@ -1713,7 +1693,7 @@ scantest(struct child *c)
     char key[32];
     sprintf(key, "k%04d", i);
     int wanted = random() % 10;
-    c->conn->sendscanwhole(wanted, key, 1);
+    c->conn->sendscanwhole(key, wanted, 1);
     c->conn->flush();
     keys.clear();
     vals.clear();
@@ -1741,7 +1721,7 @@ scantest(struct child *c)
     }
 
     sprintf(key, "k%04d-a", i);
-    c->conn->sendscanwhole(1, key, 1);
+    c->conn->sendscanwhole(key, 1, 1);
     c->conn->flush();
     keys.clear();
     vals.clear();
@@ -1755,7 +1735,7 @@ scantest(struct child *c)
     }
   }
 
-  c->conn->sendscanwhole(10, "k015", 1);
+  c->conn->sendscanwhole("k015", 10, 1);
   c->conn->flush();
   keys.clear();
   vals.clear();
