@@ -56,6 +56,7 @@
 #include "file.hh"
 #include "kvproto.hh"
 #include "query_masstree.hh"
+#include "masstree_tcursor.hh"
 #include <algorithm>
 using lcdf::StringAccum;
 
@@ -1022,10 +1023,9 @@ onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
   }
   else if(rsm.cmd == Cmd_Get){
     KVW(kvout, rsm.seq);
-    q.begin_get(Str(rsm.key, rsm.keylen), Str(rsm.req, rsm.reqlen), kvout);
-    // XXX: fix table_lookup, which should have its own row_type
-    bool val_exists = tree->get(q, *ti);
-    if(!val_exists){
+    bool found = q.run_get(tree->table(), Str(rsm.key, rsm.keylen),
+                           Str(rsm.req, rsm.reqlen), kvout, *ti);
+    if(!found){
       //printf("no val for key %.*s\n", rsm.keylen, rsm.key);
       KVW(kvout, (short)-1);
     }

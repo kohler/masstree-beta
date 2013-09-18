@@ -142,6 +142,9 @@ class query {
 	QT_Remove = 6
     };
 
+    template <typename T>
+    bool run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti);
+
     void begin_get(Str key, Str req, struct kvout* kvout);
     void begin_put(Str key, Str req);
     void begin_replace(Str key, Str value);
@@ -192,7 +195,7 @@ class query {
     Str endkey_;
     Str val_;			// value for Get1 and CkpPut
 
-    void emit(const R* row);
+    void emit(const R* row, kvout* kv);
     void assign_timestamp(threadinfo* ti);
     void assign_timestamp(threadinfo* ti, kvtimestamp_t t);
 };
@@ -254,15 +257,15 @@ void query<R>::begin_remove(Str key) {
 }
 
 template <typename R>
-void query<R>::emit(const R* row) {
+void query<R>::emit(const R* row, kvout* kv) {
     if (f_.size() == 0) {
-        KVW(kvout_, (short) row->ncol());
+        KVW(kv, (short) row->ncol());
         for (int i = 0; i != row->ncol(); ++i)
-            KVW(kvout_, row->col(i));
+            KVW(kv, row->col(i));
     } else {
-        KVW(kvout_, (short) f_.size());
+        KVW(kv, (short) f_.size());
         for (int i = 0; i != (int) f_.size(); ++i)
-            KVW(kvout_, row->col(f_[i]));
+            KVW(kv, row->col(f_[i]));
     }
 }
 
@@ -278,7 +281,7 @@ bool query<R>::scanemit(Str k, const R* v, threadinfo* ti) {
     } else {
         assert(qt_ == QT_Scan);
 	KVW(kvout_, k);
-        emit(helper_.snapshot(v, f_, *ti));
+        emit(helper_.snapshot(v, f_, *ti), kvout_);
         --scan_npairs_;
         return scan_npairs_ > 0;
     }
@@ -293,10 +296,25 @@ inline bool query<R>::emitrow(const R* v, threadinfo* ti) {
 	return true;
     } else {
         assert(qt_ == QT_Get);
-        emit(helper_.snapshot(v, f_, *ti));
+        emit(helper_.snapshot(v, f_, *ti), kvout_);
 	return true;
     }
 }
+
+
+template <typename R> template <typename T>
+bool query<R>::run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti) {
+    typename T::unlocked_cursor_type lp(table, key);
+    bool found = lp.find_unlocked(ti);
+    if (found && row_is_marker(lp.value()))
+        found = false;
+    if (found) {
+        R::parse_fields(req, f_);
+        emit(helper_.snapshot(lp.value(), f_, ti), kv);
+    }
+    return found;
+}
+
 
 template <typename R>
 inline void query<R>::assign_timestamp(threadinfo *ti) {

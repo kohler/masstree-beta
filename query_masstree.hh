@@ -31,6 +31,8 @@ class query_table {
     typedef P param_type;
     typedef node_base<P> node_type;
     typedef typename P::threadinfo_type threadinfo;
+    typedef unlocked_tcursor<P> unlocked_cursor_type;
+    typedef tcursor<P> cursor_type;
 
     query_table() {
     }

@@ -56,6 +56,8 @@ class basic_table {
     typedef node_base<P> node_type;
     typedef typename P::value_type value_type;
     typedef typename P::threadinfo_type threadinfo;
+    typedef unlocked_tcursor<P> unlocked_cursor_type;
+    typedef tcursor<P> cursor_type;
 
     basic_table()
         : root_(0) {
