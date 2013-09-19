@@ -20,6 +20,7 @@
 #include "kvthread.hh"
 #include "kvproto.hh"
 #include "log.hh"
+#include "json.hh"
 #include <algorithm>
 
 template <typename IDX>
@@ -126,12 +127,17 @@ struct query_helper {
 };
 
 template <typename R> class query_scanner;
+template <typename R> class query_json_scanner;
 
 template <typename R>
 class query {
   public:
+    typedef lcdf::Json Json;
+
     template <typename T>
     bool run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti);
+    template <typename T>
+    void run_get(T& table, Json& req, threadinfo& ti);
     template <typename T>
     bool run_get1(T& table, Str key, int col, Str& value, threadinfo& ti);
 
@@ -145,6 +151,8 @@ class query {
     template <typename T>
     void run_scan(T& table, Str startkey, int npairs, Str req, kvout* kv,
                   threadinfo& ti);
+    template <typename T>
+    void run_scan(T& table, Json& request, threadinfo& ti);
     template <typename T>
     void run_scan1(T& table, Str startkey, int npairs, kvout* kv,
                    threadinfo& ti);
@@ -162,6 +170,7 @@ class query {
     query_helper<R> helper_;
 
     void emit_fields(const R* value, kvout* kv, threadinfo& ti);
+    void emit_fields(const R* value, Json& req, threadinfo& ti);
     void assign_timestamp(threadinfo& ti);
     void assign_timestamp(threadinfo& ti, kvtimestamp_t t);
     inline bool apply_put(R*& value, bool found, Str req, threadinfo& ti);
@@ -170,13 +179,14 @@ class query {
     inline void apply_remove(R*& value, kvtimestamp_t& node_ts, threadinfo& ti);
 
     template <typename RR> friend class query_scanner;
+    template <typename RR> friend class query_json_scanner;
 };
 
 
 template <typename R>
 void query<R>::emit_fields(const R* value, kvout* kv, threadinfo& ti) {
     const R* snapshot = helper_.snapshot(value, f_, ti);
-    if (f_.size() == 0) {
+    if (f_.empty()) {
         KVW(kv, (short) snapshot->ncol());
         for (int i = 0; i != snapshot->ncol(); ++i)
             KVW(kv, snapshot->col(i));
@@ -184,6 +194,18 @@ void query<R>::emit_fields(const R* value, kvout* kv, threadinfo& ti) {
         KVW(kv, (short) f_.size());
         for (int i = 0; i != (int) f_.size(); ++i)
             KVW(kv, snapshot->col(f_[i]));
+    }
+}
+
+template <typename R>
+void query<R>::emit_fields(const R* value, Json& req, threadinfo& ti) {
+    const R* snapshot = helper_.snapshot(value, f_, ti);
+    if (f_.empty()) {
+        for (int i = 0; i != snapshot->ncol(); ++i)
+            req.push_back(lcdf::String::make_stable(snapshot->col(i)));
+    } else {
+        for (int i = 0; i != (int) f_.size(); ++i)
+            req.push_back(lcdf::String::make_stable(snapshot->col(f_[i])));
     }
 }
 
@@ -199,6 +221,21 @@ bool query<R>::run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti) {
         emit_fields(lp.value(), kv, ti);
     }
     return found;
+}
+
+template <typename R> template <typename T>
+void query<R>::run_get(T& table, Json& req, threadinfo& ti) {
+    typename T::unlocked_cursor_type lp(table, req[2].as_s());
+    bool found = lp.find_unlocked(ti);
+    if (found && row_is_marker(lp.value()))
+        found = false;
+    if (found) {
+        f_.clear();
+        for (int i = 3; i != req.size(); ++i)
+            f_.push_back(req[i].as_i());
+        req.resize(2);
+        emit_fields(lp.value(), req, ti);
+    }
 }
 
 template <typename R> template <typename T>
@@ -349,6 +386,39 @@ class query_scanner {
     kvout* kv_;
 };
 
+template <typename R>
+class query_json_scanner {
+  public:
+    query_json_scanner(query<R> &q, lcdf::Json& request)
+	: q_(q), nleft_(request[3].as_i()), request_(request),
+          temp_(lcdf::Json::make_array()) {
+        request_.resize(2);
+    }
+    template <typename SS, typename K>
+    void visit_leaf(const SS&, const K&, threadinfo&) {
+    }
+    bool visit_value(Str key, R* value, threadinfo& ti) {
+        if (row_is_marker(value))
+            return true;
+        q_.emit_fields(value, temp_, ti);
+        request_.push_back(key);
+        if (temp_.size() == 1) {
+            request_.push_back(temp_[0]);
+            temp_.clear();
+        } else {
+            request_.push_back(std::move(temp_));
+            temp_ = lcdf::Json::make_array();
+        }
+        --nleft_;
+        return nleft_ != 0;
+    }
+  private:
+    query<R> &q_;
+    int nleft_;
+    lcdf::Json& request_;
+    lcdf::Json temp_;
+};
+
 template <typename R> template <typename T>
 void query<R>::run_scan(T& table, Str startkey, int npairs, Str req, kvout* kv,
                         threadinfo& ti) {
@@ -356,6 +426,17 @@ void query<R>::run_scan(T& table, Str startkey, int npairs, Str req, kvout* kv,
     query_scanner<R> scanf(*this, npairs, kv);
     R::parse_fields(req, f_);
     table.scan(startkey, true, scanf, ti);
+}
+
+template <typename R> template <typename T>
+void query<R>::run_scan(T& table, Json& request, threadinfo& ti) {
+    assert(request[3].as_i() > 0);
+    lcdf::Str key = request[2].as_s();
+    f_.clear();
+    for (int i = 4; i != request.size(); ++i)
+        f_.push_back(request[i].as_i());
+    query_json_scanner<R> scanf(*this, request);
+    table.scan(key, true, scanf, ti);
 }
 
 template <typename R> template <typename T>

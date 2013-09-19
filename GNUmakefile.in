@@ -30,7 +30,8 @@ all: test_atomics mtd mtclient mttest
 %.S: %.o
 	objdump -S $< > $@
 
-libjson.a: json.o string.o straccum.o str.o clp.o kvrandom.o compiler.o kvthread.o
+libjson.a: json.o string.o straccum.o str.o msgpack.o \
+	clp.o kvrandom.o compiler.o kvthread.o
 	@/bin/rm -f $@
 	$(AR) cru $@ $^
 
@@ -57,6 +58,9 @@ test_atomics: test_atomics.o string.o straccum.o kvrandom.o \
 	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 jsontest: jsontest.o string.o straccum.o json.o compiler.o
+	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+
+msgpacktest: msgpacktest.o string.o straccum.o json.o compiler.o msgpack.o kvio.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 config.h: stamp-h

@@ -84,7 +84,7 @@ struct child {
     unsigned long long nsent_;
     int childno;
 
-    void check_flush();
+    inline void check_flush();
 };
 
 void run_child(void (*fn)(struct child *), int childno);
@@ -524,6 +524,29 @@ run_child(void (*fn)(struct child *), int childno)
   close(c.s);
 }
 
+void KVConn::hard_check(int tryhard) {
+    masstree_precondition(inbufpos_ == inbuflen_);
+    if (inbuf_.length() != inbufsz
+        || (inbufpos_ >= inbufrefill && inbuf_.data_shared()))
+        inbuf_ = String::make_uninitialized(inbufsz);
+    if (!inbuf_.data_shared())
+        inbufpos_ = inbuflen_ = 0;
+    if (tryhard == 1) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(infd_, &rfds);
+        struct timeval tv = {0, 0};
+        if (select(infd_ + 1, &rfds, NULL, NULL, &tv) <= 0)
+            return;
+    } else
+        kvflush(out_);
+
+    ssize_t r = read(infd_, const_cast<char*>(inbuf_.data()) + inbufpos_,
+                     inbuf_.length() - inbufpos_);
+    if (r != -1)
+        inbuflen_ += r;
+}
+
 int
 get(struct child *c, const Str &key, char *val, int max)
 {
@@ -533,20 +556,18 @@ get(struct child *c, const Str &key, char *val, int max)
     ++c->seq1_;
     ++c->nsent_;
 
-  c->conn->sendgetwhole(key, sseq);
-  c->conn->flush();
+    c->conn->sendgetwhole(key, sseq);
+    c->conn->flush();
 
-  unsigned rseq = 0;
-  std::vector<std::string> row;
-  int r = c->conn->recvget(row, &rseq, false);
-  always_assert(r == 0);
-  always_assert(rseq == sseq);
-  ++c->seq0_;
-  if (row.size() == 0)
-    return -1;
-  always_assert(row.size() == 1 && row[0].length() <= (unsigned)max);
-  memcpy(val, row[0].data(), row[0].length());
-  return row[0].length();
+    const Json& result = c->conn->receive();
+    always_assert(result && result[0] == sseq);
+    ++c->seq0_;
+    if (!result[2])
+        return -1;
+    always_assert(result.size() == 3 && result[2].is_s()
+                  && result[2].as_s().length() <= max);
+    memcpy(val, result[2].as_s().data(), result[2].as_s().length());
+    return result[2].as_s().length();
 }
 
 // builtin aget callback: no check
@@ -622,14 +643,15 @@ void
 checkasync(struct child *c, int force)
 {
     while (c->seq0_ != c->seq1_) {
-        if(force)
+        if (force)
             c->conn->flush();
-        if(c->conn->check(force ? 2 : 1) > 0){
-            unsigned rseq = 0;
-            c->conn->readseq(&rseq);
+        if (c->conn->check(force ? 2 : 1) > 0) {
+            const Json& result = c->conn->receive();
+            always_assert(result);
 
             // is rseq in the nr..nw window?
             // replies might arrive out of order if UDP
+            unsigned rseq = result[0].as_i();
             always_assert(rseq - c->seq0_ < c->seq1_ - c->seq0_);
             struct async *a = &c->a[rseq & (window - 1)];
             always_assert(a->seq == rseq);
@@ -646,46 +668,28 @@ checkasync(struct child *c, int force)
 
             if(tmpa.cmd == Cmd_Get){
                 // this is a reply to a get
-                std::vector<std::string> row;
-                int r = c->conn->recvget(row, NULL, true);
-                always_assert(r == 0);
-                Str s = (row.size() ? Str(row[0].data(), row[0].length()) : Str());
+                String s = result.size() > 2 ? result[2].as_s() : String();
                 if (tmpa.get_fn)
-                    (tmpa.get_fn)(c, &tmpa, row.size(), s);
-            } else if(tmpa.cmd == Cmd_Put){
+                    (tmpa.get_fn)(c, &tmpa, result.size() > 2, s);
+            } else if (tmpa.cmd == Cmd_Put || tmpa.cmd == Cmd_Replace) {
                 // this is a reply to a put
-                int r = c->conn->recvput(NULL, true);
-                always_assert(r >= 0);
-            } else if(tmpa.cmd == Cmd_Put_Status){
-                // this is a reply to a put
-                int status;
-                int r = c->conn->recvputstatus(&status, NULL, true);
-                always_assert(r >= 0);
                 if (tmpa.put_fn)
-                    (tmpa.put_fn)(c, &tmpa, status);
+                    (tmpa.put_fn)(c, &tmpa, result[2].as_i());
             } else if(tmpa.cmd == Cmd_Scan){
                 // this is a reply to a scan
-                std::vector<std::string> keys;
-                std::vector<std::vector<std::string> > rows;
-                int r = c->conn->recvscan(keys, rows, NULL, true);
-                always_assert(r == 0);
-                always_assert(keys.size() <= (unsigned)tmpa.wantedlen);
+                always_assert((result.size() - 2) / 2 <= tmpa.wantedlen);
             } else if (tmpa.cmd == Cmd_Remove) {
                 // this is a reply to a remove
-                int status;
-                int r = c->conn->recvremove(&status, NULL, true);
-                always_assert(r == 0);
                 if (tmpa.remove_fn)
-                    (tmpa.remove_fn)(c, &tmpa, status);
+                    (tmpa.remove_fn)(c, &tmpa, result[2].as_i());
             } else {
                 always_assert(0);
             }
 
-            if(force < 2)
+            if (force < 2)
                 force = 0;
-        } else if(force == 0){
+        } else if (!force)
             break;
-        }
     }
 }
 
@@ -732,10 +736,8 @@ put(struct child *c, const Str &key, const Str &val)
     c->conn->sendputwhole(key, val, sseq);
     c->conn->flush();
 
-    unsigned int rseq = 0;
-    int ret = c->conn->recvput(&rseq, false);
-    always_assert(ret == 0);
-    always_assert(rseq == sseq);
+    const Json& result = c->conn->receive();
+    always_assert(result && result[0] == sseq);
 
     ++c->seq0_;
     ++c->seq1_;
@@ -749,12 +751,12 @@ aput(struct child *c, const Str &key, const Str &val,
 {
     c->check_flush();
 
-    c->conn->sendputwhole(key, val, c->seq1_, fn != 0);
+    c->conn->sendputwhole(key, val, c->seq1_);
     if (c->udp)
         c->conn->flush();
 
     struct async *a = &c->a[c->seq1_ & (window - 1)];
-    a->cmd = (fn != 0 ? Cmd_Put_Status : Cmd_Put);
+    a->cmd = Cmd_Put;
     a->seq = c->seq1_;
     assert(key.len < int(sizeof(a->key)) - 1);
     memcpy(a->key, key.s, key.len);
@@ -774,8 +776,7 @@ aput(struct child *c, const Str &key, const Str &val,
     ++c->nsent_;
 }
 
-bool
-remove(struct child *c, const Str &key)
+bool remove(struct child *c, const Str &key)
 {
     always_assert(c->seq0_ == c->seq1_);
 
@@ -783,16 +784,13 @@ remove(struct child *c, const Str &key)
     c->conn->sendremove(key, sseq);
     c->conn->flush();
 
-    unsigned int rseq = 0;
-    int status = 0;
-    int ret = c->conn->recvremove(&status, &rseq, false);
-    always_assert(ret == 0);
-    always_assert(rseq == sseq);
+    const Json& result = c->conn->receive();
+    always_assert(result && result[0] == sseq);
 
     ++c->seq0_;
     ++c->seq1_;
     ++c->nsent_;
-    return status;
+    return result[2].to_b();
 }
 
 void
@@ -1478,7 +1476,7 @@ rec2(struct child *c)
 void
 cpb(struct child *c)
 {
-  c->conn->checkpoint(c->childno);
+    c->conn->checkpoint(c->childno);
 }
 
 // mimic the first benchmark from the VoltDB blog:
@@ -1695,7 +1693,7 @@ using std::string;
 void
 scantest(struct child *c)
 {
-  int i, ret;
+  int i;
 
   srandom(first_seed + c->childno);
 
@@ -1708,66 +1706,63 @@ scantest(struct child *c)
 
   checkasync(c, 2);
 
-  int n;
-  vector<string> keys;
-  vector< vector<string> > vals;
-
   for(i = 90; i < 210; i++){
     char key[32];
     sprintf(key, "k%04d", i);
     int wanted = random() % 10;
     c->conn->sendscanwhole(key, wanted, 1);
     c->conn->flush();
-    keys.clear();
-    vals.clear();
-    ret = c->conn->recvscan(keys, vals, NULL, false);
-    always_assert(ret == 0);
-    n = keys.size();
-    if(i <= 200 - wanted){
-      always_assert(n == wanted);
-    } else if(i <= 200){
-      always_assert(n == 200 - i);
-    } else {
-      always_assert(n == 0);
-    }
-    int k0 = (i < 100 ? 100 : i);
-    int j, ki;
-    for(j = k0, ki = 0; j < k0 + wanted && j < 200; j++, ki++){
-      char xkey[32], xval[32];
-      sprintf(xkey, "k%04d", j);
-      sprintf(xval, "v%04d", j);
-      if (strcmp(keys[ki].c_str(), xkey) != 0) {
-	fprintf(stderr, "Assertion failed @%d: strcmp(%s, %s) == 0\n", ki, keys[ki].c_str(), xkey);
-	always_assert(0);
-      }
-      always_assert(strcmp(vals[ki][0].c_str(), xval) == 0);
+
+    {
+        const Json& result = c->conn->receive();
+        always_assert(result && result[0] == 1);
+        int n = (result.size() - 2) / 2;
+        if(i <= 200 - wanted){
+            always_assert(n == wanted);
+        } else if(i <= 200){
+            always_assert(n == 200 - i);
+        } else {
+            always_assert(n == 0);
+        }
+        int k0 = (i < 100 ? 100 : i);
+        int j, ki, off = 2;
+        for(j = k0, ki = 0; j < k0 + wanted && j < 200; j++, ki++, off += 2){
+            char xkey[32], xval[32];
+            sprintf(xkey, "k%04d", j);
+            sprintf(xval, "v%04d", j);
+            if (!result[off].as_s().equals(xkey)) {
+                fprintf(stderr, "Assertion failed @%d: strcmp(%s, %s) == 0\n", ki, result[off].as_s().c_str(), xkey);
+                always_assert(0);
+            }
+            always_assert(result[off + 1].as_s().equals(xval));
+        }
     }
 
-    sprintf(key, "k%04d-a", i);
-    c->conn->sendscanwhole(key, 1, 1);
-    c->conn->flush();
-    keys.clear();
-    vals.clear();
-    ret = c->conn->recvscan(keys, vals, NULL, false);
-    always_assert(ret == 0);
-    n = keys.size();
-    if(i >= 100 && i < 199){
-      always_assert(n == 1);
-      sprintf(key, "k%04d", i+1);
-      always_assert(strcmp(keys[0].c_str(), key) == 0);
+    {
+        sprintf(key, "k%04d-a", i);
+        c->conn->sendscanwhole(key, 1, 1);
+        c->conn->flush();
+
+        const Json& result = c->conn->receive();
+        always_assert(result && result[0] == 1);
+        int n = (result.size() - 2) / 2;
+        if(i >= 100 && i < 199){
+            always_assert(n == 1);
+            sprintf(key, "k%04d", i+1);
+            always_assert(result[2].as_s().equals(key));
+        }
     }
   }
 
   c->conn->sendscanwhole("k015", 10, 1);
   c->conn->flush();
-  keys.clear();
-  vals.clear();
-  ret = c->conn->recvscan(keys, vals, NULL, false);
-  always_assert(ret == 0);
-  n = keys.size();
+
+  const Json& result = c->conn->receive();
+  always_assert(result && result[0] == 1);
+  int n = (result.size() - 2) / 2;
   always_assert(n == 10);
-  always_assert(strcmp(keys[0].c_str(), "k0150") == 0);
-  always_assert(strcmp(vals[0][0].c_str(), "v0150") == 0);
+  always_assert(result[2].as_s().equals("k0150"));
+  always_assert(result[3].as_s().equals("v0150"));
 
   fprintf(stderr, "scantest OK\n");
   printf("0\n");

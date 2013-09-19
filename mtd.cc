@@ -60,7 +60,9 @@
 #include "masstree_insert.hh"
 #include "masstree_remove.hh"
 #include "masstree_scan.hh"
+#include "msgpack.hh"
 #include <algorithm>
+#include <deque>
 using lcdf::StringAccum;
 
 enum { CKState_Quit, CKState_Uninit, CKState_Ready, CKState_Go };
@@ -108,13 +110,11 @@ kvtimestamp_t initial_timestamp;
 static pthread_cond_t checkpoint_cond;
 static pthread_mutex_t checkpoint_mu;
 static struct ckstate *cktable;
-class reqst_machine;
 
 static void prepare_thread(threadinfo *ti);
 static void *tcpgo(void *);
 static void *udpgo(void *);
-static int handshake(struct kvin *kvin, struct kvout *kvout, threadinfo *ti, bool &ok);
-static int onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout, reqst_machine &rsm, threadinfo *ti);
+static int onego(query<row_type>& q, Json& request, threadinfo& ti);
 
 static void log_init();
 static void recover(threadinfo *);
@@ -457,87 +457,68 @@ void runtest(const char *testname, int nthreads) {
 }
 
 
-/* request state machine */
-enum { CI_Cmd = 0, CI_Seq, CI_Keylen, CI_Key, CI_Reqlen, CI_Req, CI_Numpairs };
-
-class reqst_machine {
-  public:
-    volatile int cmd;
-    volatile unsigned int seq;
-    volatile int keylen;
-    char key[MaxKeyLen];
-    volatile int reqlen;
-    char* req;
-    int req_capacity;
-    volatile int numpairs;
-
-    int ci;
-    int wanted;
-    char *p;
-
-    reqst_machine()
-        : req(new char[2048]), req_capacity(2048) {
-    }
-    ~reqst_machine() {
-        delete[] req;
-    }
-
-    void reset() {
-        ci = CI_Cmd;
-        p = (char *)&cmd;
-        wanted = sizeof(cmd);
-    }
-    void goto_seq() {
-        ci = CI_Seq;
-        p = (char *)&seq;
-        wanted = sizeof(seq);
-    }
-    void goto_keylen() {
-        ci = CI_Keylen;
-        p = (char *)&keylen;
-        wanted = sizeof(keylen);
-    }
-    void goto_key() {
-        assert(keylen < (int)sizeof(key));
-        ci = CI_Key;
-        p = (char *)key;
-        wanted = keylen;
-    }
-    void goto_reqlen() {
-        ci = CI_Reqlen;
-        p = (char *)&reqlen;
-        wanted = sizeof(reqlen);
-    }
-    void goto_req() {
-        while (reqlen > req_capacity) {
-            delete[] req;
-            req_capacity *= 2;
-            req = new char[req_capacity];
-        }
-        ci = CI_Req;
-        p = (char *)req;
-        wanted = reqlen;
-    }
-    void goto_numpairs() {
-        ci = CI_Numpairs;
-        p = (char *)&numpairs;
-        wanted = sizeof(numpairs);
-    }
-
-  private:
-    reqst_machine(const reqst_machine&);
-    reqst_machine& operator=(const reqst_machine&);
-};
-
 struct conn {
     bool ready;
     int fd;
-    struct kvin *kvin;
+    String inbuf_;
+    int inbufpos_;
+    int inbuflen_;
+    msgpack::streaming_parser parser_;
     struct kvout *kvout;
-    reqst_machine rsm;
-    conn(int s): fd(s) {
+    enum { inbufsz = 20 * 1024, inbufrefill = 16 * 1024 };
+
+    conn(int s)
+        : ready(false), fd(s), inbufpos_(0), inbuflen_(0),
+          kvout(new_kvout(s, 20 * 1024)) {
     }
+    ~conn() {
+        close(fd);
+        free_kvout(kvout);
+    }
+
+    Json& receive() {
+        while (!parser_.done() && check(2))
+            inbufpos_ += parser_.consume(inbuf_.data() + inbufpos_,
+                                         inbuflen_ - inbufpos_, inbuf_);
+        if (parser_.success() && parser_.result().is_a())
+            parser_.reset();
+        else
+            parser_.result() = Json();
+        return parser_.result();
+    }
+
+    int check(int tryhard) {
+        if (inbufpos_ == inbuflen_ && tryhard)
+            hard_check(tryhard);
+        return inbuflen_ - inbufpos_;
+    }
+
+  private:
+    void hard_check(int tryhard);
 };
+
+void conn::hard_check(int tryhard) {
+    masstree_precondition(inbufpos_ == inbuflen_);
+    if (inbuf_.length() != inbufsz
+        || (inbufpos_ >= inbufrefill && inbuf_.data_shared()))
+        inbuf_ = String::make_uninitialized(inbufsz);
+    if (!inbuf_.data_shared())
+        inbufpos_ = inbuflen_ = 0;
+    if (tryhard == 1) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(fd, &rfds);
+        struct timeval tv = {0, 0};
+        if (select(fd + 1, &rfds, NULL, NULL, &tv) <= 0)
+            return;
+    } else
+        kvflush(kvout);
+
+    ssize_t r = read(fd, const_cast<char*>(inbuf_.data()) + inbufpos_,
+                     inbuf_.length() - inbufpos_);
+    if (r != -1)
+        inbuflen_ += r;
+}
 
 
 /* main loop */
@@ -804,6 +785,7 @@ main(int argc, char *argv[])
     bzero(&sin1, sizeof(sin1));
     s1 = accept(s, (struct sockaddr *) &sin1, &sinlen);
     always_assert(s1 >= 0);
+
     // Bind the connection to a particular core if required.
     int target_core;
     if (read(s1, &target_core, sizeof(target_core)) != sizeof(target_core)) {
@@ -820,6 +802,7 @@ main(int argc, char *argv[])
         assert(pinthreads && target_core < tcpthreads);
         ti = tcpti[target_core];
     }
+
     ssize_t w = write(ti->ti_pipe[1], &s1, sizeof(s1));
     always_assert((size_t) w == sizeof(s1));
   }
@@ -937,119 +920,61 @@ table_lookup(const Str &key, Str &val)
 }
 
 // Return 1 if success, -1 if I/O error or protocol unmatch
-int
-handshake(struct kvin *kvin, struct kvout *kvout, threadinfo *ti, bool &ok)
-{
-  struct kvproto kvproto;
-  if (KVR(kvin, kvproto) != sizeof(kvproto))
-      return -1;
-  ok = kvproto_check(kvproto);
-  KVW(kvout, ok);
-  KVW(kvout, ti->ti_index);
-  return ok ? 1 : -1;
+int handshake(Json& request, threadinfo& ti) {
+    if (request.size() < 4
+        || !request[1].is_i() || request[1].as_i() != Cmd_Handshake
+        || !request[2].is_i() || request[2].as_i() != KVDB_ROW_TYPE_ID
+        || !request[3].is_i() || request[3].as_i() > MaxKeyLen) {
+        request[1] = Cmd_Handshake;
+        request[2] = false;
+        request.resize(3);
+    } else {
+        request[2] = true;
+        request[3] = ti.ti_index;
+        request.resize(4);
+    }
+    return request[2].as_b() ? 1 : -1;
 }
 
-// returns 2 if the request is incompleted, 1 if one request is
-// ready, -1 on error
-int
-tryreadreq(struct kvin *kvin, reqst_machine &rsm)
-{
-    int avail = kvcheck(kvin, 0);
-    while (avail > 0) {
-        int c = std::min(avail, rsm.wanted);
-        if (kvread(kvin, rsm.p, c) != c)
-            return -1;
-        rsm.p += c;
-        rsm.wanted -= c;
-        if (rsm.wanted)
-            return 2;
-        avail -= c;
-        switch (rsm.ci) {
-        case CI_Cmd:
-            assert(rsm.cmd > Cmd_None && rsm.cmd < Cmd_Max);
-            rsm.goto_seq();
-            break;
-        case CI_Seq:
-            if (rsm.cmd == Cmd_Checkpoint)
-                return 1;
-            rsm.goto_keylen();
-            break;
-        case CI_Keylen:
-            rsm.goto_key();
-            break;
-        case CI_Key:
-            if (rsm.cmd == Cmd_Remove)
-                return 1;
-            rsm.goto_reqlen();
-            break;
-        case CI_Reqlen:
-            rsm.goto_req();
-            break;
-        case CI_Req:
-            if (rsm.cmd != Cmd_Scan)
-                return 1;
-            rsm.goto_numpairs();
-            break;
-        case CI_Numpairs:
-            assert(rsm.cmd == Cmd_Scan);
-            return 1;
-        default:
-            assert(0 && "Bad component index");
-        }
+// execute command, return result.
+int onego(query<row_type>& q, Json& request, threadinfo& ti) {
+    int command = request[1].as_i();
+    if (command == Cmd_Checkpoint) {
+        // force checkpoint
+        pthread_mutex_lock(&checkpoint_mu);
+        pthread_cond_broadcast(&checkpoint_cond);
+        pthread_mutex_unlock(&checkpoint_mu);
+        request.resize(2);
+    } else if (command == Cmd_Get) {
+        q.run_get(tree->table(), request, ti);
+    } else if (command == Cmd_Put) { // insert or update
+        Str key(request[2].as_s()), req(request[3].as_s());
+        request[2] = q.run_put(tree->table(), request[2].as_s(),
+                               request[3].as_s(), ti);
+        if (ti.ti_log) // NB may block
+            ti.ti_log->record(logcmd_put, q.query_times(), key, req);
+        request.resize(3);
+    } else if (command == Cmd_Replace) { // insert or update
+        Str key(request[2].as_s()), value(request[3].as_s());
+        request[2] = q.run_replace(tree->table(), key, value, ti);
+        if (ti.ti_log) // NB may block
+            ti.ti_log->record(logcmd_replace, q.query_times(), key, value);
+        request.resize(3);
+    } else if (command == Cmd_Remove) { // remove
+        Str key(request[2].as_s());
+        bool removed = q.run_remove(tree->table(), key, ti);
+        if (removed && ti.ti_log) // NB may block
+            ti.ti_log->record(logcmd_remove, q.query_times(), key, Str());
+        request[2] = removed;
+        request.resize(3);
+    } else if (command == Cmd_Scan) {
+        q.run_scan(tree->table(), request, ti);
+    } else {
+        request[1] = -1;
+        request.resize(2);
+        return -1;
     }
-    return 2;
-}
-
-// read one cmd from a kvin, execute it.
-// returns 2 if the request is incompleted, 1 if one request is processed,
-// -1 for error
-int
-onego(query<row_type> &q, struct kvin *kvin, struct kvout *kvout,
-      reqst_machine &rsm, threadinfo *ti)
-{
-  int r;
-  if ((r = tryreadreq(kvin, rsm)) != 1)
-    return r;
-  if(rsm.cmd == Cmd_Checkpoint){
-    // force checkpoint
-    pthread_mutex_lock(&checkpoint_mu);
-    pthread_cond_broadcast(&checkpoint_cond);
-    pthread_mutex_unlock(&checkpoint_mu);
-  }
-  else if(rsm.cmd == Cmd_Get){
-    KVW(kvout, rsm.seq);
-    bool found = q.run_get(tree->table(), Str(rsm.key, rsm.keylen),
-                           Str(rsm.req, rsm.reqlen), kvout, *ti);
-    if(!found){
-      //printf("no val for key %.*s\n", rsm.keylen, rsm.key);
-      KVW(kvout, (short)-1);
-    }
-  } else if (rsm.cmd == Cmd_Put || rsm.cmd == Cmd_Put_Status) { // insert or update
-      Str key(rsm.key, rsm.keylen), req(rsm.req, rsm.reqlen);
-      int status = q.run_put(tree->table(), key, req, *ti);
-      if (ti->ti_log) // NB may block
-	  ti->ti_log->record(logcmd_put, q.query_times(), key, req);
-      KVW(kvout, rsm.seq);
-      if (rsm.cmd == Cmd_Put_Status)
-	  KVW(kvout, status);
-  } else if(rsm.cmd == Cmd_Remove){ // remove
-      Str key(rsm.key, rsm.keylen);
-      bool removed = q.run_remove(tree->table(), key, *ti);
-      if (removed && ti->ti_log) // NB may block
-	  ti->ti_log->record(logcmd_remove, q.query_times(), key, Str());
-      KVW(kvout, rsm.seq);
-      KVW(kvout, (int) removed);
-  } else {
-    assert(rsm.cmd == Cmd_Scan);
-    KVW(kvout, rsm.seq);
-    if (rsm.numpairs > 0) {
-        q.run_scan(tree->table(), Str(rsm.key, rsm.keylen), rsm.numpairs,
-                   Str(rsm.req, rsm.reqlen), kvout, *ti);
-    }
-    KVW(kvout, (int)0);
-  }
-  rsm.reset();
-  return 1;
+    return 1;
 }
 
 #if HAVE_SYS_EPOLL_H
@@ -1161,61 +1086,67 @@ prepare_thread(threadinfo *ti)
 void *
 tcpgo(void *xarg)
 {
-  threadinfo *ti = (threadinfo *) xarg;
-  prepare_thread(ti);
+    threadinfo *ti = (threadinfo *) xarg;
+    prepare_thread(ti);
 
-  tcpfds sloop(ti->ti_pipe[0]);
-  tcpfds::eventset events;
-  query<row_type> q;
+    tcpfds sloop(ti->ti_pipe[0]);
+    tcpfds::eventset events;
+    std::deque<conn*> ready;
+    query<row_type> q;
 
-  while (1) {
-    int nev = sloop.wait(events);
-    for (int i = 0; i < nev; i++) {
-      conn *c = sloop.event_conn(events, i);
-      if (c == (conn *) 1) {
-        // new connections
+    while (1) {
+        int nev = sloop.wait(events);
+        for (int i = 0; i < nev; i++)
+            if (conn *c = sloop.event_conn(events, i))
+                ready.push_back(c);
+
+        while (!ready.empty()) {
+            conn* c = ready.front();
+            ready.pop_front();
+
+            if (c == (conn *) 1) {
+                // new connections
 #define MAX_NEWCONN 100
-        int ss[MAX_NEWCONN];
-        ssize_t len = read(ti->ti_pipe[0], ss, sizeof(ss));
-        always_assert(len > 0 && len % sizeof(int) == 0);
-        for (int j = 0; j * sizeof(int) < (size_t) len; ++j){
-          struct conn *c = new conn(ss[j]);
-          c->kvin = new_kvin(ss[j], 20*1024);
-          c->kvout = new_kvout(ss[j], 20*1024);
-          c->rsm.reset();
-          c->ready = false;
-          sloop.add(c->fd, c);
+                int ss[MAX_NEWCONN];
+                ssize_t len = read(ti->ti_pipe[0], ss, sizeof(ss));
+                always_assert(len > 0 && len % sizeof(int) == 0);
+                for (int j = 0; j * sizeof(int) < (size_t) len; ++j){
+                    struct conn *c = new conn(ss[j]);
+                    sloop.add(c->fd, c);
+                }
+            } else if (c) {
+                // Should not block as suggested by epoll
+                Json& request = c->receive();
+                if (unlikely(!request))
+                    goto closed;
+                int ret;
+                if (unlikely(!c->ready)) {
+                    if ((ret = handshake(request, *ti)) >= 0)
+                        c->ready = true;
+                } else {
+                    ti->rcu_start();
+                    ret = onego(q, request, *ti);
+                    ti->rcu_stop();
+                }
+                msgpack::compact_unparser cu;
+                cu.unparse(*c->kvout, request);
+                request.clear();
+                if (likely(ret >= 0)) {
+                    if (c->check(0))
+                        ready.push_back(c);
+                    else
+                        kvflush(c->kvout);
+                    continue;
+                }
+                printf("socket read error\n");
+            closed:
+                kvflush(c->kvout);
+                sloop.remove(c->fd);
+                delete c;
+            }
         }
-      } else if (c) {
-        // Should not block as suggested by epoll
-        int ret = mayblock_kvoneread(c->kvin);
-        if (unlikely(ret <= 0))
-            goto closed;
-        if (unlikely(!c->ready))
-            ret = handshake(c->kvin, c->kvout, ti, c->ready);
-        else {
-          ti->rcu_start();
-          while ((ret = onego(q, c->kvin, c->kvout, c->rsm, ti)) == 1)
-              /* do nothing */;
-          ti->rcu_stop();
-        }
-        if(ret >= 0) {
-          kvflush(c->kvout);
-          if(likely(c->ready))
-            continue;
-        }
-        if (ret < 0)
-          printf("socket read error\n");
-closed:
-	sloop.remove(c->fd);
-        close(c->fd);
-        free_kvin(c->kvin);
-        free_kvout(c->kvout);
-        free(c);
-      }
     }
-  }
-  return 0;
+    return 0;
 }
 
 // serve a client udp socket, in a dedicated thread
@@ -1238,41 +1169,40 @@ udpgo(void *xarg)
   int sobuflen = 512*1024;
   setsockopt(s, SOL_SOCKET, SO_RCVBUF, &sobuflen, sizeof(sobuflen));
 
-  int buflen = 4096;
-  char *inbuf = (char *) malloc(buflen);
-  always_assert(inbuf);
-  struct kvin *kvin = new_bufkvin(inbuf);
+  String buf = String::make_uninitialized(4096);
   struct kvout *kvout = new_bufkvout();
+  msgpack::streaming_parser parser;
+  StringAccum sa;
 
-  reqst_machine rsm;
   query<row_type> q;
   while(1){
     struct sockaddr_in sin;
     socklen_t sinlen = sizeof(sin);
-    ssize_t cc = recvfrom(s, inbuf, buflen, 0, (struct sockaddr *) &sin, &sinlen);
+    ssize_t cc = recvfrom(s, const_cast<char*>(buf.data()), buf.length(),
+                          0, (struct sockaddr *) &sin, &sinlen);
     if(cc < 0){
       perror("udpgo read");
       exit(EXIT_FAILURE);
     }
-    kvin_setlen(kvin, cc);
     kvout_reset(kvout);
-    rsm.reset();
 
-    conn c(-1);
-    c.kvin = NULL;
-    c.kvout = kvout;
+    parser.reset();
+    parser.consume(buf.data(), buf.length(), buf);
 
     // Fail if we received a partial request
-    ti->rcu_start();
-    if(onego(q, kvin, kvout, rsm, ti) == 1){
-      if(kvout->n > 0){
-        cc = sendto(s, kvout->buf, kvout->n, 0, (struct sockaddr *) &sin, sinlen);
-        always_assert(cc == (ssize_t) kvout->n);
-      }
-    } else {
+    if (parser.success() && parser.result().is_a()) {
+        ti->rcu_start();
+        if (onego(q, parser.result(), *ti) >= 0) {
+            sa.clear();
+            msgpack::compact_unparser cu;
+            cu.unparse(sa, parser.result());
+            cc = sendto(s, sa.data(), sa.length(), 0,
+                        (struct sockaddr*) &sin, sinlen);
+            always_assert(cc == (ssize_t) sa.length());
+        }
+        ti->rcu_stop();
+    } else
       printf("onego failed\n");
-    }
-    ti->rcu_stop();
   }
   return 0;
 }

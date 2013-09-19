@@ -40,7 +40,7 @@ enum {
     Cmd_Checkpoint,
     Cmd_Scan,
     Cmd_Remove,
-    Cmd_Put_Status,
+    Cmd_Handshake,
     Cmd_Max
 };
 

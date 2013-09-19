@@ -17,6 +17,8 @@
 #define KVC_HH 1
 #include "kvproto.hh"
 #include "kvrow.hh"
+#include "json.hh"
+#include "msgpack.hh"
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -28,8 +30,8 @@
 
 class KVConn {
   public:
-    KVConn(const char *server, int port, int target_core = -1) {
-        kvbuf_ = new_bufkvout();
+    KVConn(const char *server, int port, int target_core = -1)
+        : inbufpos_(0), inbuflen_(0), j_(Json::make_array()) {
         struct hostent *ent = gethostbyname(server);
         always_assert(ent);
         int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -50,13 +52,12 @@ class KVConn {
             exit(EXIT_FAILURE);
         }
 
-        in_ = new_kvin(fd, 64*1024);
+        infd_ = fd;
         out_ = new_kvout(fd, 64*1024);
         handshake(target_core);
     }
-    KVConn(int fd, bool tcp) {
-        kvbuf_ = new_bufkvout();
-        in_ = new_kvin(fd, 64*1024);
+    KVConn(int fd, bool tcp)
+        : inbufpos_(0), inbuflen_(0), infd_(fd), j_(Json::make_array()) {
         out_ = new_kvout(fd, 64*1024);
         fdtoclose_ = -1;
         if (tcp)
@@ -65,179 +66,151 @@ class KVConn {
     ~KVConn() {
         if (fdtoclose_ >= 0)
             close(fdtoclose_);
-        free_kvin(in_);
         free_kvout(out_);
-        free_kvout(kvbuf_);
     }
     void sendgetwhole(Str key, unsigned int seq) {
-        row_type::fields_type f;
-        row_type::make_get1_fields(f);
-        sendget(key, f, seq);
+        j_.resize(3);
+        j_[0] = seq;
+        j_[1] = Cmd_Get;
+        j_[2] = String::make_stable(key);
+        send();
     }
     void sendget(Str key, const row_type::fields_type& f, unsigned int seq) {
-        KVW(out_, (int)Cmd_Get);
-        KVW(out_, seq);
-	if (key.len > MaxKeyLen) {
-	    fprintf(stderr, "maxkeylen %d, %*.s\n", key.len, key.len, key.s);
-	    exit(EXIT_FAILURE);
-	}
-        kvwrite_str(out_, key);
-        // Write fields
-        kvout_reset(kvbuf_);
-        row_type::kvwrite_fields(kvbuf_, f);
-        kvwrite_str(out_, Str(kvbuf_->buf, kvbuf_->n));
+        j_.resize(4);
+        j_[0] = seq;
+        j_[1] = Cmd_Get;
+        j_[2] = String::make_stable(key);
+        j_[3] = Json(f.begin(), f.end());
+        send();
     }
 
-    // return the length of the value if successful (>=0);
-    // -1 if I/O error
-    // -2 if the key is not found
-    int recvget(std::vector<std::string> &row, unsigned int *seq, bool gotseq) {
-        if(!gotseq && kvread(in_, (char*)seq, sizeof(*seq)) != sizeof(*seq))
-            return -1;
-        if (kvread_row(in_, row) < 0)
-            return -1;
-        return 0;
-    }
-
-    void sendputwhole(Str key, Str val, unsigned int seq,
-		      bool need_status = false) {
-        row_type::change_type c;
-        row_type::make_put1_change(c, val);
-        sendput(key, c, seq, need_status);
-    }
-    void sendput(Str key, row_type::change_type& c, unsigned int seq,
-		 bool need_status = false) {
+    void sendput(Str key, row_type::change_type& c, unsigned int seq) {
 	row_type::sort(c);
-        KVW(out_, (int) (need_status ? Cmd_Put_Status : Cmd_Put));
-        KVW(out_, seq);
-	if (key.len > MaxKeyLen) {
-	    fprintf(stderr, "maxkeylen %d, %.*s\n", key.len, key.len, key.s);
-	    exit(EXIT_FAILURE);
-	}
-        kvwrite_str(out_, key);
-        // write change
-        kvout_reset(kvbuf_);
-        row_type::kvwrite_change(kvbuf_, c);
-        kvwrite_str(out_, Str(kvbuf_->buf, kvbuf_->n));
+        j_.resize(3);
+        j_[0] = seq;
+        j_[1] = Cmd_Put;
+        j_[2] = String::make_stable(key);
+        out_changeset_.clear();
+        for (auto it = c.begin(); it != c.end(); ++it) {
+            char* x = out_changeset_.extend(sizeof(it->c_fid) + sizeof(int32_t) + it->c_value.len);
+            write_in_host_order(x, it->c_fid);
+            write_in_host_order(x + sizeof(it->c_fid), int32_t(it->c_value.len));
+            memcpy(x + sizeof(it->c_fid) + sizeof(int32_t), it->c_value.data(), it->c_value.length());
+        }
+        j_[3] = String::make_stable(out_changeset_.data(), out_changeset_.length());
+        send();
+    }
+    void sendputwhole(Str key, Str val, unsigned int seq) {
+        j_.resize(3);
+        j_[0] = seq;
+        j_[1] = Cmd_Replace;
+        j_[2] = String::make_stable(key);
+        j_[3] = String::make_stable(val);
+        send();
     }
     void sendremove(Str key, unsigned int seq) {
-        KVW(out_, (int)Cmd_Remove);
-        KVW(out_, seq);
-	if (key.len > MaxKeyLen) {
-	    fprintf(stderr, "maxkeylen %d, %.*s\n", key.len, key.len, key.s);
-	    exit(EXIT_FAILURE);
-	}
-        kvwrite_str(out_, key);
+        j_.resize(3);
+        j_[0] = seq;
+        j_[1] = Cmd_Remove;
+        j_[2] = String::make_stable(key);
+        send();
     }
-    int recvput(unsigned int *seq, bool gotseq) {
-        if(!gotseq && kvread(in_, (char*)seq, sizeof(*seq)) != sizeof(*seq))
-            return -1;
-        return 0;
-    }
-    int recvputstatus(int *status, unsigned int *seq, bool gotseq) {
-        if(!gotseq && kvread(in_, (char*)seq, sizeof(*seq)) != sizeof(*seq))
-            return -1;
-	if (kvread(in_, (char *) status, sizeof(*status)) != sizeof(*status))
-	    return -1;
-        return 0;
-    }
-    int recvremove(int *status, unsigned int *seq, bool gotseq) {
-        if (!gotseq && kvread(in_, (char*)seq, sizeof(*seq)) != sizeof(*seq))
-            return -1;
-	if (kvread(in_, (char *) status, sizeof(*status)) != sizeof(*status))
-	    return -1;
-        return 0;
-    }
+
     void sendscanwhole(Str firstkey, int numpairs, unsigned int seq) {
-        row_type::fields_type f;
-        row_type::make_get1_fields(f);
-        sendscan(firstkey, f, numpairs, seq);
+        j_.resize(4);
+        j_[0] = seq;
+        j_[1] = Cmd_Scan;
+        j_[2] = String::make_stable(firstkey);
+        j_[3] = numpairs;
+        send();
     }
     void sendscan(Str firstkey, const row_type::fields_type& f, int numpairs,
                   unsigned int seq) {
-        KVW(out_, (int)Cmd_Scan);
-        KVW(out_, seq);
-        kvwrite_str(out_, firstkey);
-        // write fields
-        kvout_reset(kvbuf_);
-        row_type::kvwrite_fields(kvbuf_, f);
-        kvwrite_str(out_, Str(kvbuf_->buf, kvbuf_->n));
-        // write numpairs
-        KVW(out_, numpairs);
-    }
-    int recvscan(std::vector<std::string> &keys,
-                 std::vector<std::vector<std::string> > &rows,
-	         unsigned int *seq, bool gotseq) {
-        if(!gotseq) {
-            unsigned int tmpseq;
-            if (!seq)
-                seq = &tmpseq;
-            if (kvread(in_, (char*)seq, sizeof(*seq)) != sizeof(*seq))
-                return -1;
-        }
-        while(1){
-            char keybuf[MaxKeyLen];
-            int keylen;
-            if (kvread_str(in_, keybuf, MaxKeyLen, keylen) < 0)
-                return -1;
-            if (keylen == 0)
-                return 0;
-            keys.push_back(std::string(keybuf, keylen));
-            std::vector<std::string> row;
-            if (kvread_row(in_, row) < 0)
-                return -1;
-            rows.push_back(std::move(row));
-        }
+        j_.resize(5);
+        j_[0] = seq;
+        j_[1] = Cmd_Scan;
+        j_[2] = String::make_stable(firstkey);
+        j_[3] = numpairs;
+        j_[4] = Json(f.begin(), f.end());
+        send();
     }
 
     void checkpoint(int childno) {
 	always_assert(childno == 0);
         fprintf(stderr, "asking for a checkpoint\n");
-        KVW(out_, (int)Cmd_Checkpoint);
-        KVW(out_, (int)0);
+        j_.resize(2);
+        j_[0] = 0;
+        j_[1] = Cmd_Checkpoint;
+        send();
         flush();
+
         printf("sent\n");
+        (void) receive();
     }
 
     void flush() {
         kvflush(out_);
     }
-    void readseq(unsigned int *seq) {
-        ssize_t r = kvread(in_, (char*)seq, sizeof(*seq));
-        always_assert((size_t) r == sizeof(*seq));
-    }
 
     int check(int tryhard) {
-        return kvcheck(in_, tryhard);
+        if (inbufpos_ == inbuflen_ && tryhard)
+            hard_check(tryhard);
+        return inbuflen_ - inbufpos_;
+    }
+
+    const Json& receive() {
+        while (!parser_.done() && check(2))
+            inbufpos_ += parser_.consume(inbuf_.data() + inbufpos_,
+                                         inbuflen_ - inbufpos_, inbuf_);
+        if (parser_.success() && parser_.result().is_a()) {
+            parser_.reset();
+            return parser_.result();
+        } else
+            return Json::null_json;
     }
 
   private:
-    struct kvin *in_;
+    enum { inbufsz = 64 * 1024, inbufrefill = 56 * 1024 };
+    String inbuf_;
+    int inbufpos_;
+    int inbuflen_;
+    int infd_;
+
     struct kvout *out_;
-    struct kvout *kvbuf_;
+    lcdf::StringAccum out_changeset_;
+
+    Json j_;
+    msgpack::streaming_parser parser_;
 
     int fdtoclose_;
     int partition_;
 
     void handshake(int target_core) {
         KVW(out_, target_core);
-        struct kvproto p;
-        kvproto_init(p);
-        KVW(out_, p);
+
+        j_.resize(4);
+        j_[0] = 0;
+        j_[1] = Cmd_Handshake;
+        j_[2] = KVDB_ROW_TYPE_ID;
+        j_[3] = MaxKeyLen;
+        send();
         kvflush(out_);
-        bool ok;
-        int r = KVR(in_, ok);
-	r = KVR(in_, partition_);
-	if (r <= 0) {
-	    fprintf(stderr, "Connection closed by a crashed server?\n");
-	    exit(EXIT_FAILURE);
-	}
-        if (!ok) {
+
+        const Json& result = receive();
+        if (!result.is_a()
+            || result[1] != Cmd_Handshake
+            || !result[2]) {
             fprintf(stderr, "Incompatible kvdb protocol. Make sure the "
                     "client uses the same row type as the kvd.\n");
             exit(EXIT_FAILURE);
         }
+        partition_ = result[3].as_i();
     }
+    inline void send() {
+        msgpack::compact_unparser up;
+        up.unparse(*out_, j_);
+    }
+    void hard_check(int tryhard);
 };
 
 #endif
