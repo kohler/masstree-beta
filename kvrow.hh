@@ -46,31 +46,6 @@ struct row_base {
     };
     typedef KUtil::vec<cell_type> change_type;
     typedef KUtil::vec<index_type> fields_type;
-    static int parse_fields(Str v, fields_type& f) {
-	struct kvin kvin;
-        kvin_init(&kvin, const_cast<char *>(v.s), v.len);
-        return kvread_fields(&kvin, f);
-    }
-    static int kvread_fields(struct kvin* kvin, fields_type& f) {
-        short n;
-        KVR(kvin, n);
-        f.resize(n);
-        for (short i = 0; i < n; i++)
-            KVR(kvin, f[i]);
-        return 0;
-    }
-    static int kvwrite_fields(struct kvout* kvout, const fields_type& f) {
-        short n = f.size();
-	for (short i = 1; i < n; i++)
-	    if (!(f[i - 1] < f[i])) {
-	        assert(0 && "The fields must be sorted");
-		exit(EXIT_FAILURE);
-	    }
-        KVW(kvout, n);
-        for (short i = 0; i < n; i++)
-            KVW(kvout, f[i]);
-        return 0;
-    }
     static void sort(change_type& c) {
 	std::sort(c.begin(), c.end());
     }
@@ -135,8 +110,6 @@ class query {
     typedef lcdf::Json Json;
 
     template <typename T>
-    bool run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti);
-    template <typename T>
     void run_get(T& table, Json& req, threadinfo& ti);
     template <typename T>
     bool run_get1(T& table, Str key, int col, Str& value, threadinfo& ti);
@@ -148,9 +121,6 @@ class query {
     template <typename T>
     bool run_remove(T& table, Str key, threadinfo& ti);
 
-    template <typename T>
-    void run_scan(T& table, Str startkey, int npairs, Str req, kvout* kv,
-                  threadinfo& ti);
     template <typename T>
     void run_scan(T& table, Json& request, threadinfo& ti);
     template <typename T>
@@ -209,19 +179,6 @@ void query<R>::emit_fields(const R* value, Json& req, threadinfo& ti) {
     }
 }
 
-
-template <typename R> template <typename T>
-bool query<R>::run_get(T& table, Str key, Str req, kvout* kv, threadinfo& ti) {
-    typename T::unlocked_cursor_type lp(table, key);
-    bool found = lp.find_unlocked(ti);
-    if (found && row_is_marker(lp.value()))
-        found = false;
-    if (found) {
-        R::parse_fields(req, f_);
-        emit_fields(lp.value(), kv, ti);
-    }
-    return found;
-}
 
 template <typename R> template <typename T>
 void query<R>::run_get(T& table, Json& req, threadinfo& ti) {
@@ -418,15 +375,6 @@ class query_json_scanner {
     lcdf::Json& request_;
     lcdf::Json temp_;
 };
-
-template <typename R> template <typename T>
-void query<R>::run_scan(T& table, Str startkey, int npairs, Str req, kvout* kv,
-                        threadinfo& ti) {
-    assert(npairs > 0);
-    query_scanner<R> scanf(*this, npairs, kv);
-    R::parse_fields(req, f_);
-    table.scan(startkey, true, scanf, ti);
-}
 
 template <typename R> template <typename T>
 void query<R>::run_scan(T& table, Json& request, threadinfo& ti) {
