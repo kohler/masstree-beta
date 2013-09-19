@@ -526,11 +526,16 @@ run_child(void (*fn)(struct child *), int childno)
 
 void KVConn::hard_check(int tryhard) {
     masstree_precondition(inbufpos_ == inbuflen_);
-    if (inbuf_.length() != inbufsz
-        || (inbufpos_ >= inbufrefill && inbuf_.data_shared()))
-        inbuf_ = String::make_uninitialized(inbufsz);
-    if (!inbuf_.data_shared())
+    if (parser_.empty()) {
         inbufpos_ = inbuflen_ = 0;
+        for (auto x : oldinbuf_)
+            delete[] x;
+        oldinbuf_.clear();
+    } else if (inbufpos_ == inbufsz) {
+        oldinbuf_.push_back(inbuf_);
+        inbuf_ = new char[inbufsz];
+        inbufpos_ = inbuflen_ = 0;
+    }
     if (tryhard == 1) {
         fd_set rfds;
         FD_ZERO(&rfds);
@@ -541,8 +546,7 @@ void KVConn::hard_check(int tryhard) {
     } else
         kvflush(out_);
 
-    ssize_t r = read(infd_, const_cast<char*>(inbuf_.data()) + inbufpos_,
-                     inbuf_.length() - inbufpos_);
+    ssize_t r = read(infd_, inbuf_ + inbufpos_, inbufsz - inbufpos_);
     if (r != -1)
         inbuflen_ += r;
 }

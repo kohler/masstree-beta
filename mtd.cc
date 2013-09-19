@@ -460,26 +460,31 @@ void runtest(const char *testname, int nthreads) {
 struct conn {
     bool ready;
     int fd;
-    String inbuf_;
+    char* inbuf_;
     int inbufpos_;
     int inbuflen_;
+    std::vector<char*> oldinbuf_;
     msgpack::streaming_parser parser_;
     struct kvout *kvout;
     enum { inbufsz = 20 * 1024, inbufrefill = 16 * 1024 };
 
     conn(int s)
-        : ready(false), fd(s), inbufpos_(0), inbuflen_(0),
-          kvout(new_kvout(s, 20 * 1024)) {
+        : ready(false), fd(s), inbuf_(new char[inbufsz]),
+          inbufpos_(0), inbuflen_(0), kvout(new_kvout(s, 20 * 1024)) {
     }
     ~conn() {
         close(fd);
         free_kvout(kvout);
+        delete[] inbuf_;
+        for (char* x : oldinbuf_)
+            delete[] x;
     }
 
     Json& receive() {
         while (!parser_.done() && check(2))
-            inbufpos_ += parser_.consume(inbuf_.data() + inbufpos_,
-                                         inbuflen_ - inbufpos_, inbuf_);
+            inbufpos_ += parser_.consume(inbuf_ + inbufpos_,
+                                         inbuflen_ - inbufpos_,
+                                         String::make_stable(inbuf_, inbufsz));
         if (parser_.success() && parser_.result().is_a())
             parser_.reset();
         else
@@ -499,11 +504,16 @@ struct conn {
 
 void conn::hard_check(int tryhard) {
     masstree_precondition(inbufpos_ == inbuflen_);
-    if (inbuf_.length() != inbufsz
-        || (inbufpos_ >= inbufrefill && inbuf_.data_shared()))
-        inbuf_ = String::make_uninitialized(inbufsz);
-    if (!inbuf_.data_shared())
+    if (parser_.empty()) {
         inbufpos_ = inbuflen_ = 0;
+        for (auto x : oldinbuf_)
+            delete[] x;
+        oldinbuf_.clear();
+    } else if (inbufpos_ == inbufsz) {
+        oldinbuf_.push_back(inbuf_);
+        inbuf_ = new char[inbufsz];
+        inbufpos_ = inbuflen_ = 0;
+    }
     if (tryhard == 1) {
         fd_set rfds;
         FD_ZERO(&rfds);
@@ -514,8 +524,7 @@ void conn::hard_check(int tryhard) {
     } else
         kvflush(kvout);
 
-    ssize_t r = read(fd, const_cast<char*>(inbuf_.data()) + inbufpos_,
-                     inbuf_.length() - inbufpos_);
+    ssize_t r = read(fd, inbuf_ + inbufpos_, inbufsz - inbufpos_);
     if (r != -1)
         inbuflen_ += r;
 }

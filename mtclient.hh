@@ -31,7 +31,8 @@
 class KVConn {
   public:
     KVConn(const char *server, int port, int target_core = -1)
-        : inbufpos_(0), inbuflen_(0), j_(Json::make_array()) {
+        : inbuf_(new char[inbufsz]), inbufpos_(0), inbuflen_(0),
+          j_(Json::make_array()) {
         struct hostent *ent = gethostbyname(server);
         always_assert(ent);
         int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -57,7 +58,8 @@ class KVConn {
         handshake(target_core);
     }
     KVConn(int fd, bool tcp)
-        : inbufpos_(0), inbuflen_(0), infd_(fd), j_(Json::make_array()) {
+        : inbuf_(new char[inbufsz]), inbufpos_(0), inbuflen_(0), infd_(fd),
+          j_(Json::make_array()) {
         out_ = new_kvout(fd, 64*1024);
         fdtoclose_ = -1;
         if (tcp)
@@ -67,6 +69,9 @@ class KVConn {
         if (fdtoclose_ >= 0)
             close(fdtoclose_);
         free_kvout(out_);
+        delete[] inbuf_;
+        for (auto x : oldinbuf_)
+            delete[] x;
     }
     void sendgetwhole(Str key, unsigned int seq) {
         j_.resize(3);
@@ -160,20 +165,22 @@ class KVConn {
 
     const Json& receive() {
         while (!parser_.done() && check(2))
-            inbufpos_ += parser_.consume(inbuf_.data() + inbufpos_,
-                                         inbuflen_ - inbufpos_, inbuf_);
-        if (parser_.success() && parser_.result().is_a()) {
+            inbufpos_ += parser_.consume(inbuf_ + inbufpos_,
+                                         inbuflen_ - inbufpos_,
+                                         String::make_stable(inbuf_, inbufsz));
+        if (parser_.success() && parser_.result().is_a())
             parser_.reset();
-            return parser_.result();
-        } else
-            return Json::null_json;
+        else
+            parser_.result() = Json();
+        return parser_.result();
     }
 
   private:
     enum { inbufsz = 64 * 1024, inbufrefill = 56 * 1024 };
-    String inbuf_;
+    char* inbuf_;
     int inbufpos_;
     int inbuflen_;
+    std::vector<char*> oldinbuf_;
     int infd_;
 
     struct kvout *out_;
