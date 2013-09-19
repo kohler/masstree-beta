@@ -416,10 +416,15 @@ main(int argc, char *argv[])
       always_assert(r == 0);
       pipes[0] = ptmp[0];
       int stdout_fd = dup(STDOUT_FILENO);
-      dup2(ptmp[1], STDOUT_FILENO);
+      always_assert(stdout_fd > 0);
+      r = dup2(ptmp[1], STDOUT_FILENO);
+      always_assert(r >= 0);
       close(ptmp[1]);
       run_child(tests[test].fn, 0);
-      dup2(stdout_fd, STDOUT_FILENO);
+      fflush(stdout);
+      r = dup2(stdout_fd, STDOUT_FILENO);
+      always_assert(r >= 0);
+      close(stdout_fd);
   }
 
   long long total = 0;
