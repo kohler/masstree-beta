@@ -20,6 +20,7 @@
 #include "query_masstree.hh"
 #include "masstree_tcursor.hh"
 #include "masstree_insert.hh"
+#include "masstree_remove.hh"
 #include "misc.hh"
 #include <sys/types.h>
 #include <sys/stat.h>
