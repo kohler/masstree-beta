@@ -28,6 +28,10 @@ struct kvin {
     // buf[i0..i1-1] are valid
     int i0;
     int i1;
+
+    inline bool empty() const {
+        return i0 == i1;
+    }
 };
 
 kvin* new_kvin(int fd, int buflen);
@@ -43,8 +47,13 @@ int mayblock_kvoneread(kvin* kv);
 struct kvout {
     int fd;
     char* buf;
-    uint64_t len; // allocated size of buf
-    uint64_t n;   // # of chars we've written to buf
+    unsigned capacity; // allocated size of buf
+    unsigned n;   // # of chars we've written to buf
+
+    inline void append(char c);
+    inline char* reserve(int n);
+    inline void adjust_length(int delta);
+    void grow(unsigned want);
 };
 
 kvout* new_kvout(int fd, int buflen);
@@ -61,7 +70,7 @@ inline int KVR(kvin* kv, T& x) {
 
 template <typename T>
 inline int KVW(kvout* kv, const T& x) {
-    if (kv->len - kv->n >= (int) sizeof(x)) {
+    if (kv->capacity - kv->n >= (int) sizeof(x)) {
         *(T*) (kv->buf + kv->n) = x;
         kv->n += sizeof(x);
     } else
@@ -137,6 +146,24 @@ inline int kvread_row(struct kvin* kv, std::vector<std::string>& row) {
         row.push_back(std::move(val));
     }
     return sizeof(n) + x;
+}
+
+inline void kvout::append(char c) {
+    if (n == capacity)
+        grow(0);
+    buf[n] = c;
+    ++n;
+}
+
+inline char* kvout::reserve(int nchars) {
+    if (n + nchars > capacity)
+        grow(n + nchars);
+    return buf + n;
+}
+
+inline void kvout::adjust_length(int delta) {
+    masstree_precondition(n + delta <= capacity);
+    n += delta;
 }
 
 #endif
