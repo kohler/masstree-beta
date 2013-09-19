@@ -307,7 +307,7 @@ void kvtest_client::put(const Str &key, const Str &value) {
 	/* do nothing */;
     q_[0].run_replace(tree->table(), key, value, *ti_);
     if (ti_->ti_log) // NB may block
-	ti_->ti_log->record(logcmd_put1, q_[0].query_times(), key, value);
+	ti_->ti_log->record(logcmd_replace, q_[0].query_times(), key, value);
 }
 
 void kvtest_client::put_col(const Str &key, int col, const Str &value) {

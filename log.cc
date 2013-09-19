@@ -448,7 +448,7 @@ logrecord::extract(const char *buf, const char *end)
     }
 
     command = lr->command_;
-    if (command == logcmd_put || command == logcmd_put1
+    if (command == logcmd_put || command == logcmd_replace
 	|| command == logcmd_remove) {
 	const logrec_kv *lk = reinterpret_cast<const logrec_kv *>(buf);
 	if (unlikely(lk->size_ < sizeof(*lk)
@@ -525,7 +525,7 @@ inline void logrecord::apply(row_type*& value, bool found, threadinfo& ti) {
         }
 
     // actually apply change
-    if (command == logcmd_put1)
+    if (command == logcmd_replace)
         *cur_value = row_type::create1(val, ts, ti);
     else if (command != logcmd_modify) {
         serial_changeset<row_type::index_type> changeset(val);
@@ -611,7 +611,7 @@ logreplay::info() const
 	    x.wake_epoch = x.last_epoch;
 #if !NDEBUG
 	else if (lr->command_ != logcmd_put
-		 && lr->command_ != logcmd_put1
+		 && lr->command_ != logcmd_replace
 		 && lr->command_ != logcmd_modify
 		 && lr->command_ != logcmd_remove
 		 && lr->command_ != logcmd_quiesce) {
@@ -702,7 +702,7 @@ logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
 	repend = nextpos;
 	if (lr.key.len) { // skip empty entry
             if (lr.command == logcmd_put
-                || lr.command == logcmd_put1
+                || lr.command == logcmd_replace
                 || lr.command == logcmd_modify
                 || lr.command == logcmd_remove)
                 lr.run(tree->table(), *ti);

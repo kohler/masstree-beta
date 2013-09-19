@@ -35,7 +35,8 @@ inline bool kvproto_check(const kvproto &kvproto) {
 enum {
     Cmd_None = 0,
     Cmd_Get,
-    Cmd_Put,			// does not return status
+    Cmd_Put,
+    Cmd_Replace,
     Cmd_Checkpoint,
     Cmd_Scan,
     Cmd_Remove,

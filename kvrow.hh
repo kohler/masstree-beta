@@ -138,7 +138,7 @@ class query {
     template <typename T>
     result_t run_put(T& table, Str key, Str req, threadinfo& ti);
     template <typename T>
-    void run_replace(T& table, Str key, Str value, threadinfo& ti);
+    result_t run_replace(T& table, Str key, Str value, threadinfo& ti);
     template <typename T>
     bool run_remove(T& table, Str key, threadinfo& ti);
 
@@ -164,8 +164,8 @@ class query {
     void emit_fields(const R* value, kvout* kv, threadinfo& ti);
     void assign_timestamp(threadinfo& ti);
     void assign_timestamp(threadinfo& ti, kvtimestamp_t t);
-    inline result_t apply_put(R*& value, bool found, Str req, threadinfo& ti);
-    inline void apply_replace(R*& value, bool found, Str new_value,
+    inline bool apply_put(R*& value, bool found, Str req, threadinfo& ti);
+    inline bool apply_replace(R*& value, bool found, Str new_value,
                               threadinfo& ti);
     inline void apply_remove(R*& value, kvtimestamp_t& node_ts, threadinfo& ti);
 
@@ -232,14 +232,14 @@ result_t query<R>::run_put(T& table, Str key, Str req, threadinfo& ti) {
     bool found = lp.find_insert(ti);
     if (!found)
         ti.advance_timestamp(lp.node_timestamp());
-    result_t r = apply_put(lp.value(), found, req, ti);
+    bool inserted = apply_put(lp.value(), found, req, ti);
     lp.finish(1, ti);
-    return r;
+    return inserted ? Inserted : Updated;
 }
 
 template <typename R>
-inline result_t query<R>::apply_put(R*& value, bool found, Str req,
-                                    threadinfo& ti) {
+inline bool query<R>::apply_put(R*& value, bool found, Str req,
+                                threadinfo& ti) {
     serial_changeset<typename R::index_type> changeset(req);
 
     if (loginfo* log = ti.ti_log) {
@@ -251,7 +251,7 @@ inline result_t query<R>::apply_put(R*& value, bool found, Str req,
     insert:
 	assign_timestamp(ti);
         value = R::create(changeset, qtimes_.ts, ti);
-	return Inserted;
+        return true;
     }
 
     R* old_value = value;
@@ -266,27 +266,29 @@ inline result_t query<R>::apply_put(R*& value, bool found, Str req,
 	value = updated;
 	old_value->deallocate_rcu_after_update(changeset, ti);
     }
-    return Updated;
+    return false;
 }
 
 template <typename R> template <typename T>
-void query<R>::run_replace(T& table, Str key, Str value, threadinfo& ti) {
+result_t query<R>::run_replace(T& table, Str key, Str value, threadinfo& ti) {
     typename T::cursor_type lp(table, key);
     bool found = lp.find_insert(ti);
     if (!found)
         ti.advance_timestamp(lp.node_timestamp());
-    apply_replace(lp.value(), found, value, ti);
+    bool inserted = apply_replace(lp.value(), found, value, ti);
     lp.finish(1, ti);
+    return inserted ? Inserted : Updated;
 }
 
 template <typename R>
-inline void query<R>::apply_replace(R*& value, bool found, Str new_value,
+inline bool query<R>::apply_replace(R*& value, bool found, Str new_value,
                                     threadinfo& ti) {
     if (loginfo* log = ti.ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
 
+    bool inserted = !found || row_is_marker(value);
     if (!found)
 	assign_timestamp(ti);
     else {
@@ -295,6 +297,7 @@ inline void query<R>::apply_replace(R*& value, bool found, Str new_value,
     }
 
     value = R::create1(new_value, qtimes_.ts, ti);
+    return inserted;
 }
 
 template <typename R> template <typename T>

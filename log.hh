@@ -117,7 +117,7 @@ extern struct timeval log_epoch_interval;
 enum logcommand {
     logcmd_none = 0,
     logcmd_put = 0x5455506B,		// "kPUT" in little endian
-    logcmd_put1 = 0x3155506B,		// "kPU1"
+    logcmd_replace = 0x3155506B,	// "kPU1"
     logcmd_modify = 0x444F4D6B,		// "kMOD"
     logcmd_remove = 0x4D45526B,		// "kREM"
     logcmd_epoch = 0x4F50456B,		// "kEPO"
