@@ -339,6 +339,8 @@ void Json::resize(size_type n) {
         --u_.a.a->size;
         u_.a.a->a[u_.a.a->size].~Json();
     }
+    while (u_.a.a->size < n)
+        push_back(Json());
 }
 
 
