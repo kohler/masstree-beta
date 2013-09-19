@@ -236,7 +236,7 @@ int main(int argc, char** argv) {
     }
 
     {
-        Json j = Json::make_array(1, 2, 3, 4, 5, 6, 7, 8);
+        Json j = Json::array(1, 2, 3, 4, 5, 6, 7, 8);
         CHECK(j.unparse() == "[1,2,3,4,5,6,7,8]");
         Json jcopy = j;
         CHECK(j.unparse() == "[1,2,3,4,5,6,7,8]");
@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
 
 #if 0
     {
-        Json j = Json::make_array(1, 2, 3);
+        Json j = Json::array(1, 2, 3);
         //int j[3] = {1, 2, 3};
         for (int i = 0; i < 1000000; ++i)
             incr(j[1].value());

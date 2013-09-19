@@ -91,9 +91,10 @@ class Json {
 
     static inline const Json& make_null();
     static inline Json make_array();
-    template <typename T, typename... U>
-    static inline Json make_array(T first, U... rest);
     static inline Json make_array_reserve(int n);
+    static inline Json array();
+    template <typename T, typename... U>
+    static inline Json array(T first, U... rest);
     static inline Json make_object();
     static inline Json make_string(const String& x);
     static inline Json make_string(const char* s, int len);
@@ -1526,9 +1527,15 @@ inline Json Json::make_array() {
     j.u_.x.type = j_array;
     return j;
 }
+/** @brief Return an empty array-valued Json. */
+inline Json Json::array() {
+    Json j;
+    j.u_.x.type = j_array;
+    return j;
+}
 /** @brief Return an array-valued Json containing [first, rest...]. */
 template <typename T, typename... U>
-inline Json Json::make_array(T first, U... rest) {
+inline Json Json::array(T first, U... rest) {
     Json j;
     j.u_.x.type = j_array;
     j.push_back(first);
