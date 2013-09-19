@@ -292,7 +292,7 @@ struct kvtest_client {
     kvout *kvo_;
 
   private:
-    void output_scan(std::vector<Str> &keys, std::vector<Str> &values) const;
+    void output_scan(const Json& req, std::vector<Str>& keys, std::vector<Str>& values) const;
 };
 
 static volatile int kvtest_printing;
@@ -374,41 +374,28 @@ template <typename T>
 void kvtest_client<T>::scan_sync(const Str &firstkey, int n,
 				 std::vector<Str> &keys,
 				 std::vector<Str> &values) {
-    if (!kvo_)
-	kvo_ = new_kvout(-1, 2048);
-    kvout_reset(kvo_);
-    q_[0].run_scan1(table_->table(), firstkey, n, kvo_, *ti_);
-    output_scan(keys, values);
+    Json req = Json::array(0, 0, firstkey, n);
+    q_[0].run_scan1(table_->table(), req, *ti_);
+    output_scan(req, keys, values);
 }
 
 template <typename T>
 void kvtest_client<T>::rscan_sync(const Str &firstkey, int n,
 				  std::vector<Str> &keys,
 				  std::vector<Str> &values) {
-    if (!kvo_)
-	kvo_ = new_kvout(-1, 2048);
-    kvout_reset(kvo_);
-    q_[0].run_rscan1(table_->table(), firstkey, n, kvo_, *ti_);
-    output_scan(keys, values);
+    Json req = Json::array(0, 0, firstkey, n);
+    q_[0].run_rscan1(table_->table(), req, *ti_);
+    output_scan(req, keys, values);
 }
 
 template <typename T>
-void kvtest_client<T>::output_scan(std::vector<Str> &keys,
-				   std::vector<Str> &values) const {
+void kvtest_client<T>::output_scan(const Json& req, std::vector<Str>& keys,
+				   std::vector<Str>& values) const {
     keys.clear();
     values.clear();
-    Str key, value;
-
-    kvin kvi;
-    kvin_init(&kvi, kvo_->buf, kvo_->n);
-    short nfields;
-    while (kvcheck(&kvi, 0)) {
-	kvread_str_inplace(&kvi, key);
-	KVR(&kvi, nfields);
-	assert(nfields == 1);
-	kvread_str_inplace(&kvi, value);
-	keys.push_back(key);
-	values.push_back(value);
+    for (int i = 2; i != req.size(); i += 2) {
+        keys.push_back(req[i].as_s());
+        values.push_back(req[i + 1].as_s());
     }
 }
 

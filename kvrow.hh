@@ -101,7 +101,6 @@ struct query_helper {
     }
 };
 
-template <typename R> class query_scanner;
 template <typename R> class query_json_scanner;
 
 template <typename R>
@@ -124,11 +123,9 @@ class query {
     template <typename T>
     void run_scan(T& table, Json& request, threadinfo& ti);
     template <typename T>
-    void run_scan1(T& table, Str startkey, int npairs, kvout* kv,
-                   threadinfo& ti);
+    void run_scan1(T& table, Json& request, threadinfo& ti);
     template <typename T>
-    void run_rscan1(T& table, Str startkey, int npairs, kvout* kv,
-                    threadinfo& ti);
+    void run_rscan1(T& table, Json& request, threadinfo& ti);
 
     const loginfo::query_times& query_times() const {
         return qtimes_;
@@ -138,9 +135,11 @@ class query {
     typename R::fields_type f_;
     loginfo::query_times qtimes_;
     query_helper<R> helper_;
+    lcdf::String scankey_;
+    int scankeypos_;
 
-    void emit_fields(const R* value, kvout* kv, threadinfo& ti);
     void emit_fields(const R* value, Json& req, threadinfo& ti);
+    void emit_fields1(const R* value, Json& req, threadinfo& ti);
     void assign_timestamp(threadinfo& ti);
     void assign_timestamp(threadinfo& ti, kvtimestamp_t t);
     inline bool apply_put(R*& value, bool found, Str req, threadinfo& ti);
@@ -148,29 +147,28 @@ class query {
                               threadinfo& ti);
     inline void apply_remove(R*& value, kvtimestamp_t& node_ts, threadinfo& ti);
 
-    template <typename RR> friend class query_scanner;
     template <typename RR> friend class query_json_scanner;
 };
 
 
 template <typename R>
-void query<R>::emit_fields(const R* value, kvout* kv, threadinfo& ti) {
+void query<R>::emit_fields(const R* value, Json& req, threadinfo& ti) {
     const R* snapshot = helper_.snapshot(value, f_, ti);
     if (f_.empty()) {
-        KVW(kv, (short) snapshot->ncol());
         for (int i = 0; i != snapshot->ncol(); ++i)
-            KVW(kv, snapshot->col(i));
+            req.push_back(lcdf::String::make_stable(snapshot->col(i)));
     } else {
-        KVW(kv, (short) f_.size());
         for (int i = 0; i != (int) f_.size(); ++i)
-            KVW(kv, snapshot->col(f_[i]));
+            req.push_back(lcdf::String::make_stable(snapshot->col(f_[i])));
     }
 }
 
 template <typename R>
-void query<R>::emit_fields(const R* value, Json& req, threadinfo& ti) {
+void query<R>::emit_fields1(const R* value, Json& req, threadinfo& ti) {
     const R* snapshot = helper_.snapshot(value, f_, ti);
-    if (f_.empty()) {
+    if ((f_.empty() && snapshot->ncol() == 1) || f_.size() == 1)
+        req = lcdf::String::make_stable(snapshot->col(f_.empty() ? 0 : f_[0]));
+    else if (f_.empty()) {
         for (int i = 0; i != snapshot->ncol(); ++i)
             req.push_back(lcdf::String::make_stable(snapshot->col(i)));
     } else {
@@ -321,35 +319,12 @@ inline void query<R>::apply_remove(R*& value, kvtimestamp_t& node_ts,
 
 
 template <typename R>
-class query_scanner {
-  public:
-    query_scanner(query<R> &q, int nleft, kvout* kv)
-	: q_(q), nleft_(nleft), kv_(kv) {
-    }
-    template <typename SS, typename K>
-    void visit_leaf(const SS&, const K&, threadinfo&) {
-    }
-    bool visit_value(Str key, R* value, threadinfo& ti) {
-        if (row_is_marker(value))
-            return true;
-	KVW(kv_, key);
-        q_.emit_fields(value, kv_, ti);
-        --nleft_;
-        return nleft_ != 0;
-    }
-  private:
-    query<R> &q_;
-    int nleft_;
-    kvout* kv_;
-};
-
-template <typename R>
 class query_json_scanner {
   public:
     query_json_scanner(query<R> &q, lcdf::Json& request)
-	: q_(q), nleft_(request[3].as_i()), request_(request),
-          temp_(lcdf::Json::make_array()) {
+	: q_(q), nleft_(request[3].as_i()), request_(request) {
         request_.resize(2);
+        q_.scankeypos_ = 0;
     }
     template <typename SS, typename K>
     void visit_leaf(const SS&, const K&, threadinfo&) {
@@ -357,15 +332,17 @@ class query_json_scanner {
     bool visit_value(Str key, R* value, threadinfo& ti) {
         if (row_is_marker(value))
             return true;
-        q_.emit_fields(value, temp_, ti);
-        request_.push_back(key);
-        if (temp_.size() == 1) {
-            request_.push_back(temp_[0]);
-            temp_.clear();
-        } else {
-            request_.push_back(std::move(temp_));
-            temp_ = lcdf::Json::make_array();
+        // NB the `key` is not stable! We must save space for it.
+        while (q_.scankeypos_ + key.length() > q_.scankey_.length()) {
+            q_.scankey_ = lcdf::String::make_uninitialized(q_.scankey_.length() ? q_.scankey_.length() * 2 : 1024);
+            q_.scankeypos_ = 0;
         }
+        memcpy(const_cast<char*>(q_.scankey_.data() + q_.scankeypos_),
+               key.data(), key.length());
+        request_.push_back(q_.scankey_.substring(q_.scankeypos_, key.length()));
+        q_.scankeypos_ += key.length();
+        request_.push_back(lcdf::Json());
+        q_.emit_fields1(value, request_.back(), ti);
         --nleft_;
         return nleft_ != 0;
     }
@@ -373,7 +350,6 @@ class query_json_scanner {
     query<R> &q_;
     int nleft_;
     lcdf::Json& request_;
-    lcdf::Json temp_;
 };
 
 template <typename R> template <typename T>
@@ -388,21 +364,21 @@ void query<R>::run_scan(T& table, Json& request, threadinfo& ti) {
 }
 
 template <typename R> template <typename T>
-void query<R>::run_scan1(T& table, Str startkey, int npairs, kvout* kv,
-                         threadinfo& ti) {
-    assert(npairs > 0);
-    query_scanner<R> scanf(*this, npairs, kv);
+void query<R>::run_scan1(T& table, Json& request, threadinfo& ti) {
+    assert(request[3].as_i() > 0);
+    lcdf::Str key = request[2].as_s();
     R::make_get1_fields(f_);
-    table.scan(startkey, true, scanf, ti);
+    query_json_scanner<R> scanf(*this, request);
+    table.scan(key, true, scanf, ti);
 }
 
 template <typename R> template <typename T>
-void query<R>::run_rscan1(T& table, Str startkey, int npairs, kvout* kv,
-                          threadinfo& ti) {
-    assert(npairs > 0);
-    query_scanner<R> scanf(*this, npairs, kv);
+void query<R>::run_rscan1(T& table, Json& request, threadinfo& ti) {
+    assert(request[3].as_i() > 0);
+    lcdf::Str key = request[2].as_s();
     R::make_get1_fields(f_);
-    table.rscan(startkey, true, scanf, ti);
+    query_json_scanner<R> scanf(*this, request);
+    table.rscan(key, true, scanf, ti);
 }
 
 #include KVDB_ROW_TYPE_INCLUDE
