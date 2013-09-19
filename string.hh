@@ -152,7 +152,7 @@ class String : public String_base<String> {
 
     inline String compact() const;
 
-    inline bool data_shared() const;
+    inline bool shared() const;
     char* mutable_data();
     inline unsigned char* mutable_udata();
     char* mutable_c_str();
@@ -757,7 +757,7 @@ inline String &String::operator+=(const String_base<T> &x) {
 }
 
 /** @brief Test if the String's data is shared or immutable. */
-inline bool String::data_shared() const {
+inline bool String::shared() const {
     memo_type* m = _r.memo();
     return !m || m->refcount != 1;
 }

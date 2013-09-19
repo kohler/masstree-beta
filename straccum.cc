@@ -137,7 +137,7 @@ StringAccum::hard_extend(int nadjust, int nreserve)
 }
 
 void StringAccum::transfer_from(String& x) {
-    if (x.data_shared() || x._r.memo_offset != -memo_space) {
+    if (x.shared() || x._r.memo_offset != -memo_space) {
         append(x.begin(), x.end());
         x._r.deref();
     } else {
