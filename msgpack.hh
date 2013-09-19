@@ -284,6 +284,7 @@ class streaming_parser {
     local_vector<selem, 2> stack_;
     String str_;
     Json json_;
+    Json jokey_;
 };
 
 class parser {

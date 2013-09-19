@@ -29,8 +29,8 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
                                          const uint8_t* last,
                                          const String& str) {
     using std::swap;
-    Json j;
-    int n;
+    Json* jx;
+    int n = 0;
 
     if (state_ < 0)
         return first;
@@ -50,8 +50,9 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
             return next;
         first = next;
         if (state_ == st_string) {
-            j = Json(std::move(str_));
             stack_.pop_back();
+            jx = stack_.empty() ? &json_ : stack_.back().jp;
+            *jx = Json(std::move(str_));
             goto next;
         } else {
             state_ = st_normal;
@@ -62,33 +63,32 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
     }
 
     while (first != last) {
+        jx = stack_.empty() ? &json_ : stack_.back().jp;
+
         if (in_wrapped_range(*first, -format::nfixnegint, format::nfixint)) {
-            j = Json(int(int8_t(*first)));
+            *jx = Json(int(int8_t(*first)));
             ++first;
         } else if (*first == format::fnull) {
-            j = Json();
+            *jx = Json();
             ++first;
         } else if (in_range(*first, format::ffalse, 2)) {
-            j = Json(bool(*first - format::ffalse));
+            *jx = Json(bool(*first - format::ffalse));
             ++first;
         } else if (in_range(*first, format::ffixmap, format::nfixmap)) {
             n = *first - format::ffixmap;
             ++first;
         map:
-            if (stack_.empty() && json_.is_o()) {
-                swap(j, json_);
-                j.clear();
-            } else
-                j = Json::make_object();
+            if (jx->is_o())
+                jx->clear();
+            else
+                *jx = Json::make_object();
         } else if (in_range(*first, format::ffixarray, format::nfixarray)) {
             n = *first - format::ffixarray;
             ++first;
         array:
-            if (stack_.empty() && json_.is_a()) {
-                swap(j, json_);
-                j.clear();
-            } else
-                j = Json::make_array_reserve(n);
+            if (!jx->is_a())
+                *jx = Json::make_array_reserve(n);
+            jx->resize(n);
         } else if (in_range(*first, format::ffixstr, format::nfixstr)) {
             n = *first - format::ffixstr;
             ++first;
@@ -100,10 +100,10 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
                 return last;
             }
             if (first < str.ubegin() || first + n >= str.uend())
-                j = Json(String(first, n));
+                *jx = Json(String(first, n));
             else {
                 const char* s = reinterpret_cast<const char*>(first);
-                j = Json(str.fast_substring(s, s + n));
+                *jx = Json(str.fast_substring(s, s + n));
             }
             first += n;
         } else {
@@ -118,34 +118,34 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
             first += nbytes[type];
             switch (type) {
             case format::ffloat32 - format::fnull:
-                j = Json(read_in_net_order<float>(first - 4));
+                *jx = Json(read_in_net_order<float>(first - 4));
                 break;
             case format::ffloat64 - format::fnull:
-                j = Json(read_in_net_order<double>(first - 8));
+                *jx = Json(read_in_net_order<double>(first - 8));
                 break;
             case format::fuint8 - format::fnull:
-                j = Json(first[-1]);
+                *jx = Json(first[-1]);
                 break;
             case format::fuint16 - format::fnull:
-                j = Json(read_in_net_order<uint16_t>(first - 2));
+                *jx = Json(read_in_net_order<uint16_t>(first - 2));
                 break;
             case format::fuint32 - format::fnull:
-                j = Json(read_in_net_order<uint32_t>(first - 4));
+                *jx = Json(read_in_net_order<uint32_t>(first - 4));
                 break;
             case format::fuint64 - format::fnull:
-                j = Json(read_in_net_order<uint64_t>(first - 8));
+                *jx = Json(read_in_net_order<uint64_t>(first - 8));
                 break;
             case format::fint8 - format::fnull:
-                j = Json(int8_t(first[-1]));
+                *jx = Json(int8_t(first[-1]));
                 break;
             case format::fint16 - format::fnull:
-                j = Json(read_in_net_order<int16_t>(first - 2));
+                *jx = Json(read_in_net_order<int16_t>(first - 2));
                 break;
             case format::fint32 - format::fnull:
-                j = Json(read_in_net_order<int32_t>(first - 4));
+                *jx = Json(read_in_net_order<int32_t>(first - 4));
                 break;
             case format::fint64 - format::fnull:
-                j = Json(read_in_net_order<int64_t>(first - 8));
+                *jx = Json(read_in_net_order<int64_t>(first - 8));
                 break;
             case format::fbin8 - format::fnull:
             case format::fstr8 - format::fnull:
@@ -176,25 +176,20 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
 
         // Add it
     next:
-        Json* jp = stack_.empty() ? &json_ : stack_.back().jp;
-        if (jp->is_o() && !stack_.empty()) {
+        if (jx == &jokey_) {
             // Reading a key for some object Json
-            if (!j.is_s() && !j.is_i())
+            if (!jx->is_s() && !jx->is_i())
                 goto error;
-            --stack_.back().size;
-            stack_.push_back(selem{&jp->get_insert(j.to_s()), 0});
+            selem* top = &stack_.back();
+            Json* jo = (top == stack_.begin() ? &json_ : top[-1].jp);
+            top->jp = &jo->get_insert(jx->to_s());
             continue;
         }
 
-        if (jp->is_a() && !stack_.empty()) {
-            jp->push_back(std::move(j));
-            jp = &jp->back();
-            --stack_.back().size;
-        } else
-            swap(*jp, j);
-
-        if ((jp->is_a() || jp->is_o()) && n != 0)
-            stack_.push_back(selem{jp, n});
+        if (jx->is_a() && n != 0)
+            stack_.push_back(selem{&jx->at_insert(0), n - 1});
+        else if (jx->is_o() && n != 0)
+            stack_.push_back(selem{&jokey_, n - 1});
         else {
             while (!stack_.empty() && stack_.back().size == 0)
                 stack_.pop_back();
@@ -202,6 +197,13 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
                 state_ = st_final;
                 return first;
             }
+            selem* top = &stack_.back();
+            --top->size;
+            Json* jo = (top == stack_.begin() ? &json_ : top[-1].jp);
+            if (jo->is_a())
+                ++top->jp;
+            else
+                top->jp = &jokey_;
         }
     }
 
