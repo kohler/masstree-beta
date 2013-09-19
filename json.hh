@@ -276,6 +276,15 @@ class Json {
 #if HAVE_CXX_RVALUE_REFERENCES
     inline Json& operator=(Json&& x);
 #endif
+    inline Json& operator=(int x);
+    inline Json& operator=(unsigned x);
+    inline Json& operator=(long x);
+    inline Json& operator=(unsigned long x);
+    inline Json& operator=(long long x);
+    inline Json& operator=(unsigned long long x);
+    inline Json& operator=(double x);
+    inline Json& operator=(bool x);
+    inline Json& operator=(const String& x);
     template <typename P> inline Json& operator=(const Json_proxy_base<P>& x);
 
     inline Json& operator++();
@@ -304,7 +313,6 @@ class Json {
     inline void swap(Json& x);
 
   private:
-
     enum {
 	st_initial = 0, st_array_initial = 1, st_array_delim = 2,
 	st_array_value = 3, st_object_initial = 4, st_object_delim = 5,
@@ -349,6 +357,8 @@ class Json {
             int type;
         } x;
     } u_;
+
+    inline void deref();
 
     inline ObjectJson* ojson() const;
     inline ArrayJson* ajson() const;
@@ -1497,11 +1507,17 @@ inline Json::Json(T first, T last) {
     Json_iterator_initializer<typename std::iterator_traits<T>::value_type>::run(*this, first, last);
 }
 
-inline Json::~Json() {
+/** @cond never */
+inline void Json::deref() {
     if (u_.x.type < 0)
         u_.str.deref();
-    else if (u_.x.c && (u_.x.type == j_array || u_.x.type == j_object))
-        u_.x.c->deref((json_type) u_.x.type);
+    else if (u_.x.c && unsigned(u_.x.type - j_array) < 2)
+        u_.x.c->deref(json_type(u_.x.type));
+}
+/** @endcond never */
+
+inline Json::~Json() {
+    deref();
 }
 
 /** @brief Return an empty array-valued Json. */
@@ -2690,10 +2706,7 @@ inline Json& Json::operator=(const Json& x) {
         x.u_.str.ref();
     else if (x.u_.x.c && (x.u_.x.type == j_array || x.u_.x.type == j_object))
         x.u_.x.c->ref();
-    if (u_.x.type < 0)
-        u_.str.deref();
-    else if (u_.x.c && (u_.x.type == j_array || u_.x.type == j_object))
-        u_.x.c->deref((json_type) u_.x.type);
+    deref();
     u_ = x.u_;
     return *this;
 }
@@ -2710,6 +2723,69 @@ inline Json& Json::operator=(Json&& x) {
 template <typename U>
 inline Json& Json::operator=(const Json_proxy_base<U> &x) {
     return *this = x.cvalue();
+}
+
+inline Json& Json::operator=(int x) {
+    deref();
+    u_.i.x = x;
+    u_.i.type = j_int;
+    return *this;
+}
+
+inline Json& Json::operator=(unsigned x) {
+    deref();
+    u_.u.x = x;
+    u_.u.type = j_int;
+    return *this;
+}
+
+inline Json& Json::operator=(long x) {
+    deref();
+    u_.i.x = x;
+    u_.i.type = j_int;
+    return *this;
+}
+
+inline Json& Json::operator=(unsigned long x) {
+    deref();
+    u_.u.x = x;
+    u_.u.type = j_int;
+    return *this;
+}
+
+inline Json& Json::operator=(long long x) {
+    deref();
+    u_.i.x = x;
+    u_.i.type = j_int;
+    return *this;
+}
+
+inline Json& Json::operator=(unsigned long long x) {
+    deref();
+    u_.u.x = x;
+    u_.u.type = j_int;
+    return *this;
+}
+
+inline Json& Json::operator=(double x) {
+    deref();
+    u_.d.x = x;
+    u_.d.type = j_double;
+    return *this;
+}
+
+inline Json& Json::operator=(bool x) {
+    deref();
+    u_.i.x = x;
+    u_.i.type = j_bool;
+    return *this;
+}
+
+inline Json& Json::operator=(const String& x) {
+    deref();
+    u_.str = x.internal_rep();
+    u_.str.ref();
+    return *this;
 }
 /** @endcond never */
 

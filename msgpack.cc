@@ -52,7 +52,7 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
         if (state_ == st_string) {
             stack_.pop_back();
             jx = stack_.empty() ? &json_ : stack_.back().jp;
-            *jx = Json(std::move(str_));
+            *jx = str_;
             goto next;
         } else {
             state_ = st_normal;
@@ -66,13 +66,13 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
         jx = stack_.empty() ? &json_ : stack_.back().jp;
 
         if (in_wrapped_range(*first, -format::nfixnegint, format::nfixint)) {
-            *jx = Json(int(int8_t(*first)));
+            *jx = int(int8_t(*first));
             ++first;
         } else if (*first == format::fnull) {
             *jx = Json();
             ++first;
         } else if (in_range(*first, format::ffalse, 2)) {
-            *jx = Json(bool(*first - format::ffalse));
+            *jx = bool(*first - format::ffalse);
             ++first;
         } else if (in_range(*first, format::ffixmap, format::nfixmap)) {
             n = *first - format::ffixmap;
@@ -100,10 +100,10 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
                 return last;
             }
             if (first < str.ubegin() || first + n >= str.uend())
-                *jx = Json(String(first, n));
+                *jx = String(first, n);
             else {
                 const char* s = reinterpret_cast<const char*>(first);
-                *jx = Json(str.fast_substring(s, s + n));
+                *jx = str.fast_substring(s, s + n);
             }
             first += n;
         } else {
@@ -118,34 +118,34 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
             first += nbytes[type];
             switch (type) {
             case format::ffloat32 - format::fnull:
-                *jx = Json(read_in_net_order<float>(first - 4));
+                *jx = read_in_net_order<float>(first - 4);
                 break;
             case format::ffloat64 - format::fnull:
-                *jx = Json(read_in_net_order<double>(first - 8));
+                *jx = read_in_net_order<double>(first - 8);
                 break;
             case format::fuint8 - format::fnull:
-                *jx = Json(first[-1]);
+                *jx = int(first[-1]);
                 break;
             case format::fuint16 - format::fnull:
-                *jx = Json(read_in_net_order<uint16_t>(first - 2));
+                *jx = read_in_net_order<uint16_t>(first - 2);
                 break;
             case format::fuint32 - format::fnull:
-                *jx = Json(read_in_net_order<uint32_t>(first - 4));
+                *jx = read_in_net_order<uint32_t>(first - 4);
                 break;
             case format::fuint64 - format::fnull:
-                *jx = Json(read_in_net_order<uint64_t>(first - 8));
+                *jx = read_in_net_order<uint64_t>(first - 8);
                 break;
             case format::fint8 - format::fnull:
-                *jx = Json(int8_t(first[-1]));
+                *jx = int8_t(first[-1]);
                 break;
             case format::fint16 - format::fnull:
-                *jx = Json(read_in_net_order<int16_t>(first - 2));
+                *jx = read_in_net_order<int16_t>(first - 2);
                 break;
             case format::fint32 - format::fnull:
-                *jx = Json(read_in_net_order<int32_t>(first - 4));
+                *jx = read_in_net_order<int32_t>(first - 4);
                 break;
             case format::fint64 - format::fnull:
-                *jx = Json(read_in_net_order<int64_t>(first - 8));
+                *jx = read_in_net_order<int64_t>(first - 8);
                 break;
             case format::fbin8 - format::fnull:
             case format::fstr8 - format::fnull:
