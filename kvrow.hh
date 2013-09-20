@@ -46,31 +46,8 @@ struct row_base {
     };
     typedef KUtil::vec<cell_type> change_type;
     typedef KUtil::vec<index_type> fields_type;
-    static void sort(change_type& c) {
+    static inline void sort(change_type& c) {
 	std::sort(c.begin(), c.end());
-    }
-    static void sort(fields_type& f) {
-	std::sort(f.begin(), f.end());
-    }
-    static int kvwrite_change(struct kvout* kvout, const change_type& c) {
-        short n = c.size();
-	for (short i = 1; i < n; i++)
-	    if (!(c[i - 1] < c[i])) {
-	        assert(0 && "The change must be sorted");
-		exit(EXIT_FAILURE);
-	    }
-        for (short i = 0; i < n; i++) {
-            KVW(kvout, c[i].c_fid);
-            KVW(kvout, c[i].c_value);
-        }
-        return 0;
-    }
-
-    static cell_type make_cell(index_type fid, Str value) {
-	cell_type c;
-	c.c_fid = fid;
-	c.c_value = value;
-	return c;
     }
 
     /** @brief Interfaces for column-less key/value store. */

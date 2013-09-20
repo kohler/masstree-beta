@@ -89,63 +89,11 @@ inline int KVW(kvout* kv, lcdf::Str x) {
     return sizeof(int32_t) + x.length();
 }
 
-inline int kvread_str_inplace(kvin* kv, lcdf::Str& v) {
-    KVR(kv, v.len);
-    v.s = kvin_skip(kv, v.len);
-    return sizeof(v.len) + v.len;
-}
-
-inline int kvread_str_alloc(kvin* kv, lcdf::Str& v) {
-    KVR(kv, v.len);
-    char *buf = (char *)malloc(v.len);
-    kvread(kv, buf, v.len);
-    v.s = buf;
-    return sizeof(v.len) + v.len;
-}
-
-inline int kvread_str(kvin* kv, char* buf, int max, int& vlen) {
-    KVR(kv, vlen);
-    always_assert(vlen <= max);
-    kvread(kv, buf, vlen);
-    return sizeof(vlen) + vlen;
-}
-
-inline int kvwrite_str(kvout* kv, lcdf::Str v) {
-    KVW(kv, (int)v.len);
-    kvwrite(kv, v.s, v.len);
-    return sizeof(v.len) + v.len;
-}
-
 inline int kvwrite_inline_string(kvout* kv, const lcdf::inline_string* s) {
     if (!s)
         return KVW(kv, lcdf::Str());
     else
         return KVW(kv, lcdf::Str(s->s, s->len));
-}
-
-/** @brief Read a row from kvin. The row is serialized by row_type::filteremit.
- *    Ideally, kvread_row should be a member of row_base class. However, client side
- *    may prefer an STL based interface, while kvd internally does not use STL.
- *    Here we provide an STL based interface for the client side.
- */
-inline int kvread_row(struct kvin* kv, std::vector<std::string>& row) {
-    short n;
-    if (KVR(kv, n) != sizeof(n))
-        return -1;
-    int x, y;
-    x = 0;
-    std::string val;
-    int vallen;
-    for (int i = 0; i < n; i++) {
-        if (KVR(kv, vallen) != sizeof(vallen))
-            return -1;
-        val.resize(vallen);
-        if ((y = kvread(kv, &val[0], vallen)) != vallen)
-            return -1;
-        x += y;
-        row.push_back(std::move(val));
-    }
-    return sizeof(n) + x;
 }
 
 inline void kvout::append(char c) {
