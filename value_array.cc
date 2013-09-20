@@ -27,6 +27,20 @@ value_array* value_array::make_sized_row(int ncol, kvtimestamp_t ts,
     return tv;
 }
 
+value_array* value_array::update(const Json* first, const Json* last,
+                                 kvtimestamp_t ts, threadinfo& ti) const {
+    masstree_precondition(ts >= ts_);
+    unsigned ncol = std::max(int(ncol_), int(last[-2].as_i()) + 1);
+    value_array* row = (value_array*) ti.allocate(shallow_size(ncol), memtag_value);
+    row->ts_ = ts;
+    row->ncol_ = ncol;
+    memcpy(row->cols_, cols_, ncol_ * sizeof(cols_[0]));
+    memset(row->cols_ + ncol_, 0, (ncol - ncol_) * sizeof(cols_[0]));
+    for (; first != last; first += 2)
+        row->cols_[first[0].as_u()] = make_column(first[1].as_s(), ti);
+    return row;
+}
+
 value_array* value_array::checkpoint_read(Str str, kvtimestamp_t ts,
                                           threadinfo& ti) {
     kvin kv;
@@ -59,4 +73,16 @@ void value_array::deallocate_rcu(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
         deallocate_column_rcu(cols_[i], ti);
     ti.deallocate_rcu(this, shallow_size(), memtag_value);
+}
+
+void value_array::deallocate_rcu_after_update(const Json* first, const Json* last, threadinfo& ti) {
+    for (; first != last && first[0].as_u() < unsigned(ncol_); first += 2)
+        deallocate_column_rcu(cols_[first[0].as_u()], ti);
+    ti.deallocate_rcu(this, shallow_size(), memtag_value);
+}
+
+void value_array::deallocate_after_failed_update(const Json* first, const Json* last, threadinfo& ti) {
+    for (; first != last; first += 2)
+        deallocate_column(cols_[first[0].as_u()], ti);
+    ti.deallocate(this, shallow_size(), memtag_value);
 }

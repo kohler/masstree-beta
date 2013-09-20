@@ -29,7 +29,6 @@
 #include "value_bag.hh"
 #include "value_string.hh"
 #include "json.hh"
-#include "serial_changeset.hh"
 using namespace lcdf;
 
 uint8_t xb[100];
@@ -409,44 +408,22 @@ void test_json()
     j["b"] = Json::parse("[]");
 }
 
-void test_serial_changeset() {
+void test_value_updates() {
     fake_threadinfo ti;
     typedef value_bag<uint16_t> bag_t;
+    typedef value_string vstr_t;
     bag_t* eb = new(ti.allocate(sizeof(bag_t))) bag_t;
-    value_string* strb = new(ti.allocate(sizeof(value_string))) value_string;
+    vstr_t* strb = new(ti.allocate(sizeof(vstr_t))) vstr_t;
 
-    kvout* kv = new_bufkvout();
-    KVW(kv, (short) 0);
-    KVW(kv, Str("ABC", 3));
-    KVW(kv, (short) 1);
-    KVW(kv, Str("def", 3));
-    KVW(kv, (short) 2);
-    KVW(kv, Str("EGHIJ", 5));
-    KVW(kv, (short) 3);
-    KVW(kv, Str("klm", 3));
-    Str blorp(kv->buf, kv->n);
+    Json bagupdate = Json::array(0, "ABC", 1, "def", 2, "EGHIJ", 3, "klm");
 
-    kvout* strkv = new_bufkvout();
-    KVW(strkv, (short) 0);
-    KVW(strkv, (short) 3);
-    KVW(strkv, Str("ABC", 3));
-    KVW(strkv, (short) 3);
-    KVW(strkv, (short) 3);
-    KVW(strkv, Str("def", 3));
-    KVW(strkv, (short) 6);
-    KVW(strkv, (short) 5);
-    KVW(strkv, Str("EGHIJ", 5));
-    KVW(strkv, (short) 11);
-    KVW(strkv, (short) 3);
-    KVW(strkv, Str("klm", 3));
-    Str strblorp(strkv->buf, strkv->n);
+    Json strupdate = Json::array(vstr_t::make_index(0, 3), "ABC",
+                                 vstr_t::make_index(3, 3), "def",
+                                 vstr_t::make_index(6, 5), "EGHIJ",
+                                 vstr_t::make_index(11, 3), "klm");
 
     {
-        serial_changeset<short> sc(blorp);
-        assert(!sc.empty());
-        assert(!sc.single_index());
-        assert(sc.last_index() == 3);
-        bag_t* eb2 = eb->update(sc, 1, ti);
+        bag_t* eb2 = eb->update(bagupdate.array_data(), bagupdate.end_array_data(), 1, ti);
         eb->deallocate(ti);
         eb = eb2;
         assert(eb->col(0) == Str("ABC"));
@@ -456,38 +433,18 @@ void test_serial_changeset() {
     }
 
     {
-        serial_changeset<short> sc(Str(kv->buf, 9));
-        assert(!sc.empty());
-        assert(sc.single_index());
-        assert(sc.last_index() == 0);
-    }
-
-#if 0
-    kvtimestamp_t t0 = timestamp();
-    for (int i = 0; i != 100000000; ++i) {
-        serial_changeset<short> sc(blorp);
-        bag_t* eb2 = eb->update(sc, 1, ti);
-        eb->deallocate(ti);
-        eb = eb2;
-    }
-    std::cerr << (timestamp() - t0) << "\n";
-    eb->print(stderr, ">> ", 0, "K", 0);
-
-    t0 = timestamp();
-    for (int i = 0; i != 100000000; ++i) {
-        serial_changeset<value_string::index_type> sc(strblorp);
-        value_string* strb2 = strb->update(sc, 1, ti);
+        vstr_t* strb2 = strb->update(strupdate.array_data(), strupdate.end_array_data(), 1, ti);
         strb->deallocate(ti);
         strb = strb2;
+        assert(strb->col(vstr_t::make_index(0, 3)) == Str("ABC"));
+        assert(strb->col(vstr_t::make_index(3, 3)) == Str("def"));
+        assert(strb->col(vstr_t::make_index(6, 5)) == Str("EGHIJ"));
+        assert(strb->col(vstr_t::make_index(11, 3)) == Str("klm"));
+        assert(strb->col(0) == Str("ABCdefEGHIJklm"));
     }
-    std::cerr << (timestamp() - t0) << "\n";
-    strb->print(stderr, ">> ", 0, "K", 0);
-#endif
 
     eb->deallocate(ti);
     strb->deallocate(ti);
-    free_kvout(kv);
-    free_kvout(strkv);
 }
 
 int main(int, char *[])
@@ -504,7 +461,7 @@ int main(int, char *[])
     test_string_slice();
     test_string_bag();
     test_json();
-    test_serial_changeset();
+    test_value_updates();
     std::cout << "Tests complete!\n";
     return 0;
 }

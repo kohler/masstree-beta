@@ -22,6 +22,7 @@
 #include "masstree_insert.hh"
 #include "masstree_remove.hh"
 #include "misc.hh"
+#include "msgpack.hh"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -333,7 +334,8 @@ void loginfo::record(int command, const query_times& qtimes,
                 pos_ += logrec_base::store(buf_ + pos_, logcmd_wake);
             }
 
-	    if (command == logcmd_put && qtimes.prev_ts && !(qtimes.prev_ts & 1))
+	    if (command == logcmd_put && qtimes.prev_ts
+                && !(qtimes.prev_ts & 1))
 		pos_ += logrec_kvdelta::store(buf_ + pos_,
                                               logcmd_modify, key, value,
                                               qtimes.prev_ts, qtimes.ts);
@@ -364,6 +366,16 @@ void loginfo::record(int command, const query_times& qtimes,
 	napms(50);
 	acquire();
     }
+}
+
+void loginfo::record(int command, const query_times& qtimes, Str key,
+                     const lcdf::Json* req, const lcdf::Json* end_req) {
+    lcdf::StringAccum sa(128);
+    msgpack::compact_unparser cu;
+    sa.set_end(cu.unparse_array_header(sa.udata(), end_req - req));
+    for (; req != end_req; ++req)
+        cu.unparse(sa, *req);
+    record(command, qtimes, key, Str(sa.data(), sa.length()));
 }
 
 
@@ -428,10 +440,11 @@ struct logrecord {
     const char *extract(const char *buf, const char *end);
 
     template <typename T>
-    void run(T& table, threadinfo& ti);
+    void run(T& table, std::vector<lcdf::Json>& jrepo, threadinfo& ti);
 
   private:
-    inline void apply(row_type*& value, bool found, threadinfo& ti);
+    inline void apply(row_type*& value, bool found,
+                      std::vector<lcdf::Json>& jrepo, threadinfo& ti);
 };
 
 const char *
@@ -478,7 +491,7 @@ logrecord::extract(const char *buf, const char *end)
 }
 
 template <typename T>
-void logrecord::run(T& table, threadinfo& ti) {
+void logrecord::run(T& table, std::vector<lcdf::Json>& jrepo, threadinfo& ti) {
     // XXX For command == logcmd_modify, we assume that
     // sizeof(row_delta_marker<R>) memory exists before 'req's string data.
     // We don't modify this memory but it must be readable. This is OK for
@@ -495,11 +508,29 @@ void logrecord::run(T& table, threadinfo& ti) {
     bool found = lp.find_insert(ti);
     if (!found)
         ti.advance_timestamp(lp.node_timestamp());
-    apply(lp.value(), found, ti);
+    apply(lp.value(), found, jrepo, ti);
     lp.finish(1, ti);
 }
 
-inline void logrecord::apply(row_type*& value, bool found, threadinfo& ti) {
+static lcdf::Json* parse_changeset(Str changeset,
+                                   std::vector<lcdf::Json>& jrepo) {
+    msgpack::parser mp(changeset.udata());
+    unsigned index = 0;
+    Str value;
+    size_t pos = 0;
+    while (mp.position() != changeset.end()) {
+        if (pos == jrepo.size())
+            jrepo.resize(pos + 2);
+        mp.parse(index).parse(value);
+        jrepo[pos] = index;
+        jrepo[pos + 1] = String::make_stable(value);
+        pos += 2;
+    }
+    return jrepo.data() + pos;
+}
+
+inline void logrecord::apply(row_type*& value, bool found,
+                             std::vector<lcdf::Json>& jrepo, threadinfo& ti) {
     row_type** cur_value = &value;
     if (!found)
         *cur_value = 0;
@@ -527,29 +558,29 @@ inline void logrecord::apply(row_type*& value, bool found, threadinfo& ti) {
     // actually apply change
     if (command == logcmd_replace)
         *cur_value = row_type::create1(val, ts, ti);
-    else if (command != logcmd_modify) {
-        serial_changeset<row_type::index_type> changeset(val);
-        *cur_value = row_type::create(changeset, ts, ti);
-    } else {
-        if (*cur_value && (*cur_value)->timestamp() == prev_ts) {
+    else if (command != logcmd_modify
+             || (*cur_value && (*cur_value)->timestamp() == prev_ts)) {
+        lcdf::Json* end_req = parse_changeset(val, jrepo);
+        if (command != logcmd_modify)
+            *cur_value = row_type::create(jrepo.data(), end_req, ts, ti);
+        else {
             row_type* old_value = *cur_value;
-            serial_changeset<row_type::index_type> changeset(val);
-            *cur_value = old_value->update(changeset, ts, ti);
+            *cur_value = old_value->update(jrepo.data(), end_req, ts, ti);
             if (*cur_value != old_value)
                 old_value->deallocate(ti);
-        } else {
-            // XXX assume that memory exists before saved request -- it does
-            // in conventional log replay, but that's an ugly interface
-            val.s -= sizeof(row_delta_marker<row_type>);
-            val.len += sizeof(row_delta_marker<row_type>);
-            row_type* new_value = row_type::create1(val, ts | 1, ti);
-            row_delta_marker<row_type>* dm = row_get_delta_marker(new_value, true);
-            dm->marker_type_ = row_marker::mt_delta;
-            dm->prev_ts_ = prev_ts;
-            dm->prev_ = *cur_value;
-            *cur_value = new_value;
-            ti.mark(tc_replay_create_delta);
         }
+    } else {
+        // XXX assume that memory exists before saved request -- it does
+        // in conventional log replay, but that's an ugly interface
+        val.s -= sizeof(row_delta_marker<row_type>);
+        val.len += sizeof(row_delta_marker<row_type>);
+        row_type* new_value = row_type::create1(val, ts | 1, ti);
+        row_delta_marker<row_type>* dm = row_get_delta_marker(new_value, true);
+        dm->marker_type_ = row_marker::mt_delta;
+        dm->prev_ts_ = prev_ts;
+        dm->prev_ = *cur_value;
+        *cur_value = new_value;
+        ti.mark(tc_replay_create_delta);
     }
 
     // clean up
@@ -565,8 +596,8 @@ inline void logrecord::apply(row_type*& value, bool found, threadinfo& ti) {
             Str req = old_prev->col(0);
             req.s += sizeof(row_delta_marker<row_type>);
             req.len -= sizeof(row_delta_marker<row_type>);
-            serial_changeset<row_type::index_type> changeset(req);
-            *prev = (*trav)->update(changeset, old_prev->timestamp() - 1, ti);
+            const lcdf::Json* end_req = parse_changeset(req, jrepo);
+            *prev = (*trav)->update(jrepo.data(), end_req, old_prev->timestamp() - 1, ti);
             if (*prev != *trav)
                 (*trav)->deallocate(ti);
             old_prev->deallocate(ti);
@@ -670,6 +701,7 @@ logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
     const char *pos = buf_, *end = buf_ + size_;
     const char *repbegin = 0, *repend = 0;
     logrecord lr;
+    std::vector<lcdf::Json> jrepo;
 
     // XXX
     while (pos < end) {
@@ -705,7 +737,7 @@ logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
                 || lr.command == logcmd_replace
                 || lr.command == logcmd_modify
                 || lr.command == logcmd_remove)
-                lr.run(tree->table(), *ti);
+                lr.run(tree->table(), jrepo, *ti);
 	    ++nr;
 	    if (nr % 100000 == 0)
 		fprintf(stderr,

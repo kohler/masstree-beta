@@ -18,10 +18,11 @@
 #include "kvthread.hh"
 #include "string.hh"
 #include "kvproto.hh"
-#include "serial_changeset.hh"
+#include "str.hh"
 #include <pthread.h>
 class logset;
 using lcdf::Str;
+namespace lcdf { class Json; }
 
 // in-memory log.
 // more than one, to reduce contention on the lock.
@@ -44,6 +45,8 @@ class loginfo {
     };
     // NB may block!
     void record(int command, const query_times& qt, Str key, Str value);
+    void record(int command, const query_times& qt, Str key,
+                const lcdf::Json* req, const lcdf::Json* end_req);
 
   private:
     struct waitlist {

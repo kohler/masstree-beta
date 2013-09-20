@@ -22,6 +22,7 @@
 #include "log.hh"
 #include "json.hh"
 #include <algorithm>
+using lcdf::Json;
 
 template <typename IDX>
 struct valueindex {
@@ -37,36 +38,12 @@ struct valueindex {
 template <typename IDX>
 struct row_base {
     typedef IDX index_type;
-    struct cell_type {
-        index_type c_fid;
-        Str c_value;
-	friend bool operator<(const cell_type& a, const cell_type& b) {
-	    return a.c_fid < b.c_fid;
-	}
-    };
-    typedef KUtil::vec<cell_type> change_type;
     typedef KUtil::vec<index_type> fields_type;
-    static inline void sort(change_type& c) {
-	std::sort(c.begin(), c.end());
-    }
 
     /** @brief Interfaces for column-less key/value store. */
     static void make_get1_fields(fields_type& f) {
         f.resize(1);
         f[0] = valueindex<index_type>::make_full();
-    }
-    static void make_put1_change(change_type& c, Str val) {
-        c.resize(1);
-        c[0].c_fid = valueindex<index_type>::make_full();
-        c[0].c_value = val;
-    }
-    static Str make_put_col_request(struct kvout *kvout,
-				    index_type fid, Str value) {
-	kvout_reset(kvout);
-	KVW(kvout, short(1));
-	KVW(kvout, fid);
-	KVW(kvout, value);
-	return Str(kvout->buf, kvout->n);
     }
 };
 
@@ -91,7 +68,8 @@ class query {
     bool run_get1(T& table, Str key, int col, Str& value, threadinfo& ti);
 
     template <typename T>
-    result_t run_put(T& table, Str key, Str req, threadinfo& ti);
+    result_t run_put(T& table, Str key,
+                     const Json* firstreq, const Json* lastreq, threadinfo& ti);
     template <typename T>
     result_t run_replace(T& table, Str key, Str value, threadinfo& ti);
     template <typename T>
@@ -119,7 +97,8 @@ class query {
     void emit_fields1(const R* value, Json& req, threadinfo& ti);
     void assign_timestamp(threadinfo& ti);
     void assign_timestamp(threadinfo& ti, kvtimestamp_t t);
-    inline bool apply_put(R*& value, bool found, Str req, threadinfo& ti);
+    inline bool apply_put(R*& value, bool found, const Json* firstreq,
+                          const Json* lastreq, threadinfo& ti);
     inline bool apply_replace(R*& value, bool found, Str new_value,
                               threadinfo& ti);
     inline void apply_remove(R*& value, kvtimestamp_t& node_ts, threadinfo& ti);
@@ -196,21 +175,21 @@ inline void query<R>::assign_timestamp(threadinfo& ti, kvtimestamp_t min_ts) {
 
 
 template <typename R> template <typename T>
-result_t query<R>::run_put(T& table, Str key, Str req, threadinfo& ti) {
+result_t query<R>::run_put(T& table, Str key,
+                           const Json* firstreq, const Json* lastreq,
+                           threadinfo& ti) {
     typename T::cursor_type lp(table, key);
     bool found = lp.find_insert(ti);
     if (!found)
         ti.advance_timestamp(lp.node_timestamp());
-    bool inserted = apply_put(lp.value(), found, req, ti);
+    bool inserted = apply_put(lp.value(), found, firstreq, lastreq, ti);
     lp.finish(1, ti);
     return inserted ? Inserted : Updated;
 }
 
 template <typename R>
-inline bool query<R>::apply_put(R*& value, bool found, Str req,
-                                threadinfo& ti) {
-    serial_changeset<typename R::index_type> changeset(req);
-
+inline bool query<R>::apply_put(R*& value, bool found, const Json* firstreq,
+                                const Json* lastreq, threadinfo& ti) {
     if (loginfo* log = ti.ti_log) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
@@ -219,7 +198,7 @@ inline bool query<R>::apply_put(R*& value, bool found, Str req,
     if (!found) {
     insert:
 	assign_timestamp(ti);
-        value = R::create(changeset, qtimes_.ts, ti);
+        value = R::create(firstreq, lastreq, qtimes_.ts, ti);
         return true;
     }
 
@@ -230,10 +209,10 @@ inline bool query<R>::apply_put(R*& value, bool found, Str req,
 	goto insert;
     }
 
-    R* updated = old_value->update(changeset, qtimes_.ts, ti);
+    R* updated = old_value->update(firstreq, lastreq, qtimes_.ts, ti);
     if (updated != old_value) {
 	value = updated;
-	old_value->deallocate_rcu_after_update(changeset, ti);
+	old_value->deallocate_rcu_after_update(firstreq, lastreq, ti);
     }
     return false;
 }

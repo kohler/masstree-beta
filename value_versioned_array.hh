@@ -81,15 +81,14 @@ class value_versioned_array : public row_base<value_array::index_type> {
     void snapshot(value_versioned_array*& storage,
                   const fields_type& f, threadinfo& ti) const;
 
-    template <typename CS>
-    value_versioned_array* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti, bool always_copy = false);
-    template <typename CS>
-    static value_versioned_array* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
+    value_versioned_array* update(const Json* first, const Json* last,
+                                  kvtimestamp_t ts, threadinfo& ti,
+                                  bool always_copy = false);
+    static value_versioned_array* create(const Json* first, const Json* last,
+                                         kvtimestamp_t ts, threadinfo& ti);
     static value_versioned_array* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
-    template <typename CS>
-    inline void deallocate_rcu_after_update(const CS& changeset, threadinfo& ti);
-    template <typename CS>
-    inline void deallocate_after_failed_update(const CS& changeset, threadinfo& ti);
+    inline void deallocate_rcu_after_update(const Json* first, const Json* last, threadinfo& ti);
+    inline void deallocate_after_failed_update(const Json* first, const Json* last, threadinfo& ti);
 
     static value_versioned_array* checkpoint_read(Str str, kvtimestamp_t ts,
                                                 threadinfo& ti);
@@ -154,45 +153,9 @@ inline size_t value_versioned_array::shallow_size() const {
     return shallow_size(ncol_);
 }
 
-template <typename CS>
-value_versioned_array* value_versioned_array::update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti, bool always_copy) {
-    int ncol = changeset.last_index() + 1;
-    value_versioned_array* row;
-    if (ncol > ncol_cap_ || always_copy) {
-        row = (value_versioned_array*) ti.allocate(shallow_size(ncol), memtag_value);
-        row->ts_ = ts;
-        row->ver_ = rowversion();
-        row->ncol_ = row->ncol_cap_ = ncol;
-        memcpy(row->cols_, cols_, sizeof(cols_[0]) * ncol_);
-    } else
-        row = this;
-    if (ncol > ncol_)
-        memset(row->cols_ + ncol_, 0, sizeof(cols_[0]) * (ncol - ncol_));
-
-    if (row == this) {
-        ver_.setdirty();
-        fence();
-    }
-    if (row->ncol_ < ncol)
-        row->ncol_ = ncol;
-
-    auto last = changeset.end();
-    for (auto it = changeset.begin(); it != last; ++it) {
-        value_array::deallocate_column_rcu(row->cols_[it->index()], ti);
-        row->cols_[it->index()] = value_array::make_column(it->value(), ti);
-    }
-
-    if (row == this) {
-        fence();
-        ver_.clearandbump();
-    }
-    return row;
-}
-
-template <typename CS>
-value_versioned_array* value_versioned_array::create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) {
+inline value_versioned_array* value_versioned_array::create(const Json* first, const Json* last, kvtimestamp_t ts, threadinfo& ti) {
     value_versioned_array empty;
-    return empty.update(changeset, ts, ti, true);
+    return empty.update(first, last, ts, ti, true);
 }
 
 inline value_versioned_array* value_versioned_array::create1(Str value, kvtimestamp_t ts, threadinfo& ti) {
@@ -204,13 +167,11 @@ inline value_versioned_array* value_versioned_array::create1(Str value, kvtimest
     return row;
 }
 
-template <typename CS>
-inline void value_versioned_array::deallocate_rcu_after_update(const CS&, threadinfo& ti) {
+inline void value_versioned_array::deallocate_rcu_after_update(const Json*, const Json*, threadinfo& ti) {
     ti.deallocate_rcu(this, shallow_size(), memtag_value);
 }
 
-template <typename CS>
-inline void value_versioned_array::deallocate_after_failed_update(const CS&, threadinfo&) {
+inline void value_versioned_array::deallocate_after_failed_update(const Json*, const Json*, threadinfo&) {
     always_assert(0);
 }
 

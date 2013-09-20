@@ -33,15 +33,11 @@ class value_array : public row_base<short> {
     void deallocate(threadinfo &ti);
     void deallocate_rcu(threadinfo &ti);
 
-    template <typename CS>
-    value_array* update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const;
-    template <typename CS>
-    static value_array* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
+    value_array* update(const Json* first, const Json* last, kvtimestamp_t ts, threadinfo& ti) const;
+    static value_array* create(const Json* first, const Json* last, kvtimestamp_t ts, threadinfo& ti);
     static inline value_array* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
-    template <typename CS>
-    void deallocate_rcu_after_update(const CS& changeset, threadinfo& ti);
-    template <typename CS>
-    void deallocate_after_failed_update(const CS& changeset, threadinfo& ti);
+    void deallocate_rcu_after_update(const Json* first, const Json* last, threadinfo& ti);
+    void deallocate_after_failed_update(const Json* first, const Json* last, threadinfo& ti);
 
     static value_array* checkpoint_read(Str str, kvtimestamp_t ts,
                                             threadinfo& ti);
@@ -128,25 +124,10 @@ inline void value_array::deallocate_column_rcu(lcdf::inline_string* col,
         ti.deallocate_rcu(col, col->size(), memtag_value);
 }
 
-template <typename CS>
-value_array* value_array::update(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) const {
-    masstree_precondition(ts >= ts_);
-    int ncol = std::max(int(ncol_), int(changeset.last_index()) + 1);
-    value_array* row = (value_array*) ti.allocate(shallow_size(ncol), memtag_value);
-    row->ts_ = ts;
-    row->ncol_ = ncol;
-    memcpy(row->cols_, cols_, ncol_ * sizeof(cols_[0]));
-    memset(row->cols_ + ncol_, 0, (ncol - ncol_) * sizeof(cols_[0]));
-    auto last = changeset.end();
-    for (auto it = changeset.begin(); it != last; ++it)
-        row->cols_[it->index()] = make_column(it->value(), ti);
-    return row;
-}
-
-template <typename CS>
-value_array* value_array::create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti) {
+inline value_array* value_array::create(const Json* first, const Json* last,
+                                        kvtimestamp_t ts, threadinfo& ti) {
     value_array empty;
-    return empty.update(changeset, ts, ti);
+    return empty.update(first, last, ts, ti);
 }
 
 inline value_array* value_array::create1(Str value, kvtimestamp_t ts, threadinfo& ti) {
@@ -155,22 +136,6 @@ inline value_array* value_array::create1(Str value, kvtimestamp_t ts, threadinfo
     row->ncol_ = 1;
     row->cols_[0] = make_column(value, ti);
     return row;
-}
-
-template <typename CS>
-void value_array::deallocate_rcu_after_update(const CS& changeset, threadinfo& ti) {
-    auto last = changeset.end();
-    for (auto it = changeset.begin(); it != last && it->index() < ncol_; ++it)
-        deallocate_column_rcu(cols_[it->index()], ti);
-    ti.deallocate_rcu(this, shallow_size(), memtag_value);
-}
-
-template <typename CS>
-void value_array::deallocate_after_failed_update(const CS& changeset, threadinfo& ti) {
-    auto last = changeset.end();
-    for (auto it = changeset.begin(); it != last; ++it)
-        deallocate_column(cols_[it->index()], ti);
-    ti.deallocate(this, shallow_size(), memtag_value);
 }
 
 #endif

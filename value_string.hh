@@ -35,15 +35,12 @@ class value_string : public row_base<unsigned> {
     inline void deallocate(ALLOC& ti);
     inline void deallocate_rcu(threadinfo& ti);
 
-    template <typename CS, typename ALLOC>
-    value_string* update(const CS& changeset, kvtimestamp_t ts, ALLOC& ti) const;
-    template <typename CS>
-    static inline value_string* create(const CS& changeset, kvtimestamp_t ts, threadinfo& ti);
+    template <typename ALLOC>
+    value_string* update(const Json* first, const Json* last, kvtimestamp_t ts, ALLOC& ti) const;
+    static inline value_string* create(const Json* first, const Json* last, kvtimestamp_t ts, threadinfo& ti);
     static inline value_string* create1(Str value, kvtimestamp_t ts, threadinfo& ti);
-    template <typename CS>
-    inline void deallocate_rcu_after_update(const CS& changeset, threadinfo& ti);
-    template <typename CS>
-    inline void deallocate_after_failed_update(const CS& changeset, threadinfo& ti);
+    inline void deallocate_rcu_after_update(const Json* first, const Json* last, threadinfo& ti);
+    inline void deallocate_after_failed_update(const Json* first, const Json* last, threadinfo& ti);
 
     static inline value_string* checkpoint_read(Str str, kvtimestamp_t ts,
                                                 threadinfo& ti);
@@ -129,33 +126,32 @@ inline size_t value_string::shallow_size() const {
     return shallow_size(vallen_);
 }
 
-template <typename CS, typename ALLOC>
-value_string* value_string::update(const CS& changeset, kvtimestamp_t ts,
-                                   ALLOC& ti) const {
-    auto last = changeset.end();
+template <typename ALLOC>
+value_string* value_string::update(const Json* first, const Json* last,
+                                   kvtimestamp_t ts, ALLOC& ti) const {
     unsigned vallen = 0, cut = vallen_;
-    for (auto it = changeset.begin(); it != last; ++it) {
-        if (it->index() == 0)
-            cut = it->value_length();
-        vallen = std::max(vallen, index_offset(it->index()) + it->value_length());
+    for (auto it = first; it != last; it += 2) {
+        unsigned idx = it[0].as_u(), length = it[1].as_s().length();
+        if (idx == 0)
+            cut = length;
+        vallen = std::max(vallen, index_offset(idx) + length);
     }
     vallen = std::max(vallen, cut);
     value_string* row = (value_string*) ti.allocate(shallow_size(vallen), memtag_value);
     row->ts_ = ts;
     row->vallen_ = vallen;
     memcpy(row->s_, s_, cut);
-    for (auto it = changeset.begin(); it != last; ++it)
-        memcpy(row->s_ + index_offset(it->index()),
-               it->value().data(), it->value().length());
+    for (; first != last; first += 2) {
+        Str val = first[1].as_s();
+        memcpy(row->s_ + index_offset(first[0].as_u()), val.data(), val.length());
+    }
     return row;
 }
 
-template <typename CS>
-inline value_string* value_string::create(const CS& changeset,
-                                          kvtimestamp_t ts,
-                                          threadinfo& ti) {
+inline value_string* value_string::create(const Json* first, const Json* last,
+                                          kvtimestamp_t ts, threadinfo& ti) {
     value_string empty;
-    return empty.update(changeset, ts, ti);
+    return empty.update(first, last, ts, ti);
 }
 
 inline value_string* value_string::create1(Str value,
@@ -168,13 +164,11 @@ inline value_string* value_string::create1(Str value,
     return row;
 }
 
-template <typename CS>
-inline void value_string::deallocate_rcu_after_update(const CS&, threadinfo& ti) {
+inline void value_string::deallocate_rcu_after_update(const Json*, const Json*, threadinfo& ti) {
     deallocate_rcu(ti);
 }
 
-template <typename CS>
-inline void value_string::deallocate_after_failed_update(const CS&, threadinfo& ti) {
+inline void value_string::deallocate_after_failed_update(const Json*, const Json*, threadinfo& ti) {
     deallocate(ti);
 }
 

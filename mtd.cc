@@ -115,7 +115,6 @@ static struct ckstate *cktable;
 static void prepare_thread(threadinfo *ti);
 static void *tcpgo(void *);
 static void *udpgo(void *);
-static int onego(query<row_type>& q, Json& request, threadinfo& ti);
 
 static void log_init();
 static void recover(threadinfo *);
@@ -317,10 +316,11 @@ void kvtest_client::put_col(const Str &key, int col, const Str &value) {
 #if !KVDB_ROW_TYPE_STR
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
-    Str req = row_type::make_put_col_request(kvo_, col, value);
-    (void) q_[0].run_put(tree->table(), key, req, *ti_);
+    Json req[2] = {Json(col), Json(String::make_stable(value))};
+    (void) q_[0].run_put(tree->table(), key, &req[0], &req[2], *ti_);
     if (ti_->ti_log) // NB may block
-	ti_->ti_log->record(logcmd_put, q_[0].query_times(), key, req);
+	ti_->ti_log->record(logcmd_put, q_[0].query_times(), key,
+                            &req[0], &req[2]);
 #else
     (void) key, (void) col, (void) value;
     assert(0);
@@ -461,17 +461,12 @@ void runtest(const char *testname, int nthreads) {
 struct conn {
     bool ready;
     int fd;
-    char* inbuf_;
-    int inbufpos_;
-    int inbuflen_;
-    std::vector<char*> oldinbuf_;
-    msgpack::streaming_parser parser_;
-    struct kvout *kvout;
     enum { inbufsz = 20 * 1024, inbufrefill = 16 * 1024 };
 
     conn(int s)
         : ready(false), fd(s), inbuf_(new char[inbufsz]),
-          inbufpos_(0), inbuflen_(0), kvout(new_kvout(s, 20 * 1024)) {
+          inbufpos_(0), inbuflen_(0), kvout(new_kvout(s, 20 * 1024)),
+          inbuftotal_(0) {
     }
     ~conn() {
         close(fd);
@@ -499,13 +494,35 @@ struct conn {
         return inbuflen_ - inbufpos_;
     }
 
+    uint64_t xposition() const {
+        return inbuftotal_ + inbufpos_;
+    }
+    Str recent_string(uint64_t xposition) const {
+        if (xposition - inbuftotal_ <= unsigned(inbufpos_))
+            return Str(inbuf_ + (xposition - inbuftotal_),
+                       inbuf_ + inbufpos_);
+        else
+            return Str();
+    }
+
   private:
+    char* inbuf_;
+    int inbufpos_;
+    int inbuflen_;
+    std::vector<char*> oldinbuf_;
+    msgpack::streaming_parser parser_;
+  public:
+    struct kvout *kvout;
+  private:
+    uint64_t inbuftotal_;
+
     void hard_check(int tryhard);
 };
 
 void conn::hard_check(int tryhard) {
     masstree_precondition(inbufpos_ == inbuflen_);
     if (parser_.empty()) {
+        inbuftotal_ += inbufpos_;
         inbufpos_ = inbuflen_ = 0;
         for (auto x : oldinbuf_)
             delete[] x;
@@ -513,6 +530,7 @@ void conn::hard_check(int tryhard) {
     } else if (inbufpos_ == inbufsz) {
         oldinbuf_.push_back(inbuf_);
         inbuf_ = new char[inbufsz];
+        inbuftotal_ += inbufpos_;
         inbufpos_ = inbuflen_ = 0;
     }
     if (tryhard == 1) {
@@ -947,7 +965,7 @@ int handshake(Json& request, threadinfo& ti) {
 }
 
 // execute command, return result.
-int onego(query<row_type>& q, Json& request, threadinfo& ti) {
+int onego(query<row_type>& q, Json& request, Str request_str, threadinfo& ti) {
     int command = request[1].as_i();
     if (command == Cmd_Checkpoint) {
         // force checkpoint
@@ -957,12 +975,20 @@ int onego(query<row_type>& q, Json& request, threadinfo& ti) {
         request.resize(2);
     } else if (command == Cmd_Get) {
         q.run_get(tree->table(), request, ti);
-    } else if (command == Cmd_Put) { // insert or update
-        Str key(request[2].as_s()), req(request[3].as_s());
+    } else if (command == Cmd_Put && request.size() > 3
+               && (request.size() % 2) == 1) { // insert or update
+        Str key(request[2].as_s());
+        const Json* req = request.array_data() + 3;
+        const Json* end_req = request.end_array_data();
         request[2] = q.run_put(tree->table(), request[2].as_s(),
-                               request[3].as_s(), ti);
-        if (ti.ti_log) // NB may block
-            ti.ti_log->record(logcmd_put, q.query_times(), key, req);
+                               req, end_req, ti);
+        if (ti.ti_log && request_str) {
+            // use the client's parsed version of the request
+            msgpack::parser mp(request_str.data());
+            mp.skip_array_size().skip_primitives(3);
+            ti.ti_log->record(logcmd_put, q.query_times(), key, Str(mp.position(), request_str.end()));
+        } else if (ti.ti_log)
+            ti.ti_log->record(logcmd_put, q.query_times(), key, req, end_req);
         request.resize(3);
     } else if (command == Cmd_Replace) { // insert or update
         Str key(request[2].as_s()), value(request[3].as_s());
@@ -1127,6 +1153,7 @@ tcpgo(void *xarg)
                 }
             } else if (c) {
                 // Should not block as suggested by epoll
+                uint64_t xposition = c->xposition();
                 Json& request = c->receive();
                 if (unlikely(!request))
                     goto closed;
@@ -1136,7 +1163,7 @@ tcpgo(void *xarg)
                         c->ready = true;
                 } else {
                     ti->rcu_start();
-                    ret = onego(q, request, *ti);
+                    ret = onego(q, request, c->recent_string(xposition), *ti);
                     ti->rcu_stop();
                 }
                 msgpack::compact_unparser cu;
@@ -1198,12 +1225,12 @@ udpgo(void *xarg)
     kvout_reset(kvout);
 
     parser.reset();
-    parser.consume(buf.data(), buf.length(), buf);
+    unsigned consumed = parser.consume(buf.data(), buf.length(), buf);
 
     // Fail if we received a partial request
     if (parser.success() && parser.result().is_a()) {
         ti->rcu_start();
-        if (onego(q, parser.result(), *ti) >= 0) {
+        if (onego(q, parser.result(), Str(buf.data(), consumed), *ti) >= 0) {
             sa.clear();
             msgpack::compact_unparser cu;
             cu.unparse(sa, parser.result());

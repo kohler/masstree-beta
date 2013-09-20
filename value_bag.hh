@@ -17,7 +17,6 @@
 #define VALUE_BAG_HH
 #include "kvthread.hh"
 #include "kvrow.hh"
-#include "parsed_changeset.hh"
 
 template <typename O>
 class value_bag : public row_base<short> {
@@ -51,21 +50,21 @@ class value_bag : public row_base<short> {
     template <typename ALLOC> inline void deallocate(ALLOC& ti);
     template <typename ALLOC> inline void deallocate_rcu(ALLOC& ti);
 
-    template <typename CS, typename ALLOC>
-    value_bag<O>* update(const CS& changeset, kvtimestamp_t ts,
+    template <typename ALLOC>
+    value_bag<O>* update(const Json* first, const Json* last, kvtimestamp_t ts,
                          ALLOC& ti) const;
     template <typename ALLOC>
     inline value_bag<O>* update(int col, Str value,
                                 kvtimestamp_t ts, ALLOC& ti) const;
-    template <typename CS, typename ALLOC>
-    static value_bag<O>* create(const CS& changeset, kvtimestamp_t ts,
-                                ALLOC& ti);
+    template <typename ALLOC>
+    static value_bag<O>* create(const Json* first, const Json* last,
+                                kvtimestamp_t ts, ALLOC& ti);
     template <typename ALLOC>
     static value_bag<O>* create1(Str value, kvtimestamp_t ts, ALLOC& ti);
-    template <typename CS, typename ALLOC>
-    inline void deallocate_rcu_after_update(const CS& changeset, ALLOC& ti);
-    template <typename CS, typename ALLOC>
-    inline void deallocate_after_failed_update(const CS& changeset, ALLOC& ti);
+    template <typename ALLOC>
+    inline void deallocate_rcu_after_update(const Json* first, const Json* last, ALLOC& ti);
+    template <typename ALLOC>
+    inline void deallocate_after_failed_update(const Json* first, const Json* last, ALLOC& ti);
 
     template <typename ALLOC>
     static value_bag<O>* checkpoint_read(Str str, kvtimestamp_t ts,
@@ -131,20 +130,19 @@ inline void value_bag<O>::deallocate_rcu(ALLOC& ti) {
     ti.deallocate_rcu(this, size(), memtag_value);
 }
 
-template <typename O> template <typename CS, typename ALLOC>
-value_bag<O>* value_bag<O>::update(const CS& changeset,
-                                   kvtimestamp_t ts,
-                                   ALLOC& ti) const
+template <typename O> template <typename ALLOC>
+value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
+                                   kvtimestamp_t ts, ALLOC& ti) const
 {
     size_t sz = size();
     int ncol = d_.ncol_;
-    auto last = changeset.end();
-    for (auto it = changeset.begin(); it != last; ++it) {
-        sz += it->value().length();
-        if (it->index() < d_.ncol_)
-            sz -= column_length(it->index());
+    for (auto it = first; it != last; it += 2) {
+        unsigned idx = it[0].as_u();
+        sz += it[1].as_s().length();
+        if (idx < d_.ncol_)
+            sz -= column_length(idx);
         else
-            ncol = it->index() + 1;
+            ncol = idx + 1;
     }
     if (ncol > d_.ncol_)
 	sz += (ncol - d_.ncol_) * sizeof(offset_type);
@@ -153,12 +151,11 @@ value_bag<O>* value_bag<O>::update(const CS& changeset,
     row->ts_ = ts;
 
     // Minor optimization: Replacing one small column without changing length
-    auto first = changeset.begin();
-    if (ncol == d_.ncol_ && sz == size() && changeset.single_index()
-        && first->value().length() <= 16) {
+    if (ncol == d_.ncol_ && sz == size() && first + 2 == last
+        && first[1].as_s().length() <= 16) {
         memcpy(row->d_.s_, d_.s_, sz - sizeof(kvtimestamp_t));
-        memcpy(row->d_.s_ + d_.pos_[first->index()],
-               first->value().data(), first->value().length());
+        memcpy(row->d_.s_ + d_.pos_[first[0].as_u()],
+               first[1].as_s().data(), first[1].as_s().length());
         return row;
     }
 
@@ -167,7 +164,7 @@ value_bag<O>* value_bag<O>::update(const CS& changeset,
     sz = sizeof(bagdata) + ncol * sizeof(offset_type);
     int col = 0;
     while (1) {
-	int this_col = (first != last ? first->index() : ncol);
+	int this_col = (first != last ? first[0].as_u() : ncol);
 
 	// copy data from old row
 	if (col != this_col && col < d_.ncol_) {
@@ -196,31 +193,28 @@ value_bag<O>* value_bag<O>::update(const CS& changeset,
 
 	// copy data from change
 	row->d_.pos_[col] = sz;
-	memcpy(row->d_.s_ + sz, first->value().data(),
-               first->value().length());
-	sz += first->value().length();
-	++first;
+        Str val = first[1].as_s();
+	memcpy(row->d_.s_ + sz, val.data(), val.length());
+	sz += val.length();
+	first += 2;
 	++col;
     }
     row->d_.pos_[ncol] = sz;
     return row;
 }
 
-template <typename O> template <typename CS, typename ALLOC>
-inline value_bag<O>* value_bag<O>::create(const CS& changeset,
-                                          kvtimestamp_t ts,
-                                          ALLOC& ti) {
+template <typename O> template <typename ALLOC>
+inline value_bag<O>* value_bag<O>::create(const Json* first, const Json* last,
+                                          kvtimestamp_t ts, ALLOC& ti) {
     value_bag<O> empty;
-    return empty.update(changeset, ts, ti);
+    return empty.update(first, last, ts, ti);
 }
 
 template <typename O> template <typename ALLOC>
-inline value_bag<O>* value_bag<O>::update(int col, Str value,
-                                          kvtimestamp_t ts,
+inline value_bag<O>* value_bag<O>::update(int col, Str value, kvtimestamp_t ts,
                                           ALLOC& ti) const {
-    parsed_changeset<short> changeset;
-    changeset.emplace_back(col, value);
-    return update(changeset, ts, ti);
+    Json change[2] = {Json(col), Json(value)};
+    return update(&change[0], &change[2], ts, ti);
 }
 
 template <typename O> template <typename ALLOC>
@@ -235,13 +229,13 @@ inline value_bag<O>* value_bag<O>::create1(Str str, kvtimestamp_t ts,
     return row;
 }
 
-template <typename O> template <typename CS, typename ALLOC>
-inline void value_bag<O>::deallocate_rcu_after_update(const CS&, ALLOC& ti) {
+template <typename O> template <typename ALLOC>
+inline void value_bag<O>::deallocate_rcu_after_update(const Json*, const Json*, ALLOC& ti) {
     deallocate_rcu(ti);
 }
 
-template <typename O> template <typename CS, typename ALLOC>
-inline void value_bag<O>::deallocate_after_failed_update(const CS&, ALLOC& ti) {
+template <typename O> template <typename ALLOC>
+inline void value_bag<O>::deallocate_after_failed_update(const Json*, const Json*, ALLOC& ti) {
     deallocate(ti);
 }
 

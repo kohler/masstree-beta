@@ -410,9 +410,8 @@ void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
 #if !KVDB_ROW_TYPE_STR
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
-    q_[0].run_put(table_->table(), key,
-                  row_type::make_put_col_request(kvo_, col, value),
-                  *ti_);
+    Json x[2] = {Json(col), Json(String::make_stable(value))};
+    q_[0].run_put(table_->table(), key, &x[0], &x[2], *ti_);
 #else
     (void) key, (void) col, (void) value;
     assert(0);

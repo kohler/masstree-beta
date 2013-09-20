@@ -320,7 +320,10 @@ class streaming_parser {
 
 class parser {
   public:
-    explicit inline parser(const uint8_t* s)
+    explicit inline parser(const char* s)
+        : s_(reinterpret_cast<const unsigned char*>(s)), str_() {
+    }
+    explicit inline parser(const unsigned char* s)
         : s_(s), str_() {
     }
     explicit inline parser(const String& str)

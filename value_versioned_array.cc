@@ -48,6 +48,43 @@ void value_versioned_array::snapshot(value_versioned_array*& storage,
 }
 
 value_versioned_array*
+value_versioned_array::update(const Json* first, const Json* last,
+                              kvtimestamp_t ts, threadinfo& ti,
+                              bool always_copy) {
+    int ncol = last[-2].as_u() + 1;
+    value_versioned_array* row;
+    if (ncol > ncol_cap_ || always_copy) {
+        row = (value_versioned_array*) ti.allocate(shallow_size(ncol), memtag_value);
+        row->ts_ = ts;
+        row->ver_ = rowversion();
+        row->ncol_ = row->ncol_cap_ = ncol;
+        memcpy(row->cols_, cols_, sizeof(cols_[0]) * ncol_);
+    } else
+        row = this;
+    if (ncol > ncol_)
+        memset(row->cols_ + ncol_, 0, sizeof(cols_[0]) * (ncol - ncol_));
+
+    if (row == this) {
+        ver_.setdirty();
+        fence();
+    }
+    if (row->ncol_ < ncol)
+        row->ncol_ = ncol;
+
+    for (; first != last; first += 2) {
+        unsigned idx = first[0].as_u();
+        value_array::deallocate_column_rcu(row->cols_[idx], ti);
+        row->cols_[idx] = value_array::make_column(first[1].as_s(), ti);
+    }
+
+    if (row == this) {
+        fence();
+        ver_.clearandbump();
+    }
+    return row;
+}
+
+value_versioned_array*
 value_versioned_array::checkpoint_read(Str str, kvtimestamp_t ts,
                                        threadinfo& ti) {
     kvin kv;

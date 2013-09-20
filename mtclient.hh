@@ -98,16 +98,12 @@ class KVConn {
     }
 
     void sendputcol(Str key, int col, Str val, unsigned seq) {
-        j_.resize(4);
+        j_.resize(5);
         j_[0] = seq;
         j_[1] = Cmd_Put;
         j_[2] = String::make_stable(key);
-        out_changeset_.clear();
-        char* x = out_changeset_.extend(sizeof(row_type::index_type) + sizeof(int32_t) + val.length());
-        write_in_host_order(x, (row_type::index_type) col);
-        write_in_host_order(x + sizeof(row_type::index_type), int32_t(val.length()));
-        memcpy(x + sizeof(row_type::index_type) + sizeof(int32_t), val.data(), val.length());
-        j_[3] = String::make_stable(out_changeset_.data(), out_changeset_.length());
+        j_[3] = col;
+        j_[4] = String::make_stable(val);
         send();
     }
     void sendputwhole(Str key, Str val, unsigned seq) {
@@ -189,7 +185,6 @@ class KVConn {
     int infd_;
 
     struct kvout *out_;
-    lcdf::StringAccum out_changeset_;
 
     Json j_;
     msgpack::streaming_parser parser_;
