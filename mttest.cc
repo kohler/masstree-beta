@@ -487,47 +487,9 @@ static FILE *test_output_file;
 static pthread_mutex_t subtest_mutex;
 static pthread_cond_t subtest_cond;
 
-class testrunner {
-  public:
-    testrunner(const char* name)
-        : name_(name), next_(0) {
-        !thefirst ? thefirst = this : thetail->next_ = this;
-        thetail = this;
-    }
-    virtual ~testrunner() {
-    }
-    const String& name() const {
-        return name_;
-    }
-    testrunner* next() const {
-        return next_;
-    }
-    static testrunner* first() {
-        return thefirst;
-    }
-    static testrunner* find(const String& name) {
-        testrunner* t = thefirst;
-        while (t && t->name_ != name)
-            t = t->next_;
-        return t;
-    }
-    virtual void run(kvtest_client<Masstree::default_table>&) = 0;
-  private:
-    static testrunner* thefirst;
-    static testrunner* thetail;
-    String name_;
-    testrunner* next_;
-};
-testrunner* testrunner::thefirst;
-testrunner* testrunner::thetail;
+#define TESTRUNNER_SIGNATURE kvtest_client<Masstree::default_table>& client
+#include "testrunner.hh"
 
-#define MAKE_TESTRUNNER(name, text)                    \
-    namespace {                                        \
-    class testrunner_##name : public testrunner {      \
-    public:                                            \
-        testrunner_##name() : testrunner(#name) {}     \
-        void run(kvtest_client<Masstree::default_table>& client) { text; } \
-    }; static testrunner_##name testrunner_##name##_instance; }
 MAKE_TESTRUNNER(rw1, kvtest_rw1(client));
 // MAKE_TESTRUNNER(palma, kvtest_palma(client));
 // MAKE_TESTRUNNER(palmb, kvtest_palmb(client));
@@ -759,32 +721,7 @@ Options:\n\
 \n\
 Known TESTs:\n",
            (int) sysconf(_SC_NPROCESSORS_ONLN));
-    std::vector<String> names;
-    for (testrunner* tr = testrunner::first(); tr; tr = tr->next())
-        names.push_back(tr->name());
-    int ncol = 5;
-    size_t percol;
-    std::vector<int> colwidth;
-    while (1) {
-        percol = (names.size() + ncol - 1) / ncol;
-        colwidth.assign(ncol, 0);
-        for (size_t i = 0; i != names.size(); ++i)
-            colwidth[i/percol] = std::max(colwidth[i/percol], names[i].length());
-        if (ncol == 1
-            || std::accumulate(colwidth.begin(), colwidth.end(), 0)
-               + ncol * 3 <= 78)
-            break;
-        --ncol;
-    }
-    for (size_t row = 0; row != percol; ++row) {
-        size_t off = row;
-        for (int col = 0; col != ncol; ++col, off += percol)
-            if (off < names.size())
-                printf("%*s   %s",
-                       col ? colwidth[col-1] - names[off-percol].length() : 0, "",
-                       names[off].c_str());
-        printf("\n");
-    }
+    testrunner_base::print_names(stdout, 5);
     printf("Or say TEST1,TEST2,... to run several tests in sequence\n\
 on the same tree.\n");
     exit(0);
