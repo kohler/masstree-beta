@@ -12,26 +12,49 @@ using lcdf::String;
 using lcdf::StringAccum;
 
 namespace format {
-    enum {
-        ffixuint = 0x00, nfixuint = 0x80,
-        ffixmap = 0x80, nfixmap = 0x10,
-        ffixarray = 0x90, nfixarray = 0x10,
-        ffixstr = 0xA0, nfixstr = 0x20,
-        fnull = 0xC0,
-        ffalse = 0xC2, ftrue = 0xC3,
-        fbin8 = 0xC4, fbin16 = 0xC5, fbin32 = 0xC6,
-        fext8 = 0xC7, fext16 = 0xC8, fext32 = 0xC9,
-        ffloat32 = 0xCA, ffloat64 = 0xCB,
-        fuint8 = 0xCC, fuint16 = 0xCD, fuint32 = 0xCE, fuint64 = 0xCF,
-        fint8 = 0xD0, fint16 = 0xD1, fint32 = 0xD2, fint64 = 0xD3,
-        ffixext1 = 0xD4, ffixext2 = 0xD5, ffixext4 = 0xD6,
-        ffixext8 = 0xD7, ffixext16 = 0xD8,
-        fstr8 = 0xD9, fstr16 = 0xDA, fstr32 = 0xDB,
-        farray16 = 0xDC, farray32 = 0xDD,
-        fmap16 = 0xDE, fmap32 = 0xDF,
-        ffixnegint = 0xE0, nfixnegint = 0x20,
-        nfixint = nfixuint + nfixnegint
-    };
+enum {
+    ffixuint = 0x00, nfixuint = 0x80,
+    ffixmap = 0x80, nfixmap = 0x10,
+    ffixarray = 0x90, nfixarray = 0x10,
+    ffixstr = 0xA0, nfixstr = 0x20,
+    fnull = 0xC0,
+    ffalse = 0xC2, ftrue = 0xC3,
+    fbin8 = 0xC4, fbin16 = 0xC5, fbin32 = 0xC6,
+    fext8 = 0xC7, fext16 = 0xC8, fext32 = 0xC9,
+    ffloat32 = 0xCA, ffloat64 = 0xCB,
+    fuint8 = 0xCC, fuint16 = 0xCD, fuint32 = 0xCE, fuint64 = 0xCF,
+    fint8 = 0xD0, fint16 = 0xD1, fint32 = 0xD2, fint64 = 0xD3,
+    ffixext1 = 0xD4, ffixext2 = 0xD5, ffixext4 = 0xD6,
+    ffixext8 = 0xD7, ffixext16 = 0xD8,
+    fstr8 = 0xD9, fstr16 = 0xDA, fstr32 = 0xDB,
+    farray16 = 0xDC, farray32 = 0xDD,
+    fmap16 = 0xDE, fmap32 = 0xDF,
+    ffixnegint = 0xE0, nfixnegint = 0x20,
+    nfixint = nfixuint + nfixnegint
+};
+
+inline bool in_range(uint8_t x, unsigned low, unsigned n) {
+    return (unsigned) x - low < n;
+}
+inline bool in_wrapped_range(uint8_t x, unsigned low, unsigned n) {
+    return (unsigned) (int8_t) x - low < n;
+}
+
+inline bool is_fixint(uint8_t x) {
+    return in_wrapped_range(x, -nfixnegint, nfixint);
+}
+inline bool is_bool(uint8_t x) {
+    return in_range(x, ffalse, 2);
+}
+inline bool is_fixstr(uint8_t x) {
+    return in_range(x, ffixstr, nfixstr);
+}
+inline bool is_fixarray(uint8_t x) {
+    return in_range(x, ffixarray, nfixarray);
+}
+inline bool is_fixmap(uint8_t x) {
+    return in_range(x, ffixmap, nfixmap);
+}
 }
 
 class compact_unparser {
@@ -136,19 +159,23 @@ class compact_unparser {
     inline uint8_t* unparse(uint8_t* s, const String& x) {
         return unparse(s, x.data(), x.length());
     }
+    inline uint8_t* unparse_array_header(uint8_t* s, uint32_t size) {
+        if (size < format::nfixarray) {
+            *s = format::ffixarray + size;
+            return s + 1;
+        } else if (size < 65536) {
+            *s = format::farray16;
+            write_in_net_order<uint16_t>(s + 1, (uint16_t) size);
+            return s + 3;
+        } else {
+            *s = format::farray32;
+            write_in_net_order<uint32_t>(s + 1, (uint32_t) size);
+            return s + 5;
+        }
+    }
     template <typename T>
     inline uint8_t* unparse(uint8_t* s, const ::std::vector<T>& x) {
-        if (x.size() < format::nfixarray)
-            *s++ = format::ffixarray + x.size();
-        else if (x.size() < 65536) {
-            *s++ = format::farray16;
-            write_in_net_order<uint16_t>(s, (uint16_t) x.size());
-            s += 2;
-        } else {
-            *s++ = format::farray32;
-            write_in_net_order<uint32_t>(s, (uint32_t) x.size());
-            s += 4;
-        }
+        s = unparse_array_header(s, x.size());
         for (typename ::std::vector<T>::const_iterator it = x.begin();
              it != x.end(); ++it)
             s = unparse(s, *it);
@@ -307,7 +334,7 @@ class parser {
 	    return false;
     }
     inline int parse_tiny_int() {
-        assert((uint32_t) (int8_t) *s_ + format::nfixnegint < format::nfixint);
+        assert(format::is_fixint(*s_));
         return (int8_t) *s_++;
     }
     inline parser& parse_tiny_int(int& x) {
@@ -316,7 +343,7 @@ class parser {
     }
     template <typename T>
     inline parser& parse_int(T& x) {
-        if ((uint32_t) (int8_t) *s_ + format::nfixnegint < format::nfixint) {
+        if (format::is_fixint(*s_)) {
             x = (int8_t) *s_;
             ++s_;
         } else {
@@ -344,7 +371,7 @@ class parser {
         return parse_int(x);
     }
     inline parser& parse(bool& x) {
-        assert((uint32_t) *s_ - format::ffalse < 2);
+        assert(format::is_bool(*s_));
         x = *s_ - format::ffalse;
         ++s_;
         return *this;
@@ -357,6 +384,20 @@ class parser {
     }
     parser& parse(Str& x);
     parser& parse(String& x);
+    inline parser& parse_array_size(unsigned& size) {
+        if (format::is_fixarray(*s_)) {
+            size = *s_ - format::ffixarray;
+            s_ += 1;
+        } else if (*s_ == format::farray16) {
+            size = read_in_net_order<uint16_t>(s_ + 1);
+            s_ += 3;
+        } else {
+            assert(*s_ == format::farray32);
+            size = read_in_net_order<uint32_t>(s_ + 1);
+            s_ += 5;
+        }
+        return *this;
+    }
     template <typename T> parser& parse(::std::vector<T>& x);
   private:
     const uint8_t* s_;
