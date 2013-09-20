@@ -43,7 +43,7 @@ mtd: mtd.o log.o checkpoint.o file.o misc.o $(KVTREES) \
 	kvio.o libjson.a
 	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
-mtclient: mtclient.o misc.o kvio.o libjson.a
+mtclient: mtclient.o misc.o testrunner.o kvio.o libjson.a
 	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 mttest: mttest.o misc.o checkpoint.o $(KVTREES) testrunner.o \

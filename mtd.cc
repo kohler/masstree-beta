@@ -87,6 +87,7 @@ volatile uint64_t globalepoch = 1;     // global epoch, updated by main thread r
 static int port = 2117;
 static uint64_t test_limit = ~uint64_t(0);
 static int doprint = 0;
+int kvtest_first_seed = 31949;
 
 static volatile sig_atomic_t go_quit = 0;
 static int quit_pipe[2];
@@ -415,13 +416,13 @@ static void *testgo(void *arg) {
     else if (strcmp(kc->testname_, "wd1check") == 0)
 	kvtest_wd1_check(10000000, 1, *kc);
     else if (strcmp(kc->testname_, "w1") == 0)
-	kvtest_w1_seed(*kc, 31949 + kc->id());
+	kvtest_w1_seed(*kc, kvtest_first_seed + kc->id());
     else if (strcmp(kc->testname_, "r1") == 0)
-	kvtest_r1_seed(*kc, 31949 + kc->id());
+	kvtest_r1_seed(*kc, kvtest_first_seed + kc->id());
     else if (strcmp(kc->testname_, "wcol1") == 0)
-	kvtest_wcol1(*kc, 31949 + kc->id() % 48, 5000000);
+	kvtest_wcol1(*kc, kvtest_first_seed + kc->id() % 48, 5000000);
     else if (strcmp(kc->testname_, "rcol1") == 0)
-	kvtest_rcol1(*kc, 31949 + kc->id() % 48, 5000000);
+	kvtest_rcol1(*kc, kvtest_first_seed + kc->id() % 48, 5000000);
     else
 	kc->fail("unknown test '%s'", kc->testname_);
     return 0;

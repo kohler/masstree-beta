@@ -22,6 +22,7 @@
 using lcdf::Str;
 using lcdf::String;
 using lcdf::Json;
+extern int kvtest_first_seed;
 // Templated KV tests, so we can run them either client/server or linked with
 // the kvd binary.
 
@@ -75,7 +76,7 @@ void kvtest_sync_rw1_seed(C &client, int seed)
 template <typename C>
 void kvtest_sync_rw1(C &client)
 {
-    kvtest_sync_rw1_seed(client, 31949 + client.id() % 48);
+    kvtest_sync_rw1_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 // do a bunch of inserts to distinct keys, then check that they all showed up.
@@ -134,7 +135,7 @@ void kvtest_rw1_seed(C &client, int seed)
 template <typename C>
 void kvtest_rw1(C &client)
 {
-    kvtest_rw1_seed(client, 31949 + client.id() % 48);
+    kvtest_rw1_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 // do a bunch of inserts to distinct keys, then check that they all showed up.
@@ -193,7 +194,7 @@ void kvtest_rw1long_seed(C &client, int seed)
 template <typename C>
 void kvtest_rw1long(C &client)
 {
-    kvtest_rw1long_seed(client, 31949 + client.id() % 48);
+    kvtest_rw1long_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 // interleave inserts and gets for random keys.
@@ -231,19 +232,19 @@ void kvtest_rw2_seed(C &client, int seed, double getfrac)
 template <typename C>
 void kvtest_rw2(C &client)
 {
-    kvtest_rw2_seed(client, 31949 + client.id() % 48, 0.5);
+    kvtest_rw2_seed(client, kvtest_first_seed + client.id() % 48, 0.5);
 }
 
 template <typename C>
 void kvtest_rw2g90(C &client)
 {
-    kvtest_rw2_seed(client, 31949 + client.id() % 48, 0.9);
+    kvtest_rw2_seed(client, kvtest_first_seed + client.id() % 48, 0.9);
 }
 
 template <typename C>
 void kvtest_rw2g98(C &client)
 {
-    kvtest_rw2_seed(client, 31949 + client.id() % 48, 0.98);
+    kvtest_rw2_seed(client, kvtest_first_seed + client.id() % 48, 0.98);
 }
 
 // interleave inserts and gets for random keys.
@@ -283,19 +284,19 @@ void kvtest_rw2fixed_seed(C &client, int seed, double getfrac)
 template <typename C>
 void kvtest_rw2fixed(C &client)
 {
-    kvtest_rw2fixed_seed(client, 31949 + client.id() % 48, 0.5);
+    kvtest_rw2fixed_seed(client, kvtest_first_seed + client.id() % 48, 0.5);
 }
 
 template <typename C>
 void kvtest_rw2fixedg90(C &client)
 {
-    kvtest_rw2fixed_seed(client, 31949 + client.id() % 48, 0.9);
+    kvtest_rw2fixed_seed(client, kvtest_first_seed + client.id() % 48, 0.9);
 }
 
 template <typename C>
 void kvtest_rw2fixedg98(C &client)
 {
-    kvtest_rw2fixed_seed(client, 31949 + client.id() % 48, 0.98);
+    kvtest_rw2fixed_seed(client, kvtest_first_seed + client.id() % 48, 0.98);
 }
 
 // do a bunch of inserts to sequentially increasing keys,
@@ -413,7 +414,7 @@ void kvtest_same_seed(C &client, int seed)
 template <typename C>
 void kvtest_same(C &client)
 {
-    kvtest_same_seed(client, 31949 + client.id() % 48);
+    kvtest_same_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 // update the same small set of keys over and over, with interspersed gets.
@@ -442,7 +443,7 @@ void kvtest_rwsmall_seed(C &client, int nkeys, int seed)
 template <typename C>
 void kvtest_rwsmall24(C &client)
 {
-    kvtest_rwsmall_seed(client, 24, 31949 + client.id() % 48);
+    kvtest_rwsmall_seed(client, 24, kvtest_first_seed + client.id() % 48);
 }
 
 // update the same small set of keys over and over, with interspersed gets.
@@ -475,7 +476,7 @@ void kvtest_rwsep_seed(C &client, int nkeys, int clientid, int seed)
 template <typename C>
 void kvtest_rwsep24(C &client)
 {
-    kvtest_rwsep_seed(client, 24, client.id(), 31949 + client.id() % 48);
+    kvtest_rwsep_seed(client, 24, client.id(), kvtest_first_seed + client.id() % 48);
 }
 
 // Same as rw1, except that the keys are no more than 8 bytes
@@ -535,7 +536,7 @@ void kvtest_rw1fixed_seed(C &client, int seed)
 template <typename C>
 void kvtest_rw1fixed(C &client)
 {
-    kvtest_rw1fixed_seed(client, 31949 + client.id() % 48);
+    kvtest_rw1fixed_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 // Same as rw1, except that keys are 16-bytes (prefixed with "0"s)
@@ -587,7 +588,7 @@ void kvtest_rw16_seed(C &client, int seed)
 template <typename C>
 void kvtest_rw16(C &client)
 {
-    kvtest_rw16_seed(client, 31949 + client.id() % 48);
+    kvtest_rw16_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 
@@ -884,7 +885,7 @@ void kvtest_palmb_seed(C &client, int seed)
 template <typename C>
 void kvtest_palmb(C &client)
 {
-    kvtest_palmb_seed(client, 31949 + client.id() % 48);
+    kvtest_palmb_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 template <typename C>
@@ -935,7 +936,7 @@ void kvtest_ycsbk_seed(C &client, int seed)
 template <typename C>
 void kvtest_ycsbk(C &client)
 {
-    kvtest_ycsbk_seed(client, 31949 + client.id() % 48);
+    kvtest_ycsbk_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 template <typename C>
@@ -979,7 +980,7 @@ void
 kvtest_long_init(C &client)
 {
     assert(client.id() < NLongParts);
-    int seed = 31949 + client.id();
+    int seed = kvtest_first_seed + client.id();
     client.rand.reset(seed);
     const int keylen = client.keylen();
     const int prefixLen = client.prefixLen();
@@ -1025,7 +1026,7 @@ kvtest_long_go(C &client)
     long n = 0;
     int cur_cid = client.id() % NLongParts;
     while (!client.timeout(0)) {
-        client.rand.reset(31949 + cur_cid);
+        client.rand.reset(kvtest_first_seed + cur_cid);
         uint32_t op;
         for(op = 0; !client.timeout(0) && op < nKeysPerPart; op++){
             for (int i = prefixLen; i < keylen; i++)
@@ -1053,7 +1054,7 @@ void
 kvtest_wscale(C &client)
 {
     double t0 = now();
-    client.rand.reset(client.id());
+    client.rand.reset(kvtest_first_seed + client.id() % 48);
     long n;
     for(n = 0; !client.timeout(0); n++){
         long x = client.rand.next();
@@ -1071,7 +1072,7 @@ void
 kvtest_ruscale_init(C &client)
 {
     double t0 = now();
-    client.rand.reset(client.id());
+    client.rand.reset(kvtest_first_seed + client.id() % 48);
     const int ruscale_partsz = client.ruscale_partsz();
     const int firstkey = ruscale_partsz * client.ruscale_init_part_no();
     // Insert in random order
@@ -1097,7 +1098,7 @@ template <typename C>
 void
 kvtest_rscale(C &client)
 {
-    client.rand.reset(client.id());
+    client.rand.reset(kvtest_first_seed + client.id() % 48);
     const long nseqkeys = client.nseqkeys();
     double t0 = now();
     long n;
@@ -1116,7 +1117,7 @@ template <typename C>
 void
 kvtest_uscale(C &client)
 {
-    client.rand.reset(client.id());
+    client.rand.reset(kvtest_first_seed + client.id());
     const long nseqkeys = client.nseqkeys();
     double t0 = now();
     long n;
@@ -1170,7 +1171,7 @@ void kvtest_udp1_seed(C &client, int seed)
 template <typename C>
 void kvtest_udp1(C &client)
 {
-    kvtest_udp1_seed(client, 31949 + client.id() % 48);
+    kvtest_udp1_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 // do four million of inserts to distinct keys.

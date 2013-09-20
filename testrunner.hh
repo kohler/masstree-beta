@@ -15,6 +15,9 @@ class testrunner_base {
     const lcdf::String& name() const {
         return name_;
     }
+    static testrunner_base* first() {
+        return thehead;
+    }
     static testrunner_base* find(const lcdf::String& name) {
         testrunner_base* t = thehead;
         while (t && t->name_ != name)
@@ -35,6 +38,9 @@ class testrunner : public testrunner_base {
   public:
     inline testrunner(const lcdf::String& name)
         : testrunner_base(name) {
+    }
+    static testrunner* first() {
+        return static_cast<testrunner*>(testrunner_base::first());
     }
     static testrunner* find(const lcdf::String& name) {
         return static_cast<testrunner*>(testrunner_base::find(name));

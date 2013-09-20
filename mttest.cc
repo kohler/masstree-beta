@@ -71,6 +71,7 @@ volatile bool timeout[2] = {false, false};
 double duration[2] = {10, 0};
 // Do not start timer until asked
 static bool lazy_timer = false;
+int kvtest_first_seed = 31949;
 
 uint64_t test_limit = ~uint64_t(0);
 bool quiet = false;
