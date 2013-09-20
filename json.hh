@@ -233,6 +233,9 @@ class Json {
     void resize(size_type n);
 
     inline Json* array_data();
+    inline const Json* array_data() const;
+    inline Json* end_array_data();
+    inline const Json* end_array_data() const;
 
     // Iteration
     inline const_object_iterator obegin() const;
@@ -2417,6 +2420,21 @@ inline Json& Json::insert_back(T first, U... rest) {
 inline Json* Json::array_data() {
     precondition(is_null() || is_array());
     return u_.a.a ? u_.a.a->a : 0;
+}
+
+inline const Json* Json::array_data() const {
+    precondition(is_null() || is_array());
+    return u_.a.a ? u_.a.a->a : 0;
+}
+
+inline Json* Json::end_array_data() {
+    precondition(is_null() || is_array());
+    return u_.a.a ? u_.a.a->a + u_.a.a->size : 0;
+}
+
+inline const Json* Json::end_array_data() const {
+    precondition(is_null() || is_array());
+    return u_.a.a ? u_.a.a->a + u_.a.a->size : 0;
 }
 
 
