@@ -18,46 +18,9 @@
 #include "compiler.hh"
 #include "kvrow.hh"
 
-struct valueindex_string {
-    short f_off;
-    short f_len;
-    valueindex_string() = default;
-    valueindex_string(short off, short len)
-        : f_off(off), f_len(len) {
-    }
-    friend bool operator==(const valueindex_string& a,
-                           const valueindex_string& b) {
-        return a.f_off == b.f_off && a.f_len == b.f_len;
-    }
-    friend bool operator<(const valueindex_string& a,
-                          const valueindex_string& b) {
-        return a.f_off < b.f_off;
-    }
-};
-
-template <>
-struct valueindex<valueindex_string> {
-    static inline valueindex_string make_full() {
-        return valueindex_string(0, -1);
-    }
-    static inline valueindex_string make_fixed(int index, int width) {
-        return valueindex_string(index * width, width);
-    }
-};
-
-inline int KVR(kvin* kv, valueindex_string& field) {
-    int x = KVR(kv, field.f_off);
-    return x + KVR(kv, field.f_len);
-}
-
-inline int KVW(kvout* kv, valueindex_string field) {
-    int x = KVW(kv, field.f_off);
-    return x + KVW(kv, field.f_len);
-}
-
-class value_string : public row_base<valueindex_string> {
+class value_string : public row_base<unsigned> {
   public:
-    typedef valueindex_string index_type;
+    typedef unsigned index_type;
     static constexpr rowtype_id type_id = RowType_Str;
     static const char *name() { return "String"; }
 
@@ -66,8 +29,7 @@ class value_string : public row_base<valueindex_string> {
     inline kvtimestamp_t timestamp() const;
     inline size_t size() const;
     inline int ncol() const;
-    inline Str col(int i) const;
-    inline Str col(valueindex_string idx) const;
+    inline Str col(index_type idx) const;
 
     template <typename ALLOC>
     inline void deallocate(ALLOC& ti);
@@ -91,18 +53,35 @@ class value_string : public row_base<valueindex_string> {
 	       kvtimestamp_t initial_ts, const char* suffix = "") {
 	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
 	fprintf(f, "%s%*s%.*s = %.*s @" PRIKVTSPARTS "%s\n", prefix, indent, "",
-		key.len, key.s, std::min(40, vallen_), s_,
+		key.len, key.s, std::min(40U, vallen_), s_,
 		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
+    static inline index_type make_index(unsigned offset, unsigned length);
+    static inline unsigned index_offset(index_type idx);
+    static inline unsigned index_length(index_type idx);
+
   private:
     kvtimestamp_t ts_;
-    int vallen_;
+    unsigned vallen_;
     char s_[0];
 
+    static inline unsigned index_last_offset(index_type idx);
     static inline size_t shallow_size(int vallen);
     inline size_t shallow_size() const;
 };
+
+inline value_string::index_type value_string::make_index(unsigned offset, unsigned length) {
+    return offset + (length << 16);
+}
+
+inline unsigned value_string::index_offset(index_type idx) {
+    return idx & 0xFFFF;
+}
+
+inline unsigned value_string::index_length(index_type idx) {
+    return idx >> 16;
+}
 
 inline value_string::value_string()
     : ts_(0), vallen_(0) {
@@ -120,15 +99,17 @@ inline int value_string::ncol() const {
     return 1;
 }
 
-inline Str value_string::col(int i) const {
-    assert(i == 0);
-    (void) i;
-    return Str(s_, vallen_);
+inline unsigned value_string::index_last_offset(index_type idx) {
+    return index_offset(idx) + index_length(idx);
 }
 
-inline Str value_string::col(valueindex_string idx) const {
-    int len = idx.f_len == -1 ? vallen_ - idx.f_off : idx.f_len;
-    return Str(s_ + idx.f_off, len);
+inline Str value_string::col(index_type idx) const {
+    if (idx == 0)
+        return Str(s_, vallen_);
+    else {
+        unsigned off = std::min(vallen_, index_offset(idx));
+        return Str(s_ + off, std::min(vallen_ - off, index_length(idx)));
+    }
 }
 
 template <typename ALLOC>
@@ -152,11 +133,11 @@ template <typename CS, typename ALLOC>
 value_string* value_string::update(const CS& changeset, kvtimestamp_t ts,
                                    ALLOC& ti) const {
     auto last = changeset.end();
-    int vallen = 0, cut = vallen_;
+    unsigned vallen = 0, cut = vallen_;
     for (auto it = changeset.begin(); it != last; ++it) {
-        vallen = std::max(vallen, it->index().f_off + it->value_length());
-        if (it->index().f_len == -1)
-            cut = std::min(cut, int(it->index().f_off));
+        if (it->index() == 0)
+            cut = it->value_length();
+        vallen = std::max(vallen, index_offset(it->index()) + it->value_length());
     }
     vallen = std::max(vallen, cut);
     value_string* row = (value_string*) ti.allocate(shallow_size(vallen), memtag_value);
@@ -164,8 +145,8 @@ value_string* value_string::update(const CS& changeset, kvtimestamp_t ts,
     row->vallen_ = vallen;
     memcpy(row->s_, s_, cut);
     for (auto it = changeset.begin(); it != last; ++it)
-        memcpy(row->s_ + it->index().f_off, it->value().data(),
-               it->value().length());
+        memcpy(row->s_ + index_offset(it->index()),
+               it->value().data(), it->value().length());
     return row;
 }
 

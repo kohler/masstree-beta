@@ -475,7 +475,7 @@ void test_serial_changeset() {
 
     t0 = timestamp();
     for (int i = 0; i != 100000000; ++i) {
-        serial_changeset<valueindex_string> sc(strblorp);
+        serial_changeset<value_string::index_type> sc(strblorp);
         value_string* strb2 = strb->update(sc, 1, ti);
         strb->deallocate(ti);
         strb = strb2;
