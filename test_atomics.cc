@@ -505,5 +505,6 @@ int main(int, char *[])
     test_string_bag();
     test_json();
     test_serial_changeset();
+    std::cout << "Tests complete!\n";
     return 0;
 }
