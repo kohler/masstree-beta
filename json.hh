@@ -138,6 +138,8 @@ class Json {
     inline bool to_i(unsigned long long& x) const;
     inline long as_i() const;
     inline long as_i(long default_value) const;
+    inline unsigned long as_u() const;
+    inline unsigned long as_u(unsigned long default_value) const;
 
     inline double to_d() const;
     inline bool to_d(double& x) const;
@@ -929,6 +931,12 @@ class Json_proxy_base {
     }
     long as_i(long default_value) const {
 	return cvalue().as_i(default_value);
+    }
+    unsigned long as_u() const {
+	return cvalue().as_u();
+    }
+    unsigned long as_u(unsigned long default_value) const {
+	return cvalue().as_u(default_value);
     }
     double to_d() const {
 	return cvalue().to_d();
@@ -1763,6 +1771,22 @@ inline long Json::as_i() const {
 inline long Json::as_i(long default_value) const {
     if (is_int() || is_double())
         return as_i();
+    else
+        return default_value;
+}
+
+/** @brief Return the unsigned integer value of this numeric Json.
+    @pre is_number()
+    @sa to_i() */
+inline unsigned long Json::as_u() const {
+    precondition(is_int() || is_double());
+    return is_int() ? u_.u.x : (unsigned long) (u_.d.x);
+}
+
+/** @brief Return the integer value of this numeric Json or @a default_value. */
+inline unsigned long Json::as_u(unsigned long default_value) const {
+    if (is_int() || is_double())
+        return as_u();
     else
         return default_value;
 }
