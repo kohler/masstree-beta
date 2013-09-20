@@ -89,6 +89,8 @@ class StringAccum { public:
     inline void set_length(int len);
     int resize(int len);
     inline void adjust_length(int delta);
+    inline void set_end(char* end);
+    inline void set_end(unsigned char* end);
     inline char *extend(int nadjust, int nreserve = 0);
 
     inline void pop_back(int n = 1);
@@ -406,6 +408,15 @@ inline char *StringAccum::reserve(int n) {
 inline void StringAccum::set_length(int len) {
     assert(len >= 0 && r_.len <= r_.cap);
     r_.len = len;
+}
+
+inline void StringAccum::set_end(unsigned char* x) {
+    assert(x >= r_.s && x <= r_.s + r_.cap);
+    r_.len = x - r_.s;
+}
+
+inline void StringAccum::set_end(char* x) {
+    set_end((unsigned char*) x);
 }
 
 /** @brief Adjust the StringAccum's length.
