@@ -43,6 +43,9 @@ inline bool in_wrapped_range(uint8_t x, unsigned low, unsigned n) {
 inline bool is_fixint(uint8_t x) {
     return in_wrapped_range(x, -nfixnegint, nfixint);
 }
+inline bool is_null_or_bool(uint8_t x) {
+    return in_range(x, fnull, 4);
+}
 inline bool is_bool(uint8_t x) {
     return in_range(x, ffalse, 2);
 }
@@ -399,6 +402,43 @@ class parser {
         return *this;
     }
     template <typename T> parser& parse(::std::vector<T>& x);
+
+    inline parser& skip_primitives(unsigned n) {
+        for (; n != 0; --n) {
+            if (format::is_fixint(*s_) || format::is_null_or_bool(*s_))
+                s_ += 1;
+            else if (format::is_fixstr(*s_))
+                s_ += 1 + (*s_ - format::ffixstr);
+            else if (*s_ == format::fuint8 || *s_ == format::fint8)
+                s_ += 2;
+            else if (*s_ == format::fuint16 || *s_ == format::fint16)
+                s_ += 3;
+            else if (*s_ == format::fuint32 || *s_ == format::fint32
+                     || *s_ == format::ffloat32)
+                s_ += 5;
+            else if (*s_ == format::fstr8 || *s_ == format::fbin8)
+                s_ += 2 + s_[1];
+            else if (*s_ == format::fstr16 || *s_ == format::fbin16)
+                s_ += 3 + read_in_net_order<uint16_t>(s_ + 1);
+            else if (*s_ == format::fstr32 || *s_ == format::fbin32)
+                s_ += 5 + read_in_net_order<uint32_t>(s_ + 1);
+        }
+        return *this;
+    }
+    inline parser& skip_primitive() {
+        return skip_primitives(1);
+    }
+    inline parser& skip_array_size() {
+        if (format::is_fixarray(*s_))
+            s_ += 1;
+        else if (*s_ == format::farray16)
+            s_ += 3;
+        else {
+            assert(*s_ == format::farray32);
+            s_ += 5;
+        }
+        return *this;
+    }
   private:
     const uint8_t* s_;
     String str_;
