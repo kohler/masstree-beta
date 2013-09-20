@@ -420,9 +420,9 @@ static void *testgo(void *arg) {
     else if (strcmp(kc->testname_, "r1") == 0)
 	kvtest_r1_seed(*kc, kvtest_first_seed + kc->id());
     else if (strcmp(kc->testname_, "wcol1") == 0)
-	kvtest_wcol1(*kc, kvtest_first_seed + kc->id() % 48, 5000000);
+	kvtest_wcol1at(*kc, kc->id() % 24, kvtest_first_seed + kc->id() % 48, 5000000);
     else if (strcmp(kc->testname_, "rcol1") == 0)
-	kvtest_rcol1(*kc, kvtest_first_seed + kc->id() % 48, 5000000);
+	kvtest_rcol1at(*kc, kc->id() % 24, kvtest_first_seed + kc->id() % 48, 5000000);
     else
 	kc->fail("unknown test '%s'", kc->testname_);
     return 0;

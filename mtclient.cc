@@ -98,6 +98,8 @@ inline void child::check_flush() {
 
 void aget(struct child *, const Str &key, const Str &wanted, get_async_cb fn);
 void aget(struct child *c, long ikey, long iwanted, get_async_cb fn);
+void aget_col(struct child *c, const Str& key, int col, const Str& wanted,
+              get_async_cb fn);
 int get(struct child *c, const Str &key, char *val, int max);
 
 void asyncgetcb(struct child *, struct async *a, bool, const Str &val);
@@ -105,6 +107,8 @@ void asyncgetcb_int(struct child *, struct async *a, bool, const Str &val);
 
 void aput(struct child *c, const Str &key, const Str &val,
           put_async_cb fn = 0, const Str &wanted = Str());
+void aput_col(struct child *c, const Str &key, int col, const Str &val,
+              put_async_cb fn = 0, const Str &wanted = Str());
 int put(struct child *c, const Str &key, const Str &val);
 void asyncputcb(struct child *, struct async *a, int status);
 
@@ -232,6 +236,17 @@ struct kvtest_client {
     void many_get_check(int, long [], long []) {
         assert(0);
     }
+    void get_col_check(const Str &key, int col, const Str &value) {
+        aget_col(c_, key, col, value, 0);
+    }
+    void get_col_check(long ikey, int col, long ivalue) {
+	quick_istr key(ikey), value(ivalue);
+	get_col_check(key.string(), col, value.string());
+    }
+    void get_col_check_key10(long ikey, int col, long ivalue) {
+	quick_istr key(ikey, 10), value(ivalue);
+	get_col_check(key.string(), col, value.string());
+    }
     void get_check_sync(long ikey, long iexpected) {
         char key[512], val[512], got[512];
         sprintf(key, "%010ld", ikey);
@@ -270,6 +285,17 @@ struct kvtest_client {
     void put_key10(long ikey, long ivalue) {
 	quick_istr key(ikey, 10), value(ivalue);
 	aput(c_, key.string(), value.string());
+    }
+    void put_col(const Str &key, int col, const Str &value) {
+        aput_col(c_, key, col, value);
+    }
+    void put_col(long ikey, int col, long ivalue) {
+	quick_istr key(ikey), value(ivalue);
+	put_col(key.string(), col, value.string());
+    }
+    void put_col_key10(long ikey, int col, long ivalue) {
+	quick_istr key(ikey, 10), value(ivalue);
+	put_col(key.string(), col, value.string());
     }
     void put_sync(long ikey, long ivalue) {
 	quick_istr key(ikey, 10), value(ivalue);
@@ -372,6 +398,12 @@ MAKE_TESTRUNNER(wd2check, kvtest_wd2_check(client));
 MAKE_TESTRUNNER(tri1, kvtest_tri1(10000000, 1, client));
 MAKE_TESTRUNNER(tri1check, kvtest_tri1_check(10000000, 1, client));
 MAKE_TESTRUNNER(same, kvtest_same(client));
+MAKE_TESTRUNNER(wcol1, kvtest_wcol1at(client, client.id() % 24, kvtest_first_seed + client.id() % 48, 5000000));
+MAKE_TESTRUNNER(rcol1, kvtest_rcol1at(client, client.id() % 24, kvtest_first_seed + client.id() % 48, 5000000));
+MAKE_TESTRUNNER(wcol1o1, kvtest_wcol1at(client, (client.id() + 1) % 24, kvtest_first_seed + client.id() % 48, 5000000));
+MAKE_TESTRUNNER(rcol1o1, kvtest_rcol1at(client, (client.id() + 1) % 24, kvtest_first_seed + client.id() % 48, 5000000));
+MAKE_TESTRUNNER(wcol1o2, kvtest_wcol1at(client, (client.id() + 2) % 24, kvtest_first_seed + client.id() % 48, 5000000));
+MAKE_TESTRUNNER(rcol1o2, kvtest_rcol1at(client, (client.id() + 2) % 24, kvtest_first_seed + client.id() % 48, 5000000));
 MAKE_TESTRUNNER(over1, over1(client.child()));
 MAKE_TESTRUNNER(over2, over2(client.child()));
 MAKE_TESTRUNNER(rec1, rec1(client.child()));
@@ -905,6 +937,31 @@ aget(struct child *c, const Str &key, const Str &wanted, get_async_cb fn)
     ++c->nsent_;
 }
 
+void aget_col(struct child *c, const Str& key, int col, const Str& wanted,
+              get_async_cb fn)
+{
+    c->check_flush();
+
+    c->conn->sendgetcol(key, col, c->seq1_);
+    if (c->udp)
+        c->conn->flush();
+
+    struct async *a = &c->a[c->seq1_ & (window - 1)];
+    a->cmd = Cmd_Get;
+    a->seq = c->seq1_;
+    a->get_fn = (fn ? fn : defaultget);
+    assert(key.len < int(sizeof(a->key)) - 1);
+    memcpy(a->key, key.s, key.len);
+    a->key[key.len] = 0;
+    a->wantedlen = wanted.len;
+    int wantedavail = std::min(wanted.len, int(sizeof(a->wanted)));
+    memcpy(a->wanted, wanted.s, wantedavail);
+    a->acked = 0;
+
+    ++c->seq1_;
+    ++c->nsent_;
+}
+
 void
 aget(struct child *c, long ikey, long iwanted, get_async_cb fn)
 {
@@ -937,6 +994,36 @@ aput(struct child *c, const Str &key, const Str &val,
     c->check_flush();
 
     c->conn->sendputwhole(key, val, c->seq1_);
+    if (c->udp)
+        c->conn->flush();
+
+    struct async *a = &c->a[c->seq1_ & (window - 1)];
+    a->cmd = Cmd_Put;
+    a->seq = c->seq1_;
+    assert(key.len < int(sizeof(a->key)) - 1);
+    memcpy(a->key, key.s, key.len);
+    a->key[key.len] = 0;
+    a->put_fn = fn;
+    if (fn) {
+        assert(wanted.len <= int(sizeof(a->wanted)));
+        a->wantedlen = wanted.len;
+        memcpy(a->wanted, wanted.s, wanted.len);
+    } else {
+        a->wantedlen = -1;
+        a->wanted[0] = 0;
+    }
+    a->acked = 0;
+
+    ++c->seq1_;
+    ++c->nsent_;
+}
+
+void aput_col(struct child *c, const Str &key, int col, const Str &val,
+              put_async_cb fn, const Str &wanted)
+{
+    c->check_flush();
+
+    c->conn->sendputcol(key, col, val, c->seq1_);
     if (c->udp)
         c->conn->flush();
 

@@ -73,14 +73,22 @@ class KVConn {
         for (auto x : oldinbuf_)
             delete[] x;
     }
-    void sendgetwhole(Str key, unsigned int seq) {
+    void sendgetwhole(Str key, unsigned seq) {
         j_.resize(3);
         j_[0] = seq;
         j_[1] = Cmd_Get;
         j_[2] = String::make_stable(key);
         send();
     }
-    void sendget(Str key, const row_type::fields_type& f, unsigned int seq) {
+    void sendgetcol(Str key, int col, unsigned seq) {
+        j_.resize(4);
+        j_[0] = seq;
+        j_[1] = Cmd_Get;
+        j_[2] = String::make_stable(key);
+        j_[3] = col;
+        send();
+    }
+    void sendget(Str key, const row_type::fields_type& f, unsigned seq) {
         j_.resize(4);
         j_[0] = seq;
         j_[1] = Cmd_Get;
@@ -89,23 +97,20 @@ class KVConn {
         send();
     }
 
-    void sendput(Str key, row_type::change_type& c, unsigned int seq) {
-	row_type::sort(c);
-        j_.resize(3);
+    void sendputcol(Str key, int col, Str val, unsigned seq) {
+        j_.resize(4);
         j_[0] = seq;
         j_[1] = Cmd_Put;
         j_[2] = String::make_stable(key);
         out_changeset_.clear();
-        for (auto it = c.begin(); it != c.end(); ++it) {
-            char* x = out_changeset_.extend(sizeof(it->c_fid) + sizeof(int32_t) + it->c_value.len);
-            write_in_host_order(x, it->c_fid);
-            write_in_host_order(x + sizeof(it->c_fid), int32_t(it->c_value.len));
-            memcpy(x + sizeof(it->c_fid) + sizeof(int32_t), it->c_value.data(), it->c_value.length());
-        }
+        char* x = out_changeset_.extend(sizeof(row_type::index_type) + sizeof(int32_t) + val.length());
+        write_in_host_order(x, (row_type::index_type) col);
+        write_in_host_order(x + sizeof(row_type::index_type), int32_t(val.length()));
+        memcpy(x + sizeof(row_type::index_type) + sizeof(int32_t), val.data(), val.length());
         j_[3] = String::make_stable(out_changeset_.data(), out_changeset_.length());
         send();
     }
-    void sendputwhole(Str key, Str val, unsigned int seq) {
+    void sendputwhole(Str key, Str val, unsigned seq) {
         j_.resize(3);
         j_[0] = seq;
         j_[1] = Cmd_Replace;
@@ -113,7 +118,7 @@ class KVConn {
         j_[3] = String::make_stable(val);
         send();
     }
-    void sendremove(Str key, unsigned int seq) {
+    void sendremove(Str key, unsigned seq) {
         j_.resize(3);
         j_[0] = seq;
         j_[1] = Cmd_Remove;
@@ -121,7 +126,7 @@ class KVConn {
         send();
     }
 
-    void sendscanwhole(Str firstkey, int numpairs, unsigned int seq) {
+    void sendscanwhole(Str firstkey, int numpairs, unsigned seq) {
         j_.resize(4);
         j_[0] = seq;
         j_[1] = Cmd_Scan;
@@ -130,7 +135,7 @@ class KVConn {
         send();
     }
     void sendscan(Str firstkey, const row_type::fields_type& f, int numpairs,
-                  unsigned int seq) {
+                  unsigned seq) {
         j_.resize(5);
         j_[0] = seq;
         j_[1] = Cmd_Scan;

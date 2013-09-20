@@ -1242,14 +1242,13 @@ void kvtest_r1_seed(C &client, int seed)
 // sometimes overwrites, but only w/ same value.
 // different clients might use same key sometimes.
 template <typename C>
-void kvtest_wcol1(C &client, int seed, long maxkeys)
+void kvtest_wcol1at(C &client, int col, int seed, long maxkeys)
 {
     int n;
     if (client.limit() == ~(uint64_t) 0)
 	n = 4000000;
     else
 	n = std::min(client.limit(), (uint64_t) INT_MAX);
-    int col = client.id() % 24;
     client.rand.reset(seed);
 
     double t0 = now();
@@ -1271,14 +1270,13 @@ void kvtest_wcol1(C &client, int seed, long maxkeys)
 // if we get in the same order that w1 put, performance is
 // about 15% better for b-tree.
 template <typename C>
-void kvtest_rcol1(C &client, int seed, long maxkeys)
+void kvtest_rcol1at(C &client, int col, int seed, long maxkeys)
 {
     int n;
     if (client.limit() == ~(uint64_t) 0)
 	n = 4000000;
     else
 	n = std::min(client.limit(), (uint64_t) INT_MAX);
-    int col = client.id() % 24;
     long *a = (long *) malloc(sizeof(long) * n);
     always_assert(a);
 
