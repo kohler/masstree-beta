@@ -205,7 +205,7 @@ class KVConn {
 
         const Json& result = receive();
         if (!result.is_a()
-            || result[1] != Cmd_Handshake
+            || result[1] != Cmd_Handshake + 1
             || !result[2]) {
             fprintf(stderr, "Incompatible kvdb protocol. Make sure the "
                     "client uses the same row type as the kvd.\n");

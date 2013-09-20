@@ -934,7 +934,6 @@ int handshake(Json& request, threadinfo& ti) {
         || !request[1].is_i() || request[1].as_i() != Cmd_Handshake
         || !request[2].is_i() || request[2].as_i() != KVDB_ROW_TYPE_ID
         || !request[3].is_i() || request[3].as_i() > MaxKeyLen) {
-        request[1] = Cmd_Handshake;
         request[2] = false;
         request.resize(3);
     } else {
@@ -942,6 +941,7 @@ int handshake(Json& request, threadinfo& ti) {
         request[3] = ti.ti_index;
         request.resize(4);
     }
+    request[1] = Cmd_Handshake + 1;
     return request[2].as_b() ? 1 : -1;
 }
 
@@ -983,6 +983,7 @@ int onego(query<row_type>& q, Json& request, threadinfo& ti) {
         request.resize(2);
         return -1;
     }
+    request[1] = command + 1;
     return 1;
 }
 

@@ -34,13 +34,13 @@ inline bool kvproto_check(const kvproto &kvproto) {
 
 enum {
     Cmd_None = 0,
-    Cmd_Get,
-    Cmd_Put,
-    Cmd_Replace,
-    Cmd_Checkpoint,
-    Cmd_Scan,
-    Cmd_Remove,
-    Cmd_Handshake,
+    Cmd_Get = 2,
+    Cmd_Scan = 4,
+    Cmd_Put = 6,
+    Cmd_Replace = 8,
+    Cmd_Remove = 10,
+    Cmd_Checkpoint = 12,
+    Cmd_Handshake = 14,
     Cmd_Max
 };
 
