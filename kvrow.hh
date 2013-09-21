@@ -15,7 +15,6 @@
  */
 #ifndef KVROW_HH
 #define KVROW_HH 1
-#include "vec.hh"
 #include "kvio.hh"
 #include "kvthread.hh"
 #include "kvproto.hh"
@@ -38,7 +37,7 @@ struct valueindex {
 template <typename IDX>
 struct row_base {
     typedef IDX index_type;
-    typedef KUtil::vec<index_type> fields_type;
+    typedef std::vector<index_type> fields_type;
 
     /** @brief Interfaces for column-less key/value store. */
     static void make_get1_fields(fields_type& f) {
