@@ -24,26 +24,9 @@
 using lcdf::Json;
 
 template <typename IDX>
-struct valueindex {
-    static inline IDX make_full() {
-        return IDX(0);
-    }
-    static inline IDX make_fixed(int index, int width) {
-        (void) width;
-        return IDX(index);
-    }
-};
-
-template <typename IDX>
 struct row_base {
     typedef IDX index_type;
     typedef std::vector<index_type> fields_type;
-
-    /** @brief Interfaces for column-less key/value store. */
-    static void make_get1_fields(fields_type& f) {
-        f.resize(1);
-        f[0] = valueindex<index_type>::make_full();
-    }
 };
 
 
@@ -322,7 +305,7 @@ template <typename R> template <typename T>
 void query<R>::run_scan1(T& table, Json& request, threadinfo& ti) {
     assert(request[3].as_i() > 0);
     lcdf::Str key = request[2].as_s();
-    R::make_get1_fields(f_);
+    f_.clear();
     query_json_scanner<R> scanf(*this, request);
     table.scan(key, true, scanf, ti);
 }
@@ -331,7 +314,7 @@ template <typename R> template <typename T>
 void query<R>::run_rscan1(T& table, Json& request, threadinfo& ti) {
     assert(request[3].as_i() > 0);
     lcdf::Str key = request[2].as_s();
-    R::make_get1_fields(f_);
+    f_.clear();
     query_json_scanner<R> scanf(*this, request);
     table.rscan(key, true, scanf, ti);
 }
