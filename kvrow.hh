@@ -60,9 +60,7 @@ class query {
     template <typename T>
     void run_scan(T& table, Json& request, threadinfo& ti);
     template <typename T>
-    void run_scan1(T& table, Json& request, threadinfo& ti);
-    template <typename T>
-    void run_rscan1(T& table, Json& request, threadinfo& ti);
+    void run_rscan(T& table, Json& request, threadinfo& ti);
 
     const loginfo::query_times& query_times() const {
         return qtimes_;
@@ -302,19 +300,12 @@ void query<R>::run_scan(T& table, Json& request, threadinfo& ti) {
 }
 
 template <typename R> template <typename T>
-void query<R>::run_scan1(T& table, Json& request, threadinfo& ti) {
+void query<R>::run_rscan(T& table, Json& request, threadinfo& ti) {
     assert(request[3].as_i() > 0);
     lcdf::Str key = request[2].as_s();
     f_.clear();
-    query_json_scanner<R> scanf(*this, request);
-    table.scan(key, true, scanf, ti);
-}
-
-template <typename R> template <typename T>
-void query<R>::run_rscan1(T& table, Json& request, threadinfo& ti) {
-    assert(request[3].as_i() > 0);
-    lcdf::Str key = request[2].as_s();
-    f_.clear();
+    for (int i = 4; i != request.size(); ++i)
+        f_.push_back(request[i].as_i());
     query_json_scanner<R> scanf(*this, request);
     table.rscan(key, true, scanf, ti);
 }

@@ -376,7 +376,7 @@ void kvtest_client<T>::scan_sync(const Str &firstkey, int n,
 				 std::vector<Str> &keys,
 				 std::vector<Str> &values) {
     Json req = Json::array(0, 0, firstkey, n);
-    q_[0].run_scan1(table_->table(), req, *ti_);
+    q_[0].run_scan(table_->table(), req, *ti_);
     output_scan(req, keys, values);
 }
 
@@ -385,7 +385,7 @@ void kvtest_client<T>::rscan_sync(const Str &firstkey, int n,
 				  std::vector<Str> &keys,
 				  std::vector<Str> &values) {
     Json req = Json::array(0, 0, firstkey, n);
-    q_[0].run_rscan1(table_->table(), req, *ti_);
+    q_[0].run_rscan(table_->table(), req, *ti_);
     output_scan(req, keys, values);
 }
 
