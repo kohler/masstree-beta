@@ -150,9 +150,12 @@ class String : public String_base<String> {
     // String operator+(String, const char *);
     // String operator+(const char *, const String &);
 
+    inline bool is_shared() const;
+    inline bool is_stable() const;
+
+    inline String unique() const;
     inline String compact() const;
 
-    inline bool shared() const;
     char* mutable_data();
     inline unsigned char* mutable_udata();
     char* mutable_c_str();
@@ -756,15 +759,31 @@ inline String &String::operator+=(const String_base<T> &x) {
     return *this;
 }
 
-/** @brief Test if the String's data is shared or immutable. */
-inline bool String::shared() const {
+/** @brief Test if the String's data is shared or stable. */
+inline bool String::is_shared() const {
     memo_type* m = _r.memo();
     return !m || m->refcount != 1;
 }
 
+/** @brief Test if the String's data is stable. */
+inline bool String::is_stable() const {
+    return !_r.memo();
+}
+
+/** @brief Return a unique version of this String.
+
+    The return value shares no data with any other non-stable String. */
+inline String String::unique() const {
+    memo_type* m = _r.memo();
+    if (!m || m->refcount == 1)
+	return *this;
+    else
+	return String(_r.data, _r.data + _r.length);
+}
+
 /** @brief Return a compact version of this String.
 
-    The compact version shares no more than 256 bytes of data with any other
+    The return value shares no more than 256 bytes of data with any other
     non-stable String. */
 inline String String::compact() const {
     memo_type* m = _r.memo();

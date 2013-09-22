@@ -615,7 +615,7 @@ String::mutable_data()
 {
     // If _memo has a capacity (it's not one of the special strings) and it's
     // uniquely referenced, return _data right away.
-    if (!shared())
+    if (!is_shared())
 	return const_cast<char *>(_r.data);
 
     // Otherwise, make a copy of it. Rely on: deref() doesn't change _data or
