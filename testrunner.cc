@@ -15,6 +15,7 @@
  */
 #include "testrunner.hh"
 #include <algorithm>
+#include <numeric>
 #include <vector>
 
 testrunner_base* testrunner_base::thehead;
