@@ -905,48 +905,6 @@ epochinc(int)
     globalepoch += 2;
 }
 
-// lookups in immutable binary-search table,
-// created by checkpoint.
-// this turns out to be slower than THREEWIDETREE,
-// presumably since the latter has half as many levels.
-bool
-table_lookup(const Str &key, Str &val)
-{
-  if(cktable == 0)
-    return false;
-
-  uint64_t n = cktable->count;
-  char *keys = cktable->keys->buf;
-  char *keyvals = cktable->vals->buf;
-  uint64_t *ind = (uint64_t *) cktable->ind->buf;
-
-  uint64_t min = 0;
-  uint64_t max = n - 1;
-  do {
-    uint64_t mid = min + (max - min) / 2;
-    // assert(mid >= 0 && mid >= min && mid < n && mid <= max);
-    int x;
-    if(key.len < CkpKeyPrefixLen){
-      x = strcmp(key.s, keys + mid*CkpKeyPrefixLen);
-    } else {
-      x = strncmp(key.s, keys + mid*CkpKeyPrefixLen, CkpKeyPrefixLen);
-      if(x == 0)
-        x = strcmp(key.s, keyvals + ind[mid]); // XXX should use keys[]
-    }
-    if(x == 0){
-      char *p = keyvals + ind[mid] + key.len + 1 + sizeof(kvtimestamp_t);
-      val.assign(p + sizeof(int), *(int *)p);
-      return true;
-    } else if(x < 0){
-      max = mid - 1;
-    } else {
-      min = mid + 1;
-    }
-  } while(min <= max);
-
-  return false;
-}
-
 // Return 1 if success, -1 if I/O error or protocol unmatch
 int handshake(Json& request, threadinfo& ti) {
     if (request.size() < 4
