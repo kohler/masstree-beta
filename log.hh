@@ -13,8 +13,8 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#ifndef KVDB_LOG_HH
-#define KVDB_LOG_HH
+#ifndef MASSTREE_LOG_HH
+#define MASSTREE_LOG_HH
 #include "kvthread.hh"
 #include "string.hh"
 #include "kvproto.hh"

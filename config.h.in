@@ -215,20 +215,20 @@
 /* Define if you have the __sync_val_compare_and_swap_8 builtin. */
 #undef HAVE___SYNC_VAL_COMPARE_AND_SWAP_8
 
-/* Define if the default row type is kvdb_timed_array. */
-#undef KVDB_ROW_TYPE_ARRAY
-
-/* Define if the default row type is kvdb_timed_array_ver. */
-#undef KVDB_ROW_TYPE_ARRAY_VER
-
-/* Define if the default row type is kvdb_timed_bag. */
-#undef KVDB_ROW_TYPE_BAG
-
-/* Define if the default row type is kvdb_timed_str. */
-#undef KVDB_ROW_TYPE_STR
-
 /* Maximum key length */
 #undef MASSTREE_MAXKEYSIZE
+
+/* Define if the default row type is value_timed_array. */
+#undef MASSTREE_ROW_TYPE_ARRAY
+
+/* Define if the default row type is value_timed_array_ver. */
+#undef MASSTREE_ROW_TYPE_ARRAY_VER
+
+/* Define if the default row type is value_timed_bag. */
+#undef MASSTREE_ROW_TYPE_BAG
+
+/* Define if the default row type is value_timed_str. */
+#undef MASSTREE_ROW_TYPE_STR
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT

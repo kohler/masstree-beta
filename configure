@@ -5493,50 +5493,50 @@ fi
 
 # Check whether --with-malloc was given.
 if test "${with_malloc+set}" = set; then :
-  withval=$with_malloc; ac_kvdb_malloc=$withval
+  withval=$with_malloc; ac_mtd_malloc=$withval
 else
-  ac_kvdb_malloc=yes
+  ac_mtd_malloc=yes
 fi
 
 
-if test \( "$ac_kvdb_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
-	-o \( "$ac_kvdb_malloc" = jemalloc -a -z "$have_jemalloc" \) \
-	-o \( "$ac_kvdb_malloc" = flow -a -z "$have_flow" \) \
-        -o \( "$ac_kvdb_malloc" = hoard -a -z "$have_hoard" \) ; then
-    as_fn_error $? "$ac_kvdb_malloc not found" "$LINENO" 5
-elif test "$ac_kvdb_malloc" = tcmalloc -o "$ac_kvdb_malloc" = jemalloc -o "$ac_kvdb_malloc" = flow -o "$ac_kvdb_malloc" = hoard; then
+if test \( "$ac_mtd_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
+	-o \( "$ac_mtd_malloc" = jemalloc -a -z "$have_jemalloc" \) \
+	-o \( "$ac_mtd_malloc" = flow -a -z "$have_flow" \) \
+        -o \( "$ac_mtd_malloc" = hoard -a -z "$have_hoard" \) ; then
+    as_fn_error $? "$ac_mtd_malloc not found" "$LINENO" 5
+elif test "$ac_mtd_malloc" = tcmalloc -o "$ac_mtd_malloc" = jemalloc -o "$ac_mtd_malloc" = flow -o "$ac_mtd_malloc" = hoard; then
     :
-elif test "$ac_kvdb_malloc" = yes -o "$ac_kvdb_malloc" = default; then
+elif test "$ac_mtd_malloc" = yes -o "$ac_mtd_malloc" = default; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for malloc library" >&5
 $as_echo_n "checking for malloc library... " >&6; }
-    if test -n "$have_flow"; then ac_kvdb_malloc=flow;
-    elif test -n "$have_jemalloc"; then ac_kvdb_malloc=jemalloc;
-    elif test -n "$have_tcmalloc_minimal"; then ac_kvdb_malloc=tcmalloc;
-    else ac_kvdb_malloc=malloc; fi
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_kvdb_malloc" >&5
-$as_echo "$ac_kvdb_malloc" >&6; }
-elif test "$ac_kvdb_malloc" = no -o "$ac_kvdb_malloc" = malloc -o -z "$ac_kvdb_malloc"; then
-    ac_kvdb_malloc=malloc
+    if test -n "$have_flow"; then ac_mtd_malloc=flow;
+    elif test -n "$have_jemalloc"; then ac_mtd_malloc=jemalloc;
+    elif test -n "$have_tcmalloc_minimal"; then ac_mtd_malloc=tcmalloc;
+    else ac_mtd_malloc=malloc; fi
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_mtd_malloc" >&5
+$as_echo "$ac_mtd_malloc" >&6; }
+elif test "$ac_mtd_malloc" = no -o "$ac_mtd_malloc" = malloc -o -z "$ac_mtd_malloc"; then
+    ac_mtd_malloc=malloc
 else
-    as_fn_error $? "Unknown malloc type $ac_kvdb_malloc" "$LINENO" 5
+    as_fn_error $? "Unknown malloc type $ac_mtd_malloc" "$LINENO" 5
 fi
 
-if test "$ac_kvdb_malloc" = tcmalloc; then
+if test "$ac_mtd_malloc" = tcmalloc; then
     MALLOC_LIBS="-ltcmalloc_minimal"
 
 $as_echo "#define HAVE_TCMALLOC 1" >>confdefs.h
 
-elif test "$ac_kvdb_malloc" = jemalloc; then
+elif test "$ac_mtd_malloc" = jemalloc; then
     MALLOC_LIBS="-ljemalloc"
 
 $as_echo "#define HAVE_JEMALLOC 1" >>confdefs.h
 
-elif test "$ac_kvdb_malloc" = flow; then
+elif test "$ac_mtd_malloc" = flow; then
     MALLOC_LIBS="-lflow"
 
 $as_echo "#define HAVE_FLOW_MALLOC 1" >>confdefs.h
 
-elif test "$ac_kvdb_malloc" = hoard; then
+elif test "$ac_mtd_malloc" = hoard; then
     MALLOC_LIBS="-lhoard"
 
 $as_echo "#define HAVE_HOARD_MALLOC 1" >>confdefs.h
@@ -6089,29 +6089,29 @@ fi
 if test "$ac_cv_row_type" = array; then
 
 cat >>confdefs.h <<_ACEOF
-#define KVDB_ROW_TYPE_ARRAY 1
+#define MASSTREE_ROW_TYPE_ARRAY 1
 _ACEOF
 
 elif test "$ac_cv_row_type" = array_ver; then
 
 cat >>confdefs.h <<_ACEOF
-#define KVDB_ROW_TYPE_ARRAY_VER 1
+#define MASSTREE_ROW_TYPE_ARRAY_VER 1
 _ACEOF
 
 elif test "$ac_cv_row_type" = bag; then
 
 cat >>confdefs.h <<_ACEOF
-#define KVDB_ROW_TYPE_BAG 1
+#define MASSTREE_ROW_TYPE_BAG 1
 _ACEOF
 
 elif test "$ac_cv_row_type" = str; then
 
 cat >>confdefs.h <<_ACEOF
-#define KVDB_ROW_TYPE_STR 1
+#define MASSTREE_ROW_TYPE_STR 1
 _ACEOF
 
 else
-    as_fn_error $? "$ac_cv_row_type: Unknown kvdb row type" "$LINENO" 5
+    as_fn_error $? "$ac_cv_row_type: Unknown row type" "$LINENO" 5
 fi
 
 # Check whether --enable-max-key-len was given.

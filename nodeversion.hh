@@ -13,8 +13,8 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#ifndef KVDB_NODEVERSION_HH
-#define KVDB_NODEVERSION_HH 1
+#ifndef MASSTREE_NODEVERSION_HH
+#define MASSTREE_NODEVERSION_HH
 #include <assert.h>
 #include "compiler.hh"
 

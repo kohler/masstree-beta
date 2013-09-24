@@ -407,7 +407,7 @@ void kvtest_client<T>::put(const Str &key, const Str &value) {
 
 template <typename T>
 void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
-#if !KVDB_ROW_TYPE_STR
+#if !MASSTREE_ROW_TYPE_STR
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
     Json x[2] = {Json(col), Json(String::make_stable(value))};

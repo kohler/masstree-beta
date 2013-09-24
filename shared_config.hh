@@ -34,22 +34,22 @@ enum rowtype_id {
     RowType_Bag = 3
 };
 
-#if KVDB_ROW_TYPE_ARRAY
-# define KVDB_ROW_TYPE_INCLUDE "value_array.hh"
-# define KVDB_ROW_TYPE_ID RowType_Array
+#if MASSTREE_ROW_TYPE_ARRAY
+# define MASSTREE_ROW_TYPE_INCLUDE "value_array.hh"
+# define MASSTREE_ROW_TYPE_ID RowType_Array
 typedef value_array row_type;
-#elif KVDB_ROW_TYPE_ARRAY_VER
-# define KVDB_ROW_TYPE_INCLUDE "value_versioned_array.hh"
-# define KVDB_ROW_TYPE_ID RowType_ArrayVer
+#elif MASSTREE_ROW_TYPE_ARRAY_VER
+# define MASSTREE_ROW_TYPE_INCLUDE "value_versioned_array.hh"
+# define MASSTREE_ROW_TYPE_ID RowType_ArrayVer
 typedef value_versioned_array row_type;
-#elif KVDB_ROW_TYPE_BAG
-# define KVDB_ROW_TYPE_INCLUDE "value_bag.hh"
-# define KVDB_ROW_TYPE_ID RowType_Bag
-typedef value_bag<uint16_t> row_type;
-#else
-# define KVDB_ROW_TYPE_INCLUDE "value_string.hh"
-# define KVDB_ROW_TYPE_ID RowType_Str
+#elif MASSTREE_ROW_TYPE_STR
+# define MASSTREE_ROW_TYPE_INCLUDE "value_string.hh"
+# define MASSTREE_ROW_TYPE_ID RowType_Str
 typedef value_string row_type;
+#else
+# define MASSTREE_ROW_TYPE_INCLUDE "value_bag.hh"
+# define MASSTREE_ROW_TYPE_ID RowType_Bag
+typedef value_bag<uint16_t> row_type;
 #endif
 
 #endif

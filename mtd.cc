@@ -313,7 +313,7 @@ void kvtest_client::put(const Str &key, const Str &value) {
 void kvtest_client::put_col(const Str &key, int col, const Str &value) {
     while (failing)
 	/* do nothing */;
-#if !KVDB_ROW_TYPE_STR
+#if !MASSTREE_ROW_TYPE_STR
     if (!kvo_)
 	kvo_ = new_kvout(-1, 2048);
     Json req[2] = {Json(col), Json(String::make_stable(value))};
@@ -951,7 +951,7 @@ table_lookup(const Str &key, Str &val)
 int handshake(Json& request, threadinfo& ti) {
     if (request.size() < 4
         || !request[1].is_i() || request[1].as_i() != Cmd_Handshake
-        || !request[2].is_i() || request[2].as_i() != KVDB_ROW_TYPE_ID
+        || !request[2].is_i() || request[2].as_i() != MASSTREE_ROW_TYPE_ID
         || !request[3].is_i() || request[3].as_i() > MaxKeyLen) {
         request[2] = false;
         request.resize(3);

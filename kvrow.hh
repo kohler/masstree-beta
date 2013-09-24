@@ -310,5 +310,5 @@ void query<R>::run_rscan(T& table, Json& request, threadinfo& ti) {
     table.rscan(key, true, scanf, ti);
 }
 
-#include KVDB_ROW_TYPE_INCLUDE
+#include MASSTREE_ROW_TYPE_INCLUDE
 #endif

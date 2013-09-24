@@ -23,12 +23,12 @@ struct kvproto {
 };
 
 inline void kvproto_init(struct kvproto &kvproto) {
-    kvproto.p_rt = KVDB_ROW_TYPE_ID;
+    kvproto.p_rt = MASSTREE_ROW_TYPE_ID;
     kvproto.p_maxkeylen = MaxKeyLen;
 }
 
 inline bool kvproto_check(const kvproto &kvproto) {
-    return kvproto.p_rt == KVDB_ROW_TYPE_ID
+    return kvproto.p_rt == MASSTREE_ROW_TYPE_ID
         && kvproto.p_maxkeylen <= MaxKeyLen;
 }
 

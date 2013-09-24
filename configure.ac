@@ -210,38 +210,38 @@ AC_CHECK_LIB([hoard], [_Z16getMainHoardHeapv], [have_hoard=true], [have_hoard=])
 AC_ARG_WITH([malloc],
     [AS_HELP_STRING([--with-malloc=TYPE],
                     [memory allocator (malloc|jemalloc|tcmalloc|hoard|flow)])],
-    [ac_kvdb_malloc=$withval], [ac_kvdb_malloc=yes])
+    [ac_mtd_malloc=$withval], [ac_mtd_malloc=yes])
 
-if test \( "$ac_kvdb_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
-	-o \( "$ac_kvdb_malloc" = jemalloc -a -z "$have_jemalloc" \) \
-	-o \( "$ac_kvdb_malloc" = flow -a -z "$have_flow" \) \
-        -o \( "$ac_kvdb_malloc" = hoard -a -z "$have_hoard" \) ; then
-    AC_MSG_ERROR([$ac_kvdb_malloc not found])
-elif test "$ac_kvdb_malloc" = tcmalloc -o "$ac_kvdb_malloc" = jemalloc -o "$ac_kvdb_malloc" = flow -o "$ac_kvdb_malloc" = hoard; then
+if test \( "$ac_mtd_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
+	-o \( "$ac_mtd_malloc" = jemalloc -a -z "$have_jemalloc" \) \
+	-o \( "$ac_mtd_malloc" = flow -a -z "$have_flow" \) \
+        -o \( "$ac_mtd_malloc" = hoard -a -z "$have_hoard" \) ; then
+    AC_MSG_ERROR([$ac_mtd_malloc not found])
+elif test "$ac_mtd_malloc" = tcmalloc -o "$ac_mtd_malloc" = jemalloc -o "$ac_mtd_malloc" = flow -o "$ac_mtd_malloc" = hoard; then
     :
-elif test "$ac_kvdb_malloc" = yes -o "$ac_kvdb_malloc" = default; then
+elif test "$ac_mtd_malloc" = yes -o "$ac_mtd_malloc" = default; then
     AC_MSG_CHECKING([for malloc library])
-    if test -n "$have_flow"; then ac_kvdb_malloc=flow;
-    elif test -n "$have_jemalloc"; then ac_kvdb_malloc=jemalloc;
-    elif test -n "$have_tcmalloc_minimal"; then ac_kvdb_malloc=tcmalloc;
-    else ac_kvdb_malloc=malloc; fi
-    AC_MSG_RESULT([$ac_kvdb_malloc])
-elif test "$ac_kvdb_malloc" = no -o "$ac_kvdb_malloc" = malloc -o -z "$ac_kvdb_malloc"; then
-    ac_kvdb_malloc=malloc
+    if test -n "$have_flow"; then ac_mtd_malloc=flow;
+    elif test -n "$have_jemalloc"; then ac_mtd_malloc=jemalloc;
+    elif test -n "$have_tcmalloc_minimal"; then ac_mtd_malloc=tcmalloc;
+    else ac_mtd_malloc=malloc; fi
+    AC_MSG_RESULT([$ac_mtd_malloc])
+elif test "$ac_mtd_malloc" = no -o "$ac_mtd_malloc" = malloc -o -z "$ac_mtd_malloc"; then
+    ac_mtd_malloc=malloc
 else
-    AC_MSG_ERROR([Unknown malloc type $ac_kvdb_malloc])
+    AC_MSG_ERROR([Unknown malloc type $ac_mtd_malloc])
 fi
 
-if test "$ac_kvdb_malloc" = tcmalloc; then
+if test "$ac_mtd_malloc" = tcmalloc; then
     MALLOC_LIBS="-ltcmalloc_minimal"
     AC_DEFINE([HAVE_TCMALLOC], [1], [Define if you are using libtcmalloc for malloc.])
-elif test "$ac_kvdb_malloc" = jemalloc; then
+elif test "$ac_mtd_malloc" = jemalloc; then
     MALLOC_LIBS="-ljemalloc"
     AC_DEFINE([HAVE_JEMALLOC], [1], [Define if you are using libjemalloc for malloc.])
-elif test "$ac_kvdb_malloc" = flow; then
+elif test "$ac_mtd_malloc" = flow; then
     MALLOC_LIBS="-lflow"
     AC_DEFINE([HAVE_FLOW_MALLOC], [1], [Define if you are using libflow for malloc.])
-elif test "$ac_kvdb_malloc" = hoard; then
+elif test "$ac_mtd_malloc" = hoard; then
     MALLOC_LIBS="-lhoard"
     AC_DEFINE([HAVE_HOARD_MALLOC], [1], [Define if you are using libhoard for malloc.])
 else
@@ -294,15 +294,15 @@ AC_ARG_ENABLE([row-type],
                     [row type: bag array array_ver str, default bag])],
     [ac_cv_row_type=$enableval], [ac_cv_row_type=bag])
 if test "$ac_cv_row_type" = array; then
-    AC_DEFINE_UNQUOTED([KVDB_ROW_TYPE_ARRAY], [1], [Define if the default row type is kvdb_timed_array.])
+    AC_DEFINE_UNQUOTED([MASSTREE_ROW_TYPE_ARRAY], [1], [Define if the default row type is value_timed_array.])
 elif test "$ac_cv_row_type" = array_ver; then
-    AC_DEFINE_UNQUOTED([KVDB_ROW_TYPE_ARRAY_VER], [1], [Define if the default row type is kvdb_timed_array_ver.])
+    AC_DEFINE_UNQUOTED([MASSTREE_ROW_TYPE_ARRAY_VER], [1], [Define if the default row type is value_timed_array_ver.])
 elif test "$ac_cv_row_type" = bag; then
-    AC_DEFINE_UNQUOTED([KVDB_ROW_TYPE_BAG], [1], [Define if the default row type is kvdb_timed_bag.])
+    AC_DEFINE_UNQUOTED([MASSTREE_ROW_TYPE_BAG], [1], [Define if the default row type is value_timed_bag.])
 elif test "$ac_cv_row_type" = str; then
-    AC_DEFINE_UNQUOTED([KVDB_ROW_TYPE_STR], [1], [Define if the default row type is kvdb_timed_str.])
+    AC_DEFINE_UNQUOTED([MASSTREE_ROW_TYPE_STR], [1], [Define if the default row type is value_timed_str.])
 else
-    AC_MSG_ERROR([$ac_cv_row_type: Unknown kvdb row type])
+    AC_MSG_ERROR([$ac_cv_row_type: Unknown row type])
 fi
 
 AC_ARG_ENABLE([max-key-len],

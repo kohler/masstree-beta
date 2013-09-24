@@ -198,7 +198,7 @@ class KVConn {
         j_.resize(4);
         j_[0] = 0;
         j_[1] = Cmd_Handshake;
-        j_[2] = KVDB_ROW_TYPE_ID;
+        j_[2] = MASSTREE_ROW_TYPE_ID;
         j_[3] = MaxKeyLen;
         send();
         kvflush(out_);
