@@ -14,23 +14,8 @@
  * is legally binding.
  */
 #ifndef KVPROTO_HH
-#define KVPROTO_HH 1
+#define KVPROTO_HH
 #include "shared_config.hh"
-
-struct kvproto {
-    int p_rt;
-    int p_maxkeylen;
-};
-
-inline void kvproto_init(struct kvproto &kvproto) {
-    kvproto.p_rt = MASSTREE_ROW_TYPE_ID;
-    kvproto.p_maxkeylen = MaxKeyLen;
-}
-
-inline bool kvproto_check(const kvproto &kvproto) {
-    return kvproto.p_rt == MASSTREE_ROW_TYPE_ID
-        && kvproto.p_maxkeylen <= MaxKeyLen;
-}
 
 enum {
     Cmd_None = 0,
