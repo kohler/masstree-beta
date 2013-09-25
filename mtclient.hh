@@ -214,8 +214,7 @@ class KVConn {
         partition_ = result[3].as_i();
     }
     inline void send() {
-        msgpack::compact_unparser up;
-        up.unparse(*out_, j_);
+        msgpack::unparse(*out_, j_);
     }
     void hard_check(int tryhard);
 };

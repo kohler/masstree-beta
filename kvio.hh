@@ -53,6 +53,7 @@ struct kvout {
     inline void append(char c);
     inline char* reserve(int n);
     inline void adjust_length(int delta);
+    inline void set_end(char* end);
     void grow(unsigned want);
 };
 
@@ -112,6 +113,11 @@ inline char* kvout::reserve(int nchars) {
 inline void kvout::adjust_length(int delta) {
     masstree_precondition(n + delta <= capacity);
     n += delta;
+}
+
+inline void kvout::set_end(char* x) {
+    masstree_precondition(x >= buf && x <= buf + capacity);
+    n = x - buf;
 }
 
 #endif

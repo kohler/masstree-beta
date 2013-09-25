@@ -371,10 +371,10 @@ void loginfo::record(int command, const query_times& qtimes,
 void loginfo::record(int command, const query_times& qtimes, Str key,
                      const lcdf::Json* req, const lcdf::Json* end_req) {
     lcdf::StringAccum sa(128);
-    msgpack::compact_unparser cu;
-    sa.set_end(cu.unparse_array_header(sa.udata(), end_req - req));
+    msgpack::unparser<lcdf::StringAccum> cu(sa);
+    cu.write_array_header(end_req - req);
     for (; req != end_req; ++req)
-        cu.unparse(sa, *req);
+        cu << *req;
     record(command, qtimes, key, Str(sa.data(), sa.length()));
 }
 
@@ -521,7 +521,7 @@ static lcdf::Json* parse_changeset(Str changeset,
     while (mp.position() != changeset.end()) {
         if (pos == jrepo.size())
             jrepo.resize(pos + 2);
-        mp.parse(index).parse(value);
+        mp >> index >> value;
         jrepo[pos] = index;
         jrepo[pos + 1] = String::make_stable(value);
         pos += 2;

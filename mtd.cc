@@ -1124,8 +1124,7 @@ tcpgo(void *xarg)
                     ret = onego(q, request, c->recent_string(xposition), *ti);
                     ti->rcu_stop();
                 }
-                msgpack::compact_unparser cu;
-                cu.unparse(*c->kvout, request);
+                msgpack::unparse(*c->kvout, request);
                 request.clear();
                 if (likely(ret >= 0)) {
                     if (c->check(0))
@@ -1190,8 +1189,8 @@ udpgo(void *xarg)
         ti->rcu_start();
         if (onego(q, parser.result(), Str(buf.data(), consumed), *ti) >= 0) {
             sa.clear();
-            msgpack::compact_unparser cu;
-            cu.unparse(sa, parser.result());
+            msgpack::unparser<StringAccum> cu(sa);
+            cu << parser.result();
             cc = sendto(s, sa.data(), sa.length(), 0,
                         (struct sockaddr*) &sin, sinlen);
             always_assert(cc == (ssize_t) sa.length());
