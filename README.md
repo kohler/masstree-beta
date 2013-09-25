@@ -2,8 +2,7 @@
 
 This is the source release for Masstree, a fast, multi-core key-value
 store. This document describes how to run Masstree and interpret its
-results. More recent information may be available at
-[Masstree website](http://pdos.csail.mit.edu/masstree).
+results.
 
 ## Contents ##
 
