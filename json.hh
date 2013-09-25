@@ -2014,9 +2014,9 @@ inline String Json::get_s(Str key) const {
     @param[out] x value storage
     @return proxy for *this
 
-    @a x is assigned iff contains(@a key). The return value is a proxy
+    @a x is assigned iff count(@a key). The return value is a proxy
     object that mostly behaves like *this. However, the proxy is "truthy"
-    iff contains(@a key) and @a x was assigned. The proxy also has status()
+    iff count(@a key) and @a x was assigned. The proxy also has status()
     methods that return the extraction status. For example:
 
     <code>
@@ -2042,7 +2042,7 @@ inline String Json::get_s(Str key) const {
 
     Overloaded versions of @a get() can extract integer, double, boolean,
     and string values for specific keys. These versions succeed iff
-    contains(@a key) and the corresponding value has the expected type. For
+    count(@a key) and the corresponding value has the expected type. For
     example:
 
     <code>
