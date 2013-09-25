@@ -90,9 +90,11 @@ class value_versioned_array : public row_base<value_array::index_type> {
     inline void deallocate_rcu_after_update(const Json* first, const Json* last, threadinfo& ti);
     inline void deallocate_after_failed_update(const Json* first, const Json* last, threadinfo& ti);
 
-    static value_versioned_array* checkpoint_read(Str str, kvtimestamp_t ts,
-                                                threadinfo& ti);
-    void checkpoint_write(kvout* kv) const;
+    template <typename PARSER>
+    static value_versioned_array* checkpoint_read(PARSER& par, kvtimestamp_t ts,
+                                                  threadinfo& ti);
+    template <typename UNPARSER>
+    void checkpoint_write(UNPARSER& unpar) const;
 
     void print(FILE *f, const char *prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char *suffix = "") {
@@ -139,7 +141,7 @@ inline int value_versioned_array::ncol() const {
 }
 
 inline Str value_versioned_array::col(int i) const {
-    if (unsigned(i) < unsigned(ncol_))
+    if (unsigned(i) < unsigned(ncol_) && cols_[i])
         return Str(cols_[i]->s, cols_[i]->len);
     else
         return Str();
@@ -173,6 +175,28 @@ inline void value_versioned_array::deallocate_rcu_after_update(const Json*, cons
 
 inline void value_versioned_array::deallocate_after_failed_update(const Json*, const Json*, threadinfo&) {
     always_assert(0);
+}
+
+template <typename PARSER>
+value_versioned_array*
+value_versioned_array::checkpoint_read(PARSER& par, kvtimestamp_t ts,
+                                       threadinfo& ti) {
+    unsigned ncol;
+    par.read_array_header(ncol);
+    value_versioned_array* row = make_sized_row(ncol, ts, ti);
+    Str col;
+    for (unsigned i = 0; i != ncol; i++) {
+        par >> col;
+        row->cols_[i] = value_array::make_column(col, ti);
+    }
+    return row;
+}
+
+template <typename UNPARSER>
+void value_versioned_array::checkpoint_write(UNPARSER& unpar) const {
+    unpar.write_array_header(ncol_);
+    for (short i = 0; i != ncol_; ++i)
+        unpar << col(i);
 }
 
 #endif

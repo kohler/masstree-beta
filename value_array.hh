@@ -39,9 +39,11 @@ class value_array : public row_base<short> {
     void deallocate_rcu_after_update(const Json* first, const Json* last, threadinfo& ti);
     void deallocate_after_failed_update(const Json* first, const Json* last, threadinfo& ti);
 
-    static value_array* checkpoint_read(Str str, kvtimestamp_t ts,
-                                            threadinfo& ti);
-    void checkpoint_write(kvout* buf) const;
+    template <typename PARSER>
+    static value_array* checkpoint_read(PARSER& par, kvtimestamp_t ts,
+                                        threadinfo& ti);
+    template <typename UNPARSER>
+    void checkpoint_write(UNPARSER& unpar) const;
 
     void print(FILE* f, const char* prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char* suffix = "") {
@@ -51,7 +53,6 @@ class value_array : public row_base<short> {
     }
 
     static inline lcdf::inline_string* make_column(Str str, threadinfo& ti);
-    static inline lcdf::inline_string* read_column(kvin* in, threadinfo& ti);
     static void deallocate_column(lcdf::inline_string* col, threadinfo& ti);
     static void deallocate_column_rcu(lcdf::inline_string* col, threadinfo& ti);
 
@@ -78,7 +79,7 @@ inline int value_array::ncol() const {
 }
 
 inline Str value_array::col(int i) const {
-    if (unsigned(i) < unsigned(ncol_))
+    if (unsigned(i) < unsigned(ncol_) && cols_[i])
         return Str(cols_[i]->s, cols_[i]->len);
     else
         return Str();
@@ -94,22 +95,13 @@ inline size_t value_array::shallow_size() const {
 
 inline lcdf::inline_string* value_array::make_column(Str str, threadinfo& ti) {
     using lcdf::inline_string;
-    inline_string* col = (inline_string*) ti.allocate(inline_string::size(str.length()), memtag_value);
-    col->len = str.length();
-    memcpy(col->s, str.data(), str.length());
-    return col;
-}
-
-inline lcdf::inline_string* value_array::read_column(kvin* kv, threadinfo& ti) {
-    using lcdf::inline_string;
-    int len;
-    int r = KVR(kv, len);
-    always_assert(r == sizeof(len));
-    inline_string* col = (inline_string*) ti.allocate(inline_string::size(len), memtag_value);
-    col->len = len;
-    r = kvread(kv, col->s, len);
-    assert(r == len);
-    return col;
+    if (str) {
+        inline_string* col = (inline_string*) ti.allocate(inline_string::size(str.length()), memtag_value);
+        col->len = str.length();
+        memcpy(col->s, str.data(), str.length());
+        return col;
+    } else
+        return 0;
 }
 
 inline void value_array::deallocate_column(lcdf::inline_string* col,
@@ -136,6 +128,28 @@ inline value_array* value_array::create1(Str value, kvtimestamp_t ts, threadinfo
     row->ncol_ = 1;
     row->cols_[0] = make_column(value, ti);
     return row;
+}
+
+template <typename PARSER>
+value_array* value_array::checkpoint_read(PARSER& par, kvtimestamp_t ts,
+                                          threadinfo& ti) {
+    unsigned ncol;
+    par.read_array_header(ncol);
+    value_array* row = make_sized_row(ncol, ts, ti);
+    Str col;
+    for (unsigned i = 0; i != ncol; i++) {
+        par >> col;
+        if (col)
+            row->cols_[i] = make_column(col, ti);
+    }
+    return row;
+}
+
+template <typename UNPARSER>
+void value_array::checkpoint_write(UNPARSER& unpar) const {
+    unpar.write_array_header(ncol_);
+    for (short i = 0; i != ncol_; i++)
+        unpar << col(i);
 }
 
 #endif

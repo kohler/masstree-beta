@@ -15,7 +15,6 @@
  */
 #ifndef KVROW_HH
 #define KVROW_HH 1
-#include "kvio.hh"
 #include "kvthread.hh"
 #include "kvproto.hh"
 #include "log.hh"

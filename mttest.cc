@@ -62,6 +62,7 @@
 #include "kvtest.hh"
 #include "kvrandom.hh"
 #include "kvrow.hh"
+#include "kvio.hh"
 #include "clp.h"
 #include <algorithm>
 #include <numeric>

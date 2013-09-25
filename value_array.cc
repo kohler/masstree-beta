@@ -41,28 +41,6 @@ value_array* value_array::update(const Json* first, const Json* last,
     return row;
 }
 
-value_array* value_array::checkpoint_read(Str str, kvtimestamp_t ts,
-                                          threadinfo& ti) {
-    kvin kv;
-    kvin_init(&kv, const_cast<char*>(str.s), str.len);
-    short ncol;
-    KVR(&kv, ncol);
-    value_array* row = make_sized_row(ncol, ts, ti);
-    for (short i = 0; i < ncol; i++)
-        row->cols_[i] = read_column(&kv, ti);
-    return row;
-}
-
-void value_array::checkpoint_write(kvout* kv) const {
-    int sz = sizeof(ncol_);
-    for (short i = 0; i != ncol_; ++i)
-        sz += sizeof(int) + (cols_[i] ? cols_[i]->length() : 0);
-    KVW(kv, sz);
-    KVW(kv, ncol_);
-    for (short i = 0; i != ncol_; i++)
-        kvwrite_inline_string(kv, cols_[i]);
-}
-
 void value_array::deallocate(threadinfo& ti) {
     for (short i = 0; i < ncol_; ++i)
         deallocate_column(cols_[i], ti);

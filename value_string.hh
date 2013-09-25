@@ -42,9 +42,11 @@ class value_string : public row_base<unsigned> {
     inline void deallocate_rcu_after_update(const Json* first, const Json* last, threadinfo& ti);
     inline void deallocate_after_failed_update(const Json* first, const Json* last, threadinfo& ti);
 
-    static inline value_string* checkpoint_read(Str str, kvtimestamp_t ts,
+    template <typename PARSER>
+    static inline value_string* checkpoint_read(PARSER& par, kvtimestamp_t ts,
                                                 threadinfo& ti);
-    inline void checkpoint_write(kvout* kv) const;
+    template <typename UNPARSER>
+    inline void checkpoint_write(UNPARSER& unpar) const;
 
     void print(FILE* f, const char* prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char* suffix = "") {
@@ -172,14 +174,18 @@ inline void value_string::deallocate_after_failed_update(const Json*, const Json
     deallocate(ti);
 }
 
-inline value_string* value_string::checkpoint_read(Str str,
+template <typename PARSER>
+inline value_string* value_string::checkpoint_read(PARSER& par,
                                                    kvtimestamp_t ts,
                                                    threadinfo& ti) {
+    Str str;
+    par >> str;
     return create1(str, ts, ti);
 }
 
-inline void value_string::checkpoint_write(kvout* kv) const {
-    KVW(kv, Str(s_, vallen_));
+template <typename UNPARSER>
+inline void value_string::checkpoint_write(UNPARSER& unpar) const {
+    unpar << Str(s_, vallen_);
 }
 
 #endif

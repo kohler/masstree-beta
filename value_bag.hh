@@ -66,10 +66,11 @@ class value_bag : public row_base<short> {
     template <typename ALLOC>
     inline void deallocate_after_failed_update(const Json* first, const Json* last, ALLOC& ti);
 
-    template <typename ALLOC>
-    static value_bag<O>* checkpoint_read(Str str, kvtimestamp_t ts,
+    template <typename PARSER, typename ALLOC>
+    static value_bag<O>* checkpoint_read(PARSER& par, kvtimestamp_t ts,
                                          ALLOC& ti);
-    inline void checkpoint_write(kvout* kv) const;
+    template <typename UNPARSER>
+    inline void checkpoint_write(UNPARSER& unpar) const;
 
     void print(FILE* f, const char* prefix, int indent, Str key,
 	       kvtimestamp_t initial_ts, const char* suffix = "");
@@ -239,19 +240,21 @@ inline void value_bag<O>::deallocate_after_failed_update(const Json*, const Json
     deallocate(ti);
 }
 
-template <typename O> template <typename ALLOC>
-inline value_bag<O>* value_bag<O>::checkpoint_read(Str str,
+template <typename O> template <typename PARSER, typename ALLOC>
+inline value_bag<O>* value_bag<O>::checkpoint_read(PARSER& par,
                                                    kvtimestamp_t ts,
                                                    ALLOC& ti) {
-    value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + str.len, memtag_value);
+    Str value;
+    par >> value;
+    value_bag<O>* row = (value_bag<O>*) ti.allocate(sizeof(kvtimestamp_t) + value.length(), memtag_value);
     row->ts_ = ts;
-    memcpy(row->d_.s_, str.s, str.len);
+    memcpy(row->d_.s_, value.data(), value.length());
     return row;
 }
 
-template <typename O>
-inline void value_bag<O>::checkpoint_write(kvout* kv) const {
-    KVW(kv, Str(d_.s_, d_.pos_[d_.ncol_]));
+template <typename O> template <typename UNPARSER>
+inline void value_bag<O>::checkpoint_write(UNPARSER& unpar) const {
+    unpar << Str(d_.s_, d_.pos_[d_.ncol_]);
 }
 
 template <typename O>

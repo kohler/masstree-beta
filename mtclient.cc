@@ -1406,7 +1406,9 @@ rec2(struct child *c)
 void
 cpb(struct child *c)
 {
-    c->conn->checkpoint(c->childno);
+    if (c->childno == 0)
+        c->conn->checkpoint(c->childno);
+    checkasync(c, 2);
 }
 
 // mimic the first benchmark from the VoltDB blog:

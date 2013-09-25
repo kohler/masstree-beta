@@ -110,7 +110,6 @@ kvtimestamp_t initial_timestamp;
 
 static pthread_cond_t checkpoint_cond;
 static pthread_mutex_t checkpoint_mu;
-static struct ckstate *cktable;
 
 static void prepare_thread(threadinfo *ti);
 static void *tcpgo(void *);
@@ -118,10 +117,7 @@ static void *udpgo(void *);
 
 static void log_init();
 static void recover(threadinfo *);
-static kvepoch_t read_checkpoint(threadinfo *, const char *path);
-static uint64_t traverse_checkpoint_inorder(uint64_t off, uint64_t n,
-                                            char *base, uint64_t *ind,
-                                            uint64_t max, threadinfo *ti);
+static kvepoch_t read_checkpoint(threadinfo*, const char *path);
 
 static void *conc_checkpointer(void *);
 static void recovercheckpoint(threadinfo *ti);
@@ -1242,43 +1238,40 @@ void log_init() {
 // returns the timestamp of the first log record that needs
 // to come from the log.
 kvepoch_t read_checkpoint(threadinfo *ti, const char *path) {
-  double t0 = now();
+    double t0 = now();
 
-  int fd = open(path, 0);
-  if(fd < 0){
-    printf("no %s\n", path);
-    return 0;
-  }
-  struct stat sb;
-  int ret = fstat(fd, &sb);
-  always_assert(ret == 0);
-  char *p = (char *) mmap(0, sb.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
-  always_assert(p != MAP_FAILED);
-  close(fd);
+    int fd = open(path, 0);
+    if(fd < 0){
+        printf("no %s\n", path);
+        return 0;
+    }
+    struct stat sb;
+    int ret = fstat(fd, &sb);
+    always_assert(ret == 0);
+    char *p = (char *) mmap(0, sb.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
+    always_assert(p != MAP_FAILED);
+    close(fd);
 
-  uint64_t gen = *(uint64_t *)p;
-  uint64_t n = *(uint64_t *)(p + 8);
-  printf("reading checkpoint with %" PRIu64 " nodes\n", n);
+    msgpack::parser par(String::make_stable(p, sb.st_size));
+    Json j;
+    par >> j;
+    std::cerr << j << "\n";
+    always_assert(j["generation"].is_i() && j["size"].is_i());
+    uint64_t gen = j["generation"].as_i();
+    uint64_t n = j["size"].as_i();
+    printf("reading checkpoint with %" PRIu64 " nodes\n", n);
 
-  char *keyjunk = p + 2*8; // array of key prefixes, ignore for now
-  uint64_t *ind = (uint64_t *)(keyjunk + CkpKeyPrefixLen*n);
-  char *keyval = (char *)(ind + n);
-  query<row_type> q;
+    // read data
+    for (uint64_t i = 0; i != n; ++i)
+        ckstate::insert(tree->table(), par, *ti);
 
-  // round n up to power of two
-  uint64_t n2 = pow(2, ceil(log(n) / log(2)));
-  always_assert(n2 >= n);
-  traverse_checkpoint_inorder(0, n2, keyval, ind, n, ti);
-  munmap(p, sb.st_size);
-
-  double t1 = now();
-
-  printf("%.1f MB, %.2f sec, %.1f MB/sec\n",
-         sb.st_size / 1000000.0,
-         t1 - t0,
-         (sb.st_size / 1000000.0) / (t1 - t0));
-
-  return gen;
+    munmap(p, sb.st_size);
+    double t1 = now();
+    printf("%.1f MB, %.2f sec, %.1f MB/sec\n",
+           sb.st_size / 1000000.0,
+           t1 - t0,
+           (sb.st_size / 1000000.0) / (t1 - t0));
+    return gen;
 }
 
 void
@@ -1297,17 +1290,6 @@ inactive(void)
   rec_nactive --;
   always_assert(pthread_cond_broadcast(&rec_cond) == 0);
   always_assert(pthread_mutex_unlock(&rec_mu) == 0);
-}
-
-uint64_t
-traverse_checkpoint_inorder(uint64_t off, uint64_t n,
-                            char *base, uint64_t *ind, uint64_t max,
-                            threadinfo *ti)
-{
-    always_assert(off == 0);
-    for (uint64_t i = 0; i < max; i++)
-        ckstate::insert(tree->table(), base + ind[i], *ti);
-    return n;
 }
 
 void recovercheckpoint(threadinfo *ti) {
@@ -1489,17 +1471,15 @@ writecheckpoint(const char *path, ckstate *c, double t0)
   int fd = creat(path, 0666);
   always_assert(fd >= 0);
 
-  // checkpoint file format:
-  //   ckp_gen (64 bits)
-  //   #keys (64 bits)
-  //   #keys * CKKEYLEN key prefixes, in lexical order
-  //   #keys * CKKEYLEN 64-bit indices, in lexical order, into...
-  //   key/val pairs
-
-  checked_write(fd, &ckp_gen, sizeof(ckp_gen));
-  checked_write(fd, &c->count, sizeof(c->count));
-  checked_write(fd, c->keys->buf, c->keys->n);
-  checked_write(fd, c->ind->buf, c->ind->n);
+  // checkpoint file format, all msgpack:
+  //   {"generation": generation, "size": size, ...}
+  //   then `size` triples of key (string), timestmap (int), value (whatever)
+  Json j = Json().set("generation", ckp_gen.value())
+      .set("size", c->count)
+      .set("firstkey", c->startkey);
+  StringAccum sa;
+  msgpack::unparse(sa, j);
+  checked_write(fd, sa.data(), sa.length());
   checked_write(fd, c->vals->buf, c->vals->n);
 
   int ret = fsync(fd);
@@ -1508,7 +1488,7 @@ writecheckpoint(const char *path, ckstate *c, double t0)
   always_assert(ret == 0);
 
   double t2 = now();
-  c->bytes = c->keys->n + c->ind->n + c->vals->n;
+  c->bytes = c->vals->n;
   printf("file phase (%s): %" PRIu64 " bytes, %.2f sec, %.1f MB/sec\n",
          path,
          c->bytes,
@@ -1520,9 +1500,7 @@ void
 conc_filecheckpoint(threadinfo *ti)
 {
   ckstate *c = &cks[ti->ti_index];
-  c->keys = new_bufkvout();
   c->vals = new_bufkvout();
-  c->ind = new_bufkvout();
   double t0 = now();
   tree->table().scan(c->startkey, true, *c, *ti);
   char path[256];
@@ -1531,9 +1509,7 @@ conc_filecheckpoint(threadinfo *ti)
           ckp_gen.value(), ti->ti_index);
   writecheckpoint(path, c, t0);
   c->count = 0;
-  free(c->keys);
   free(c->vals);
-  free(c->ind);
 }
 
 static Json

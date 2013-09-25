@@ -13,17 +13,14 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#ifndef KVDB_CHECKPOINT_HH
-#define KVDB_CHECKPOINT_HH 1
+#ifndef MASSTREE_CHECKPOINT_HH
+#define MASSTREE_CHECKPOINT_HH
 #include "kvrow.hh"
 #include "kvio.hh"
-
-enum { CkpKeyPrefixLen = 8 };
+#include "msgpack.hh"
 
 struct ckstate {
-    kvout *keys; // array of first CkpKeyPrefixLen bytes of each key
-    kvout *vals; // key \0 [timestamp:8] [vallen:4] val
-    kvout *ind; // array of indices into vals
+    kvout *vals; // key, val, timestamp in msgpack
     uint64_t count; // total nodes written
     uint64_t bytes;
     pthread_cond_t state_cond;
@@ -38,24 +35,21 @@ struct ckstate {
     bool visit_value(Str key, const row_type* value, threadinfo& ti);
 
     template <typename T>
-    static void insert(T& table, const char* data, threadinfo& ti);
+    static void insert(T& table, msgpack::parser& par, threadinfo& ti);
 };
 
 template <typename T>
-void ckstate::insert(T& table, const char* data, threadinfo& ti) {
-    int keylen = strlen(data);
-    always_assert(keylen >= 0 && keylen < MaxKeyLen);
-    Str key(data, keylen);
-    data += keylen + 1;
-    kvtimestamp_t ts = read_in_host_order<kvtimestamp_t>(data);
-    int vallen = read_in_host_order<int>(data + sizeof(ts));
-    Str value(data + sizeof(ts) + sizeof(vallen), vallen);
+void ckstate::insert(T& table, msgpack::parser& par, threadinfo& ti) {
+    Str key;
+    kvtimestamp_t ts;
+    par >> key >> ts;
+    row_type* row = row_type::checkpoint_read(par, ts, ti);
 
     typename T::cursor_type lp(table, key);
     bool found = lp.find_insert(ti);
     masstree_invariant(!found); (void) found;
     ti.advance_timestamp(lp.node_timestamp());
-    lp.value() = row_type::checkpoint_read(value, ts, ti);
+    lp.value() = row;
     lp.finish(1, ti);
 }
 
