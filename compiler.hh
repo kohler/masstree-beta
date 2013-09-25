@@ -907,17 +907,19 @@ MAKE_ALIASABLE(double);
 #undef MAKE_ALIASABLE
 
 template <typename T>
-inline void write_in_host_order(char* s, T x) {
+inline char* write_in_host_order(char* s, T x) {
 #if HAVE_INDIFFERENT_ALIGNMENT
     *reinterpret_cast<typename make_aliasable<T>::type*>(s) = x;
 #else
     memcpy(s, &x, sizeof(x));
 #endif
+    return s + sizeof(x);
 }
 
 template <typename T>
-inline void write_in_host_order(uint8_t* s, T x) {
-    write_in_host_order(reinterpret_cast<char*>(s), x);
+inline uint8_t* write_in_host_order(uint8_t* s, T x) {
+    return reinterpret_cast<uint8_t*>
+        (write_in_host_order(reinterpret_cast<char*>(s), x));
 }
 
 template <typename T>
@@ -937,13 +939,13 @@ inline T read_in_host_order(const uint8_t* s) {
 }
 
 template <typename T>
-inline void write_in_net_order(char* s, T x) {
-    write_in_host_order<T>(s, host_to_net_order(x));
+inline char* write_in_net_order(char* s, T x) {
+    return write_in_host_order<T>(s, host_to_net_order(x));
 }
 
 template <typename T>
-inline void write_in_net_order(uint8_t* s, T x) {
-    write_in_net_order(reinterpret_cast<char*>(s), x);
+inline uint8_t* write_in_net_order(uint8_t* s, T x) {
+    return write_in_net_order(reinterpret_cast<char*>(s), x);
 }
 
 template <typename T>
