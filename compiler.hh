@@ -13,8 +13,8 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#ifndef COMPILER_HH
-#define COMPILER_HH 1
+#ifndef MASSTREE_COMPILER_HH
+#define MASSTREE_COMPILER_HH 1
 #include <stdint.h>
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -573,6 +573,7 @@ inline void prefetch(const void *ptr) {
 #endif
 }
 #endif
+
 inline void prefetchnta(const void *ptr) {
 #ifdef NOPREFETCH
     (void) ptr;
