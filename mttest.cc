@@ -735,7 +735,7 @@ on the same tree.\n");
 static void run_one_test(int trial, const char *treetype, const char *test,
 			 const int *collectorpipe, int nruns);
 enum { normtype_none, normtype_pertest, normtype_firsttest };
-static void print_gnuplot(FILE *f, const char * const *types_begin, const char * const *types_end, const std::vector<String> &comparisons, int normalizetype);
+static void print_gnuplot(FILE *f, const char * const *types_begin, const char * const *types_end, std::vector<String> &comparisons, int normalizetype);
 static void update_labnotebook(String notebook);
 
 int
@@ -1026,18 +1026,6 @@ static String experiment_test_table(const String &key) {
     return experiment_run_test_table(experiment_test_table_trial(key));
 }
 
-static bool experiment_match(String key, String match) {
-    bool key_isx = (key.length() >= 2 && key[0] == 'x' && isdigit((unsigned char) key[1]));
-    if (!match)
-	return !key_isx;
-    bool match_isx = (match.length() >= 2 && match[0] == 'x' && isdigit((unsigned char) match[1]));
-    if (match_isx && match.find_left('/') < 0)
-	match += "/";
-    if (!match_isx && key_isx)
-	key = experiment_test_table_trial(key);
-    return key.substring(0, match.length()) == match;
-}
-
 namespace {
 struct gnuplot_info {
     static constexpr double trialdelta = 0.015, treetypedelta = 0.04,
@@ -1154,13 +1142,23 @@ void gnuplot_info::print(FILE *f, const char * const *types_begin) {
 }
 
 static void print_gnuplot(FILE *f, const char * const *types_begin, const char * const *types_end,
-			  const std::vector<String> &comparisons, int normalizetype) {
+                          std::vector<String> &comparisons, int normalizetype) {
+    for (std::vector<String>::iterator cit = comparisons.begin();
+         cit != comparisons.end(); ++cit) {
+        if (!*cit)
+            *cit = "[^x]*";
+        else if (cit->length() >= 2 && (*cit)[0] == 'x' && isdigit((unsigned char) (*cit)[1]))
+            *cit += String(cit->find_left('/') < 0 ? "/*" : "*");
+        else
+            *cit = String("x*") + *cit + String("*");
+    }
+
     std::vector<String> all_versions, all_experiments;
     for (Json::object_iterator it = experiment_stats.obegin();
 	 it != experiment_stats.oend(); ++it)
 	for (std::vector<String>::const_iterator cit = comparisons.begin();
 	     cit != comparisons.end(); ++cit)
-	    if (experiment_match(it.key(), *cit)) {
+	    if (it.key().glob_match(*cit)) {
 		all_experiments.push_back(experiment_run_test_table(it.key()));
 		all_versions.push_back(experiment_test_table(it.key()));
 		break;
