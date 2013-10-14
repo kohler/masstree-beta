@@ -105,6 +105,10 @@ struct gc_layer_rcu_callback : public P::threadinfo_type::rcu_callback {
     node_base<P>* root_;
     int len_;
     char s_[0];
+    gc_layer_rcu_callback(node_base<P>* root, Str prefix)
+        : root_(root), len_(prefix.length()) {
+        memcpy(s_, prefix.data(), len_);
+    }
     void operator()(threadinfo& ti);
     size_t size() const {
 	return len_ + sizeof(*this);
@@ -115,11 +119,14 @@ struct gc_layer_rcu_callback : public P::threadinfo_type::rcu_callback {
 template <typename P>
 void gc_layer_rcu_callback<P>::operator()(threadinfo& ti)
 {
-    tcursor<P> lp(root_, s_, len_);
-    bool do_remove = lp.gc_layer(ti);
-    if (!do_remove || !lp.finish_remove(ti))
-	lp.n_->unlock();
-    ti.deallocate(this, size(), memtag_masstree_gc);
+    root_ = root_->unsplit_ancestor();
+    if (!root_->deleted()) {    // if not destroying tree...
+        tcursor<P> lp(root_, s_, len_);
+        bool do_remove = lp.gc_layer(ti);
+        if (!do_remove || !lp.finish_remove(ti))
+            lp.n_->unlock();
+        ti.deallocate(this, size(), memtag_masstree_gc);
+    }
 }
 
 template <typename P>
@@ -128,10 +135,8 @@ void gc_layer_rcu_callback<P>::make(node_base<P>* root, Str prefix,
 {
     size_t sz = prefix.len + sizeof(gc_layer_rcu_callback<P>);
     void *data = ti.allocate(sz, memtag_masstree_gc);
-    gc_layer_rcu_callback<P> *cb = new(data) gc_layer_rcu_callback<P>;
-    cb->root_ = root;
-    cb->len_ = prefix.len;
-    memcpy(cb->s_, prefix.s, cb->len_);
+    gc_layer_rcu_callback<P> *cb =
+        new(data) gc_layer_rcu_callback<P>(root, prefix);
     ti.rcu_register(cb);
 }
 
@@ -263,9 +268,10 @@ struct destroy_rcu_callback : public P::threadinfo_type::rcu_callback {
     typedef typename P::threadinfo_type threadinfo;
     typedef typename node_base<P>::leaf_type leaf_type;
     typedef typename node_base<P>::internode_type internode_type;
-    node_base<P>* n_;
-    destroy_rcu_callback(node_base<P>* n)
-        : n_(n) {
+    node_base<P>* root_;
+    int count_;
+    destroy_rcu_callback(node_base<P>* root)
+        : root_(root), count_(0) {
     }
     void operator()(threadinfo& ti);
     static void make(node_base<P>* root, Str prefix, threadinfo& ti);
@@ -291,9 +297,18 @@ inline void destroy_rcu_callback<P>::enqueue(node_base<P>* n,
 
 template <typename P>
 void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
+    if (++count_ == 1) {
+        root_ = root_->unsplit_ancestor();
+        root_->lock();
+        root_->mark_deleted_tree(); // i.e., deleted but not splitting
+        root_->unlock();
+        ti.rcu_register(this);
+        return;
+    }
+
     node_base<P>* workq;
     node_base<P>** tailp = &workq;
-    enqueue(n_, tailp);
+    enqueue(root_, tailp);
 
     while (node_base<P>* n = workq) {
         node_base<P>** linkp = link_ptr(n);

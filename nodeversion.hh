@@ -150,6 +150,11 @@ class basic_nodeversion {
 	acquire_fence();
 	return *this;
     }
+    void mark_deleted_tree() {
+        assert(locked() && !has_split());
+        v_ |= P::deleted_bit;
+        acquire_fence();
+    }
     void mark_root() {
 	v_ |= P::root_bit;
 	acquire_fence();
