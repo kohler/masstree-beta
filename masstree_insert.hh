@@ -121,7 +121,7 @@ inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
 template <typename P>
 bool tcursor<P>::find_insert(threadinfo& ti)
 {
-    node_type *root = tablep_->root_;
+    node_type* root = root_;
     nodeversion_type v;
     while (1) {
 	n_ = root->reach_leaf(ka_, v, ti);

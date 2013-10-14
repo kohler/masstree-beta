@@ -66,9 +66,10 @@ class basic_table {
     void initialize(threadinfo& ti);
     void destroy(threadinfo& ti);
 
-    inline node_type *root() const {
+    inline node_type* root() const {
         return root_;
     }
+    inline node_type* fix_root();
 
     bool get(Str key, value_type& value, threadinfo& ti) const;
 

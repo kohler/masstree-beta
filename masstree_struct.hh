@@ -686,5 +686,16 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
                           memtag_masstree_ksuffixes);
 }
 
+template <typename P>
+inline node_base<P>* basic_table<P>::fix_root() {
+    node_base<P>* root = root_;
+    if (unlikely(root->has_split())) {
+        node_base<P>* old_root = root;
+        root = root->unsplit_ancestor();
+        (void) cmpxchg(&root_, old_root, root);
+    }
+    return root;
+}
+
 } // namespace Masstree
 #endif

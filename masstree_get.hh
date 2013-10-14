@@ -209,7 +209,7 @@ template <typename P>
 bool tcursor<P>::find_locked(threadinfo& ti)
 {
     nodeversion_type v;
-    node_type *root = tablep_->root_;
+    node_type* root = root_;
     while (1) {
 	n_ = root->reach_leaf(ka_, v, ti);
 	root = check_leaf_locked(root, v, ti);

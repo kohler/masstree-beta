@@ -189,8 +189,6 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
 	    nn->mark_root();
 	    fence();
 	    n->set_parent(nn);
-	    if (is_first_layer())
-		tablep_->root_ = nn;
 	} else {
 	    int kp = internode_type::bound_type::upper(xikey[sense], *p);
 

@@ -102,20 +102,20 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
 template <typename P>
 struct gc_layer_rcu_callback : public P::threadinfo_type::rcu_callback {
     typedef typename P::threadinfo_type threadinfo;
-    basic_table<P> *tablep_;
+    node_base<P>* root_;
     int len_;
     char s_[0];
     void operator()(threadinfo& ti);
     size_t size() const {
 	return len_ + sizeof(*this);
     }
-    static void make(basic_table<P>& table, Str prefix, threadinfo& ti);
+    static void make(node_base<P>* root, Str prefix, threadinfo& ti);
 };
 
 template <typename P>
 void gc_layer_rcu_callback<P>::operator()(threadinfo& ti)
 {
-    tcursor<P> lp(*tablep_, s_, len_);
+    tcursor<P> lp(root_, s_, len_);
     bool do_remove = lp.gc_layer(ti);
     if (!do_remove || !lp.finish_remove(ti))
 	lp.n_->unlock();
@@ -123,13 +123,13 @@ void gc_layer_rcu_callback<P>::operator()(threadinfo& ti)
 }
 
 template <typename P>
-void gc_layer_rcu_callback<P>::make(basic_table<P>& table, Str prefix,
+void gc_layer_rcu_callback<P>::make(node_base<P>* root, Str prefix,
                                     threadinfo& ti)
 {
     size_t sz = prefix.len + sizeof(gc_layer_rcu_callback<P>);
     void *data = ti.allocate(sz, memtag_masstree_gc);
     gc_layer_rcu_callback<P> *cb = new(data) gc_layer_rcu_callback<P>;
-    cb->tablep_ = &table;
+    cb->root_ = root;
     cb->len_ = prefix.len;
     memcpy(cb->s_, prefix.s, cb->len_);
     ti.rcu_register(cb);
@@ -145,16 +145,16 @@ bool tcursor<P>::finish_remove(threadinfo& ti)
     if (perm.size())
 	return false;
     else
-	return remove_leaf(n_, *tablep_, ka_.prefix_string(), ti);
+	return remove_leaf(n_, root_, ka_.prefix_string(), ti);
 }
 
 template <typename P>
-bool tcursor<P>::remove_leaf(leaf_type* leaf, basic_table<P>& table,
+bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
                              Str prefix, threadinfo& ti)
 {
     if (!leaf->prev_) {
 	if (!leaf->next_.ptr && !prefix.empty())
-	    gc_layer_rcu_callback<P>::make(table, prefix, ti);
+	    gc_layer_rcu_callback<P>::make(root, prefix, ti);
 	return false;
     }
 
@@ -202,7 +202,7 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, basic_table<P>& table,
 		p->ikey0_[kp - 1] = reshape_ikey;
 	    if (kp > 1 || p->child_[0]) {
 		if (p->size() == 0)
-		    collapse(p, ikey, table, prefix, ti);
+		    collapse(p, ikey, root, prefix, ti);
 		else
 		    p->unlock();
 		break;
@@ -228,7 +228,7 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, basic_table<P>& table,
 
 template <typename P>
 void tcursor<P>::collapse(internode_type* p, ikey_type ikey,
-                          basic_table<P>& table, Str prefix, threadinfo& ti)
+                          node_type* root, Str prefix, threadinfo& ti)
 {
     masstree_precondition(p && p->locked());
 
@@ -236,7 +236,7 @@ void tcursor<P>::collapse(internode_type* p, ikey_type ikey,
 	internode_type *gp = p->locked_parent(ti);
 	if (!internode_type::parent_exists(gp)) {
 	    if (!prefix.empty())
-		gc_layer_rcu_callback<P>::make(table, prefix, ti);
+		gc_layer_rcu_callback<P>::make(root, prefix, ti);
 	    p->unlock();
 	    break;
 	}
@@ -268,7 +268,7 @@ struct destroy_rcu_callback : public P::threadinfo_type::rcu_callback {
         : n_(n) {
     }
     void operator()(threadinfo& ti);
-    static void make(basic_table<P>& table, Str prefix, threadinfo& ti);
+    static void make(node_base<P>* root, Str prefix, threadinfo& ti);
   private:
     static inline node_base<P>** link_ptr(node_base<P>* n);
     static inline void enqueue(node_base<P>* n, node_base<P>**& tailp);
