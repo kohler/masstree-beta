@@ -54,21 +54,18 @@ class basic_table {
   public:
     typedef P param_type;
     typedef node_base<P> node_type;
+    typedef leaf<P> leaf_type;
     typedef typename P::value_type value_type;
     typedef typename P::threadinfo_type threadinfo;
     typedef unlocked_tcursor<P> unlocked_cursor_type;
     typedef tcursor<P> cursor_type;
 
-    basic_table()
-        : root_(0) {
-    }
+    inline basic_table();
 
     void initialize(threadinfo& ti);
     void destroy(threadinfo& ti);
 
-    inline node_type* root() const {
-        return root_;
-    }
+    inline node_type* root() const;
     inline node_type* fix_root();
 
     bool get(Str key, value_type& value, threadinfo& ti) const;
@@ -86,7 +83,7 @@ class basic_table {
     inline void print(FILE* f = 0, int indent = 0) const;
 
   private:
-    node_type *root_;
+    node_type* root_;
 
     template <typename H, typename F>
     int scan(H helper, Str firstkey, bool matchfirst,

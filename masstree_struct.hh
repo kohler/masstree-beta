@@ -92,6 +92,14 @@ class node_base : public make_nodeversion<P>::type {
 	    x = p;
 	return x;
     }
+    inline leaf_type* leftmost() const {
+        base_type* x = unsplit_ancestor();
+        while (!x->isleaf()) {
+            internode_type* in = static_cast<internode_type*>(x);
+            x = in->child_[0];
+        }
+        return x;
+    }
 
     inline leaf_type* reach_leaf(const key_type& k, nodeversion_type& version,
                                  threadinfo& ti) const;
@@ -684,6 +692,16 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
     if (oksuf)
 	ti.deallocate_rcu(oksuf, oksuf->allocated_size(),
                           memtag_masstree_ksuffixes);
+}
+
+template <typename P>
+inline basic_table<P>::basic_table()
+    : root_(0) {
+}
+
+template <typename P>
+inline node_base<P>* basic_table<P>::root() const {
+    return root_;
 }
 
 template <typename P>
