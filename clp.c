@@ -1770,8 +1770,10 @@ find_short(Clp_Parser *clp, const char *text)
 
     for (i = 0; i < cli->nopt; i++)
 	if (iopt[i].ishort && opt[i].short_name == c
-	    && (clp->negated ? iopt[i].ineg : iopt[i].ipos))
+            && (!clp->negated || iopt[i].ineg)) {
+            clp->negated = clp->negated || !iopt[i].ipos;
 	    return i;
+        }
 
     return -1;
 }
