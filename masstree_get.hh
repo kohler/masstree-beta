@@ -59,7 +59,7 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 {
     bool ksuf_match = false;
     int kp, keylenx = 0;
-    node_base<P> *root = tablep_->root_;
+    node_base<P>* root = const_cast<node_base<P>*>(root_);
 
  retry:
     n_ = root->reach_leaf(ka_, v_, ti);

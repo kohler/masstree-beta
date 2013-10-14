@@ -29,17 +29,17 @@ class unlocked_tcursor {
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
     typedef typename nodeversion_type::value_type nodeversion_value_type;
 
-    inline unlocked_tcursor(const basic_table<P> &table, Str str)
-        : ka_(str), lv_(leafvalue<P>::make_empty()), tablep_(&table) {
+    inline unlocked_tcursor(const basic_table<P>& table, Str str)
+        : ka_(str), lv_(leafvalue<P>::make_empty()), root_(table.root()) {
     }
-    inline unlocked_tcursor(const basic_table<P> &table,
-                            const char *s, int len)
-        : ka_(s, len), lv_(leafvalue<P>::make_empty()), tablep_(&table) {
+    inline unlocked_tcursor(const basic_table<P>& table,
+                            const char* s, int len)
+        : ka_(s, len), lv_(leafvalue<P>::make_empty()), root_(table.root()) {
     }
-    inline unlocked_tcursor(const basic_table<P> &table,
-                            const unsigned char *s, int len)
+    inline unlocked_tcursor(const basic_table<P>& table,
+                            const unsigned char* s, int len)
         : ka_(reinterpret_cast<const char*>(s), len),
-          lv_(leafvalue<P>::make_empty()), tablep_(&table) {
+          lv_(leafvalue<P>::make_empty()), root_(table.root()) {
     }
 
     bool find_unlocked(threadinfo& ti);
@@ -61,7 +61,7 @@ class unlocked_tcursor {
     typename leaf<P>::nodeversion_type v_;
     typename leaf<P>::permuter_type perm_;
     leafvalue<P> lv_;
-    const basic_table<P> *tablep_;
+    const node_base<P>* root_;
 
     inline int lower_bound_binary() const;
     inline int lower_bound_linear() const;
