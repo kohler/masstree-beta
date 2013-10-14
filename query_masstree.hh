@@ -46,8 +46,8 @@ class query_table {
     void initialize(threadinfo& ti) {
         table_.initialize(ti);
     }
-    void reinitialize(threadinfo& ti) {
-        table_.reinitialize(ti);
+    void destroy(threadinfo& ti) {
+        table_.destroy(ti);
     }
 
     void findpivots(Str* pv, int npv) const;

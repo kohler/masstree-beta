@@ -476,11 +476,6 @@ class leaf : public node_base<P> {
 template <typename P>
 void basic_table<P>::initialize(threadinfo& ti) {
     masstree_precondition(!root_);
-    reinitialize(ti);
-}
-
-template <typename P>
-void basic_table<P>::reinitialize(threadinfo& ti) {
     root_ = node_type::leaf_type::make_root(0, 0, ti);
 }
 
