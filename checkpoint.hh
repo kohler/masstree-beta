@@ -41,7 +41,7 @@ struct ckstate {
 template <typename T>
 void ckstate::insert(T& table, msgpack::parser& par, threadinfo& ti) {
     Str key;
-    kvtimestamp_t ts;
+    kvtimestamp_t ts{};
     par >> key >> ts;
     row_type* row = row_type::checkpoint_read(par, ts, ti);
 
