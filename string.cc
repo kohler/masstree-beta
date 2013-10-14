@@ -38,6 +38,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <vector>
 namespace lcdf {
 
 /** @file string.hh
@@ -268,6 +269,85 @@ long String_generic::to_i(const char* s, const char* ends) {
     for (++s; s != ends && isdigit((unsigned char) *s); ++s)
         x = x * 10 + *s - '0';  // XXX overflow
     return neg ? -x : x;
+}
+
+bool String_generic::glob_match(const char* sbegin, int slen,
+                                const char* pbegin, int plen) {
+    const char* send = sbegin + slen;
+    const char* pend = pbegin + plen;
+
+    // quick common-case check for suffix matches
+    while (pbegin < pend && sbegin < send
+	   && pend[-1] != '*' && pend[-1] != '?' && pend[-1] != ']'
+	   && (pbegin + 1 == pend || pend[-2] != '\\'))
+	if (pend[-1] == send[-1])
+	    --pend, --send;
+	else
+	    return false;
+
+    std::vector<const char*> state, nextstate;
+    state.push_back(pbegin);
+
+    for (const char* s = sbegin; s != send && state.size(); ++s) {
+	nextstate.clear();
+	for (const char** pp = state.data(); pp != state.data() + state.size(); ++pp)
+	    if (*pp != pend) {
+	      reswitch:
+		switch (**pp) {
+		  case '?':
+		    nextstate.push_back(*pp + 1);
+		    break;
+		  case '*':
+		    if (*pp + 1 == pend)
+			return true;
+		    if (nextstate.empty() || nextstate.back() != *pp)
+			nextstate.push_back(*pp);
+		    ++*pp;
+		    goto reswitch;
+		  case '\\':
+		    if (*pp + 1 != pend)
+			++*pp;
+		    goto normal_char;
+		  case '[': {
+		      const char *ec = *pp + 1;
+		      bool negated;
+		      if (ec != pend && *ec == '^') {
+			  negated = true;
+			  ++ec;
+		      } else
+			  negated = false;
+		      if (ec == pend)
+			  goto normal_char;
+
+		      bool found = false;
+		      do {
+			  if (*++ec == *s)
+			      found = true;
+		      } while (ec != pend && *ec != ']');
+		      if (ec == pend)
+			  goto normal_char;
+
+		      if (found == !negated)
+			  nextstate.push_back(ec + 1);
+		      break;
+		  }
+		  normal_char:
+		  default:
+		    if (**pp == *s)
+			nextstate.push_back(*pp + 1);
+		    break;
+		}
+	    }
+	state.swap(nextstate);
+    }
+
+    for (const char** pp = state.data(); pp != state.data() + state.size(); ++pp) {
+	while (*pp != pend && **pp == '*')
+	    ++*pp;
+	if (*pp == pend)
+	    return true;
+    }
+    return false;
 }
 
 

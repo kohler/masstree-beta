@@ -52,6 +52,7 @@ class String_generic {
     static int find_left(const char *s, int len, int start, const char *x, int x_len);
     static int find_right(const char *s, int len, int start, char x);
     static int find_right(const char *s, int len, int start, const char *x, int x_len);
+    static bool glob_match(const char* s, int slen, const char* pattern, int plen);
     template <typename T> static inline typename T::substring_type ltrim(const T &str);
     template <typename T> static inline typename T::substring_type rtrim(const T &str);
     template <typename T> static inline typename T::substring_type trim(const T &str);
@@ -254,6 +255,19 @@ class String_base {
     template <typename TT>
     int find_right(const String_base<TT> &x, int start = INT_MAX) const {
 	return String_generic::find_right(data(), length(), start, x.data(), x.length());
+    }
+    /** @brief Test if this string matches the glob @a pattern.
+
+        Glob pattern syntax allows * (any number of characters), ? (one
+        arbitrary character), [] (character classes, possibly negated), and
+        \\ (escaping). */
+    bool glob_match(const char* pattern) const {
+        return String_generic::glob_match(data(), length(), pattern, strlen(pattern));
+    }
+    /** @overload */
+    template <typename TT>
+    bool glob_match(const String_base<TT>& pattern) const {
+        return String_generic::glob_match(data(), length(), pattern.data(), pattern.length());
     }
     /** @brief Return a 32-bit hash function of the characters in [@a first, @a last).
 
