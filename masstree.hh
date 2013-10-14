@@ -65,6 +65,7 @@ class basic_table {
 
     void initialize(threadinfo& ti);
     void reinitialize(threadinfo& ti);
+    void destroy(threadinfo& ti);
 
     inline node_type *root() const {
         return root_;

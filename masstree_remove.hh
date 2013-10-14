@@ -119,7 +119,7 @@ void gc_layer_rcu_callback<P>::operator()(threadinfo& ti)
     bool do_remove = lp.gc_layer(ti);
     if (!do_remove || !lp.finish_remove(ti))
 	lp.n_->unlock();
-    ti.deallocate(this, size(), memtag_masstree_gclayer);
+    ti.deallocate(this, size(), memtag_masstree_gc);
 }
 
 template <typename P>
@@ -127,7 +127,7 @@ void gc_layer_rcu_callback<P>::make(basic_table<P>& table, Str prefix,
                                     threadinfo& ti)
 {
     size_t sz = prefix.len + sizeof(gc_layer_rcu_callback<P>);
-    void *data = ti.allocate(sz, memtag_masstree_gclayer);
+    void *data = ti.allocate(sz, memtag_masstree_gc);
     gc_layer_rcu_callback<P> *cb = new(data) gc_layer_rcu_callback<P>;
     cb->tablep_ = &table;
     cb->len_ = prefix.len;
@@ -255,6 +255,82 @@ void tcursor<P>::collapse(internode_type* p, ikey_type ikey,
 	    p->unlock();
 	    break;
 	}
+    }
+}
+
+template <typename P>
+struct destroy_rcu_callback : public P::threadinfo_type::rcu_callback {
+    typedef typename P::threadinfo_type threadinfo;
+    typedef typename node_base<P>::leaf_type leaf_type;
+    typedef typename node_base<P>::internode_type internode_type;
+    node_base<P>* n_;
+    destroy_rcu_callback(node_base<P>* n)
+        : n_(n) {
+    }
+    void operator()(threadinfo& ti);
+    static void make(basic_table<P>& table, Str prefix, threadinfo& ti);
+  private:
+    static inline node_base<P>** link_ptr(node_base<P>* n);
+    static inline void enqueue(node_base<P>* n, node_base<P>**& tailp);
+};
+
+template <typename P>
+inline node_base<P>** destroy_rcu_callback<P>::link_ptr(node_base<P>* n) {
+    if (n->isleaf())
+        return &static_cast<leaf_type*>(n)->parent_;
+    else
+        return &static_cast<internode_type*>(n)->parent_;
+}
+
+template <typename P>
+inline void destroy_rcu_callback<P>::enqueue(node_base<P>* n,
+                                             node_base<P>**& tailp) {
+    *tailp = n;
+    tailp = link_ptr(n);
+}
+
+template <typename P>
+void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
+    node_base<P>* workq;
+    node_base<P>** tailp = &workq;
+    enqueue(n_, tailp);
+
+    while (node_base<P>* n = workq) {
+        node_base<P>** linkp = link_ptr(n);
+        if (linkp != tailp)
+            workq = *linkp;
+        else {
+            workq = 0;
+            tailp = &workq;
+        }
+
+        if (n->isleaf()) {
+            leaf_type* l = static_cast<leaf_type*>(n);
+            typename leaf_type::permuter_type perm = l->permutation();
+            for (int i = 0; i != l->size(); ++i) {
+                int p = perm[i];
+                if (l->value_is_layer(p))
+                    enqueue(l->lv_[p].layer(), tailp);
+            }
+            l->deallocate(ti);
+        } else {
+            internode_type* in = static_cast<internode_type*>(n);
+            for (int i = 0; i != in->size() + 1; ++i)
+                if (in->child_[i])
+                    enqueue(in->child_[i], tailp);
+            in->deallocate(ti);
+        }
+    }
+    ti.deallocate(this, sizeof(this), memtag_masstree_gc);
+}
+
+template <typename P>
+void basic_table<P>::destroy(threadinfo& ti) {
+    if (root_) {
+        void* data = ti.allocate(sizeof(destroy_rcu_callback<P>), memtag_masstree_gc);
+        destroy_rcu_callback<P>* cb = new(data) destroy_rcu_callback<P>(root_);
+        ti.rcu_register(cb);
+        root_ = 0;
     }
 }
 

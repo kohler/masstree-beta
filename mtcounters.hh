@@ -23,7 +23,7 @@ enum memtag {
     memtag_masstree_leaf = 0x10,
     memtag_masstree_internode = 0x11,
     memtag_masstree_ksuffixes = 0x12,
-    memtag_masstree_gclayer = 0x13
+    memtag_masstree_gc = 0x13
 };
 
 enum threadcounter {
