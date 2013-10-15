@@ -492,16 +492,11 @@ logrecord::extract(const char *buf, const char *end)
 
 template <typename T>
 void logrecord::run(T& table, std::vector<lcdf::Json>& jrepo, threadinfo& ti) {
-    // XXX For command == logcmd_modify, we assume that
-    // sizeof(row_delta_marker<R>) memory exists before 'req's string data.
-    // We don't modify this memory but it must be readable. This is OK for
-    // conventional log replay, but that's an ugly interface
-
+    row_marker m;
     if (command == logcmd_remove) {
         ts |= 1;
-        row_marker* m = reinterpret_cast<row_marker*>(ti.buf_);
-        m->marker_type_ = row_marker::mt_remove;
-        val = Str(ti.buf_, sizeof(*m));
+        m.marker_type_ = row_marker::mt_remove;
+        val = Str((const char*) &m, sizeof(m));
     }
 
     typename T::cursor_type lp(table, key);

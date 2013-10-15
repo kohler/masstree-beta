@@ -213,10 +213,6 @@ class threadinfo {
     enum { NMaxLines = 20 };
     void *arena[NMaxLines];
 
-  public:
-    char buf_[64];
-
-  private:
     limbo_group *limbo_head_;
     limbo_group *limbo_tail_;
     mutable kvtimestamp_t ts_;
