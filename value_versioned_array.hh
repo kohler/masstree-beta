@@ -63,7 +63,7 @@ struct rowversion {
 
 };
 
-class value_versioned_array : public row_base<value_array::index_type> {
+class value_versioned_array {
   public:
     typedef value_array::index_type index_type;
     static constexpr rowtype_id type_id = RowType_ArrayVer;
@@ -79,7 +79,7 @@ class value_versioned_array : public row_base<value_array::index_type> {
     void deallocate_rcu(threadinfo &ti);
 
     void snapshot(value_versioned_array*& storage,
-                  const fields_type& f, threadinfo& ti) const;
+                  const std::vector<index_type>& f, threadinfo& ti) const;
 
     value_versioned_array* update(const Json* first, const Json* last,
                                   kvtimestamp_t ts, threadinfo& ti,
@@ -122,7 +122,9 @@ struct query_helper<value_versioned_array> {
     query_helper()
         : snapshot_() {
     }
-    inline const value_versioned_array* snapshot(const value_versioned_array* row, const value_versioned_array::fields_type& f, threadinfo& ti) {
+    inline const value_versioned_array* snapshot(const value_versioned_array* row,
+                                                 const std::vector<value_versioned_array::index_type>& f,
+                                                 threadinfo& ti) {
         row->snapshot(snapshot_, f, ti);
         return snapshot_;
     }

@@ -18,7 +18,7 @@
 #include "compiler.hh"
 #include "kvrow.hh"
 
-class value_string : public row_base<unsigned> {
+class value_string {
   public:
     typedef unsigned index_type;
     static constexpr rowtype_id type_id = RowType_Str;

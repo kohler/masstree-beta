@@ -19,7 +19,7 @@
 #include "kvrow.hh"
 
 template <typename O>
-class value_bag : public row_base<short> {
+class value_bag {
   public:
     typedef short index_type;
     typedef O offset_type;

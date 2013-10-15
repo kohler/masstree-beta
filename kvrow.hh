@@ -22,16 +22,9 @@
 #include <algorithm>
 using lcdf::Json;
 
-template <typename IDX>
-struct row_base {
-    typedef IDX index_type;
-    typedef std::vector<index_type> fields_type;
-};
-
-
 template <typename R>
 struct query_helper {
-    inline const R* snapshot(const R* row, const typename R::fields_type&, threadinfo&) {
+    inline const R* snapshot(const R* row, const std::vector<typename R::index_type>&, threadinfo&) {
         return row;
     }
 };
@@ -66,7 +59,7 @@ class query {
     }
 
   private:
-    typename R::fields_type f_;
+    std::vector<typename R::index_type> f_;
     loginfo::query_times qtimes_;
     query_helper<R> helper_;
     lcdf::String scankey_;

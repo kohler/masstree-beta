@@ -18,7 +18,7 @@
 #include "compiler.hh"
 #include "kvrow.hh"
 
-class value_array : public row_base<short> {
+class value_array {
   public:
     typedef short index_type;
     static constexpr rowtype_id type_id = RowType_Array;

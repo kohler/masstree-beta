@@ -88,7 +88,7 @@ class KVConn {
         j_[3] = col;
         send();
     }
-    void sendget(Str key, const row_type::fields_type& f, unsigned seq) {
+    void sendget(Str key, const std::vector<row_type::index_type>& f, unsigned seq) {
         j_.resize(4);
         j_[0] = seq;
         j_[1] = Cmd_Get;
@@ -130,8 +130,8 @@ class KVConn {
         j_[3] = numpairs;
         send();
     }
-    void sendscan(Str firstkey, const row_type::fields_type& f, int numpairs,
-                  unsigned seq) {
+    void sendscan(Str firstkey, const std::vector<row_type::index_type>& f,
+                  int numpairs, unsigned seq) {
         j_.resize(5);
         j_[0] = seq;
         j_[1] = Cmd_Scan;
