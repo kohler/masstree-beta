@@ -16,7 +16,13 @@
 #include "kvthread.hh"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <new>
+#include <sys/mman.h>
+#if HAVE_SUPERPAGE && !NOSUPERPAGE
+#include <sys/types.h>
+#include <dirent.h>
+#endif
 
 threadinfo *threadinfo::allthreads;
 pthread_key_t threadinfo::key;
@@ -191,4 +197,84 @@ void threadinfo::report_rcu_all(void *ptr)
 {
     for (threadinfo *ti = allthreads; ti; ti = ti->ti_next)
 	ti->report_rcu(ptr);
+}
+
+
+#if HAVE_SUPERPAGE && !NOSUPERPAGE
+static size_t read_superpage_size() {
+    if (DIR* d = opendir("/sys/kernel/mm/hugepages")) {
+        size_t n = (size_t) -1;
+        while (struct dirent* de = readdir(d))
+            if (de->d_type == DT_DIR
+                && strncmp(de->d_name, "hugepages-", 10) == 0
+                && de->d_name[10] >= '0' && de->d_name[10] <= '9') {
+                size_t x = strtol(&de->d_name[10], 0, 10) << 10;
+                n = (x < n ? x : n);
+            }
+        closedir(d);
+        return n;
+    } else
+        return 2 << 20;
+}
+
+static size_t superpage_size = 0;
+#endif
+
+static void initialize_pool(void* pool, size_t sz, size_t unit) {
+    char* p = reinterpret_cast<char*>(pool);
+    char* pend = p + sz;
+    char** nextptr = reinterpret_cast<char**>(p);
+    while (p + unit <= pend) {
+        p += unit;
+        *nextptr = p;
+        nextptr = reinterpret_cast<char**>(p);
+    }
+    *nextptr = 0;
+}
+
+void threadinfo::refill_pool(int nl) {
+    assert(!pool_[nl - 1]);
+
+    void* pool = 0;
+    size_t pool_size = 0;
+    int r;
+
+#if HAVE_SUPERPAGE && !NOSUPERPAGE
+    if (!superpage_size)
+        superpage_size = read_superpage_size();
+    if (superpage_size != (size_t) -1) {
+        pool_size = superpage_size;
+# if MADV_HUGEPAGE
+        if ((r = posix_memalign(&pool, pool_size, pool_size)) != 0) {
+            fprintf(stderr, "posix_memalign superpage: %s\n", strerror(r));
+            pool = 0;
+            superpage_size = (size_t) -1;
+        } else if (madvise(pool, pool_size, MADV_HUGEPAGE) != 0) {
+            perror("madvise superpage");
+            superpage_size = (size_t) -1;
+        }
+# elif MAP_HUGETLB
+        pool = mmap(0, pool_size, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+        if (pool == MAP_FAILED) {
+            perror("mmap superpage");
+            pool = 0;
+            superpage_size = (size_t) -1;
+        }
+# else
+        superpage_size = (size_t) -1;
+# endif
+    }
+#endif
+
+    if (!pool) {
+        pool_size = 2 << 20;
+        if ((r = posix_memalign(&pool, CACHE_LINE_SIZE, pool_size)) != 0) {
+            fprintf(stderr, "posix_memalign: %s\n", strerror(r));
+            abort();
+        }
+    }
+
+    initialize_pool(pool, pool_size, nl * CACHE_LINE_SIZE);
+    pool_[nl - 1] = pool;
 }

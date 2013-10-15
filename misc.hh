@@ -79,8 +79,6 @@ struct quick_istr {
     }
 };
 
-size_t get_hugepage_size();
-
 struct Clp_Parser;
 int clp_parse_suffixdouble(struct Clp_Parser *clp, const char *vstr,
 			   int complain, void *user_data);

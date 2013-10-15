@@ -189,7 +189,6 @@ struct rcu_callback {
 
 class threadinfo {
   public:
-
     enum {
 	TI_MAIN, TI_PROCESS, TI_LOG, TI_CHECKPOINT
     };
@@ -208,14 +207,6 @@ class threadinfo {
 	};
 	char padding1[CACHE_LINE_SIZE];
     };
-
-  private:
-    enum { NMaxLines = 20 };
-    void *arena[NMaxLines];
-
-    limbo_group *limbo_head_;
-    limbo_group *limbo_tail_;
-    mutable kvtimestamp_t ts_;
 
   public:
     static threadinfo *make(int purpose, int index);
@@ -334,12 +325,12 @@ class threadinfo {
 
     void* pool_allocate(size_t sz, memtag tag) {
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
-	assert(nl < NMaxLines);
-	if (unlikely(!arena[nl - 1]))
-	    refill_aligned_arena(nl);
-	void *p = arena[nl - 1];
+	assert(nl <= pool_max_nlines);
+	if (unlikely(!pool_[nl - 1]))
+	    refill_pool(nl);
+	void *p = pool_[nl - 1];
 	if (p)
-	    arena[nl - 1] = *reinterpret_cast<void **>(p);
+	    pool_[nl - 1] = *reinterpret_cast<void **>(p);
 	p = memdebug::make(p, sz, (tag << 8) + nl);
 	if (p)
             mark(threadcounter(tc_alloc + (tag > memtag_value)),
@@ -347,17 +338,17 @@ class threadinfo {
 	return p;
     }
     void pool_deallocate(void* p, size_t sz, memtag tag) {
-	assert(p);
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
+	assert(p && nl <= pool_max_nlines);
 	p = memdebug::check_free(p, sz, (tag << 8) + nl);
-	*reinterpret_cast<void **>(p) = arena[nl - 1];
-	arena[nl - 1] = p;
+	*reinterpret_cast<void **>(p) = pool_[nl - 1];
+	pool_[nl - 1] = p;
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
              -nl * CACHE_LINE_SIZE);
     }
     void pool_deallocate_rcu(void* p, size_t sz, memtag tag) {
-	assert(p);
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
+	assert(p && nl <= pool_max_nlines);
 	memdebug::check_rcu(p, sz, (tag << 8) + nl);
 	record_rcu(p, (tag << 8) + nl);
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
@@ -396,12 +387,18 @@ class threadinfo {
     static void report_rcu_all(void *ptr);
 
   private:
+    enum { pool_max_nlines = 20 };
+    void *pool_[pool_max_nlines];
+
+    limbo_group *limbo_head_;
+    limbo_group *limbo_tail_;
+    mutable kvtimestamp_t ts_;
 
     //enum { ncounters = (int) tc_max };
     enum { ncounters = 0 };
     uint64_t counters_[ncounters];
 
-    void refill_aligned_arena(int nl);
+    void refill_pool(int nl);
     void refill_rcu();
 
     void free_rcu(void *p, int freetype) {
@@ -413,8 +410,8 @@ class threadinfo {
 	else {
 	    p = memdebug::check_free_after_rcu(p, freetype);
 	    int nl = freetype & 255;
-	    *reinterpret_cast<void **>(p) = arena[nl - 1];
-	    arena[nl - 1] = p;
+	    *reinterpret_cast<void **>(p) = pool_[nl - 1];
+	    pool_[nl - 1] = p;
 	}
     }
 
@@ -433,7 +430,6 @@ class threadinfo {
 
     void hard_rcu_quiesce();
     friend class loginfo;
-
 };
 
 #endif
