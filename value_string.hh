@@ -16,13 +16,15 @@
 #ifndef VALUE_STRING_HH
 #define VALUE_STRING_HH
 #include "compiler.hh"
-#include "kvrow.hh"
+#include "json.hh"
 
 class value_string {
   public:
     typedef unsigned index_type;
-    static constexpr rowtype_id type_id = RowType_Str;
     static const char *name() { return "String"; }
+
+    typedef lcdf::Str Str;
+    typedef lcdf::Json Json;
 
     inline value_string();
 
@@ -102,7 +104,7 @@ inline unsigned value_string::index_last_offset(index_type idx) {
     return index_offset(idx) + index_length(idx);
 }
 
-inline Str value_string::col(index_type idx) const {
+inline lcdf::Str value_string::col(index_type idx) const {
     if (idx == 0)
         return Str(s_, vallen_);
     else {

@@ -16,13 +16,14 @@
 #ifndef VALUE_ARRAY_HH
 #define VALUE_ARRAY_HH
 #include "compiler.hh"
-#include "kvrow.hh"
+#include "json.hh"
 
 class value_array {
   public:
     typedef short index_type;
-    static constexpr rowtype_id type_id = RowType_Array;
     static const char *name() { return "Array"; }
+
+    typedef lcdf::Json Json;
 
     inline value_array();
 

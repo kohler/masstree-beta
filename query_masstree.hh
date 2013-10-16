@@ -16,9 +16,7 @@
 #ifndef QUERY_MASSTREE_HH
 #define QUERY_MASSTREE_HH 1
 #include "masstree.hh"
-#include "kvproto.hh"
-#include "timestamp.hh"
-template <typename R> class query;
+#include "kvrow.hh"
 class threadinfo;
 namespace lcdf { class Json; }
 

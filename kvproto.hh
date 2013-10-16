@@ -15,7 +15,7 @@
  */
 #ifndef KVPROTO_HH
 #define KVPROTO_HH
-#include "shared_config.hh"
+#include "compiler.hh"
 
 enum {
     Cmd_None = 0,
@@ -40,7 +40,8 @@ enum result_t {
 };
 
 enum ckptrav_order_t {
-    ckptrav_inorder = 0, ckptrav_preorder
+    ckptrav_inorder = 0,
+    ckptrav_preorder
 };
 
 struct row_marker {

@@ -16,13 +16,15 @@
 #ifndef VALUE_BAG_HH
 #define VALUE_BAG_HH
 #include "kvthread.hh"
-#include "kvrow.hh"
+#include "json.hh"
 
 template <typename O>
 class value_bag {
   public:
     typedef short index_type;
     typedef O offset_type;
+    typedef lcdf::Str Str;
+    typedef lcdf::Json Json;
 
   private:
     union bagdata {
@@ -34,7 +36,6 @@ class value_bag {
     };
 
   public:
-    static constexpr rowtype_id type_id = RowType_Bag;
     static const char *name() { return "Bag"; }
 
     inline value_bag();
@@ -109,7 +110,7 @@ inline O value_bag<O>::column_length(int i) const {
 }
 
 template <typename O>
-inline Str value_bag<O>::col(int i) const {
+inline lcdf::Str value_bag<O>::col(int i) const {
     if (unsigned(i) < unsigned(d_.ncol_))
         return Str(d_.s_ + d_.pos_[i], column_length(i));
     else
@@ -117,7 +118,7 @@ inline Str value_bag<O>::col(int i) const {
 }
 
 template <typename O>
-inline Str value_bag<O>::row_string() const {
+inline lcdf::Str value_bag<O>::row_string() const {
     return Str(d_.s_, d_.pos_[d_.ncol_]);
 }
 

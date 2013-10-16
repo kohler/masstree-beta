@@ -903,16 +903,16 @@ epochinc(int)
 
 // Return 1 if success, -1 if I/O error or protocol unmatch
 int handshake(Json& request, threadinfo& ti) {
-    if (request.size() < 4
+    if (request.size() < 3
         || !request[1].is_i() || request[1].as_i() != Cmd_Handshake
-        || !request[2].is_i() || request[2].as_i() != MASSTREE_ROW_TYPE_ID
-        || !request[3].is_i() || request[3].as_i() > MASSTREE_MAXKEYLEN) {
+        || !request[2].is_i() || request[2].as_i() > MASSTREE_MAXKEYLEN) {
         request[2] = false;
         request.resize(3);
     } else {
         request[2] = true;
         request[3] = ti.ti_index;
-        request.resize(4);
+        request[4] = row_type::name();
+        request.resize(5);
     }
     request[1] = Cmd_Handshake + 1;
     return request[2].as_b() ? 1 : -1;

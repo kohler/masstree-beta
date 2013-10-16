@@ -66,8 +66,9 @@ struct rowversion {
 class value_versioned_array {
   public:
     typedef value_array::index_type index_type;
-    static constexpr rowtype_id type_id = RowType_ArrayVer;
     static const char *name() { return "ArrayVersion"; }
+
+    typedef lcdf::Json Json;
 
     inline value_versioned_array();
 

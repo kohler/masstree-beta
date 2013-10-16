@@ -286,7 +286,7 @@ struct kvtest_client {
 
     T *table_;
     threadinfo *ti_;
-    query<row_type> q_[10];
+    query<row_type> q_[1];
     kvrandom_lcg_nr rand;
     uint64_t limit_;
     Json json_;

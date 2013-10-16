@@ -20,7 +20,20 @@
 #include "log.hh"
 #include "json.hh"
 #include <algorithm>
-using lcdf::Json;
+
+#if MASSTREE_ROW_TYPE_ARRAY
+# include "value_array.hh"
+typedef value_array row_type;
+#elif MASSTREE_ROW_TYPE_ARRAY_VER
+# include "value_versioned_array.hh"
+typedef value_versioned_array row_type;
+#elif MASSTREE_ROW_TYPE_STR
+# include "value_string.hh"
+typedef value_string row_type;
+#else
+# include "value_bag.hh"
+typedef value_bag<uint16_t> row_type;
+#endif
 
 template <typename R>
 struct query_helper {
@@ -302,5 +315,4 @@ void query<R>::run_rscan(T& table, Json& request, threadinfo& ti) {
     table.rscan(key, true, scanf, ti);
 }
 
-#include MASSTREE_ROW_TYPE_INCLUDE
 #endif

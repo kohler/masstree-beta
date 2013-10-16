@@ -88,7 +88,7 @@ class KVConn {
         j_[3] = col;
         send();
     }
-    void sendget(Str key, const std::vector<row_type::index_type>& f, unsigned seq) {
+    void sendget(Str key, const std::vector<unsigned>& f, unsigned seq) {
         j_.resize(4);
         j_[0] = seq;
         j_[1] = Cmd_Get;
@@ -130,7 +130,7 @@ class KVConn {
         j_[3] = numpairs;
         send();
     }
-    void sendscan(Str firstkey, const std::vector<row_type::index_type>& f,
+    void sendscan(Str firstkey, const std::vector<unsigned>& f,
                   int numpairs, unsigned seq) {
         j_.resize(5);
         j_[0] = seq;
@@ -195,11 +195,10 @@ class KVConn {
     void handshake(int target_core) {
         KVW(out_, target_core);
 
-        j_.resize(4);
+        j_.resize(3);
         j_[0] = 0;
         j_[1] = Cmd_Handshake;
-        j_[2] = MASSTREE_ROW_TYPE_ID;
-        j_[3] = MASSTREE_MAXKEYLEN;
+        j_[2] = MASSTREE_MAXKEYLEN;
         send();
         kvflush(out_);
 
@@ -207,8 +206,7 @@ class KVConn {
         if (!result.is_a()
             || result[1] != Cmd_Handshake + 1
             || !result[2]) {
-            fprintf(stderr, "Incompatible kvdb protocol. Make sure the "
-                    "client uses the same row type as the kvd.\n");
+            fprintf(stderr, "Incompatible kvdb protocol\n");
             exit(EXIT_FAILURE);
         }
         partition_ = result[3].as_i();
