@@ -632,6 +632,8 @@ main(int argc, char *argv[])
       r = dup2(ptmp[1], STDOUT_FILENO);
       always_assert(r >= 0);
       close(ptmp[1]);
+      signal(SIGALRM, settimeout);
+      alarm((int) ceil(duration));
       run_child(test, 0);
       fflush(stdout);
       r = dup2(stdout_fd, STDOUT_FILENO);
