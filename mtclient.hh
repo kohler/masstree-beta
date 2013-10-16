@@ -193,12 +193,11 @@ class KVConn {
     int partition_;
 
     void handshake(int target_core) {
-        KVW(out_, target_core);
-
         j_.resize(3);
         j_[0] = 0;
         j_[1] = Cmd_Handshake;
-        j_[2] = MASSTREE_MAXKEYLEN;
+        j_[2] = Json::make_object().set("core", target_core)
+            .set("maxkeylen", MASSTREE_MAXKEYLEN);
         send();
         kvflush(out_);
 

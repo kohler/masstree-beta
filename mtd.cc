@@ -455,12 +455,11 @@ void runtest(const char *testname, int nthreads) {
 
 
 struct conn {
-    bool ready;
     int fd;
     enum { inbufsz = 20 * 1024, inbufrefill = 16 * 1024 };
 
     conn(int s)
-        : ready(false), fd(s), inbuf_(new char[inbufsz]),
+        : fd(s), inbuf_(new char[inbufsz]),
           inbufpos_(0), inbuflen_(0), kvout(new_kvout(s, 20 * 1024)),
           inbuftotal_(0) {
     }
@@ -544,6 +543,11 @@ void conn::hard_check(int tryhard) {
         inbuflen_ += r;
 }
 
+struct conninfo {
+    int s;
+    Json handshake;
+};
+
 
 /* main loop */
 
@@ -584,6 +588,7 @@ static const Clp_Option options[] = {
 int
 main(int argc, char *argv[])
 {
+  using std::swap;
   int s, ret, yes = 1, i = 1, firstcore = -1, corestride = 1;
   const char *dotest = 0;
   nlogger = tcpthreads = udpthreads = nckthreads = sysconf(_SC_NPROCESSORS_ONLN);
@@ -809,26 +814,41 @@ main(int argc, char *argv[])
     bzero(&sin1, sizeof(sin1));
     s1 = accept(s, (struct sockaddr *) &sin1, &sinlen);
     always_assert(s1 >= 0);
-
-    // Bind the connection to a particular core if required.
-    int target_core;
-    if (read(s1, &target_core, sizeof(target_core)) != sizeof(target_core)) {
-        perror("read");
-        continue;
-    }
     setsockopt(s1, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
 
-    threadinfo *ti;
-    if (target_core == -1) {
-        ti = tcpti[next % tcpthreads];
-        ++next;
-    } else {
-        assert(pinthreads && target_core < tcpthreads);
-        ti = tcpti[target_core];
+    // Complete handshake.
+    char buf[BUFSIZ];
+    ssize_t nr = read(s1, buf, BUFSIZ);
+    if (nr == -1) {
+        perror("read");
+    kill_connection:
+        close(s1);
+        continue;
     }
 
-    ssize_t w = write(ti->ti_pipe[1], &s1, sizeof(s1));
-    always_assert((size_t) w == sizeof(s1));
+    msgpack::streaming_parser sp;
+    if (nr == 0 || sp.consume(buf, nr) != (size_t) nr
+        || !sp.result().is_a() || sp.result().size() < 2
+        || !sp.result()[1].is_i() || sp.result()[1].as_i() != Cmd_Handshake) {
+        fprintf(stderr, "failed handshake\n");
+        goto kill_connection;
+    }
+
+    int target_core = -1;
+    if (sp.result().size() >= 3 && sp.result()[2].is_o()
+        && sp.result()[2]["core"].is_i())
+        target_core = sp.result()[2]["core"].as_i();
+    if (target_core < 0 || target_core >= tcpthreads) {
+        target_core = next % tcpthreads;
+        ++next;
+    }
+
+    conninfo* ci = new conninfo;
+    ci->s = s1;
+    swap(ci->handshake, sp.result());
+
+    ssize_t w = write(tcpti[target_core]->ti_pipe[1], &ci, sizeof(ci));
+    always_assert((size_t) w == sizeof(ci));
   }
 }
 
@@ -903,11 +923,15 @@ epochinc(int)
 
 // Return 1 if success, -1 if I/O error or protocol unmatch
 int handshake(Json& request, threadinfo& ti) {
-    if (request.size() < 3
-        || !request[1].is_i() || request[1].as_i() != Cmd_Handshake
-        || !request[2].is_i() || request[2].as_i() > MASSTREE_MAXKEYLEN) {
+    always_assert(request.is_a() && request.size() >= 2
+                  && request[1].is_i() && request[1].as_i() == Cmd_Handshake
+                  && (request.size() == 2 || request[2].is_o()));
+    if (request.size() >= 2
+        && request[2]["maxkeylen"].is_i()
+        && request[2]["maxkeylen"].as_i() > MASSTREE_MAXKEYLEN) {
         request[2] = false;
-        request.resize(3);
+        request[3] = "bad maxkeylen";
+        request.resize(4);
     } else {
         request[2] = true;
         request[3] = ti.ti_index;
@@ -1098,28 +1122,31 @@ tcpgo(void *xarg)
             if (c == (conn *) 1) {
                 // new connections
 #define MAX_NEWCONN 100
-                int ss[MAX_NEWCONN];
-                ssize_t len = read(ti->ti_pipe[0], ss, sizeof(ss));
+                conninfo* ci[MAX_NEWCONN];
+                ssize_t len = read(ti->ti_pipe[0], ci, sizeof(ci));
                 always_assert(len > 0 && len % sizeof(int) == 0);
-                for (int j = 0; j * sizeof(int) < (size_t) len; ++j){
-                    struct conn *c = new conn(ss[j]);
+                for (int j = 0; j * sizeof(*ci) < (size_t) len; ++j) {
+                    struct conn *c = new conn(ci[j]->s);
                     sloop.add(c->fd, c);
+                    int ret = handshake(ci[j]->handshake, *ti);
+                    msgpack::unparse(*c->kvout, ci[j]->handshake);
+                    kvflush(c->kvout);
+                    if (ret < 0) {
+                        sloop.remove(c->fd);
+                        delete c;
+                    }
+                    delete ci[j];
                 }
             } else if (c) {
                 // Should not block as suggested by epoll
                 uint64_t xposition = c->xposition();
                 Json& request = c->receive();
+                int ret;
                 if (unlikely(!request))
                     goto closed;
-                int ret;
-                if (unlikely(!c->ready)) {
-                    if ((ret = handshake(request, *ti)) >= 0)
-                        c->ready = true;
-                } else {
-                    ti->rcu_start();
-                    ret = onego(q, request, c->recent_string(xposition), *ti);
-                    ti->rcu_stop();
-                }
+                ti->rcu_start();
+                ret = onego(q, request, c->recent_string(xposition), *ti);
+                ti->rcu_stop();
                 msgpack::unparse(*c->kvout, request);
                 request.clear();
                 if (likely(ret >= 0)) {
