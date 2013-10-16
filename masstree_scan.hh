@@ -181,7 +181,7 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
 				  leafvalue_type& entry, threadinfo& ti)
 {
     int kp, keylenx = 0;
-    char suffixbuf[MASSTREE_MAXKEYSIZE];
+    char suffixbuf[MASSTREE_MAXKEYLEN];
     Str suffix;
 
  retry_root:
@@ -315,15 +315,15 @@ int basic_table<P>::scan(H helper,
     typedef typename node_type::key_type key_type;
     typedef typename node_type::leaf_type::leafvalue_type leafvalue_type;
     union {
-	ikey_type x[(MASSTREE_MAXKEYSIZE + sizeof(ikey_type) - 1)/sizeof(ikey_type)];
-	char s[MASSTREE_MAXKEYSIZE];
+	ikey_type x[(MASSTREE_MAXKEYLEN + sizeof(ikey_type) - 1)/sizeof(ikey_type)];
+	char s[MASSTREE_MAXKEYLEN];
     } keybuf;
     masstree_precondition(firstkey.len <= (int) sizeof(keybuf));
     memcpy(keybuf.s, firstkey.s, firstkey.len);
     key_type ka(keybuf.s, firstkey.len);
 
     typedef scanstackelt<param_type> mystack_type;
-    mystack_type stack[(MASSTREE_MAXKEYSIZE + sizeof(ikey_type) - 1) / sizeof(ikey_type)];
+    mystack_type stack[(MASSTREE_MAXKEYLEN + sizeof(ikey_type) - 1) / sizeof(ikey_type)];
     int stackpos = 0;
     stack[0].root_ = root_;
     leafvalue_type entry = leafvalue_type::make_empty();

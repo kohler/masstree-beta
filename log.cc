@@ -465,7 +465,7 @@ logrecord::extract(const char *buf, const char *end)
 	|| command == logcmd_remove) {
 	const logrec_kv *lk = reinterpret_cast<const logrec_kv *>(buf);
 	if (unlikely(lk->size_ < sizeof(*lk)
-		     || lk->keylen_ > MaxKeyLen
+		     || lk->keylen_ > MASSTREE_MAXKEYLEN
 		     || sizeof(*lk) + lk->keylen_ > lk->size_))
 	    goto fail;
 	ts = lk->ts_;
@@ -473,7 +473,7 @@ logrecord::extract(const char *buf, const char *end)
 	val.assign(lk->buf_ + lk->keylen_, lk->size_ - sizeof(*lk) - lk->keylen_);
     } else if (command == logcmd_modify) {
 	const logrec_kvdelta *lk = reinterpret_cast<const logrec_kvdelta *>(buf);
-	if (unlikely(lk->keylen_ > MaxKeyLen
+	if (unlikely(lk->keylen_ > MASSTREE_MAXKEYLEN
 		     || sizeof(*lk) + lk->keylen_ > lk->size_))
 	    goto fail;
 	ts = lk->ts_;

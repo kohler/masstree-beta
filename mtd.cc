@@ -906,7 +906,7 @@ int handshake(Json& request, threadinfo& ti) {
     if (request.size() < 4
         || !request[1].is_i() || request[1].as_i() != Cmd_Handshake
         || !request[2].is_i() || request[2].as_i() != MASSTREE_ROW_TYPE_ID
-        || !request[3].is_i() || request[3].as_i() > MaxKeyLen) {
+        || !request[3].is_i() || request[3].as_i() > MASSTREE_MAXKEYLEN) {
         request[2] = false;
         request.resize(3);
     } else {

@@ -200,9 +200,9 @@ template <typename P>
 void query_table<P>::findpivots(Str *pv, int npv) const
 {
     pv[0].assign(NULL, 0);
-    char *cmaxk = (char *)malloc(MASSTREE_MAXKEYSIZE);
-    memset(cmaxk, 255, MASSTREE_MAXKEYSIZE);
-    pv[npv - 1].assign(cmaxk, MASSTREE_MAXKEYSIZE);
+    char *cmaxk = (char *)malloc(MASSTREE_MAXKEYLEN);
+    memset(cmaxk, 255, MASSTREE_MAXKEYLEN);
+    pv[npv - 1].assign(cmaxk, MASSTREE_MAXKEYLEN);
     for (int i = 1; i < npv - 1; i++)
 	pv[i] = findpv(table_.root(), i, npv - 1);
 }

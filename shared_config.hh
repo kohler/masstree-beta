@@ -20,8 +20,6 @@
 #define SHARED_CONFIG_HH 1
 #include "compiler.hh"
 
-enum { MaxKeyLen = MASSTREE_MAXKEYSIZE }; // Maximum length of a key
-
 class value_array;
 class value_versioned_array;
 template <typename O> class value_bag;

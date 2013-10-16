@@ -216,7 +216,7 @@
 #undef HAVE___SYNC_VAL_COMPARE_AND_SWAP_8
 
 /* Maximum key length */
-#undef MASSTREE_MAXKEYSIZE
+#undef MASSTREE_MAXKEYLEN
 
 /* Define if the default row type is value_timed_array. */
 #undef MASSTREE_ROW_TYPE_ARRAY

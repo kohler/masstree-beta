@@ -6123,7 +6123,7 @@ fi
 
 
 cat >>confdefs.h <<_ACEOF
-#define MASSTREE_MAXKEYSIZE $ac_cv_max_key_len
+#define MASSTREE_MAXKEYLEN $ac_cv_max_key_len
 _ACEOF
 
 
