@@ -64,39 +64,6 @@ void free_kvout(kvout* kv);
 int kvwrite(kvout* kv, const void* buf, unsigned int n);
 void kvflush(kvout* kv);
 
-template <typename T>
-inline int KVR(kvin* kv, T& x) {
-    return kvread(kv, (char*) &x, sizeof(T));
-}
-
-template <typename T>
-inline int KVW(kvout* kv, const T& x) {
-    if (kv->capacity - kv->n >= (int) sizeof(x)) {
-        *(T*) (kv->buf + kv->n) = x;
-        kv->n += sizeof(x);
-    } else
-        kvwrite(kv, &x, sizeof(x));
-    return sizeof(x);
-}
-
-template <typename T>
-inline int KVW(kvout* kv, const volatile T& x) {
-    return KVW(kv, (const T &)x);
-}
-
-inline int KVW(kvout* kv, lcdf::Str x) {
-    KVW(kv, int32_t(x.length()));
-    kvwrite(kv, x.data(), x.length());
-    return sizeof(int32_t) + x.length();
-}
-
-inline int kvwrite_inline_string(kvout* kv, const lcdf::inline_string* s) {
-    if (!s)
-        return KVW(kv, lcdf::Str());
-    else
-        return KVW(kv, lcdf::Str(s->s, s->len));
-}
-
 inline void kvout::append(char c) {
     if (n == capacity)
         grow(0);
