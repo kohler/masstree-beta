@@ -14,6 +14,7 @@
  * is legally binding.
  */
 #define HAVE_ALL_ASSERTIONS_ENABLED 1
+#undef NDEBUG
 #include "compiler.hh"
 #include <stdlib.h>
 #include <algorithm>
