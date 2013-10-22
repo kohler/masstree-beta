@@ -268,6 +268,9 @@ class basic_singlethreaded_nodeversion {
     basic_singlethreaded_nodeversion<P> mark_deleted() {
 	return *this;
     }
+    void mark_deleted_tree() {
+        v_ |= P::deleted_bit;
+    }
     void mark_root() {
 	v_ |= P::root_bit;
     }
