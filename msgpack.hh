@@ -178,6 +178,13 @@ inline char* write_map_header(char* s, uint32_t size) {
 }
 } // namespace format
 
+struct array_marker {
+    uint32_t size;
+    array_marker(uint32_t s)
+        : size(s) {
+    }
+};
+
 template <typename T>
 class unparser {
   public:
@@ -242,6 +249,11 @@ class unparser {
     inline unparser<T>& operator<<(const lcdf::String_base<X>& x) {
         char* s = base_.reserve(5 + x.length());
         base_.set_end(format::write_string(s, x.data(), x.length()));
+        return *this;
+    }
+    inline unparser<T>& operator<<(const array_marker& x) {
+        char* s = base_.reserve(5);
+        base_.set_end(format::write_array_header(s, x.size));
         return *this;
     }
     inline unparser<T>& write_array_header(uint32_t size) {
