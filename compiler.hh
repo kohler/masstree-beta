@@ -946,7 +946,8 @@ inline char* write_in_net_order(char* s, T x) {
 
 template <typename T>
 inline uint8_t* write_in_net_order(uint8_t* s, T x) {
-    return write_in_net_order(reinterpret_cast<char*>(s), x);
+    return reinterpret_cast<uint8_t*>
+        (write_in_net_order(reinterpret_cast<char*>(s), x));
 }
 
 template <typename T>
