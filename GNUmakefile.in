@@ -60,7 +60,7 @@ test_atomics: test_atomics.o string.o straccum.o kvrandom.o \
 jsontest: jsontest.o string.o straccum.o json.o compiler.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
-msgpacktest: msgpacktest.o string.o straccum.o json.o compiler.o msgpack.o kvio.o
+msgpacktest: msgpacktest.o string.o straccum.o json.o compiler.o msgpack.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 config.h: stamp-h
