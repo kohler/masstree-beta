@@ -1,5 +1,4 @@
 #include "msgpack.hh"
-#include "kvio.hh"
 namespace msgpack {
 
 namespace {
