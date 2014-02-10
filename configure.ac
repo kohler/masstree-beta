@@ -160,7 +160,8 @@ fi
 AC_CHECK_HEADERS([type_traits])
 
 AC_CACHE_CHECK([for std::hash], [ac_cv_have_std_hash], [
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <functional>],
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <functional>
+#include <stddef.h>],
         [[std::hash<int> h; size_t x = h(1); return x == 0;]])],
         [ac_cv_have_std_hash=yes], [ac_cv_have_std_hash=no])])
 if test $ac_cv_have_std_hash = yes; then
