@@ -53,8 +53,7 @@
 #endif
 #if defined(HAVE_INTTYPES_H) || !defined(HAVE_CONFIG_H)
 # include <inttypes.h>
-#endif
-#if !defined(HAVE_UINTPTR_T) && defined(HAVE_CONFIG_H)
+#elif !defined(HAVE_UINTPTR_T)
 typedef unsigned long uintptr_t;
 #endif
 
