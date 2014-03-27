@@ -72,12 +72,13 @@ e
 e
 </pre>
 
-The test starts a process which hosts a Masstree, generates and execute queries
-over the tree. It uses all available cores (two in the above example). The test
-lasts for 20 seconds. It populates the key-value store with `put` queries
-during first 10 seconds, and then issues `get` queries over the tree during the
-second 10 seconds. See `kvtest_rw1_seed` in `mttest.hh`
-for more details about the workload and other workloads that `mttest` supports.
+The test starts a process which hosts a Masstree, and generates and
+executes queries over the tree. It uses all available cores (two in
+the above example). The test lasts for 20 seconds. It populates the
+key-value store with `put` queries during first 10 seconds, and then
+issues `get` queries over the tree during the next 10 seconds. See
+`kvtest_rw1_seed` in `mttest.hh` for more details about the workload.
+For a list of workloads, run `./mttest --help`.
 
 The output summarizes the throughput of each core. The `1/1 rw1/m` line says
 that `mttest` is running the first trial (out of one trials), of the `rw1`
