@@ -5522,28 +5522,40 @@ else
     as_fn_error $? "Unknown malloc type $ac_mtd_malloc" "$LINENO" 5
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for malloc library" >&5
+$as_echo_n "checking for malloc library... " >&6; }
 if test "$ac_mtd_malloc" = tcmalloc; then
     MALLOC_LIBS="-ltcmalloc_minimal"
 
 $as_echo "#define HAVE_TCMALLOC 1" >>confdefs.h
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: -ltcmalloc_minimal" >&5
+$as_echo "-ltcmalloc_minimal" >&6; }
 elif test "$ac_mtd_malloc" = jemalloc; then
     MALLOC_LIBS="-ljemalloc"
 
 $as_echo "#define HAVE_JEMALLOC 1" >>confdefs.h
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: -ljemalloc" >&5
+$as_echo "-ljemalloc" >&6; }
 elif test "$ac_mtd_malloc" = flow; then
     MALLOC_LIBS="-lflow"
 
 $as_echo "#define HAVE_FLOW_MALLOC 1" >>confdefs.h
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: -lflow" >&5
+$as_echo "-lflow" >&6; }
 elif test "$ac_mtd_malloc" = hoard; then
     MALLOC_LIBS="-lhoard"
 
 $as_echo "#define HAVE_HOARD_MALLOC 1" >>confdefs.h
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: -lhoard" >&5
+$as_echo "-lhoard" >&6; }
 else
     MALLOC_LIBS=
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: default" >&5
+$as_echo "default" >&6; }
 fi
 
 

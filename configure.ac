@@ -233,20 +233,26 @@ else
     AC_MSG_ERROR([Unknown malloc type $ac_mtd_malloc])
 fi
 
+AC_MSG_CHECKING([for malloc library])
 if test "$ac_mtd_malloc" = tcmalloc; then
     MALLOC_LIBS="-ltcmalloc_minimal"
     AC_DEFINE([HAVE_TCMALLOC], [1], [Define if you are using libtcmalloc for malloc.])
+    AC_MSG_RESULT([-ltcmalloc_minimal])
 elif test "$ac_mtd_malloc" = jemalloc; then
     MALLOC_LIBS="-ljemalloc"
     AC_DEFINE([HAVE_JEMALLOC], [1], [Define if you are using libjemalloc for malloc.])
+    AC_MSG_RESULT([-ljemalloc])
 elif test "$ac_mtd_malloc" = flow; then
     MALLOC_LIBS="-lflow"
     AC_DEFINE([HAVE_FLOW_MALLOC], [1], [Define if you are using libflow for malloc.])
+    AC_MSG_RESULT([-lflow])
 elif test "$ac_mtd_malloc" = hoard; then
     MALLOC_LIBS="-lhoard"
     AC_DEFINE([HAVE_HOARD_MALLOC], [1], [Define if you are using libhoard for malloc.])
+    AC_MSG_RESULT([-lhoard])
 else
     MALLOC_LIBS=
+    AC_MSG_RESULT([default])
 fi
 AC_SUBST(MALLOC_LIBS)
 
