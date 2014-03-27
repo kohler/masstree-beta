@@ -16,14 +16,20 @@ Masstree is tested on Debian, Ubuntu and Mac OS X. To build:
     $ ./configure
     $ make
 
-By default, Masstree links with glibc’s malloc. You can also configure Masstree
-to link with another memory allocator:
+For performance measurements, you should disable assertions.
 
-    ./configure --with-malloc=<jemalloc|tcmalloc>
+    $ ./configure --disable-assertions
+
+Masstree needs a fast malloc, and can link with jemalloc, Google’s
+tcmalloc, Hoard, or our own Flow allocator. It will normally choose
+jemalloc or tcmalloc, if it finds them. To use a specific memory
+allocator:
+
+    ./configure --with-malloc=<jemalloc|tcmalloc|flow|hoard>
 
 Flow is our re-implementation of
-[Streamflow](http://people.cs.vt.edu/~scschnei/streamflow/) allocator, and may
-be open-sourced in future.
+[Streamflow](http://people.cs.vt.edu/~scschnei/streamflow/) allocator,
+and may be open-sourced in future.
 
 See `./configure --help` for more configure options.
 
