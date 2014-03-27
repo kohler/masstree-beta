@@ -10,7 +10,13 @@
 #undef CACHE_LINE_SIZE
 
 /* Define to enable debugging assertions. */
-#undef HAVE_ASSERTIONS_ENABLED
+#undef ENABLE_ASSERTIONS
+
+/* Define to enable invariant assertions. */
+#undef ENABLE_INVARIANTS
+
+/* Define to enable precondition assertions. */
+#undef ENABLE_PRECONDITIONS
 
 /* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
@@ -53,9 +59,6 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to enable invariant assertions. */
-#undef HAVE_INVARIANTS_ENABLED
-
 /* Define if you are using libjemalloc for malloc. */
 #undef HAVE_JEMALLOC
 
@@ -85,9 +88,6 @@
 
 /* Define if off_t and long long are the same type. */
 #undef HAVE_OFF_T_IS_LONG_LONG
-
-/* Define to enable precondition assertions. */
-#undef HAVE_PRECONDITIONS_ENABLED
 
 /* Define if size_t and unsigned are the same type. */
 #undef HAVE_SIZE_T_IS_UNSIGNED
@@ -281,7 +281,7 @@
 /* Define if WORDS_BIGENDIAN has been set. */
 #undef WORDS_BIGENDIAN_SET
 
-#if !HAVE_ALL_ASSERTIONS_ENABLED && !HAVE_ASSERTIONS_ENABLED
+#if !FORCE_ENABLE_ASSERTIONS && !ENABLE_ASSERTIONS
 # define NDEBUG 1
 #endif
 
@@ -295,7 +295,7 @@ extern void fail_always_assert(const char* file, int line, const char* assertion
     masstree_invariant(x) is executed if --enable-invariants or
     --enable-assertions. */
 extern void fail_masstree_invariant(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
-#if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_INVARIANTS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_INVARIANTS_ENABLED
+#if FORCE_ENABLE_ASSERTIONS || (!defined(ENABLE_INVARIANTS) && ENABLE_ASSERTIONS) || ENABLE_INVARIANTS
 #define masstree_invariant(x, ...) do { if (!(x)) fail_masstree_invariant(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
 #else
 #define masstree_invariant(x, ...) do { } while (0)
@@ -306,7 +306,7 @@ extern void fail_masstree_invariant(const char* file, int line, const char* asse
     masstree_precondition(x) is executed if --enable-preconditions or
     --enable-assertions. */
 extern void fail_masstree_precondition(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
-#if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_PRECONDITIONS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_PRECONDITIONS_ENABLED
+#if FORCE_ENABLE_ASSERTIONS || (!defined(ENABLE_PRECONDITIONS) && ENABLE_ASSERTIONS) || ENABLE_PRECONDITIONS
 #define masstree_precondition(x, ...) do { if (!(x)) fail_masstree_precondition(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
 #else
 #define masstree_precondition(x, ...) do { } while (0)

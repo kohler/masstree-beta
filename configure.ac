@@ -361,25 +361,25 @@ AC_ARG_ENABLE([assertions],
     [AS_HELP_STRING([--disable-assertions],
 	    [disable debugging assertions])])
 if test "$enable_assertions" != no -o "(" -z "$enable_assertions" -a "$enable_assert" != no ")"; then
-    AC_DEFINE_UNQUOTED([HAVE_ASSERTIONS_ENABLED], [1], [Define to enable debugging assertions.])
+    AC_DEFINE_UNQUOTED([ENABLE_ASSERTIONS], [1], [Define to enable debugging assertions.])
 fi
 
 AC_ARG_ENABLE([preconditions],
     [AS_HELP_STRING([--disable-preconditions],
             [disable precondition assertions])])
 if test "$enable_preconditions" = no; then
-    AC_DEFINE_UNQUOTED([HAVE_PRECONDITIONS_ENABLED], [0], [Define to enable precondition assertions.])
+    AC_DEFINE_UNQUOTED([ENABLE_PRECONDITIONS], [0], [Define to enable precondition assertions.])
 elif test -n "$enable_preconditions"; then
-    AC_DEFINE_UNQUOTED([HAVE_PRECONDITIONS_ENABLED], [1], [Define to enable precondition assertions.])
+    AC_DEFINE_UNQUOTED([ENABLE_PRECONDITIONS], [1], [Define to enable precondition assertions.])
 fi
 
 AC_ARG_ENABLE([invariants],
     [AS_HELP_STRING([--disable-invariants],
             [disable invariant assertions])])
 if test "$enable_invariants" = no; then
-    AC_DEFINE_UNQUOTED([HAVE_INVARIANTS_ENABLED], [0], [Define to enable invariant assertions.])
+    AC_DEFINE_UNQUOTED([ENABLE_INVARIANTS], [0], [Define to enable invariant assertions.])
 elif test -n "$enable_preconditions"; then
-    AC_DEFINE_UNQUOTED([HAVE_INVARIANTS_ENABLED], [1], [Define to enable invariant assertions.])
+    AC_DEFINE_UNQUOTED([ENABLE_INVARIANTS], [1], [Define to enable invariant assertions.])
 fi
 
 AC_DEFINE_UNQUOTED([CACHE_LINE_SIZE], [64], [Assumed size of a cache line.])
@@ -387,7 +387,7 @@ AC_DEFINE_UNQUOTED([CACHE_LINE_SIZE], [64], [Assumed size of a cache line.])
 AH_TOP([#ifndef MASSTREE_CONFIG_H_INCLUDED
 #define MASSTREE_CONFIG_H_INCLUDED 1])
 
-AH_BOTTOM([#if !HAVE_ALL_ASSERTIONS_ENABLED && !HAVE_ASSERTIONS_ENABLED
+AH_BOTTOM([#if !FORCE_ENABLE_ASSERTIONS && !ENABLE_ASSERTIONS
 # define NDEBUG 1
 #endif
 
@@ -401,7 +401,7 @@ extern void fail_always_assert(const char* file, int line, const char* assertion
     masstree_invariant(x) is executed if --enable-invariants or
     --enable-assertions. */
 extern void fail_masstree_invariant(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
-#if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_INVARIANTS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_INVARIANTS_ENABLED
+#if FORCE_ENABLE_ASSERTIONS || (!defined(ENABLE_INVARIANTS) && ENABLE_ASSERTIONS) || ENABLE_INVARIANTS
 #define masstree_invariant(x, ...) do { if (!(x)) fail_masstree_invariant(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
 #else
 #define masstree_invariant(x, ...) do { } while (0)
@@ -412,7 +412,7 @@ extern void fail_masstree_invariant(const char* file, int line, const char* asse
     masstree_precondition(x) is executed if --enable-preconditions or
     --enable-assertions. */
 extern void fail_masstree_precondition(const char* file, int line, const char* assertion, const char* message = 0) __attribute__((noreturn));
-#if HAVE_ALL_ASSERTIONS_ENABLED || (!defined(HAVE_PRECONDITIONS_ENABLED) && HAVE_ASSERTIONS_ENABLED) || HAVE_PRECONDITIONS_ENABLED
+#if FORCE_ENABLE_ASSERTIONS || (!defined(ENABLE_PRECONDITIONS) && ENABLE_ASSERTIONS) || ENABLE_PRECONDITIONS
 #define masstree_precondition(x, ...) do { if (!(x)) fail_masstree_precondition(__FILE__, __LINE__, #x, ## __VA_ARGS__); } while (0)
 #else
 #define masstree_precondition(x, ...) do { } while (0)

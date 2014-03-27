@@ -6235,7 +6235,7 @@ fi
 if test "$enable_assertions" != no -o "(" -z "$enable_assertions" -a "$enable_assert" != no ")"; then
 
 cat >>confdefs.h <<_ACEOF
-#define HAVE_ASSERTIONS_ENABLED 1
+#define ENABLE_ASSERTIONS 1
 _ACEOF
 
 fi
@@ -6248,13 +6248,13 @@ fi
 if test "$enable_preconditions" = no; then
 
 cat >>confdefs.h <<_ACEOF
-#define HAVE_PRECONDITIONS_ENABLED 0
+#define ENABLE_PRECONDITIONS 0
 _ACEOF
 
 elif test -n "$enable_preconditions"; then
 
 cat >>confdefs.h <<_ACEOF
-#define HAVE_PRECONDITIONS_ENABLED 1
+#define ENABLE_PRECONDITIONS 1
 _ACEOF
 
 fi
@@ -6267,13 +6267,13 @@ fi
 if test "$enable_invariants" = no; then
 
 cat >>confdefs.h <<_ACEOF
-#define HAVE_INVARIANTS_ENABLED 0
+#define ENABLE_INVARIANTS 0
 _ACEOF
 
 elif test -n "$enable_preconditions"; then
 
 cat >>confdefs.h <<_ACEOF
-#define HAVE_INVARIANTS_ENABLED 1
+#define ENABLE_INVARIANTS 1
 _ACEOF
 
 fi

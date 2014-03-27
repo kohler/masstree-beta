@@ -13,7 +13,7 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-#define HAVE_ALL_ASSERTIONS_ENABLED 1
+#define FORCE_ENABLE_ASSERTIONS 1
 #undef NDEBUG
 #include "compiler.hh"
 #include <stdlib.h>
