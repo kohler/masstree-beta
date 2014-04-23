@@ -245,6 +245,7 @@ class Json {
     array_iterator erase(array_iterator first, array_iterator last);
     inline array_iterator erase(array_iterator position);
 
+    void reserve(size_type n);
     void resize(size_type n);
 
     inline Json* array_data();
@@ -1180,6 +1181,9 @@ class Json_proxy_base {
     bool assign_parse(const char* first, const char* last) {
 	return value().assign_parse(first, last);
     }
+    void swap(Json& x) {
+        value().swap(x);
+    }
     Json& operator++() {
 	return ++value();
     }
@@ -1487,7 +1491,7 @@ template <typename P> inline Json::Json(const Json_proxy_base<P>& x)
 /** @overload */
 inline Json::Json(Json&& x)
     : u_(std::move(x.u_)) {
-    x.u_.x.type = 0;
+    memset(&x, 0, sizeof(x));
 }
 #endif
 /** @brief Construct simple Json values. */
@@ -1597,6 +1601,7 @@ template <typename... Args>
 inline Json Json::array(Args&&... args) {
     Json j;
     j.u_.x.type = j_array;
+    j.reserve(sizeof...(args));
     j.push_back_list(std::forward<Args>(args)...);
     return j;
 }

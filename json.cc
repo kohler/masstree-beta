@@ -361,6 +361,11 @@ Json::array_iterator Json::erase(array_iterator first, array_iterator last) {
     return first;
 }
 
+/** @brief Reserve the array Json to hold at least @a n items. */
+void Json::reserve(size_type n) {
+    uniqueify_array(false, n);
+}
+
 /** @brief Resize the array Json to size @a n. */
 void Json::resize(size_type n) {
     uniqueify_array(false, n);
@@ -611,7 +616,9 @@ void Json::hard_unparse(StringAccum &sa, const unparse_manipulator &m, int depth
                     sa << upx[1];
 		if (expanded)
                     unparse_indent(sa, m, depth + 1);
-		sa << '\"' << ob->v_.first.encode_json() << '\"' << upx[0];
+		sa << '\"';
+                ob->v_.first.encode_json(sa);
+                sa << '\"' << upx[0];
 		ob->v_.second.hard_unparse(sa, m, depth + 1);
 		rest = true;
 	    }
@@ -637,9 +644,11 @@ void Json::hard_unparse(StringAccum &sa, const unparse_manipulator &m, int depth
 	sa << ']';
     } else if (u_.x.type == j_null && !u_.x.x)
         sa.append("null", 4);
-    else if (u_.x.type <= 0)
-	sa << '\"' << reinterpret_cast<const String&>(u_.str).encode_json() << '\"';
-    else if (u_.x.type == j_bool) {
+    else if (u_.x.type <= 0) {
+	sa << '\"';
+        reinterpret_cast<const String&>(u_.str).encode_json(sa);
+        sa << '\"';
+    } else if (u_.x.type == j_bool) {
         bool b = u_.i.x;
         sa.append(&"false\0true"[-b & 6], 5 - b);
     } else if (u_.x.type == j_int)
@@ -949,8 +958,6 @@ Json::streaming_parser::consume_stringpart(StringAccum& sa,
                                            const uint8_t* last) {
     while ((state_ & st_partlenmask) && first != last) {
         int part = state_ & st_partlenmask;
-        if (part > sa.length())
-            std::cerr << "fuck " << sa.length() << " " << part << "\n";
         uint8_t tag = sa[sa.length() - part];
         if ((tag != '\\' && (*first & 0xC0) != 0x80)
             || (tag == '\\' && part == 6 && *first != '\\')

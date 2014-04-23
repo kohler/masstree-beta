@@ -85,6 +85,24 @@ const char String_generic::empty_data[] = "";
 // oom_data is the UTF-8 encoding of U+1F4A3 BOMB + "ENOMEM" + U+1F4A3 BOMB
 const char String_generic::out_of_memory_data[] = "\360\237\222\243ENOMEM\360\237\222\243";
 const char String_generic::bool_data[] = "false\0true";
+const char String_generic::base64_encoding_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const unsigned char String_generic::base64_decoding_map[] =
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\x3F\0\0\0\x40"
+        "\x35\x36\x37\x38\x39\x3A\x3B\x3C\x3D\x3E\0\0\0\0\0\0"
+        "\0\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        "\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\0\0\0\0\0"
+        "\0\x1B\x1C\x1D\x1E\x1F\x20\x21\x22\x23\x24\x25\x26\x27\x28\x29"
+        "\x2A\x2B\x2C\x2D\x2E\x2F\x30\x31\x32\x33\x34\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 const char String::int_data[] = "0\0001\0002\0003\0004\0005\0006\0007\0008\0009";
 
 #if HAVE_STRING_PROFILING > 1
@@ -1225,62 +1243,28 @@ String::to_utf8(int flags) const
     For instance, String("a\"").encode_json() == "a\\\"". Note that the
     double-quote characters that usually surround a JSON string are not
     included. */
-String
-String::encode_json() const
-{
+String String::encode_json() const {
     StringAccum sa;
-    const char *last = begin(), *end = this->end();
-    for (const char *s = last; s != end; ++s) {
-	int c = (unsigned char) *s;
-
-	// U+2028 and U+2029 can't appear in Javascript strings! (Though
-	// they are legal in JSON strings, according to the JSON
-	// definition.)
-	if (unlikely(c == 0xE2)
-	    && s + 2 < end && (unsigned char) s[1] == 0x80
-	    && (unsigned char) (s[2] | 1) == 0xA9)
-	    c = 0x2028 + (s[2] & 1);
-	else if (likely(c >= 32 && c != '\\' && c != '\"' && c != '/'))
-	    continue;
-
-	if (!sa.length())
-	    sa.reserve(length() + 16);
-	sa.append(last, s);
-	sa << '\\';
-	switch (c) {
-	case '\b':
-	    sa << 'b';
-	    break;
-	case '\f':
-	    sa << 'f';
-	    break;
-	case '\n':
-	    sa << 'n';
-	    break;
-	case '\r':
-	    sa << 'r';
-	    break;
-	case '\t':
-	    sa << 't';
-	    break;
-	case '\\':
-	case '\"':
-	case '/':
-	    sa.append((char) c);
-	    break;
-	default: // c is a control character, 0x2028, or 0x2029
-	    sa.snprintf(5, "u%04X", c);
-	    if (c > 255)	// skip rest of encoding of U+202[89]
-		s += 2;
-	    break;
-	}
-	last = s + 1;
+    const char* last = encode_json_partial(sa);
+    if (last == begin())
+        return *this;
+    else {
+        sa.append(last, end());
+        return sa.take_string();
     }
-    if (sa.length()) {
-	sa.append(last, end);
-	return sa.take_string();
-    } else
-	return *this;
+}
+
+String String::encode_base64(bool pad) const {
+    StringAccum sa;
+    encode_base64(sa, pad);
+    return sa.take_string();
+}
+
+String String::decode_base64() const {
+    StringAccum sa;
+    if (!decode_base64(sa))
+        return String();
+    return sa.take_string();
 }
 
 } // namespace lcdf

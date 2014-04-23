@@ -31,6 +31,8 @@ class String_generic {
     static const char empty_data[1];
     static const char bool_data[11]; // "false\0true\0"
     static const char out_of_memory_data[15];
+    static const char base64_encoding_table[65];
+    static const unsigned char base64_decoding_map[256];
     enum { out_of_memory_length = 14 };
     static bool out_of_memory(const char* s) {
 	return unlikely(s >= out_of_memory_data
@@ -290,6 +292,20 @@ class String_base {
     long to_i() const {
         return String_generic::to_i(begin(), end());
     }
+
+    template <typename E>
+    const_iterator encode_json_partial(E& e) const;
+    template <typename E>
+    inline void encode_json(E& e) const;
+    template <typename E>
+    void encode_base64(E& e, bool pad = false) const;
+    template <typename E>
+    bool decode_base64(E& e) const;
+
+    inline operator std::string() const {
+        return std::string(data(), length());
+    }
+
   protected:
     String_base() = default;
 };
@@ -406,8 +422,6 @@ inline typename T::substring_type String_generic::trim(const T &str) {
     return str.fast_substring(b, e);
 }
 
-} // namespace lcdf
-
 #if HAVE_STD_HASH
 # define LCDF_MAKE_STRING_HASH(type) \
     namespace std { template <> struct hash<type>          \
@@ -418,4 +432,123 @@ inline typename T::substring_type String_generic::trim(const T &str) {
 #else
 # define LCDF_MAKE_STRING_HASH(type)
 #endif
+
+template <typename T> template <typename E>
+typename String_base<T>::const_iterator String_base<T>::encode_json_partial(E& enc) const {
+    const char *last = this->begin(), *end = this->end();
+    for (const char *s = last; s != end; ++s) {
+        int c = (unsigned char) *s;
+
+        // U+2028 and U+2029 can't appear in Javascript strings! (Though
+        // they are legal in JSON strings, according to the JSON
+        // definition.)
+        if (unlikely(c == 0xE2)
+            && s + 2 < end && (unsigned char) s[1] == 0x80
+            && (unsigned char) (s[2] | 1) == 0xA9)
+            c = 0x2028 + (s[2] & 1);
+        else if (likely(c >= 32 && c != '\\' && c != '\"' && c != '/'))
+            continue;
+
+        enc.append(last, s);
+        enc << '\\';
+        switch (c) {
+        case '\b':
+            enc << 'b';
+            break;
+        case '\f':
+            enc << 'f';
+            break;
+        case '\n':
+            enc << 'n';
+            break;
+        case '\r':
+            enc << 'r';
+            break;
+        case '\t':
+            enc << 't';
+            break;
+        case '\\':
+        case '\"':
+        case '/':
+            enc << (char) c;
+            break;
+        default: { // c is a control character, 0x2028, or 0x2029
+            char* x = enc.reserve(5);
+            snprintf(x, 5, "u%04X", c);
+            if (c > 255)        // skip rest of encoding of U+202[89]
+                s += 2;
+            break;
+        }
+        }
+        last = s + 1;
+    }
+    return last;
+}
+
+template <typename T> template <typename E>
+inline void String_base<T>::encode_json(E& enc) const {
+    const char* last = encode_json_partial(enc);
+    enc.append(last, end());
+}
+
+template <typename T> template <typename E>
+void String_base<T>::encode_base64(E& enc, bool pad) const {
+    char* out = enc.reserve(((length() + 2) * 4) / 3);
+    const unsigned char* s = this->ubegin(), *end = this->uend();
+    for (; end - s >= 3; s += 3) {
+        unsigned x = (s[0] << 16) | (s[1] << 8) | s[2];
+        *out++ = String_generic::base64_encoding_table[x >> 18];
+        *out++ = String_generic::base64_encoding_table[(x >> 12) & 63];
+        *out++ = String_generic::base64_encoding_table[(x >> 6) & 63];
+        *out++ = String_generic::base64_encoding_table[x & 63];
+    }
+    if (end > s) {
+        unsigned x = s[0] << 16;
+        if (end > s + 1)
+            x |= s[1] << 8;
+        *out++ = String_generic::base64_encoding_table[x >> 18];
+        *out++ = String_generic::base64_encoding_table[(x >> 12) & 63];
+        if (end > s + 1)
+            *out++ = String_generic::base64_encoding_table[(x >> 6) & 63];
+        else if (pad)
+            *out++ = '=';
+        if (pad)
+            *out++ = '=';
+    }
+    enc.set_end(out);
+}
+
+template <typename T> template <typename E>
+bool String_base<T>::decode_base64(E& enc) const {
+    char* out = enc.reserve((length() * 3) / 4 + 1);
+    const unsigned char* s = this->ubegin(), *end = this->uend();
+    while (end > s && end[-1] == '=')
+        --end;
+    for (; end - s >= 4; s += 4) {
+        unsigned x = ((((unsigned) String_generic::base64_decoding_map[s[0]]) - 1) << 18)
+            | ((((unsigned) String_generic::base64_decoding_map[s[1]]) - 1) << 12)
+            | ((((unsigned) String_generic::base64_decoding_map[s[2]]) - 1) << 6)
+            | (((unsigned) String_generic::base64_decoding_map[s[3]]) - 1);
+        if ((int) x < 0)
+            return false;
+        *out++ = (unsigned char) (x >> 16);
+        *out++ = (unsigned char) (x >> 8);
+        *out++ = (unsigned char) x;
+    }
+    if (end - s >= 2) {
+        unsigned x = ((((unsigned) String_generic::base64_decoding_map[s[0]]) - 1) << 18)
+            | ((((unsigned) String_generic::base64_decoding_map[s[1]]) - 1) << 12)
+            | (end - s == 3 ? (((unsigned) String_generic::base64_decoding_map[s[2]]) - 1) << 6 : 0);
+        if ((int) x < 0)
+            return false;
+        *out++ = (unsigned char) (x >> 16);
+        if (end - s == 3)
+            *out++ = (unsigned char) (x >> 8);
+    } else if (end - s)
+        return false;
+    enc.set_end(out);
+    return true;
+}
+
+} // namespace lcdf
 #endif

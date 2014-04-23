@@ -109,7 +109,13 @@ class String : public String_base<String> {
     String utf8_to_utf8(int flags = 0) const;
     String to_utf8(int flags = 0) const;
 
+    using String_base<String>::encode_json;
     String encode_json() const;
+
+    using String_base<String>::encode_base64;
+    String encode_base64(bool pad = false) const;
+    using String_base<String>::decode_base64;
+    String decode_base64() const;
 
     inline String& operator=(const String& x);
 #if HAVE_CXX_RVALUE_REFERENCES
