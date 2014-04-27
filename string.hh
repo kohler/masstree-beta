@@ -160,7 +160,7 @@ class String : public String_base<String> {
     inline bool is_stable() const;
 
     inline String unique() const;
-    inline String compact() const;
+    inline void shrink_to_fit();
 
     char* mutable_data();
     inline unsigned char* mutable_udata();
@@ -787,16 +787,14 @@ inline String String::unique() const {
 	return String(_r.data, _r.data + _r.length);
 }
 
-/** @brief Return a compact version of this String.
+/** @brief Reduce the memory allocation for this String.
 
-    The return value shares no more than 256 bytes of data with any other
-    non-stable String. */
-inline String String::compact() const {
+    After calling this function, this String shares no more than 256 bytes
+    of data with any other non-stable String. */
+inline void String::shrink_to_fit() {
     memo_type* m = _r.memo();
-    if (!m || m->refcount == 1 || (uint32_t) _r.length + 256 >= m->capacity)
-	return *this;
-    else
-	return String(_r.data, _r.data + _r.length);
+    if (m && m->refcount > 1 && (uint32_t) _r.length + 256 < m->capacity)
+	*this = String(_r.data, _r.data + _r.length);
 }
 
 /** @brief Return the unsigned char * version of mutable_data(). */
