@@ -4,7 +4,6 @@
 #include "local_vector.hh"
 #include "straccum.hh"
 #include <vector>
-struct kvout;
 namespace msgpack {
 using lcdf::Json;
 using lcdf::Str;

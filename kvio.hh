@@ -21,29 +21,6 @@
 #include "string.hh"
 #include "str.hh"
 
-struct kvin {
-    int fd;
-    char* buf;
-    int len; // underlying size of buf[]
-    // buf[i0..i1-1] are valid
-    int i0;
-    int i1;
-
-    inline bool empty() const {
-        return i0 == i1;
-    }
-};
-
-kvin* new_kvin(int fd, int buflen);
-kvin* new_bufkvin(char* buf);
-void kvin_init(kvin* kv, char* buf, int len);
-void kvin_setlen(kvin* kv, int len);
-char* kvin_skip(kvin* kv, int n);
-void free_kvin(kvin* kv);
-int kvread(kvin* kv, char* buf, int n);
-int kvcheck(kvin* kv, int tryhard);
-int mayblock_kvoneread(kvin* kv);
-
 struct kvout {
     int fd;
     char* buf;

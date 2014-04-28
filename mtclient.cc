@@ -13,11 +13,6 @@
  * notice is a summary of the Masstree LICENSE file; the license in that file
  * is legally binding.
  */
-//
-// kvc: key/value client
-//
-// cc -O -o kvc kvc.c kvio.c
-//
 
 #include <stdio.h>
 #include <stdlib.h>

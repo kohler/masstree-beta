@@ -18,7 +18,6 @@
 #include "string_base.hh"
 #include <stdarg.h>
 #include <stdio.h>
-struct kvin;
 namespace lcdf {
 
 struct Str : public String_base<Str> {
