@@ -55,11 +55,11 @@ memdebug::hard_free_checks(const memdebug *m, size_t size, int freetype,
 	fprintf(stderr, "%s(%p): expected type %x, saw %x, "
 		"allocated %s\n", op, m + 1, freetype, m->freetype, buf);
     if (!after_rcu && m->size != size)
-	fprintf(stderr, "%s(%p) @%d: expected size %lu, saw %lu, "
+	fprintf(stderr, "%s(%p): expected size %lu, saw %lu, "
 		"allocated %s\n", op, m + 1,
 		(unsigned long) size, (unsigned long) m->size, buf);
     if (m->after_rcu != after_rcu)
-	fprintf(stderr, "%s(%p) @%d: double free after rcu, allocated @%s\n",
+	fprintf(stderr, "%s(%p): double free after rcu, allocated @%s\n",
 		op, m + 1, buf);
     if (freetype)
 	assert(m->freetype == freetype);

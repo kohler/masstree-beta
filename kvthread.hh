@@ -65,19 +65,18 @@ struct memdebug {
     }
     static void *check_free(void *p, size_t size, int freetype) {
 	memdebug *m = reinterpret_cast<memdebug *>(p) - 1;
-	free_checks(m, size, freetype, line, false, "deallocate");
+	free_checks(m, size, freetype, false, "deallocate");
 	m->magic = magic_free_value;
 	return m;
     }
     static void check_rcu(void *p, size_t size, int freetype) {
 	memdebug *m = reinterpret_cast<memdebug *>(p) - 1;
-	free_checks(m, size, freetype, line, false, "deallocate_rcu");
+	free_checks(m, size, freetype, false, "deallocate_rcu");
 	m->after_rcu = 1;
-	m->line = line;
     }
     static void *check_free_after_rcu(void *p, int freetype) {
 	memdebug *m = reinterpret_cast<memdebug *>(p) - 1;
-	free_checks(m, 0, freetype, 0, true, "free_after_rcu");
+	free_checks(m, 0, freetype, true, "free_after_rcu");
 	m->magic = magic_free_value;
 	return m;
     }
@@ -100,16 +99,16 @@ struct memdebug {
     }
   private:
     static void free_checks(const memdebug *m, size_t size, int freetype,
-			    int line, int after_rcu, const char *op) {
+			    int after_rcu, const char *op) {
 	if (m->magic != magic_value
 	    || m->freetype != freetype
 	    || (!after_rcu && m->size != size)
 	    || m->after_rcu != after_rcu)
-	    hard_free_checks(m, freetype, size, line, after_rcu, op);
+	    hard_free_checks(m, freetype, size, after_rcu, op);
     }
     void landmark(char* buf, size_t size) const;
     static void hard_free_checks(const memdebug* m, size_t size, int freetype,
-				 int line, int after_rcu, const char* op);
+				 int after_rcu, const char* op);
     static void hard_assert_use(const void* ptr, memtag tag1, memtag tag2);
 #else
     static void *make(void *p, size_t, int) {
