@@ -26,6 +26,9 @@
 
 threadinfo *threadinfo::allthreads;
 pthread_key_t threadinfo::key;
+#if ENABLE_ASSERTIONS
+int threadinfo::no_pool_value;
+#endif
 
 #if HAVE_MEMDEBUG
 void memdebug::landmark(char* buf, size_t size) const {
@@ -92,10 +95,10 @@ memdebug::hard_assert_use(const void *ptr, memtag tag1, memtag tag2) {
 }
 #endif
 
-threadinfo *threadinfo::make(int purpose, int index)
-{
-    threadinfo *ti = (threadinfo *) malloc(8192);
+threadinfo *threadinfo::make(int purpose, int index) {
+    static int threads_initialized;
 
+    threadinfo *ti = (threadinfo *) malloc(8192);
     memset(ti, 0, sizeof(*ti));
     ti->next_ = allthreads;
     ti->purpose_ = purpose;
@@ -105,6 +108,14 @@ threadinfo *threadinfo::make(int purpose, int index)
     void *limbo_space = ti->allocate(sizeof(limbo_group), memtag_limbo);
     ti->mark(tc_limbo_slots, limbo_group::capacity);
     ti->limbo_head_ = ti->limbo_tail_ = new(limbo_space) limbo_group;
+
+    if (!threads_initialized) {
+#if ENABLE_ASSERTIONS
+        no_pool_value = getenv("VALGRIND_OPTS") != 0;
+#endif
+        threads_initialized = 1;
+    }
+
     return ti;
 }
 
@@ -232,6 +243,13 @@ static void initialize_pool(void* pool, size_t sz, size_t unit) {
 
 void threadinfo::refill_pool(int nl) {
     assert(!pool_[nl - 1]);
+
+    if (!use_pool()) {
+        pool_[nl - 1] = malloc(nl * CACHE_LINE_SIZE);
+        if (pool_[nl - 1])
+            *reinterpret_cast<void**>(pool_[nl - 1]) = 0;
+        return;
+    }
 
     void* pool = 0;
     size_t pool_size = 0;

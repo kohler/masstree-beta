@@ -330,20 +330,23 @@ class threadinfo {
 	if (unlikely(!pool_[nl - 1]))
 	    refill_pool(nl);
 	void *p = pool_[nl - 1];
-	if (p)
+	if (p) {
 	    pool_[nl - 1] = *reinterpret_cast<void **>(p);
-	p = memdebug::make(p, sz, (tag << 8) + nl);
-	if (p)
+            p = memdebug::make(p, sz, (tag << 8) + nl);
             mark(threadcounter(tc_alloc + (tag > memtag_value)),
                  nl * CACHE_LINE_SIZE);
+        }
 	return p;
     }
     void pool_deallocate(void* p, size_t sz, memtag tag) {
 	int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
 	assert(p && nl <= pool_max_nlines);
 	p = memdebug::check_free(p, sz, (tag << 8) + nl);
-	*reinterpret_cast<void **>(p) = pool_[nl - 1];
-	pool_[nl - 1] = p;
+        if (use_pool()) {
+            *reinterpret_cast<void **>(p) = pool_[nl - 1];
+            pool_[nl - 1] = p;
+        } else
+            free(p);
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
              -nl * CACHE_LINE_SIZE);
     }
@@ -454,6 +457,17 @@ class threadinfo {
 	if (!limbo_epoch_)
 	    limbo_epoch_ = epoch;
     }
+
+#if ENABLE_ASSERTIONS
+    static int no_pool_value;
+    static bool use_pool() {
+        return !no_pool_value;
+    }
+#else
+    static bool use_pool() {
+        return true;
+    }
+#endif
 
     void hard_rcu_quiesce();
     static void* thread_trampoline(void*);
