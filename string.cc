@@ -135,10 +135,10 @@ int
 String_generic::compare(const char* a, int a_len, const char* b, int b_len)
 {
     if (a != b) {
-	int len = a_len < b_len ? a_len : b_len;
-	int cmp = memcmp(a, b, len);
-	if (cmp != 0)
-	    return cmp;
+        int len = a_len < b_len ? a_len : b_len;
+        int cmp = memcmp(a, b, len);
+        if (cmp != 0)
+            return cmp;
     }
     return a_len - b_len;
 }
@@ -147,7 +147,7 @@ hashcode_t
 String_generic::hashcode(const char *s, int len)
 {
     if (len <= 0)
-	return 0;
+        return 0;
 
     uint32_t hash = len;
     int rem = hash & 3;
@@ -158,16 +158,16 @@ String_generic::hashcode(const char *s, int len)
     if (!(reinterpret_cast<uintptr_t>(s) & 1)) {
 #endif
 #define get16(p) (*reinterpret_cast<const uint16_t *>((p)))
-	for (; s != end; s += 4) {
-	    hash += get16(s);
-	    uint32_t tmp = (get16(s + 2) << 11) ^ hash;
-	    hash = (hash << 16) ^ tmp;
-	    hash += hash >> 11;
-	}
-	if (rem >= 2) {
-	    last16 = get16(s);
-	    goto rem2;
-	}
+        for (; s != end; s += 4) {
+            hash += get16(s);
+            uint32_t tmp = (get16(s + 2) << 11) ^ hash;
+            hash = (hash << 16) ^ tmp;
+            hash += hash >> 11;
+        }
+        if (rem >= 2) {
+            last16 = get16(s);
+            goto rem2;
+        }
 #undef get16
 #if !HAVE_INDIFFERENT_ALIGNMENT
     } else {
@@ -176,38 +176,38 @@ String_generic::hashcode(const char *s, int len)
 # else
 #  define get16(p) ((unsigned char) (p)[0] + ((unsigned char) (p)[1] << 8))
 # endif
-	// should be exactly the same as the code above
-	for (; s != end; s += 4) {
-	    hash += get16(s);
-	    uint32_t tmp = (get16(s + 2) << 11) ^ hash;
-	    hash = (hash << 16) ^ tmp;
-	    hash += hash >> 11;
-	}
-	if (rem >= 2) {
-	    last16 = get16(s);
-	    goto rem2;
-	}
+        // should be exactly the same as the code above
+        for (; s != end; s += 4) {
+            hash += get16(s);
+            uint32_t tmp = (get16(s + 2) << 11) ^ hash;
+            hash = (hash << 16) ^ tmp;
+            hash += hash >> 11;
+        }
+        if (rem >= 2) {
+            last16 = get16(s);
+            goto rem2;
+        }
 # undef get16
     }
 #endif
 
     /* Handle end cases */
-    if (0) {			// weird organization avoids uninitialized
-      rem2:			// variable warnings
-	if (rem == 3) {
-	    hash += last16;
-	    hash ^= hash << 16;
-	    hash ^= ((unsigned char) s[2]) << 18;
-	    hash += hash >> 11;
-	} else {
-	    hash += last16;
-	    hash ^= hash << 11;
-	    hash += hash >> 17;
-	}
+    if (0) {                    // weird organization avoids uninitialized
+      rem2:                     // variable warnings
+        if (rem == 3) {
+            hash += last16;
+            hash ^= hash << 16;
+            hash ^= ((unsigned char) s[2]) << 18;
+            hash += hash >> 11;
+        } else {
+            hash += last16;
+            hash ^= hash << 11;
+            hash += hash >> 17;
+        }
     } else if (rem == 1) {
-	hash += (unsigned char) *s;
-	hash ^= hash << 10;
-	hash += hash >> 1;
+        hash += (unsigned char) *s;
+        hash ^= hash << 10;
+        hash += hash >> 1;
     }
 
     /* Force "avalanching" of final 127 bits */
@@ -223,54 +223,54 @@ String_generic::hashcode(const char *s, int len)
 
 int
 String_generic::find_left(const char *s, int len, int start,
-			  char x)
+                          char x)
 {
     if (start < 0)
-	start = 0;
+        start = 0;
     for (int i = start; i < len; ++i)
-	if (s[i] == x)
-	    return i;
+        if (s[i] == x)
+            return i;
     return -1;
 }
 
 int
 String_generic::find_left(const char *s, int len, int start,
-			  const char *x, int x_len)
+                          const char *x, int x_len)
 {
     if (start < 0)
-	start = 0;
+        start = 0;
     if (x_len == 0)
-	return start <= len ? start : -1;
+        return start <= len ? start : -1;
     int max_pos = len - x_len;
     for (int i = start; i <= max_pos; ++i)
-	if (memcmp(s + i, x, x_len) == 0)
-	    return i;
+        if (memcmp(s + i, x, x_len) == 0)
+            return i;
     return -1;
 }
 
 int
 String_generic::find_right(const char *s, int len, int start,
-			   char x)
+                           char x)
 {
     if (start >= len)
-	start = len - 1;
+        start = len - 1;
     for (int i = start; i >= 0; --i)
-	if (s[i] == x)
-	    return i;
+        if (s[i] == x)
+            return i;
     return -1;
 }
 
 int
 String_generic::find_right(const char *s, int len, int start,
-			   const char *x, int x_len)
+                           const char *x, int x_len)
 {
     if (start >= len)
-	start = len - x_len;
+        start = len - x_len;
     if (x_len == 0)
-	return start >= 0 ? start : -1;
+        return start >= 0 ? start : -1;
     for (int i = start; i >= 0; --i)
-	if (memcmp(s + i, x, x_len) == 0)
-	    return i;
+        if (memcmp(s + i, x, x_len) == 0)
+            return i;
     return -1;
 }
 
@@ -296,74 +296,74 @@ bool String_generic::glob_match(const char* sbegin, int slen,
 
     // quick common-case check for suffix matches
     while (pbegin < pend && sbegin < send
-	   && pend[-1] != '*' && pend[-1] != '?' && pend[-1] != ']'
-	   && (pbegin + 1 == pend || pend[-2] != '\\'))
-	if (pend[-1] == send[-1])
-	    --pend, --send;
-	else
-	    return false;
+           && pend[-1] != '*' && pend[-1] != '?' && pend[-1] != ']'
+           && (pbegin + 1 == pend || pend[-2] != '\\'))
+        if (pend[-1] == send[-1])
+            --pend, --send;
+        else
+            return false;
 
     std::vector<const char*> state, nextstate;
     state.push_back(pbegin);
 
     for (const char* s = sbegin; s != send && state.size(); ++s) {
-	nextstate.clear();
-	for (const char** pp = state.data(); pp != state.data() + state.size(); ++pp)
-	    if (*pp != pend) {
-	      reswitch:
-		switch (**pp) {
-		  case '?':
-		    nextstate.push_back(*pp + 1);
-		    break;
-		  case '*':
-		    if (*pp + 1 == pend)
-			return true;
-		    if (nextstate.empty() || nextstate.back() != *pp)
-			nextstate.push_back(*pp);
-		    ++*pp;
-		    goto reswitch;
-		  case '\\':
-		    if (*pp + 1 != pend)
-			++*pp;
-		    goto normal_char;
-		  case '[': {
-		      const char *ec = *pp + 1;
-		      bool negated;
-		      if (ec != pend && *ec == '^') {
-			  negated = true;
-			  ++ec;
-		      } else
-			  negated = false;
-		      if (ec == pend)
-			  goto normal_char;
+        nextstate.clear();
+        for (const char** pp = state.data(); pp != state.data() + state.size(); ++pp)
+            if (*pp != pend) {
+              reswitch:
+                switch (**pp) {
+                  case '?':
+                    nextstate.push_back(*pp + 1);
+                    break;
+                  case '*':
+                    if (*pp + 1 == pend)
+                        return true;
+                    if (nextstate.empty() || nextstate.back() != *pp)
+                        nextstate.push_back(*pp);
+                    ++*pp;
+                    goto reswitch;
+                  case '\\':
+                    if (*pp + 1 != pend)
+                        ++*pp;
+                    goto normal_char;
+                  case '[': {
+                      const char *ec = *pp + 1;
+                      bool negated;
+                      if (ec != pend && *ec == '^') {
+                          negated = true;
+                          ++ec;
+                      } else
+                          negated = false;
+                      if (ec == pend)
+                          goto normal_char;
 
-		      bool found = false;
-		      do {
-			  if (*++ec == *s)
-			      found = true;
-		      } while (ec != pend && *ec != ']');
-		      if (ec == pend)
-			  goto normal_char;
+                      bool found = false;
+                      do {
+                          if (*++ec == *s)
+                              found = true;
+                      } while (ec != pend && *ec != ']');
+                      if (ec == pend)
+                          goto normal_char;
 
-		      if (found == !negated)
-			  nextstate.push_back(ec + 1);
-		      break;
-		  }
-		  normal_char:
-		  default:
-		    if (**pp == *s)
-			nextstate.push_back(*pp + 1);
-		    break;
-		}
-	    }
-	state.swap(nextstate);
+                      if (found == !negated)
+                          nextstate.push_back(ec + 1);
+                      break;
+                  }
+                  normal_char:
+                  default:
+                    if (**pp == *s)
+                        nextstate.push_back(*pp + 1);
+                    break;
+                }
+            }
+        state.swap(nextstate);
     }
 
     for (const char** pp = state.data(); pp != state.data() + state.size(); ++pp) {
-	while (*pp != pend && **pp == '*')
-	    ++*pp;
-	if (*pp == pend)
-	    return true;
+        while (*pp != pend && **pp == '*')
+            ++*pp;
+        if (*pp == pend)
+            return true;
     }
     return false;
 }
@@ -392,7 +392,7 @@ void String::memo_type::account_destroy() {
     --live_memo_count;
 # if HAVE_STRING_PROFILING > 1
     if ((*this->pprev = this->next))
-	this->next->pprev = this->pprev;
+        this->next->pprev = this->pprev;
 # endif
 }
 #endif
@@ -400,7 +400,7 @@ void String::memo_type::account_destroy() {
 inline String::memo_type* String::create_memo(int capacity, int dirty) {
     assert(capacity > 0 && capacity >= dirty);
     memo_type *memo =
-	reinterpret_cast<memo_type *>(new char[capacity + MEMO_SPACE]);
+        reinterpret_cast<memo_type *>(new char[capacity + MEMO_SPACE]);
     if (memo)
         memo->initialize(capacity, dirty);
     return memo;
@@ -421,29 +421,29 @@ void
 String::one_profile_report(StringAccum &sa, int i, int examples)
 {
     if (i <= 16)
-	sa << "memo_dirty_" << i;
+        sa << "memo_dirty_" << i;
     else if (i < 25) {
-	uint32_t s = (i - 17) * 2 + 17;
-	sa << "memo_cap_" << s << '_' << (s + 1);
+        uint32_t s = (i - 17) * 2 + 17;
+        sa << "memo_cap_" << s << '_' << (s + 1);
     } else if (i < 29) {
-	uint32_t s = (i - 25) * 8 + 33;
-	sa << "memo_cap_" << s << '_' << (s + 7);
+        uint32_t s = (i - 25) * 8 + 33;
+        sa << "memo_cap_" << s << '_' << (s + 7);
     } else {
-	uint32_t s1 = (1U << (i - 23)) + 1;
-	uint32_t s2 = (s1 - 1) << 1;
-	sa << "memo_cap_" << s1 << '_' << s2;
+        uint32_t s1 = (1U << (i - 23)) + 1;
+        uint32_t s2 = (s1 - 1) << 1;
+        sa << "memo_cap_" << s1 << '_' << s2;
     }
     sa << '\t' << live_memo_sizes[i] << '\t' << memo_sizes[i] << '\t' << live_memo_bytes[i] << '\n';
     if (examples) {
 # if HAVE_STRING_PROFILING > 1
-	for (memo_type *m = live_memos[i]; m; m = m->next) {
-	    sa << "    [" << m->dirty << "] ";
-	    uint32_t dirty = m->dirty;
-	    if (dirty > 0 && m->real_data[dirty - 1] == '\0')
-		--dirty;
-	    sa.append(m->real_data, dirty > 128 ? 128 : dirty);
-	    sa << '\n';
-	}
+        for (memo_type *m = live_memos[i]; m; m = m->next) {
+            sa << "    [" << m->dirty << "] ";
+            uint32_t dirty = m->dirty;
+            if (dirty > 0 && m->real_data[dirty - 1] == '\0')
+                --dirty;
+            sa.append(m->real_data, dirty > 128 ? 128 : dirty);
+            sa << '\n';
+        }
 # endif
     }
 }
@@ -453,11 +453,11 @@ String::profile_report(StringAccum &sa, int examples)
 {
     uint64_t all_live_sizes = 0, all_sizes = 0, all_live_bytes = 0;
     for (int i = 0; i < 55; ++i) {
-	if (memo_sizes[i])
-	    one_profile_report(sa, i, examples);
-	all_live_sizes += live_memo_sizes[i];
-	all_sizes += memo_sizes[i];
-	all_live_bytes += live_memo_bytes[i];
+        if (memo_sizes[i])
+            one_profile_report(sa, i, examples);
+        all_live_sizes += live_memo_sizes[i];
+        all_sizes += memo_sizes[i];
+        all_live_bytes += live_memo_bytes[i];
     }
     sa << "memo_total\t" << all_live_sizes << '\t' << all_sizes << '\t' << all_live_bytes << '\n';
 }
@@ -470,11 +470,11 @@ String::profile_report(StringAccum &sa, int examples)
 String::String(int x)
 {
     if (x >= 0 && x < 10)
-	_r.assign(int_data + 2 * x, 1, 0);
+        _r.assign(int_data + 2 * x, 1, 0);
     else {
-	char buf[128];
-	sprintf(buf, "%d", x);
-	assign(buf, -1, false);
+        char buf[128];
+        sprintf(buf, "%d", x);
+        assign(buf, -1, false);
     }
 }
 
@@ -482,11 +482,11 @@ String::String(int x)
 String::String(unsigned x)
 {
     if (x < 10)
-	_r.assign(int_data + 2 * x, 1, 0);
+        _r.assign(int_data + 2 * x, 1, 0);
     else {
-	char buf[128];
-	sprintf(buf, "%u", x);
-	assign(buf, -1, false);
+        char buf[128];
+        sprintf(buf, "%u", x);
+        assign(buf, -1, false);
     }
 }
 
@@ -494,11 +494,11 @@ String::String(unsigned x)
 String::String(long x)
 {
     if (x >= 0 && x < 10)
-	_r.assign(int_data + 2 * x, 1, 0);
+        _r.assign(int_data + 2 * x, 1, 0);
     else {
-	char buf[128];
-	sprintf(buf, "%ld", x);
-	assign(buf, -1, false);
+        char buf[128];
+        sprintf(buf, "%ld", x);
+        assign(buf, -1, false);
     }
 }
 
@@ -506,11 +506,11 @@ String::String(long x)
 String::String(unsigned long x)
 {
     if (x < 10)
-	_r.assign(int_data + 2 * x, 1, 0);
+        _r.assign(int_data + 2 * x, 1, 0);
     else {
-	char buf[128];
-	sprintf(buf, "%lu", x);
-	assign(buf, -1, false);
+        char buf[128];
+        sprintf(buf, "%lu", x);
+        assign(buf, -1, false);
     }
 }
 
@@ -518,11 +518,11 @@ String::String(unsigned long x)
 String::String(long long x)
 {
     if (x >= 0 && x < 10)
-	_r.assign(int_data + 2 * x, 1, 0);
+        _r.assign(int_data + 2 * x, 1, 0);
     else {
-	char buf[128];
-	sprintf(buf, "%lld", x);
-	assign(buf, -1, false);
+        char buf[128];
+        sprintf(buf, "%lld", x);
+        assign(buf, -1, false);
     }
 }
 
@@ -530,11 +530,11 @@ String::String(long long x)
 String::String(unsigned long long x)
 {
     if (x < 10)
-	_r.assign(int_data + 2 * x, 1, 0);
+        _r.assign(int_data + 2 * x, 1, 0);
     else {
-	char buf[128];
-	sprintf(buf, "%llu", x);
-	assign(buf, -1, false);
+        char buf[128];
+        sprintf(buf, "%llu", x);
+        assign(buf, -1, false);
     }
 }
 
@@ -549,7 +549,7 @@ String
 String::hard_make_stable(const char *s, int len)
 {
     if (len < 0)
-	len = strlen(s);
+        len = strlen(s);
     return String(s, len, 0);
 }
 
@@ -572,22 +572,22 @@ void
 String::assign(const char *s, int len, bool need_deref)
 {
     if (!s) {
-	assert(len <= 0);
-	len = 0;
+        assert(len <= 0);
+        len = 0;
     } else if (len < 0)
-	len = strlen(s);
+        len = strlen(s);
 
     // need to start with dereference
     memo_type* m;
     if (need_deref) {
-	if (unlikely((m = _r.memo())
-		     && s >= m->real_data
-		     && s + len <= m->real_data + m->capacity)) {
-	    // Be careful about "String s = ...; s = s.c_str();"
+        if (unlikely((m = _r.memo())
+                     && s >= m->real_data
+                     && s + len <= m->real_data + m->capacity)) {
+            // Be careful about "String s = ...; s = s.c_str();"
             _r.assign_noref(s, len, m);
-	    return;
-	} else
-	    deref();
+            return;
+        } else
+            deref();
     }
 
     if (len == 0) {
@@ -595,16 +595,16 @@ String::assign(const char *s, int len, bool need_deref)
         s = String_generic::empty_data;
 
     } else {
-	// Make the memo a multiple of 16 characters and bigger than 'len'.
-	int memo_capacity = (len + 15 + MEMO_SPACE) & ~15;
-	m = create_memo(memo_capacity - MEMO_SPACE, len);
-	if (!m) {
+        // Make the memo a multiple of 16 characters and bigger than 'len'.
+        int memo_capacity = (len + 15 + MEMO_SPACE) & ~15;
+        m = create_memo(memo_capacity - MEMO_SPACE, len);
+        if (!m) {
             _r.reset_ref();
-	    assign_out_of_memory();
-	    return;
-	}
-	memcpy(m->real_data, s, len);
-	s = m->real_data;
+            assign_out_of_memory();
+            return;
+        }
+        memcpy(m->real_data, s, len);
+        s = m->real_data;
     }
 
     _r.assign_noref(s, len, m);
@@ -620,7 +620,7 @@ String::append_uninitialized(int len)
 {
     // Appending anything to "out of memory" leaves it as "out of memory"
     if (unlikely(len <= 0) || out_of_memory())
-	return 0;
+        return 0;
 
     // If we can, append into unused space. First, we check that there's
     // enough unused space for 'len' characters to fit; then, we check
@@ -628,16 +628,16 @@ String::append_uninitialized(int len)
     uint32_t dirty;
     memo_type* m = _r.memo();
     if (m && ((dirty = m->dirty), m->capacity > dirty + len)) {
-	char *real_dirty = m->real_data + dirty;
-	if (real_dirty == _r.data + _r.length) {
-	    m->dirty = dirty + len;
-	    _r.length += len;
-	    assert(m->dirty < m->capacity);
+        char *real_dirty = m->real_data + dirty;
+        if (real_dirty == _r.data + _r.length) {
+            m->dirty = dirty + len;
+            _r.length += len;
+            assert(m->dirty < m->capacity);
 #if HAVE_STRING_PROFILING
-	    profile_update_memo_dirty(m, dirty, dirty + len, m->capacity);
+            profile_update_memo_dirty(m, dirty, dirty + len, m->capacity);
 #endif
-	    return real_dirty;
-	}
+            return real_dirty;
+        }
     }
 
     // Now we have to make new space. Make sure the memo is a multiple of 16
@@ -647,15 +647,15 @@ String::append_uninitialized(int len)
     int want_memo_len = _r.length + len + MEMO_SPACE;
     int memo_capacity;
     if (want_memo_len <= 1024)
-	memo_capacity = (want_memo_len + 15) & ~15;
+        memo_capacity = (want_memo_len + 15) & ~15;
     else
-	for (memo_capacity = 2048; memo_capacity < want_memo_len; )
-	    memo_capacity *= 2;
+        for (memo_capacity = 2048; memo_capacity < want_memo_len; )
+            memo_capacity *= 2;
 
     m = create_memo(memo_capacity - MEMO_SPACE, _r.length + len);
     if (!m) {
-	assign_out_of_memory();
-	return 0;
+        assign_out_of_memory();
+        return 0;
     }
 
     char *new_data = m->real_data;
@@ -670,30 +670,30 @@ void
 String::append(const char* s, int len, memo_type* memo)
 {
     if (!s) {
-	assert(len <= 0);
-	len = 0;
+        assert(len <= 0);
+        len = 0;
     } else if (len < 0)
-	len = strlen(s);
+        len = strlen(s);
 
     memo_type* my_memo;
     if (unlikely(len == 0) || out_of_memory())
-	/* do nothing */;
+        /* do nothing */;
     else if (unlikely(s == String_generic::out_of_memory_data) && !memo)
-	// Appending "out of memory" to a regular string makes it "out of
-	// memory"
-	assign_out_of_memory();
+        // Appending "out of memory" to a regular string makes it "out of
+        // memory"
+        assign_out_of_memory();
     else if (_r.length == 0 && reinterpret_cast<uintptr_t>(memo) > 1) {
-	deref();
-	_r.assign(s, len, memo);
+        deref();
+        _r.assign(s, len, memo);
     } else if (likely(!((my_memo = _r.memo())
-			&& s >= my_memo->real_data
-			&& s + len <= my_memo->real_data + my_memo->capacity))) {
-	if (char *space = append_uninitialized(len))
-	    memcpy(space, s, len);
+                        && s >= my_memo->real_data
+                        && s + len <= my_memo->real_data + my_memo->capacity))) {
+        if (char *space = append_uninitialized(len))
+            memcpy(space, s, len);
     } else {
-	String preserve_s(*this);
-	if (char *space = append_uninitialized(len))
-	    memcpy(space, s, len);
+        String preserve_s(*this);
+        if (char *space = append_uninitialized(len))
+            memcpy(space, s, len);
     }
 }
 
@@ -703,7 +703,7 @@ String::append_fill(int c, int len)
 {
     assert(len >= 0);
     if (char *space = append_uninitialized(len))
-	memset(space, c, len);
+        memset(space, c, len);
 }
 
 /** @brief Ensure the string's data is unshared and return a mutable
@@ -714,7 +714,7 @@ String::mutable_data()
     // If _memo has a capacity (it's not one of the special strings) and it's
     // uniquely referenced, return _data right away.
     if (!is_shared())
-	return const_cast<char *>(_r.data);
+        return const_cast<char *>(_r.data);
 
     // Otherwise, make a copy of it. Rely on: deref() doesn't change _data or
     // _length; and if _capacity == 0, then deref() doesn't free _real_data.
@@ -736,11 +736,11 @@ String::hard_c_str() const
     const char *end_data = _r.data + _r.length;
     memo_type* m = _r.memo();
     if ((m && end_data >= m->real_data + m->dirty)
-	|| *end_data != '\0') {
-	if (char *x = const_cast<String *>(this)->append_uninitialized(1)) {
-	    *x = '\0';
-	    --_r.length;
-	}
+        || *end_data != '\0') {
+        if (char *x = const_cast<String *>(this)->append_uninitialized(1)) {
+            *x = '\0';
+            --_r.length;
+        }
     }
     return _r.data;
 }
@@ -774,26 +774,26 @@ String
 String::substring(int pos, int len) const
 {
     if (pos < 0)
-	pos += _r.length;
+        pos += _r.length;
 
     int pos2;
     if (len < 0)
-	pos2 = _r.length + len;
+        pos2 = _r.length + len;
     else if (pos >= 0 && len >= _r.length) // avoid integer overflow
-	pos2 = _r.length;
+        pos2 = _r.length;
     else
-	pos2 = pos + len;
+        pos2 = pos + len;
 
     if (pos < 0)
-	pos = 0;
+        pos = 0;
     if (pos2 > _r.length)
-	pos2 = _r.length;
+        pos2 = _r.length;
 
     if (pos >= pos2)
-	return String();
+        return String();
     else {
         _r.ref();
-	return String(_r.data + pos, pos2 - pos, _r.memo());
+        return String(_r.data + pos, pos2 - pos, _r.memo());
     }
 }
 
@@ -804,7 +804,7 @@ hard_lower(const String &s, int pos)
     char *x = const_cast<char *>(new_s.data()); // know it's mutable
     int len = s.length();
     for (; pos < len; pos++)
-	x[pos] = tolower((unsigned char) x[pos]);
+        x[pos] = tolower((unsigned char) x[pos]);
     return new_s;
 }
 
@@ -817,9 +817,9 @@ String::lower() const
 {
     // avoid copies
     if (!out_of_memory())
-	for (int i = 0; i < _r.length; i++)
-	    if (_r.data[i] >= 'A' && _r.data[i] <= 'Z')
-		return hard_lower(*this, i);
+        for (int i = 0; i < _r.length; i++)
+            if (_r.data[i] >= 'A' && _r.data[i] <= 'Z')
+                return hard_lower(*this, i);
     return *this;
 }
 
@@ -830,7 +830,7 @@ hard_upper(const String &s, int pos)
     char *x = const_cast<char *>(new_s.data()); // know it's mutable
     int len = s.length();
     for (; pos < len; pos++)
-	x[pos] = toupper((unsigned char) x[pos]);
+        x[pos] = toupper((unsigned char) x[pos]);
     return new_s;
 }
 
@@ -843,8 +843,8 @@ String::upper() const
 {
     // avoid copies
     for (int i = 0; i < _r.length; i++)
-	if (_r.data[i] >= 'a' && _r.data[i] <= 'z')
-	    return hard_upper(*this, i);
+        if (_r.data[i] >= 'a' && _r.data[i] <= 'z')
+            return hard_upper(*this, i);
     return *this;
 }
 
@@ -858,17 +858,17 @@ hard_printable(const String &s, int pos, int type)
     for (; pos < len; pos++) {
         if (type == 2 && (x[pos] == '\\' || x[pos] == '\"'))
             sa << '\\' << x[pos];
-	else if (x[pos] >= 32 && x[pos] < 127)
-	    sa << x[pos];
+        else if (x[pos] >= 32 && x[pos] < 127)
+            sa << x[pos];
         else if (x[pos] < 32 && type == 2) {
             if (x[pos] >= 9 && x[pos] <= 13)
                 sa << '\\' << ("tnvfr"[x[pos] - 9]);
             else if (char *buf = sa.extend(4, 1))
                 sprintf(buf, "\\%03o", x[pos]);
-	} else if (x[pos] < 32 && type != 1)
-	    sa << '^' << (unsigned char)(x[pos] + 64);
-	else if (char *buf = sa.extend(4, 1))
-	    sprintf(buf, "\\%03o", x[pos]);
+        } else if (x[pos] < 32 && type != 1)
+            sa << '^' << (unsigned char)(x[pos] + 64);
+        else if (char *buf = sa.extend(4, 1))
+            sprintf(buf, "\\%03o", x[pos]);
     }
     return sa.take_string();
 }
@@ -886,9 +886,9 @@ String::printable(int type) const
 {
     // avoid copies
     if (!out_of_memory())
-	for (int i = 0; i < _r.length; i++)
-	    if (_r.data[i] < 32 || _r.data[i] > 126)
-		return hard_printable(*this, i, type);
+        for (int i = 0; i < _r.length; i++)
+            if (_r.data[i] < 32 || _r.data[i] > 126)
+                return hard_printable(*this, i, type);
     return *this;
 }
 
@@ -929,13 +929,13 @@ String::align(int n)
 {
     int offset = reinterpret_cast<uintptr_t>(_r.data) % n;
     if (offset) {
-	String s;
-	s.append_uninitialized(_r.length + n + 1);
-	offset = reinterpret_cast<uintptr_t>(s._r.data) % n;
-	memcpy((char *)s._r.data + n - offset, _r.data, _r.length);
-	s._r.data += n - offset;
-	s._r.length = _r.length;
-	*this = s;
+        String s;
+        s.append_uninitialized(_r.length + n + 1);
+        offset = reinterpret_cast<uintptr_t>(s._r.data) % n;
+        memcpy((char *)s._r.data + n - offset, _r.data, _r.length);
+        s._r.data += n - offset;
+        s._r.length = _r.length;
+        *this = s;
     }
 }
 
@@ -947,23 +947,23 @@ String::skip_utf8_char(const unsigned char *s, const unsigned char *end)
     if (c > 0 && c < 0x80)
         return s + 1;
     else if (c < 0xC2)
-	/* zero, or bad/overlong encoding */;
-    else if (c < 0xE0) {	// 2 bytes: U+80-U+7FF
+        /* zero, or bad/overlong encoding */;
+    else if (c < 0xE0) {        // 2 bytes: U+80-U+7FF
         if (likely(s + 1 < end
                    && s[1] >= 0x80 && s[1] < 0xC0))
             return s + 2;
-    } else if (c < 0xF0) {	// 3 bytes: U+800-U+FFFF
+    } else if (c < 0xF0) {      // 3 bytes: U+800-U+FFFF
         if (likely(s + 2 < end
                    && s[1] >= 0x80 && s[1] < 0xC0
-		   && s[2] >= 0x80 && s[2] < 0xC0
+                   && s[2] >= 0x80 && s[2] < 0xC0
                    && (c != 0xE0 || s[1] >= 0xA0) /* not overlong encoding */
                    && (c != 0xED || s[1] < 0xA0) /* not surrogate */))
             return s + 3;
-    } else if (c < 0xF5) {	// 4 bytes: U+10000-U+10FFFF
+    } else if (c < 0xF5) {      // 4 bytes: U+10000-U+10FFFF
         if (likely(s + 3 < end
                    && s[1] >= 0x80 && s[1] < 0xC0
-		   && s[2] >= 0x80 && s[2] < 0xC0
-		   && s[3] >= 0x80 && s[3] < 0xC0
+                   && s[2] >= 0x80 && s[2] < 0xC0
+                   && s[3] >= 0x80 && s[3] < 0xC0
                    && (c != 0xF0 || s[1] >= 0x90) /* not overlong encoding */
                    && (c != 0xF4 || s[1] < 0x90) /* not >U+10FFFF */))
             return s + 4;
@@ -975,17 +975,17 @@ int
 String::parse_cesu8_char(const unsigned char *s, const unsigned char *end)
 {
     if (s + 5 < end
-	&& s[0] == 0xED
-	&& s[1] >= 0xA0 && s[1] < 0xB0
-	&& s[2] >= 0x80 && s[2] < 0xC0
-	&& s[3] == 0xED
-	&& s[4] >= 0xB0 && s[4] < 0xC0
-	&& s[5] >= 0x80 && s[5] < 0xC0)
-	return 0x10000
-	    + ((s[1] & 0x0F) << 16) + ((s[2] & 0x3F) << 10)
-	    + ((s[4] & 0x0F) << 6) + (s[5] & 0x3F);
+        && s[0] == 0xED
+        && s[1] >= 0xA0 && s[1] < 0xB0
+        && s[2] >= 0x80 && s[2] < 0xC0
+        && s[3] == 0xED
+        && s[4] >= 0xB0 && s[4] < 0xC0
+        && s[5] >= 0x80 && s[5] < 0xC0)
+        return 0x10000
+            + ((s[1] & 0x0F) << 16) + ((s[2] & 0x3F) << 10)
+            + ((s[4] & 0x0F) << 6) + (s[5] & 0x3F);
     else
-	return 0;
+        return 0;
 }
 
 static const uint16_t windows1252_c1_mapping[] = {
@@ -1001,25 +1001,25 @@ String::windows1252_to_utf8() const
     const unsigned char *s = ubegin(), *last = s, *ends = uend();
     StringAccum sa;
     for (; s != ends; ++s) {
-	int c = *s;
-	if (unlikely(c == 0)) {
-	    sa.append(last, s);
-	    last = s + 1;
-	} else if (likely(c < 128))
-	    /* do nothing */;
-	else {
-	    sa.append(last, s);
-	    if (unlikely(c < 160))
-		c = windows1252_c1_mapping[c - 128];
-	    sa.append_utf8(c);
-	    last = s + 1;
-	}
+        int c = *s;
+        if (unlikely(c == 0)) {
+            sa.append(last, s);
+            last = s + 1;
+        } else if (likely(c < 128))
+            /* do nothing */;
+        else {
+            sa.append(last, s);
+            if (unlikely(c < 160))
+                c = windows1252_c1_mapping[c - 128];
+            sa.append_utf8(c);
+            last = s + 1;
+        }
     }
     if (last == ubegin())
-	return *this;
+        return *this;
     else {
-	sa.append(last, s);
-	return sa.take_string();
+        sa.append(last, s);
+        return sa.take_string();
     }
 }
 
@@ -1028,24 +1028,24 @@ String::utf16be_to_utf8(int flags) const
 {
     const unsigned char *s = ubegin(), *ends = uend();
     if ((ends - s) & 1)
-	--ends;
+        --ends;
     if ((flags & utf_strip_bom) && s != ends
-	&& s[0] == 0xFE && s[1] == 0xFF)
-	s += 2;
+        && s[0] == 0xFE && s[1] == 0xFF)
+        s += 2;
     StringAccum sa;
     sa.reserve((ends - s) / 2);
     for (; s != ends; s += 2) {
-	int c = s[0] * 256 + s[1];
-	if (likely(c < 0xD800) || c >= 0xE000)
-	    sa.append_utf8(c);
-	else if (c < 0xDC00 && s + 2 != ends
-		 && s[2] >= 0xDC && s[2] < 0xE0) {
-	    c = 0x10000 + ((c - 0xD800) << 10)
-		+ ((s[2] & 0x03) << 8) + s[3];
-	    sa.append_utf8(c);
-	    s += 2;
-	} else if (c && (flags & utf_replacement))
-	    sa.append_utf8(u_replacement);
+        int c = s[0] * 256 + s[1];
+        if (likely(c < 0xD800) || c >= 0xE000)
+            sa.append_utf8(c);
+        else if (c < 0xDC00 && s + 2 != ends
+                 && s[2] >= 0xDC && s[2] < 0xE0) {
+            c = 0x10000 + ((c - 0xD800) << 10)
+                + ((s[2] & 0x03) << 8) + s[3];
+            sa.append_utf8(c);
+            s += 2;
+        } else if (c && (flags & utf_replacement))
+            sa.append_utf8(u_replacement);
     }
     return sa.take_string();
 }
@@ -1055,24 +1055,24 @@ String::utf16le_to_utf8(int flags) const
 {
     const unsigned char *s = ubegin(), *ends = uend();
     if ((ends - s) & 1)
-	--ends;
+        --ends;
     if ((flags & utf_strip_bom) && s != ends
-	&& s[1] == 0xFE && s[0] == 0xFF)
-	s += 2;
+        && s[1] == 0xFE && s[0] == 0xFF)
+        s += 2;
     StringAccum sa;
     sa.reserve((ends - s) / 2);
     for (; s != ends; s += 2) {
-	int c = s[1] * 256 + s[0];
-	if (likely(c < 0xD800) || c >= 0xE000)
-	    sa.append_utf8(c);
-	else if (c < 0xDC00 && s + 2 != ends
-		 && s[3] >= 0xDC && s[3] < 0xE0) {
-	    c = 0x10000 + ((c - 0xD800) << 10)
-		+ ((s[3] & 0x03) << 8) + s[2];
-	    sa.append_utf8(c);
-	    s += 2;
-	} else if (c && (flags & utf_replacement))
-	    sa.append_utf8(u_replacement);
+        int c = s[1] * 256 + s[0];
+        if (likely(c < 0xD800) || c >= 0xE000)
+            sa.append_utf8(c);
+        else if (c < 0xDC00 && s + 2 != ends
+                 && s[3] >= 0xDC && s[3] < 0xE0) {
+            c = 0x10000 + ((c - 0xD800) << 10)
+                + ((s[3] & 0x03) << 8) + s[2];
+            sa.append_utf8(c);
+            s += 2;
+        } else if (c && (flags & utf_replacement))
+            sa.append_utf8(u_replacement);
     }
     return sa.take_string();
 }
@@ -1081,15 +1081,15 @@ String
 String::utf16_to_utf8(int flags) const
 {
     if (length() < 2)
-	return String();
+        return String();
     const unsigned char *s = ubegin(), *ends = uend();
     if (ends - s < 2)
-	return String();
+        return String();
     int c = s[0] * 256 + s[1];
     if (c == 0xFEFF || (c != 0xFFFE && !(flags & utf_prefer_le)))
-	return utf16be_to_utf8(flags);
+        return utf16be_to_utf8(flags);
     else
-	return utf16le_to_utf8(flags);
+        return utf16le_to_utf8(flags);
 }
 
 String
@@ -1098,32 +1098,32 @@ String::cesu8_to_utf8(int flags) const
     const unsigned char *s = ubegin(), *last = s, *t, *ends = uend();
     StringAccum sa;
     if (flags & utf_strip_bom)
-	s = last = skip_utf8_bom(s, ends);
+        s = last = skip_utf8_bom(s, ends);
     while (s != ends) {
-	int c = s[0];
-	if (likely(c > 0 && c < 0x7F))
-	    ++s;
-	else if (likely((t = skip_utf8_char(s, ends)) != s))
-	    s = t;
-	else if ((c = parse_cesu8_char(s, ends))) {
-	    sa.append(last, s);
-	    sa.append_utf8(c);
-	    s += 6;
-	    last = s;
-	} else {
-	    sa.append(last, s);
-	    if ((flags & utf_replacement) && c != 0)
-		sa.append_utf8(u_replacement);
-	    for (++s; s != ends && *s >= 0x80 && *s < 0xC0; ++s)
-		/* do nothing */;
-	    last = s;
-	}
+        int c = s[0];
+        if (likely(c > 0 && c < 0x7F))
+            ++s;
+        else if (likely((t = skip_utf8_char(s, ends)) != s))
+            s = t;
+        else if ((c = parse_cesu8_char(s, ends))) {
+            sa.append(last, s);
+            sa.append_utf8(c);
+            s += 6;
+            last = s;
+        } else {
+            sa.append(last, s);
+            if ((flags & utf_replacement) && c != 0)
+                sa.append_utf8(u_replacement);
+            for (++s; s != ends && *s >= 0x80 && *s < 0xC0; ++s)
+                /* do nothing */;
+            last = s;
+        }
     }
     if (last == ubegin())
-	return *this;
+        return *this;
     else {
-	sa.append(last, s);
-	return sa.take_string();
+        sa.append(last, s);
+        return sa.take_string();
     }
 }
 
@@ -1133,27 +1133,27 @@ String::utf8_to_utf8(int flags) const
     const unsigned char *s = ubegin(), *last = s, *t, *ends = uend();
     StringAccum sa;
     if (flags & utf_strip_bom)
-	s = last = skip_utf8_bom(s, ends);
+        s = last = skip_utf8_bom(s, ends);
     while (s != ends) {
-	int c = s[0];
-	if (likely(c > 0 && c < 0x7F))
-	    ++s;
-	else if (likely((t = skip_utf8_char(s, ends)) != s))
-	    s = t;
-	else {
-	    sa.append(last, s);
-	    if ((flags & utf_replacement) && c != 0)
-		sa.append_utf8(u_replacement);
-	    for (++s; s != ends && *s >= 0x80 && *s < 0xC0; ++s)
-		/* do nothing */;
-	    last = s;
-	}
+        int c = s[0];
+        if (likely(c > 0 && c < 0x7F))
+            ++s;
+        else if (likely((t = skip_utf8_char(s, ends)) != s))
+            s = t;
+        else {
+            sa.append(last, s);
+            if ((flags & utf_replacement) && c != 0)
+                sa.append_utf8(u_replacement);
+            for (++s; s != ends && *s >= 0x80 && *s < 0xC0; ++s)
+                /* do nothing */;
+            last = s;
+        }
     }
     if (last == ubegin())
-	return *this;
+        return *this;
     else {
-	sa.append(last, s);
-	return sa.take_string();
+        sa.append(last, s);
+        return sa.take_string();
     }
 }
 
@@ -1167,72 +1167,72 @@ String::to_utf8(int flags) const
 {
     const unsigned char *s = ubegin(), *ends = uend();
     if (ends - s > 2) {
-	if ((s[0] == 0xFF && s[1] == 0xFE)
-	    || (s[0] > 0 && s[0] < 0x80 && s[1] == 0))
-	    return utf16le_to_utf8(flags);
-	else if ((s[0] == 0xFE && s[1] == 0xFF)
-		 || (s[0] == 0 && s[1] > 0 && s[1] < 0x80))
-	    return utf16be_to_utf8(flags);
+        if ((s[0] == 0xFF && s[1] == 0xFE)
+            || (s[0] > 0 && s[0] < 0x80 && s[1] == 0))
+            return utf16le_to_utf8(flags);
+        else if ((s[0] == 0xFE && s[1] == 0xFF)
+                 || (s[0] == 0 && s[1] > 0 && s[1] < 0x80))
+            return utf16be_to_utf8(flags);
     }
 
     const unsigned char *last = s, *t;
     if (ends - s > 3 && (flags & utf_strip_bom))
-	s = last = skip_utf8_bom(s, ends);
+        s = last = skip_utf8_bom(s, ends);
     StringAccum sa;
     bool any_long_utf8 = false;
     int c;
     while (s != ends) {
-	if (likely(*s > 0 && *s < 128))
-	    ++s;
-	else if (likely((t = skip_utf8_char(s, ends)) != s)) {
-	    any_long_utf8 = true;
-	    s = t;
-	} else if ((c = parse_cesu8_char(s, ends)) != 0) {
-	    any_long_utf8 = true;
-	    sa.append(last, s);
-	    sa.append_utf8(c);
-	    s += 6;
-	    last = s;
-	} else if (*s == 0) {
-	    sa.append(last, s);
-	    ++s;
-	    last = s;
-	} else if (!any_long_utf8)
-	    goto windows1252;
-	else {
-	    sa.append(last, s);
-	    int c = *s;
-	    if (c < 160)
-		c = windows1252_c1_mapping[c - 128];
-	    sa.append_utf8(c);
-	    ++s;
-	    last = s;
-	}
+        if (likely(*s > 0 && *s < 128))
+            ++s;
+        else if (likely((t = skip_utf8_char(s, ends)) != s)) {
+            any_long_utf8 = true;
+            s = t;
+        } else if ((c = parse_cesu8_char(s, ends)) != 0) {
+            any_long_utf8 = true;
+            sa.append(last, s);
+            sa.append_utf8(c);
+            s += 6;
+            last = s;
+        } else if (*s == 0) {
+            sa.append(last, s);
+            ++s;
+            last = s;
+        } else if (!any_long_utf8)
+            goto windows1252;
+        else {
+            sa.append(last, s);
+            int c = *s;
+            if (c < 160)
+                c = windows1252_c1_mapping[c - 128];
+            sa.append_utf8(c);
+            ++s;
+            last = s;
+        }
     }
 
  exit:
     if (last == ubegin())
-	return *this;
+        return *this;
     else {
-	sa.append(last, ends);
-	return sa.take_string();
+        sa.append(last, ends);
+        return sa.take_string();
     }
 
  windows1252:
     while (s != ends) {
-	if (likely(*s > 0 && *s < 128))
-	    ++s;
-	else {
-	    sa.append(last, s);
-	    if (*s != 0) {
-		int c = *s;
-		if (c < 160)
-		    c = windows1252_c1_mapping[c - 128];
-		sa.append_utf8(c);
-	    }
-	    ++s;
-	    last = s;
-	}
+        if (likely(*s > 0 && *s < 128))
+            ++s;
+        else {
+            sa.append(last, s);
+            if (*s != 0) {
+                int c = *s;
+                if (c < 160)
+                    c = windows1252_c1_mapping[c - 128];
+                sa.append_utf8(c);
+            }
+            ++s;
+            last = s;
+        }
     }
     goto exit;
 }

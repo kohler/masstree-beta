@@ -90,26 +90,26 @@ Json::ObjectJson::~ObjectJson()
 {
     ObjectItem *ob = os_, *oe = ob + n_;
     for (; ob != oe; ++ob)
-	if (ob->next_ > -2)
-	    ob->~ObjectItem();
+        if (ob->next_ > -2)
+            ob->~ObjectItem();
     delete[] reinterpret_cast<char *>(os_);
 }
 
 void Json::ObjectJson::grow(bool copy)
 {
     if (copy && !capacity_)
-	return;
+        return;
     int new_capacity;
     if (copy)
-	new_capacity = capacity_;
+        new_capacity = capacity_;
     else if (capacity_)
-	new_capacity = capacity_ * 2;
+        new_capacity = capacity_ * 2;
     else
-	new_capacity = 8;
+        new_capacity = 8;
     ObjectItem *new_os = reinterpret_cast<ObjectItem *>(operator new[](sizeof(ObjectItem) * new_capacity));
     ObjectItem *ob = os_, *oe = ob + n_;
     for (ObjectItem *oi = new_os; ob != oe; ++oi, ++ob) {
-	if (ob->next_ == -2)
+        if (ob->next_ == -2)
             oi->next_ = -2;
         else if (copy)
             new((void*) oi) ObjectItem(ob->v_.first, ob->v_.second, ob->next_);
@@ -117,7 +117,7 @@ void Json::ObjectJson::grow(bool copy)
             memcpy(oi, ob, sizeof(ObjectItem));
     }
     if (!copy)
-	operator delete[](reinterpret_cast<void *>(os_));
+        operator delete[](reinterpret_cast<void *>(os_));
     os_ = new_os;
     capacity_ = new_capacity;
 }
@@ -126,62 +126,62 @@ void Json::ObjectJson::rehash()
 {
     hash_.assign(hash_.size() * 2, -1);
     for (int i = n_ - 1; i >= 0; --i) {
-	ObjectItem &oi = item(i);
-	if (oi.next_ > -2) {
-	    int b = bucket(oi.v_.first.data(), oi.v_.first.length());
-	    oi.next_ = hash_[b];
-	    hash_[b] = i;
-	}
+        ObjectItem &oi = item(i);
+        if (oi.next_ > -2) {
+            int b = bucket(oi.v_.first.data(), oi.v_.first.length());
+            oi.next_ = hash_[b];
+            hash_[b] = i;
+        }
     }
 }
 
 int Json::ObjectJson::find_insert(const String &key, const Json &value)
 {
     if (hash_.empty())
-	hash_.assign(8, -1);
+        hash_.assign(8, -1);
     int *b = &hash_[bucket(key.data(), key.length())], chain = 0;
     while (*b >= 0 && os_[*b].v_.first != key) {
-	b = &os_[*b].next_;
-	++chain;
+        b = &os_[*b].next_;
+        ++chain;
     }
     if (*b >= 0)
-	return *b;
+        return *b;
     else {
-	*b = n_;
-	if (n_ == capacity_)
-	    grow(false);
-	// NB 'b' is invalid now
-	new ((void *) &os_[n_]) ObjectItem(key, value, -1);
-	++n_;
+        *b = n_;
+        if (n_ == capacity_)
+            grow(false);
+        // NB 'b' is invalid now
+        new ((void *) &os_[n_]) ObjectItem(key, value, -1);
+        ++n_;
         ++size;
-	if (chain > 4)
-	    rehash();
-	return n_ - 1;
+        if (chain > 4)
+            rehash();
+        return n_ - 1;
     }
 }
 
 Json &Json::ObjectJson::get_insert(Str key)
 {
     if (hash_.empty())
-	hash_.assign(8, -1);
+        hash_.assign(8, -1);
     int *b = &hash_[bucket(key.data(), key.length())], chain = 0;
     while (*b >= 0 && os_[*b].v_.first != key) {
-	b = &os_[*b].next_;
-	++chain;
+        b = &os_[*b].next_;
+        ++chain;
     }
     if (*b >= 0)
-	return os_[*b].v_.second;
+        return os_[*b].v_.second;
     else {
-	*b = n_;
-	if (n_ == capacity_)
-	    grow(false);
-	// NB 'b' is invalid now
-	new ((void *) &os_[n_]) ObjectItem(String(key.data(), key.length()), null_json, -1);
-	++n_;
+        *b = n_;
+        if (n_ == capacity_)
+            grow(false);
+        // NB 'b' is invalid now
+        new ((void *) &os_[n_]) ObjectItem(String(key.data(), key.length()), null_json, -1);
+        ++n_;
         ++size;
-	if (chain > 4)
-	    rehash();
-	return os_[n_ - 1].v_.second;
+        if (chain > 4)
+            rehash();
+        return os_[n_ - 1].v_.second;
     }
 }
 
@@ -200,29 +200,29 @@ void Json::ObjectJson::erase(int p) {
 Json::size_type Json::ObjectJson::erase(Str key) {
     int* b = &hash_[bucket(key.data(), key.length())];
     while (*b >= 0 && os_[*b].v_.first != key)
-	b = &os_[*b].next_;
+        b = &os_[*b].next_;
     if (*b >= 0) {
-	int p = *b;
-	*b = os_[p].next_;
-	os_[p].~ObjectItem();
-	os_[p].next_ = -2;
-	--size;
-	return 1;
+        int p = *b;
+        *b = os_[p].next_;
+        os_[p].~ObjectItem();
+        os_[p].next_ = -2;
+        --size;
+        return 1;
     } else
-	return 0;
+        return 0;
 }
 
 namespace {
 template <typename T> bool string_to_int_key(const char *first,
-					     const char *last, T& x)
+                                             const char *last, T& x)
 {
     if (first == last || !isdigit((unsigned char) *first)
-	|| (first[0] == '0' && first + 1 != last))
-	return false;
+        || (first[0] == '0' && first + 1 != last))
+        return false;
     // XXX integer overflow
     x = *first - '0';
     for (++first; first != last && isdigit((unsigned char) *first); ++first)
-	x = 10 * x + *first - '0';
+        x = 10 * x + *first - '0';
     return first == last;
 }
 }
@@ -384,7 +384,7 @@ int64_t Json::hard_to_i() const {
     switch (u_.x.type) {
     case j_array:
     case j_object:
-	return size();
+        return size();
     case j_bool:
     case j_int:
         return u_.i.x;
@@ -398,17 +398,17 @@ int64_t Json::hard_to_i() const {
         if (!u_.x.x)
             return 0;
         invariant(u_.x.type <= 0);
-	const char *b = reinterpret_cast<const String&>(u_.str).c_str();
-	char *s;
+        const char *b = reinterpret_cast<const String&>(u_.str).c_str();
+        char *s;
 #if SIZEOF_LONG >= 8
         long x = strtol(b, &s, 0);
 #else
         long long x = strtoll(b, &s, 0);
 #endif
-	if (s == b + u_.str.length)
-	    return x;
-	else
-	    return (long) strtod(b, 0);
+        if (s == b + u_.str.length)
+            return x;
+        else
+            return (long) strtod(b, 0);
     }
 }
 
@@ -416,10 +416,10 @@ uint64_t Json::hard_to_u() const {
     switch (u_.x.type) {
     case j_array:
     case j_object:
-	return size();
+        return size();
     case j_bool:
     case j_int:
-	return u_.i.x;
+        return u_.i.x;
     case j_unsigned:
         return u_.u.x;
     case j_double:
@@ -429,17 +429,17 @@ uint64_t Json::hard_to_u() const {
     default:
         if (!u_.x.x)
             return 0;
-	const char* b = reinterpret_cast<const String&>(u_.str).c_str();
-	char *s;
+        const char* b = reinterpret_cast<const String&>(u_.str).c_str();
+        char *s;
 #if SIZEOF_LONG >= 8
-	unsigned long x = strtoul(b, &s, 0);
+        unsigned long x = strtoul(b, &s, 0);
 #else
-	unsigned long long x = strtoull(b, &s, 0);
+        unsigned long long x = strtoull(b, &s, 0);
 #endif
-	if (s == b + u_.str.length)
-	    return x;
-	else
-	    return (uint64_t) strtod(b, 0);
+        if (s == b + u_.str.length)
+            return x;
+        else
+            return (uint64_t) strtod(b, 0);
     }
 }
 
@@ -447,10 +447,10 @@ double Json::hard_to_d() const {
     switch (u_.x.type) {
     case j_array:
     case j_object:
-	return size();
+        return size();
     case j_bool:
     case j_int:
-	return u_.i.x;
+        return u_.i.x;
     case j_unsigned:
         return u_.u.x;
     case j_double:
@@ -469,26 +469,26 @@ bool Json::hard_to_b() const {
     switch (u_.x.type) {
     case j_array:
     case j_object:
-	return !empty();
+        return !empty();
     case j_bool:
     case j_int:
     case j_unsigned:
-	return u_.i.x != 0;
+        return u_.i.x != 0;
     case j_double:
-	return u_.d.x;
+        return u_.d.x;
     case j_null:
     case j_string:
     default:
-	return u_.str.length != 0;
+        return u_.str.length != 0;
     }
 }
 
 String Json::hard_to_s() const {
     switch (u_.x.type) {
     case j_array:
-	return array_string;
+        return array_string;
     case j_object:
-	return object_string;
+        return object_string;
     case j_bool:
         return String(bool(u_.i.x));
     case j_int:
@@ -511,30 +511,30 @@ const Json& Json::hard_get(Str key) const {
     ArrayJson *aj;
     unsigned i;
     if (is_array() && (aj = ajson())
-	&& string_to_int_key(key.begin(), key.end(), i)
-	&& i < unsigned(aj->size))
-	return aj->a[i];
+        && string_to_int_key(key.begin(), key.end(), i)
+        && i < unsigned(aj->size))
+        return aj->a[i];
     else
-	return make_null();
+        return make_null();
 }
 
 const Json& Json::hard_get(size_type x) const {
     if (is_object() && u_.o.x)
-	return get(String(x));
+        return get(String(x));
     else
-	return make_null();
+        return make_null();
 }
 
 Json& Json::hard_get_insert(size_type x) {
     if (is_object())
-	return get_insert(String(x));
+        return get_insert(String(x));
     else {
-	uniqueify_array(true, x + 1);
+        uniqueify_array(true, x + 1);
         if (u_.a.x->size <= x) {
             memset(&u_.a.x->a[u_.a.x->size], 0, sizeof(Json) * (x + 1 - u_.a.x->size));
             u_.a.x->size = x + 1;
         }
-	return u_.a.x->a[x];
+        return u_.a.x->a[x];
     }
 }
 
@@ -560,22 +560,22 @@ Json::unparse_manipulator Json::default_manipulator;
 
 bool Json::unparse_is_complex() const {
     if (is_object()) {
-	if (ObjectJson *oj = ojson()) {
-	    if (oj->size > 5)
-		return true;
-	    ObjectItem *ob = oj->os_, *oe = ob + oj->n_;
-	    for (; ob != oe; ++ob)
-		if (ob->next_ > -2 && !ob->v_.second.empty() && !ob->v_.second.is_primitive())
-		    return true;
-	}
+        if (ObjectJson *oj = ojson()) {
+            if (oj->size > 5)
+                return true;
+            ObjectItem *ob = oj->os_, *oe = ob + oj->n_;
+            for (; ob != oe; ++ob)
+                if (ob->next_ > -2 && !ob->v_.second.empty() && !ob->v_.second.is_primitive())
+                    return true;
+        }
     } else if (is_array()) {
-	if (ArrayJson *aj = ajson()) {
-	    if (aj->size > 8)
-		return true;
-	    for (Json* it = aj->a; it != aj->a + aj->size; ++it)
-		if (!it->empty() && !it->is_primitive())
-		    return true;
-	}
+        if (ArrayJson *aj = ajson()) {
+            if (aj->size > 8)
+                return true;
+            for (Json* it = aj->a; it != aj->a + aj->size; ++it)
+                if (!it->empty() && !it->is_primitive())
+                    return true;
+        }
     }
     return false;
 }
@@ -607,45 +607,45 @@ void Json::hard_unparse(StringAccum &sa, const unparse_manipulator &m, int depth
         sa << "{}";
     else if (is_object()) {
         sa << '{';
-	bool rest = false;
-	ObjectJson *oj = ojson();
-	ObjectItem *ob = oj->os_, *oe = ob + oj->n_;
-	for (; ob != oe; ++ob)
-	    if (ob->next_ > -2) {
-		if (rest)
+        bool rest = false;
+        ObjectJson *oj = ojson();
+        ObjectItem *ob = oj->os_, *oe = ob + oj->n_;
+        for (; ob != oe; ++ob)
+            if (ob->next_ > -2) {
+                if (rest)
                     sa << upx[1];
-		if (expanded)
+                if (expanded)
                     unparse_indent(sa, m, depth + 1);
-		sa << '\"';
+                sa << '\"';
                 ob->v_.first.encode_json(sa);
                 sa << '\"' << upx[0];
-		ob->v_.second.hard_unparse(sa, m, depth + 1);
-		rest = true;
-	    }
+                ob->v_.second.hard_unparse(sa, m, depth + 1);
+                rest = true;
+            }
         if (expanded)
             unparse_indent(sa, m, depth);
-	sa << '}';
+        sa << '}';
     } else if (is_array() && !u_.x.x)
         sa << "[]";
     else if (is_array()) {
         sa << '[';
         bool rest = false;
-	ArrayJson* aj = ajson();
-	for (Json* it = aj->a; it != aj->a + aj->size; ++it) {
+        ArrayJson* aj = ajson();
+        for (Json* it = aj->a; it != aj->a + aj->size; ++it) {
             if (rest)
                 sa << upx[1];
             if (expanded)
                 unparse_indent(sa, m, depth + 1);
-	    it->hard_unparse(sa, m, depth + 1);
+            it->hard_unparse(sa, m, depth + 1);
             rest = true;
-	}
-	if (expanded)
+        }
+        if (expanded)
             unparse_indent(sa, m, depth);
-	sa << ']';
+        sa << ']';
     } else if (u_.x.type == j_null && !u_.x.x)
         sa.append("null", 4);
     else if (u_.x.type <= 0) {
-	sa << '\"';
+        sa << '\"';
         reinterpret_cast<const String&>(u_.str).encode_json(sa);
         sa << '\"';
     } else if (u_.x.type == j_bool) {
@@ -907,8 +907,8 @@ Json::streaming_parser::consume_string(const uint8_t* first,
             prev = first = consume_backslash(sa, first, last);
             if (state_ == st_error)
                 return first;
-	} else if (*first == '\"')
-	    break;
+        } else if (*first == '\"')
+            break;
         else if (unlikely(!in_range(*first, 0xC2, 0xF5)))
             return error_at(first);
         else {
@@ -935,7 +935,7 @@ Json::streaming_parser::consume_string(const uint8_t* first,
     }
 
     if (!sa.empty() || first == last)
-	sa.append(prev, first);
+        sa.append(prev, first);
     if (first != last) {
         if (!sa.empty())
             str_ = sa.take_string();
