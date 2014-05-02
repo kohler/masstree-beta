@@ -47,6 +47,12 @@ class String_generic {
         return compare(reinterpret_cast<const char*>(a), a_len,
                        reinterpret_cast<const char*>(b), b_len);
     }
+    static int natural_compare(const char* a, int a_len, const char* b, int b_len);
+    static int natural_compare(const unsigned char* a, int a_len,
+                               const unsigned char* b, int b_len) {
+        return natural_compare(reinterpret_cast<const char*>(a), a_len,
+                               reinterpret_cast<const char*>(b), b_len);
+    }
     static bool starts_with(const char *a, int a_len, const char *b, int b_len) {
         return a_len >= b_len && memcmp(a, b, b_len) == 0;
     }
@@ -197,6 +203,73 @@ class String_base {
     static int compare(const String_base<TT>& a, const String_base<UU>& b) {
         return String_generic::compare(a.data(), a.length(), b.data(), b.length());
     }
+    /** @brief Compare strings @a a and @a b. */
+    template <typename UU>
+    static int compare(const char* a, const String_base<UU> &b) {
+        return String_generic::compare(a, strlen(a), b.data(), b.length());
+    }
+    /** @brief Compare strings @a a and @a b. */
+    template <typename TT>
+    static int compare(const String_base<TT>& a, const char* b) {
+        return String_generic::compare(a.data(), a.length(), b, strlen(b));
+    }
+    /** @brief Compare strings @a a and @a b. */
+    static int compare(const char* a, const char* b) {
+        return String_generic::compare(a, strlen(a), b, strlen(b));
+    }
+    /** @brief Compare this string with the C string @a cstr using natural order.
+
+        Natural string comparison attempts to order embedded decimal number
+        reprepresentations according to their numeric order; thus, the
+        string "100" compares greater than the string "2". Returns 0 if this
+        string equals @a cstr (only possible if the strings are
+        byte-for-byte identical), negative if this string is less than @a
+        cstr in natural order, and positive if this string is greater
+        than @a cstr in natural order. */
+    int natural_compare(const char *cstr) const {
+        return String_generic::natural_compare(data(), length(), cstr, strlen(cstr));
+    }
+    /** @brief Compare this string with the first @a len characters of @a
+        s using natural order. */
+    int natural_compare(const char *s, int len) const {
+        return String_generic::natural_compare(data(), length(), s, len);
+    }
+    /** @brief Compare this string with @a x using natural order. */
+    template <typename TT>
+    int natural_compare(const String_base<TT> &x) const {
+        return String_generic::natural_compare(data(), length(), x.data(), x.length());
+    }
+    /** @brief Compare strings @a a and @a b using natural order. */
+    template <typename TT, typename UU>
+    static int natural_compare(const String_base<TT> &a, const String_base<UU> &b) {
+        return String_generic::natural_compare(a.data(), a.length(), b.data(), b.length());
+    }
+    /** @brief Compare strings @a a and @a b using natural order. */
+    template <typename UU>
+    static int natural_compare(const char* a, const String_base<UU> &b) {
+        return String_generic::natural_compare(a, strlen(a), b.data(), b.length());
+    }
+    /** @brief Compare strings @a a and @a b using natural order. */
+    template <typename TT>
+    static int natural_compare(const String_base<TT>& a, const char* b) {
+        return String_generic::natural_compare(a.data(), a.length(), b, strlen(b));
+    }
+    /** @brief Compare strings @a a and @a b using natural order. */
+    static int natural_compare(const char* a, const char* b) {
+        return String_generic::natural_compare(a, strlen(a), b, strlen(b));
+    }
+    /** @brief Compare strings @a a and @a b using natural order. */
+    static int natural_compare(const std::string& a, const std::string& b) {
+        return String_generic::natural_compare(a.data(), a.length(), b.data(), b.length());
+    }
+    /** @brief Comparator function object for natural string comparison. */
+    class natural_comparator {
+      public:
+        template <typename TT, typename UU>
+        bool operator()(const TT& a, const UU& b) const {
+            return String_base<T>::natural_compare(a, b) < 0;
+        }
+    };
     /** @brief Test if this string begins with the C string @a cstr. */
     bool starts_with(const char *cstr) const {
         return String_generic::starts_with(data(), length(), cstr, strlen(cstr));
@@ -302,8 +375,9 @@ class String_base {
     template <typename E>
     bool decode_base64(E& e) const;
 
+    /** @brief Return this string as a std::string. */
     inline operator std::string() const {
-        return std::string(data(), length());
+        return std::string(begin(), end());
     }
 
   protected:

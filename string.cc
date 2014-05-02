@@ -143,6 +143,117 @@ String_generic::compare(const char* a, int a_len, const char* b, int b_len)
     return a_len - b_len;
 }
 
+int String_generic::natural_compare(const char* a, int a_len,
+                                    const char* b, int b_len) {
+    const char* ae = a + a_len;
+    const char* be = b + b_len;
+    const char* aperiod = 0;
+    bool aperiod_negative = false;
+    int raw_compare = 0;
+
+    while (a < ae && b < be) {
+        if (isdigit((unsigned char) *a) && isdigit((unsigned char) *b)) {
+            // compare the two numbers, but treat them as strings
+            // (a decimal conversion might cause overflow)
+            bool potential_decimal = (a == aperiod);
+
+            // check if both are negative (note that if we get here, entire
+            // string prefixes are identical)
+            bool negative = false;
+            if (a > ae - a_len && a[-1] == '-'
+                && (a == ae - a_len + 1
+                    || isspace((unsigned char) a[-2])))
+                negative = true;
+
+            // skip initial '0's, but remember any difference in length
+            const char *ia = a, *ib = b;
+            while (a < ae && *a == '0')
+                ++a;
+            while (b < be && *b == '0')
+                ++b;
+            int longer_zeros = (a - ia) - (b - ib);
+
+            // walk over digits, remembering first nonidentical digit comparison
+            int digit_compare = 0;
+            bool a_good, b_good;
+            while (1) {
+                a_good = a < ae && isdigit((unsigned char) *a);
+                b_good = b < be && isdigit((unsigned char) *b);
+                if (!a_good || !b_good)
+                    break;
+                if (digit_compare == 0)
+                    digit_compare = *a - *b;
+                ++a;
+                ++b;
+            }
+
+            // real number comparison: leading zeros are significant,
+            // digit comparisons take precedence
+            if (potential_decimal) {
+                const char *ax = a, *bx = b;
+                while (ax < ae && isdigit((unsigned char) *ax))
+                    ++ax;
+                while (bx < be && isdigit((unsigned char) *bx))
+                    ++bx;
+                // watch for IP addresses: don't treat "0.2." like a decimal
+                if (!(ax + 1 < ae && *ax == '.' && !isspace((unsigned char) ax[1]))
+                    && !(bx + 1 < be && *bx == '.' && !isspace((unsigned char) bx[1]))) {
+                    negative = aperiod_negative;
+                    if (longer_zeros)
+                        return negative ? 1 : -1;
+                    if (digit_compare)
+                        a_good = b_good;
+                }
+            }
+            // if one number is longer, it must also be larger
+            if (a_good != b_good)
+                return negative == a_good ? -1 : 1;
+            // otherwise, digit comparisons take precedence
+            if (digit_compare)
+                return negative == (digit_compare > 0) ? -1 : 1;
+            // as a last resort, the longer string of zeros is greater
+            if (longer_zeros)
+                return longer_zeros;
+            // prepare for potential decimal comparison later
+            if (!aperiod) {
+                a_good = a + 1 < ae && *a == '.'
+                    && isdigit((unsigned char) a[1]);
+                b_good = b + 1 < be && *b == '.'
+                    && isdigit((unsigned char) b[1]);
+                if (a_good != b_good)
+                    return negative == b_good ? 1 : -1;
+                else if (a_good) {
+                    aperiod = a + 1;
+                    aperiod_negative = negative;
+                }
+            }
+
+            // if we get here, the numeric portions were byte-for-byte
+            // identical; move on
+        } else if (isdigit((unsigned char) *a))
+            return isalpha((unsigned char) *b) ? -1 : 1;
+        else if (isdigit((unsigned char) *b))
+            return isalpha((unsigned char) *a) ? 1 : -1;
+        else {
+            int alower = (unsigned char) tolower((unsigned char) *a);
+            int blower = (unsigned char) tolower((unsigned char) *b);
+            if (alower != blower)
+                return alower - blower;
+            if (raw_compare == 0)
+                raw_compare = (unsigned char) *a - (unsigned char) *b;
+            if (*a != '.')
+                aperiod = 0;
+            ++a;
+            ++b;
+        }
+    }
+
+    if ((ae - a) != (be - b))
+        return (ae - a) - (be - b);
+    else
+        return raw_compare;
+}
+
 hashcode_t
 String_generic::hashcode(const char *s, int len)
 {
