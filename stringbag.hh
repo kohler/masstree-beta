@@ -23,6 +23,7 @@ template <typename L>
 class stringbag {
     typedef L info_type;
     static constexpr int max_halfinfo = (1 << (4 * sizeof(info_type))) - 1;
+    typedef string_slice<uintptr_t> slice_type;
 
   public:
 
@@ -55,7 +56,7 @@ class stringbag {
         if (info_len(info) != len)
             return false;
         else
-            return string_slice<uintptr_t>::equals_sloppy(s, s_ + info_pos(info), len);
+            return slice_type::equals_sloppy(s, s_ + info_pos(info), len);
     }
     bool equals_sloppy(int p, lcdf::Str s) const {
         return equals_sloppy(p, s.s, s.len);
@@ -83,7 +84,8 @@ class stringbag {
         int pos, mylen = info_len(info_[p]);
         if (mylen >= len)
             pos = info_pos(info_[p]);
-        else if (size() + len <= allocated_size()) {
+        else if (size() + std::max(len, slice_type::size)
+                   <= allocated_size()) {
             pos = size();
             main_ = make_info(pos + len, allocated_size());
         } else
