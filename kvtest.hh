@@ -19,6 +19,8 @@
 #include "misc.hh"
 #include "kvproto.hh"
 #include <vector>
+#include <fstream>
+
 using lcdf::Str;
 using lcdf::String;
 using lcdf::Json;
@@ -1543,6 +1545,63 @@ void kvtest_splitremove1(C &client)
     if (errj)
         result.set("errors", errj);
     client.report(result);
+}
+
+template <typename C>
+void kvtest_url_seed(C &client)
+{
+    if (!client.param("file").is_s()) {
+        client.report(Json::object("ok", false, "error", "need 'file=URLFILE' parameter"));
+        return;
+    }
+
+    std::ifstream infile_url_init(client.param("file").to_s());
+    std::ifstream infile_url_del_get(client.param("file").to_s());
+    std::string ops;
+    std::string url;
+    unsigned count_i = 0;
+    unsigned count_d = 0;
+    unsigned count_g = 0;
+
+    double t0 = client.now();
+    while (count_i < client.limit() && infile_url_init.good()) {
+        //do the following alternately:
+        //insert 10 urls, then delete 5 inserted urls
+        for (int i = 0; i != 10 && infile_url_init >> ops >> url; ++i, ++count_i)
+            client.put(url, 2014);
+        for (int i = 0; i != 5 && infile_url_del_get >> ops >> url; ++i, ++count_d)
+            client.remove(url);
+    }
+    client.wait_all();
+    client.puts_done();
+    double t1 = client.now();
+    infile_url_init.close();
+
+    //query all the inserted urls
+    double t2 = client.now();
+    while (count_d + count_g != count_i && infile_url_del_get >> ops >> url) {
+        client.get_check(Str(url), 2014);
+        ++count_g;
+    }
+    client.wait_all();
+    double t3 = client.now();
+
+    client.notice("\nFinish Insertion\n");
+
+    // client.notice("Total pool memory: %d\n", client.ti_->poolmem);
+    // client.notice("Total general memory: %d\n", client.ti_->genmem);
+    // client.notice("Total MEMORY: %d\n", client.ti_->poolmem + client.ti_->genmem);
+
+    Json result = Json::object("puts", count_i, "removes", count_d);
+    kvtest_set_time(result, "gets", count_g, t3 - t2);
+    kvtest_set_time(result, "ops", count_i + count_d, t1 - t0);
+    client.report(result);
+}
+
+template <typename C>
+void kvtest_url(C &client)
+{
+  kvtest_url_seed(client);
 }
 
 #endif
