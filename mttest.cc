@@ -73,8 +73,9 @@ double duration[2] = {10, 0};
 // Do not start timer until asked
 static bool lazy_timer = false;
 int kvtest_first_seed = 31949;
-
 uint64_t test_limit = ~uint64_t(0);
+static Json test_param;
+
 bool quiet = false;
 bool print_table = false;
 static const char *gid = NULL;
@@ -125,6 +126,7 @@ struct kvtest_client {
         if (kvo_)
             free_kvout(kvo_);
     }
+
     int nthreads() const {
         return udpthreads;
     }
@@ -145,12 +147,17 @@ struct kvtest_client {
         always_assert(duration[0] && "Must specify timeout[0]");
         xalarm(duration[0]);
     }
+
     bool timeout(int which) const {
         return ::timeout[which];
     }
     uint64_t limit() const {
         return limit_;
     }
+    Json param(const String& name) const {
+        return test_param[name];
+    }
+
     int ncores() const {
         return ncores_;
     }
@@ -708,7 +715,7 @@ static const Clp_Option options[] = {
 
 static void help() {
     printf("Masstree-beta mttest\n\
-Usage: mttest [-jTHREADS] [OPTIONS] TEST...\n\
+Usage: mttest [-jTHREADS] [OPTIONS] [PARAM=VALUE...] TEST...\n\
        mttest -n -c TESTNAME...\n\
 \n\
 Options:\n\
@@ -860,13 +867,25 @@ main(int argc, char *argv[])
         case opt_help:
             help();
             break;
-        case Clp_NotOption: {
-            bool is_treetype = false;
-            for (int i = 0; i < (int) arraysize(test_thread_map) && !is_treetype; ++i)
-                is_treetype = (strcmp(test_thread_map[i].treetype, clp->vstr) == 0);
-            (is_treetype ? treetypes.push_back(clp->vstr) : tests.push_back(clp->vstr));
+        case Clp_NotOption:
+            // check for parameter setting
+            if (const char* eqchr = strchr(clp->vstr, '=')) {
+                Json& param = test_param[String(clp->vstr, eqchr)];
+                const char* end_vstr = clp->vstr + strlen(clp->vstr);
+                if (param.assign_parse(eqchr + 1, end_vstr))
+                    /* OK, param was valid JSON */;
+                else if (eqchr[1] != 0)
+                    param = String(eqchr + 1, end_vstr);
+                else
+                    param = Json();
+            } else {
+                // otherwise, tree or test
+                bool is_treetype = false;
+                for (int i = 0; i < (int) arraysize(test_thread_map) && !is_treetype; ++i)
+                    is_treetype = (strcmp(test_thread_map[i].treetype, clp->vstr) == 0);
+                (is_treetype ? treetypes.push_back(clp->vstr) : tests.push_back(clp->vstr));
+            }
             break;
-        }
         default:
             fprintf(stderr, "Usage: mttest [-jN] TESTS...\n\
 Try 'mttest --help' for options.\n");

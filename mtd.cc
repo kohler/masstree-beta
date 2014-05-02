@@ -167,6 +167,9 @@ struct kvtest_client {
     uint64_t limit() const {
         return test_limit;
     }
+    Json param(const String&) const {
+        return Json();
+    }
     double now() const {
         return ::now();
     }
