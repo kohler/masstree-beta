@@ -87,7 +87,7 @@ class basic_table {
 
     template <typename H, typename F>
     int scan(H helper, Str firstkey, bool matchfirst,
-	     F& scanner, threadinfo& ti) const;
+             F& scanner, threadinfo& ti) const;
 
     friend class unlocked_tcursor<P>;
     friend class tcursor<P>;

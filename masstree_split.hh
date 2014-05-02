@@ -26,11 +26,11 @@ leaf<P>::ikey_after_insert(const permuter_type& perm, int i,
                            const key_type& ka, int ka_i) const
 {
     if (i < ka_i)
-	return this->ikey0_[perm[i]];
+        return this->ikey0_[perm[i]];
     else if (i == ka_i)
-	return ka.ikey();
+        return ka.ikey();
     else
-	return this->ikey0_[perm[i - 1]];
+        return this->ikey0_[perm[i - 1]];
 }
 
 /** @brief Split this node into *@a nr and insert @a ka at position @a p.
@@ -63,44 +63,44 @@ int leaf<P>::split_into(leaf<P>* nr, int p, const key_type& ka,
     masstree_precondition(this->nremoved_ == 0);
     masstree_precondition(this->size() >= this->width - 1);
 
-    int width = this->size();	// == this->width or this->width - 1
+    int width = this->size();   // == this->width or this->width - 1
     int mid = this->width / 2 + 1;
     if (p == 0 && !this->prev_)
-	mid = 1;
+        mid = 1;
     else if (p == width && !this->next_.ptr)
-	mid = width;
+        mid = width;
 
     // Never separate keys with the same ikey0.
     permuter_type perml(this->permutation_);
     ikey_type mid_ikey = ikey_after_insert(perml, mid, ka, p);
     if (mid_ikey == ikey_after_insert(perml, mid - 1, ka, p)) {
-	int midl = mid - 2, midr = mid + 1;
-	while (1) {
-	    if (midr <= width
-		&& mid_ikey != ikey_after_insert(perml, midr, ka, p)) {
-		mid = midr;
-		break;
-	    } else if (midl >= 0
-		       && mid_ikey != ikey_after_insert(perml, midl, ka, p)) {
-		mid = midl + 1;
-		break;
-	    }
-	    --midl, ++midr;
-	}
-	masstree_invariant(mid > 0 && mid <= width);
+        int midl = mid - 2, midr = mid + 1;
+        while (1) {
+            if (midr <= width
+                && mid_ikey != ikey_after_insert(perml, midr, ka, p)) {
+                mid = midr;
+                break;
+            } else if (midl >= 0
+                       && mid_ikey != ikey_after_insert(perml, midl, ka, p)) {
+                mid = midl + 1;
+                break;
+            }
+            --midl, ++midr;
+        }
+        masstree_invariant(mid > 0 && mid <= width);
     }
 
     typename permuter_type::value_type pv = perml.value_from(mid - (p < mid));
     for (int x = mid; x <= width; ++x)
-	if (x == p)
-	    nr->assign_initialize(x - mid, ka, ti);
-	else {
-	    nr->assign_initialize(x - mid, this, pv & 15, ti);
-	    pv >>= 4;
-	}
+        if (x == p)
+            nr->assign_initialize(x - mid, ka, ti);
+        else {
+            nr->assign_initialize(x - mid, this, pv & 15, ti);
+            pv >>= 4;
+        }
     permuter_type permr = permuter_type::make_sorted(width + 1 - mid);
     if (p >= mid)
-	permr.remove_to_back(p - mid);
+        permr.remove_to_back(p - mid);
     nr->permutation_ = permr.value();
 
     btree_leaflink<leaf<P>, P::concurrent>::link_split(this, nr);
@@ -134,31 +134,31 @@ int internode<P>::split_into(internode<P> *nr, int p, ikey_type ka,
     nr->nkeys_ = this->width + 1 - (mid + 1);
 
     if (p < mid) {
-	nr->child_[0] = this->child_[mid];
-	nr->shift_from(0, this, mid, this->width - mid);
-	split_ikey = this->ikey0_[mid - 1];
+        nr->child_[0] = this->child_[mid];
+        nr->shift_from(0, this, mid, this->width - mid);
+        split_ikey = this->ikey0_[mid - 1];
     } else if (p == mid) {
-	nr->child_[0] = value;
-	nr->shift_from(0, this, mid, this->width - mid);
-	split_ikey = ka;
+        nr->child_[0] = value;
+        nr->shift_from(0, this, mid, this->width - mid);
+        split_ikey = ka;
     } else {
-	nr->child_[0] = this->child_[mid + 1];
-	nr->shift_from(0, this, mid + 1, p - (mid + 1));
-	nr->assign(p - (mid + 1), ka, value);
-	nr->shift_from(p + 1 - (mid + 1), this, p, this->width - p);
-	split_ikey = this->ikey0_[mid];
+        nr->child_[0] = this->child_[mid + 1];
+        nr->shift_from(0, this, mid + 1, p - (mid + 1));
+        nr->assign(p - (mid + 1), ka, value);
+        nr->shift_from(p + 1 - (mid + 1), this, p, this->width - p);
+        split_ikey = this->ikey0_[mid];
     }
 
     for (int i = 0; i <= nr->nkeys_; ++i)
-	nr->child_[i]->set_parent(nr);
+        nr->child_[i]->set_parent(nr);
 
     this->mark_split();
     if (p < mid) {
-	this->nkeys_ = mid - 1;
-	return p;
+        this->nkeys_ = mid - 1;
+        return p;
     } else {
-	this->nkeys_ = mid;
-	return -1;
+        this->nkeys_ = mid;
+        return -1;
     }
 }
 
@@ -175,74 +175,74 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
     bool sense = false;
 
     while (1) {
-	masstree_invariant(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
-	internode_type *next_child = 0;
+        masstree_invariant(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
+        internode_type *next_child = 0;
 
-	internode_type *p = n->locked_parent(ti);
+        internode_type *p = n->locked_parent(ti);
 
-	if (!node_type::parent_exists(p)) {
-	    internode_type *nn = internode_type::make(ti);
-	    nn->child_[0] = n;
-	    nn->assign(0, xikey[sense], child);
-	    nn->nkeys_ = 1;
-	    nn->parent_ = p;
-	    nn->mark_root();
-	    fence();
-	    n->set_parent(nn);
-	} else {
-	    int kp = internode_type::bound_type::upper(xikey[sense], *p);
+        if (!node_type::parent_exists(p)) {
+            internode_type *nn = internode_type::make(ti);
+            nn->child_[0] = n;
+            nn->assign(0, xikey[sense], child);
+            nn->nkeys_ = 1;
+            nn->parent_ = p;
+            nn->mark_root();
+            fence();
+            n->set_parent(nn);
+        } else {
+            int kp = internode_type::bound_type::upper(xikey[sense], *p);
 
-	    if (p->size() < p->width)
-		p->mark_insert();
-	    else {
-		next_child = internode_type::make(ti);
-		next_child->assign_version(*p);
-		next_child->mark_nonroot();
-		kp = p->split_into(next_child, kp, xikey[sense],
+            if (p->size() < p->width)
+                p->mark_insert();
+            else {
+                next_child = internode_type::make(ti);
+                next_child->assign_version(*p);
+                next_child->mark_nonroot();
+                kp = p->split_into(next_child, kp, xikey[sense],
                                    child, xikey[!sense], split_type);
-	    }
+            }
 
-	    if (kp >= 0) {
-		p->shift_up(kp + 1, kp, p->size() - kp);
-		p->assign(kp, xikey[sense], child);
-		fence();
-		++p->nkeys_;
-	    }
-	}
+            if (kp >= 0) {
+                p->shift_up(kp + 1, kp, p->size() - kp);
+                p->assign(kp, xikey[sense], child);
+                fence();
+                ++p->nkeys_;
+            }
+        }
 
-	if (n->isleaf()) {
-	    leaf_type *nl = static_cast<leaf_type *>(n);
-	    leaf_type *nr = static_cast<leaf_type *>(child);
-	    permuter_type perml(nl->permutation_);
-	    int width = perml.size();
-	    perml.set_size(width - nr->size());
-	    // removed item, if any, must be @ perml.size()
-	    if (width != nl->width)
-		perml.exchange(perml.size(), nl->width - 1);
-	    nl->mark_split();
-	    nl->permutation_ = perml.value();
-	    if (split_type == 0) {
-		kp_ = perml.back();
-		nl->assign(kp_, ka_, ti);
-	    } else {
-		ki_ = kp_ = ki_ - perml.size();
-		n_ = nr;
-	    }
-	}
+        if (n->isleaf()) {
+            leaf_type *nl = static_cast<leaf_type *>(n);
+            leaf_type *nr = static_cast<leaf_type *>(child);
+            permuter_type perml(nl->permutation_);
+            int width = perml.size();
+            perml.set_size(width - nr->size());
+            // removed item, if any, must be @ perml.size()
+            if (width != nl->width)
+                perml.exchange(perml.size(), nl->width - 1);
+            nl->mark_split();
+            nl->permutation_ = perml.value();
+            if (split_type == 0) {
+                kp_ = perml.back();
+                nl->assign(kp_, ka_, ti);
+            } else {
+                ki_ = kp_ = ki_ - perml.size();
+                n_ = nr;
+            }
+        }
 
-	if (n != n_)
-	    n->unlock();
-	if (child != n_)
-	    child->unlock();
-	if (next_child) {
-	    n = p;
-	    child = next_child;
-	    sense = !sense;
-	} else if (p) {
-	    p->unlock();
-	    break;
-	} else
-	    break;
+        if (n != n_)
+            n->unlock();
+        if (child != n_)
+            child->unlock();
+        if (next_child) {
+            n = p;
+            child = next_child;
+            sense = !sense;
+        } else if (p) {
+            p->unlock();
+            break;
+        } else
+            break;
     }
 
     return insert_marker();

@@ -388,11 +388,11 @@ class parser {
     }
 
     inline bool try_read_null() {
-	if (*s_ == format::fnull) {
-	    ++s_;
-	    return true;
-	} else
-	    return false;
+        if (*s_ == format::fnull) {
+            ++s_;
+            return true;
+        } else
+            return false;
     }
     inline int read_tiny_int() {
         assert(format::is_fixint(*s_));

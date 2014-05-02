@@ -99,40 +99,40 @@ class tcursor {
     typedef typename P::threadinfo_type threadinfo;
 
     tcursor(basic_table<P>& table, Str str)
-	: ka_(str), root_(table.fix_root()) {
+        : ka_(str), root_(table.fix_root()) {
     }
     tcursor(basic_table<P>& table, const char* s, int len)
-	: ka_(s, len), root_(table.fix_root()) {
+        : ka_(s, len), root_(table.fix_root()) {
     }
     tcursor(basic_table<P>& table, const unsigned char* s, int len)
-	: ka_(reinterpret_cast<const char*>(s), len), root_(table.fix_root()) {
+        : ka_(reinterpret_cast<const char*>(s), len), root_(table.fix_root()) {
     }
     tcursor(node_base<P>* root, const char* s, int len)
-	: ka_(s, len), root_(root) {
+        : ka_(s, len), root_(root) {
     }
     tcursor(node_base<P>* root, const unsigned char* s, int len)
-	: ka_(reinterpret_cast<const char*>(s), len), root_(root) {
+        : ka_(reinterpret_cast<const char*>(s), len), root_(root) {
     }
 
     inline bool has_value() const {
-	return kp_ >= 0;
+        return kp_ >= 0;
     }
     inline value_type &value() const {
-	return n_->lv_[kp_].value();
+        return n_->lv_[kp_].value();
     }
 
     inline bool is_first_layer() const {
-	return !ka_.is_shifted();
+        return !ka_.is_shifted();
     }
 
     inline leaf<P>* node() const {
         return n_;
     }
     inline kvtimestamp_t node_timestamp() const {
-	return n_->node_ts_;
+        return n_->node_ts_;
     }
     inline kvtimestamp_t &node_timestamp() {
-	return n_->node_ts_;
+        return n_->node_ts_;
     }
 
     inline bool find_locked(threadinfo& ti);
@@ -152,18 +152,18 @@ class tcursor {
     int state_;
 
     inline node_type* reset_retry() {
-	ka_.unshift_all();
-	return root_;
+        ka_.unshift_all();
+        return root_;
     }
 
     inline node_type* get_leaf_locked(node_type* root, nodeversion_type& v, threadinfo& ti);
     inline node_type* check_leaf_locked(node_type* root, nodeversion_type v, threadinfo& ti);
     inline node_type* check_leaf_insert(node_type* root, nodeversion_type v, threadinfo& ti);
     static inline node_type* insert_marker() {
-	return reinterpret_cast<node_type*>(uintptr_t(1));
+        return reinterpret_cast<node_type*>(uintptr_t(1));
     }
     static inline node_type* found_marker() {
-	return reinterpret_cast<node_type*>(uintptr_t(0));
+        return reinterpret_cast<node_type*>(uintptr_t(0));
     }
 
     node_type* finish_split(threadinfo& ti);
