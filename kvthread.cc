@@ -111,7 +111,8 @@ threadinfo *threadinfo::make(int purpose, int index) {
 
     if (!threads_initialized) {
 #if ENABLE_ASSERTIONS
-        no_pool_value = getenv("VALGRIND_OPTS") != 0;
+        const char* s = getenv("_");
+        no_pool_value = s && strstr(s, "valgrind") != 0;
 #endif
         threads_initialized = 1;
     }
