@@ -175,8 +175,6 @@ void logset::free(logset* ls) {
 }
 
 
-static void *logger(void *);
-
 loginfo::loginfo(logset* ls, int logindex) {
     f_.lock_ = 0;
     f_.waiting_ = 0;
@@ -212,17 +210,11 @@ void loginfo::initialize(const String& logfile) {
     f_.filename_.ref();
 
     ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_);
-    int r = pthread_create(&ti_->ti_threadid, 0, ::logger, this);
+    int r = ti_->run(logger_trampoline, this);
     always_assert(r == 0);
 }
 
 // one logger thread per logs[].
-void *logger(void *xarg) {
-    loginfo *l = static_cast<loginfo*>(xarg);
-    l->logger();
-    return 0;
-}
-
 static void check_epoch() {
     struct timeval tv;
     gettimeofday(&tv, 0);
@@ -233,12 +225,10 @@ static void check_epoch() {
     }
 }
 
-void loginfo::logger() {
-    ti_->enter();
-
+void* loginfo::run() {
     {
 	logreplay replayer(f_.filename_);
-	replayer.replay(ti_->ti_index, ti_);
+	replayer.replay(ti_->index(), ti_);
     }
 
     int fd = open(String(f_.filename_).c_str(),
@@ -249,7 +239,7 @@ void loginfo::logger() {
 
     while (1) {
 	uint32_t nb = 0;
-	acquire();
+        acquire();
 	kvepoch_t ge = global_log_epoch, we = global_wake_epoch;
 	if (wake_epoch_ != we) {
 	    wake_epoch_ = we;
@@ -278,15 +268,22 @@ void loginfo::logger() {
 	    always_assert(r == ssize_t(x_pos));
 	    fsync(fd);
 	    flushed_epoch_ = x_epoch;
-	    // printf("log %d %d\n", ti_->ti_index, x_pos);
+	    // printf("log %d %d\n", ti_->index(), x_pos);
 	    nb = x_pos;
 	} else
 	    release();
 	if (nb < len_ / 4)
 	    napms(200);
-	if (ti_->ti_index == 0)
+	if (ti_->index() == 0)
 	    check_epoch();
     }
+
+    return 0;
+}
+
+void* loginfo::logger_trampoline(threadinfo* ti) {
+    loginfo* li = static_cast<loginfo*>(ti->thread_data());
+    return li->run();
 }
 
 

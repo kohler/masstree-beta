@@ -97,9 +97,9 @@ threadinfo *threadinfo::make(int purpose, int index)
     threadinfo *ti = (threadinfo *) malloc(8192);
 
     memset(ti, 0, sizeof(*ti));
-    ti->ti_next = allthreads;
-    ti->ti_purpose = purpose;
-    ti->ti_index = index;
+    ti->next_ = allthreads;
+    ti->purpose_ = purpose;
+    ti->index_ = index;
     ti->allthreads = ti;
     ti->ts_ = 2;
     void *limbo_space = ti->allocate(sizeof(limbo_group), memtag_limbo);
@@ -124,12 +124,12 @@ void threadinfo::refill_rcu()
 
 void threadinfo::hard_rcu_quiesce()
 {
-    uint64_t min_epoch = gc_epoch;
-    for (threadinfo *ti = allthreads; ti; ti = ti->ti_next) {
-	prefetch((const void *) ti->ti_next);
-	uint64_t ti_epoch = ti->gc_epoch;
-	if (ti_epoch && (int64_t) (ti_epoch - min_epoch) < 0)
-	    min_epoch = ti_epoch;
+    uint64_t min_epoch = gc_epoch_;
+    for (threadinfo *ti = allthreads; ti; ti = ti->next()) {
+	prefetch((const void *) ti->next());
+	uint64_t epoch = ti->gc_epoch_;
+	if (epoch && (int64_t) (epoch - min_epoch) < 0)
+	    min_epoch = epoch;
     }
 
     limbo_group *lg = limbo_head_;
@@ -187,7 +187,7 @@ void threadinfo::report_rcu(void *ptr) const
 		status = 0;
 	    if (lg->e_[i].ptr_ == ptr)
 		fprintf(stderr, "thread %d: rcu %p@%d: %s as %x @%" PRIu64 "\n",
-			ti_index, lg, i, status ? "waiting" : "freed",
+			index_, lg, i, status ? "waiting" : "freed",
 			lg->e_[i].freetype_, lg->e_[i].epoch_);
 	}
     }
@@ -195,7 +195,7 @@ void threadinfo::report_rcu(void *ptr) const
 
 void threadinfo::report_rcu_all(void *ptr)
 {
-    for (threadinfo *ti = allthreads; ti; ti = ti->ti_next)
+    for (threadinfo *ti = allthreads; ti; ti = ti->next())
 	ti->report_rcu(ptr);
 }
 
@@ -275,4 +275,22 @@ void threadinfo::refill_pool(int nl) {
 
     initialize_pool(pool, pool_size, nl * CACHE_LINE_SIZE);
     pool_[nl - 1] = pool;
+}
+
+void threadinfo::run() {
+    threadid_ = pthread_self();
+    pthread_setspecific(key, this);
+}
+
+void* threadinfo::thread_trampoline(void* argument) {
+    threadinfo* ti = static_cast<threadinfo*>(argument);
+    ti->run();
+    return ti->thread_func_(ti);
+}
+
+int threadinfo::run(void* (*thread_func)(threadinfo*), void* thread_data) {
+    assert(!thread_func_ && !threadid_);
+    thread_func_ = thread_func;
+    thread_data_ = thread_data;
+    return pthread_create(&threadid_, 0, thread_trampoline, this);
 }

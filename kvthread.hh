@@ -192,26 +192,28 @@ class threadinfo {
 	TI_MAIN, TI_PROCESS, TI_LOG, TI_CHECKPOINT
     };
 
-    union {
-	struct {
-	    threadinfo *ti_next;
-	    pthread_t ti_threadid;
-	    int ti_purpose;
-	    int ti_index;	    // the index of a udp, logging, tcp,
-				    // checkpoint or recover thread
-	    int ti_pipe[2];         // the pipe used to communicate with the thread
-	    loginfo *ti_log;
-	    uint64_t gc_epoch;
-	    uint64_t limbo_epoch_;
-	};
-	char padding1[CACHE_LINE_SIZE];
-    };
-
-  public:
     static threadinfo *make(int purpose, int index);
     // XXX destructor
-    static threadinfo *allthreads;
     static pthread_key_t key;
+
+    // thread information
+    int purpose() const {
+        return purpose_;
+    }
+    int index() const {
+        return index_;
+    }
+    loginfo* logger() const {
+        return logger_;
+    }
+    void set_logger(loginfo* logger) {
+        assert(!logger_ && logger);
+        logger_ = logger;
+    }
+    static threadinfo *allthreads;
+    threadinfo* next() const {
+        return next_;
+    }
 
     // timestamps
     kvtimestamp_t operation_timestamp() const {
@@ -356,17 +358,17 @@ class threadinfo {
 
     // RCU
     void rcu_start() {
-	if (gc_epoch != globalepoch)
-	    gc_epoch = globalepoch;
+	if (gc_epoch_ != globalepoch)
+	    gc_epoch_ = globalepoch;
     }
     void rcu_stop() {
-	if (limbo_epoch_ && (gc_epoch - limbo_epoch_) > 1)
+	if (limbo_epoch_ && (gc_epoch_ - limbo_epoch_) > 1)
 	    hard_rcu_quiesce();
-	gc_epoch = 0;
+	gc_epoch_ = 0;
     }
     void rcu_quiesce() {
 	rcu_start();
-	if (limbo_epoch_ && (gc_epoch - limbo_epoch_) > 2)
+	if (limbo_epoch_ && (gc_epoch_ - limbo_epoch_) > 2)
 	    hard_rcu_quiesce();
     }
     typedef ::rcu_callback rcu_callback;
@@ -374,16 +376,39 @@ class threadinfo {
 	record_rcu(cb, -1);
     }
 
-    void enter() {
-	ti_threadid = pthread_self();
-	pthread_setspecific(key, this);
+    // thread management
+    void run();
+    int run(void* (*thread_func)(threadinfo*), void* thread_data = 0);
+    pthread_t threadid() const {
+        return threadid_;
     }
+    void* thread_data() const {
+        return thread_data_;
+    }
+
     static threadinfo *current() {
 	return (threadinfo *) pthread_getspecific(key);
     }
 
     void report_rcu(void *ptr) const;
     static void report_rcu_all(void *ptr);
+
+  private:
+    union {
+	struct {
+	    uint64_t gc_epoch_;
+	    uint64_t limbo_epoch_;
+	    loginfo *logger_;
+
+	    threadinfo *next_;
+	    int purpose_;
+	    int index_;         // the index of a udp, logging, tcp,
+				// checkpoint or recover thread
+
+            pthread_t threadid_;
+	};
+	char padding1[CACHE_LINE_SIZE];
+    };
 
   private:
     enum { pool_max_nlines = 20 };
@@ -396,6 +421,9 @@ class threadinfo {
     //enum { ncounters = (int) tc_max };
     enum { ncounters = 0 };
     uint64_t counters_[ncounters];
+
+    void* (*thread_func_)(threadinfo*);
+    void* thread_data_;
 
     void refill_pool(int nl);
     void refill_rcu();
@@ -428,6 +456,7 @@ class threadinfo {
     }
 
     void hard_rcu_quiesce();
+    static void* thread_trampoline(void*);
     friend class loginfo;
 };
 

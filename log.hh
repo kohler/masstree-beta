@@ -29,7 +29,6 @@ namespace lcdf { class Json; }
 class loginfo {
   public:
     void initialize(const lcdf::String& logfile);
-    void logger();
 
     inline void acquire();
     inline void release();
@@ -96,6 +95,8 @@ class loginfo {
 
     loginfo(logset* ls, int logindex);
     ~loginfo();
+    void* run();
+    static void* logger_trampoline(threadinfo* ti);
 
     friend class logset;
 };

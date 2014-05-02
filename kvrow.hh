@@ -175,7 +175,7 @@ result_t query<R>::run_put(T& table, Str key,
 template <typename R>
 inline bool query<R>::apply_put(R*& value, bool found, const Json* firstreq,
                                 const Json* lastreq, threadinfo& ti) {
-    if (loginfo* log = ti.ti_log) {
+    if (loginfo* log = ti.logger()) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
@@ -216,7 +216,7 @@ result_t query<R>::run_replace(T& table, Str key, Str value, threadinfo& ti) {
 template <typename R>
 inline bool query<R>::apply_replace(R*& value, bool found, Str new_value,
                                     threadinfo& ti) {
-    if (loginfo* log = ti.ti_log) {
+    if (loginfo* log = ti.logger()) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }
@@ -246,7 +246,7 @@ bool query<R>::run_remove(T& table, Str key, threadinfo& ti) {
 template <typename R>
 inline void query<R>::apply_remove(R*& value, kvtimestamp_t& node_ts,
                                    threadinfo& ti) {
-    if (loginfo* log = ti.ti_log) {
+    if (loginfo* log = ti.logger()) {
 	log->acquire();
 	qtimes_.epoch = global_log_epoch;
     }

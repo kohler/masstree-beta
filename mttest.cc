@@ -131,7 +131,7 @@ struct kvtest_client {
         return udpthreads;
     }
     int id() const {
-        return ti_->ti_index;
+        return ti_->index();
     }
     void set_table(T *table, threadinfo *ti) {
         table_ = table;
@@ -140,7 +140,7 @@ struct kvtest_client {
     void reset(const String &test, int trial) {
         json_ = Json().set("table", T().name())
             .set("test", test).set("trial", trial)
-            .set("thread", ti_->ti_index);
+            .set("thread", ti_->index());
     }
     static void start_timer() {
         always_assert(lazy_timer && "Cannot start timer without lazy_timer option");
@@ -168,7 +168,7 @@ struct kvtest_client {
         return (140 * 1000000) / 16;
     }
     int ruscale_init_part_no() const {
-        return ti_->ti_index;
+        return ti_->index();
     }
     long nseqkeys() const {
         return 16 * ruscale_partsz();
@@ -288,7 +288,7 @@ struct kvtest_client {
         if (counters)
             json_.set("counters", counters);
         if (!quiet)
-            fprintf(stderr, "%d: %s\n", ti_->ti_index, json_.unparse().c_str());
+            fprintf(stderr, "%d: %s\n", ti_->index(), json_.unparse().c_str());
     }
 
     T *table_;
@@ -308,7 +308,7 @@ static volatile int kvtest_printing;
 
 template <typename T> inline void kvtest_print(const T &table, FILE *f, int indent, threadinfo *ti) {
     // only print out the tree from the first failure
-    while (!bool_cmpxchg((int *) &kvtest_printing, 0, ti->ti_index + 1))
+    while (!bool_cmpxchg((int *) &kvtest_printing, 0, ti->index() + 1))
         /* spin */;
     table.print(f, indent);
 }
@@ -458,7 +458,7 @@ void kvtest_client<T>::notice(const char *fmt, ...) {
     String m = make_message(lcdf::StringAccum().vsnprintf(500, fmt, val));
     va_end(val);
     if (m && !quiet)
-        fprintf(stderr, "%d: %s", ti_->ti_index, m.c_str());
+        fprintf(stderr, "%d: %s", ti_->index(), m.c_str());
 }
 
 template <typename T>
@@ -477,12 +477,12 @@ void kvtest_client<T>::fail(const char *fmt, ...) {
     fail_message_lock.lock();
     if (fail_message != m) {
         fail_message = m;
-        fprintf(stderr, "%d: %s", ti_->ti_index, m.c_str());
+        fprintf(stderr, "%d: %s", ti_->index(), m.c_str());
     }
     fail_message_lock.unlock();
 
     failing_lock.lock();
-    fprintf(stdout, "%d: %s", ti_->ti_index, m.c_str());
+    fprintf(stdout, "%d: %s", ti_->index(), m.c_str());
     kvtest_print(*table_, stdout, 0, ti_);
 
     always_assert(0);
@@ -520,7 +520,7 @@ MAKE_TESTRUNNER(rwsmall24, kvtest_rwsmall24(client));
 MAKE_TESTRUNNER(rwsep24, kvtest_rwsep24(client));
 MAKE_TESTRUNNER(wscale, kvtest_wscale(client));
 MAKE_TESTRUNNER(ruscale_init, kvtest_ruscale_init(client));
-MAKE_TESTRUNNER(rscale, if (client.ti_->ti_index < ::rscale_ncores) kvtest_rscale(client));
+MAKE_TESTRUNNER(rscale, if (client.ti_->index() < ::rscale_ncores) kvtest_rscale(client));
 MAKE_TESTRUNNER(uscale, kvtest_uscale(client));
 MAKE_TESTRUNNER(bdb, kvtest_bdb(client));
 MAKE_TESTRUNNER(wcol1, kvtest_wcol1at(client, client.id() % 24, kvtest_first_seed + client.id() % 48, 5000000));
@@ -539,22 +539,21 @@ MAKE_TESTRUNNER(url, kvtest_url(client));
 
 template <typename T>
 struct test_thread {
-    test_thread(void *arg) {
-        client_.set_table(table_, (threadinfo *) arg);
-        client_.ti_->enter();
+    test_thread(threadinfo* ti) {
+        client_.set_table(table_, ti);
         client_.ti_->rcu_start();
     }
     ~test_thread() {
         client_.ti_->rcu_stop();
     }
-    static void *go(void *arg) {
+    static void* go(threadinfo* ti) {
         if (!table_) {
             table_ = new T;
-            table_->initialize(*(threadinfo *) arg);
+            table_->initialize(*ti);
             //Masstree::default_table::test((threadinfo *) arg);
             return 0;
         }
-        if (!arg) {
+        if (!ti) {
             table_->stats(test_output_file);
             return 0;
         }
@@ -562,7 +561,7 @@ struct test_thread {
         if (pinthreads) {
             cpu_set_t cs;
             CPU_ZERO(&cs);
-            CPU_SET(cores[((threadinfo *)arg)->ti_index], &cs);
+            CPU_SET(cores[ti->index()], &cs);
             int r = sched_setaffinity(0, sizeof(cs), &cs);
             always_assert(r == 0);
         }
@@ -570,7 +569,7 @@ struct test_thread {
         always_assert(!pinthreads && "pinthreads not supported\n");
 #endif
 
-        test_thread<T> tt(arg);
+        test_thread<T> tt(ti);
         if (fetch_and_add(&active_threads_, 1) == 0)
             tt.ready_timeouts();
         String test = ::current_test_name;
@@ -629,7 +628,7 @@ template <typename T> unsigned test_thread<T>::active_threads_;
 
 static struct {
     const char *treetype;
-    void *(*func)(void *);
+    void* (*func)(threadinfo*);
 } test_thread_map[] = {
     { "masstree", test_thread<Masstree::default_table>::go },
     { "mass", test_thread<Masstree::default_table>::go },
@@ -639,17 +638,17 @@ static struct {
 };
 
 
-void runtest(int nthreads, void *(*func)(void *)) {
+void runtest(int nthreads, void* (*func)(threadinfo*)) {
     std::vector<threadinfo *> tis;
     for (int i = 0; i < nthreads; ++i)
         tis.push_back(threadinfo::make(threadinfo::TI_PROCESS, i));
     signal(SIGALRM, test_timeout);
     for (int i = 0; i < nthreads; ++i) {
-        int r = pthread_create(&tis[i]->ti_threadid, 0, func, tis[i]);
+        int r = tis[i]->run(func);
         always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i)
-        pthread_join(tis[i]->ti_threadid, 0);
+        pthread_join(tis[i]->threadid(), 0);
 }
 
 
@@ -980,7 +979,7 @@ Try 'mttest --help' for options.\n");
 
 static void run_one_test_body(int trial, const char *treetype, const char *test) {
     threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
-    main_ti->enter();
+    main_ti->run();
     globalepoch = timestamp() >> 16;
     for (int i = 0; i < (int) arraysize(test_thread_map); ++i)
         if (strcmp(test_thread_map[i].treetype, treetype) == 0) {
