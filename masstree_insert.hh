@@ -72,6 +72,20 @@ inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
         n_->lv_[kp_] = nl;
         fence();
         n_->keylenx_[kp_] = sizeof(n_->ikey0_[0]) + 129;
+
+        //huanchen
+        //WGC
+        if (n_->ksuf_) {
+          permuter_type permut(n_->permutation_);
+          for (int i = 0; i < permut.size(); i++) {
+            if (n_->has_ksuf(permut[i]))
+              goto after_gc;
+          }
+          ti.deallocate(n_->ksuf_, (int)(n_->ksuf_allocated_size()), memtag_masstree_ksuffixes);
+          n_->ksuf_ = NULL;
+        }
+
+        after_gc:
         n_->unlock(v);
         if (kc != 0) {
             n_ = nl;

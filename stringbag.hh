@@ -98,6 +98,61 @@ class stringbag {
         return assign(p, s.s, s.len);
     }
 
+  //huanchen
+  //IGC
+    int compact(int suf[], int width, int s_len) {
+    int sp = overhead(width);
+    int position[width]; //mark each suffix's starting position
+    int len[width]; //hold each suffix's length
+    char* buf[width];
+    int i, pos, l;
+    int total_s_len = 0;
+
+    //fill in the len array
+    for (i = 0; i < width; i++) {
+      if (suf[i]) {
+        len[i] = info_len(info_[i]);
+        total_s_len += len[i];
+      }
+      else
+        len[i] = 0;
+    }
+
+    // check whether it is necessary to garbage collect
+    if (allocated_size() < ((int)overhead(width) + (int)total_s_len + (int)s_len))
+      return 0;
+
+    //fill in the position array
+    for (i = 0; i < width; i++) {
+      position[i] = info_pos(info_[i]);
+    }
+
+    //copy all the contents into a buffer array
+    for (i = 0; i < width; i++) {
+      pos = position[i];
+      l = len[i];
+      if (l != 0) {
+        buf[i] = (char*)malloc(l + 1);
+        memcpy(buf[i], s_ + pos, l);
+      }
+      else
+        info_[i] = make_info(0, 0);
+    }
+
+    //copy back to the stringbag from the buffer array
+    for (i = 0; i < width; i++) {
+      pos = position[i];
+      l = len[i];
+      if (l != 0)
+        memcpy(s_ + sp, buf[i], l);
+        info_[i] = make_info(sp, l);
+        sp += l;
+    }
+
+    main_ = make_info(sp, allocated_size());
+    return 1;
+  }
+
     void print(int width, FILE *f, const char *prefix, int indent) {
         fprintf(f, "%s%*s%p (%d:)%d:%d [%d]...\n", prefix, indent, "",
                 this, (int) overhead(width), size(), allocated_size(), max_halfinfo + 1);

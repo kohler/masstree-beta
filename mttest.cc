@@ -971,8 +971,8 @@ Try 'mttest --help' for options.\n");
     // print Gnuplot
     if (ntrials != 0)
         comparisons.insert(comparisons.begin(), "");
-    print_gnuplot(stdout, kvstats_name, kvstats_name + arraysize(kvstats_name),
-                  comparisons, normtype);
+    //print_gnuplot(stdout, kvstats_name, kvstats_name + arraysize(kvstats_name),
+    //comparisons, normtype);
 
     exit(0);
 }
