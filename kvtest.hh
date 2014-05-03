@@ -1576,6 +1576,7 @@ void kvtest_url_seed(C &client)
     client.puts_done();
     double t1 = client.now();
     infile_url_init.close();
+    client.notice("\ninsert done\n");
 
     //query all the inserted urls
     double t2 = client.now();
@@ -1585,8 +1586,6 @@ void kvtest_url_seed(C &client)
     }
     client.wait_all();
     double t3 = client.now();
-
-    client.notice("\nFinish Insertion\n");
 
     // client.notice("Total pool memory: %d\n", client.ti_->poolmem);
     // client.notice("Total general memory: %d\n", client.ti_->genmem);
