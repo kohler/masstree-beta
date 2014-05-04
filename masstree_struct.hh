@@ -269,6 +269,7 @@ class leaf : public node_base<P> {
 
     int8_t extrasize64_;
     int8_t nremoved_;
+    int8_t nksuf_;
     uint8_t keylenx_[width];
     typename permuter_type::storage_type permutation_;
     ikey_type ikey0_[width];
@@ -285,7 +286,7 @@ class leaf : public node_base<P> {
     internal_ksuf_type iksuf_[0];
 
     leaf(size_t sz, kvtimestamp_t node_ts)
-        : node_base<P>(true), nremoved_(0),
+        : node_base<P>(true), nremoved_(0), nksuf_(0),
           permutation_(permuter_type::make_empty()),
           ksuf_(), parent_(), node_ts_(node_ts), iksuf_{} {
         masstree_precondition(sz % 64 == 0 && sz / 64 < 128);
@@ -493,6 +494,7 @@ class leaf : public node_base<P> {
     inline void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
         if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
             hard_assign_ksuf(p, s, initializing, ti);
+        ++nksuf_;
     }
     void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
 

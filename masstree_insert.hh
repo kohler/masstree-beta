@@ -72,6 +72,7 @@ inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
         n_->lv_[kp_] = nl;
         fence();
         n_->keylenx_[kp_] = sizeof(n_->ikey0_[0]) + 129;
+        n_->nksuf_ -= !!oka.length();
         n_->unlock(v);
         if (kc != 0) {
             n_ = nl;

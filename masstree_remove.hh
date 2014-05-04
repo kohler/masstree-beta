@@ -147,6 +147,7 @@ bool tcursor<P>::finish_remove(threadinfo& ti)
     perm.remove(ki_);
     n_->permutation_ = perm.value();
     ++n_->nremoved_;
+    n_->nksuf_ -= ka_.has_suffix();
     if (perm.size())
         return false;
     else

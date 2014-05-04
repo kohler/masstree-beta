@@ -97,7 +97,7 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
         // per-key information
         typename leaf<P>::permuter_type perm(lf->permutation_);
         int n = 0;
-        size_t used_ksuf_len = 0;
+        size_t used_ksuf_len = 0, nksuf = 0;
         for (int i = 0; i < perm.size(); ++i)
             if (lf->value_is_layer(perm[i])) {
                 lcdf::Json x = j["l1_size"];
@@ -114,9 +114,11 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
                     size_t ksuf_len = lf->ksuf(perm[i]).len;
                     l += ksuf_len - 1;
                     used_ksuf_len += ksuf_len;
+                    ++nksuf;
                 }
                 j["key_by_length"][l] += 1;
             }
+        assert(lf->nksuf_ == nksuf);
         j["size"] += n;
         j["l1_size"] += n;
         j["key_by_layer"][layer] += n;

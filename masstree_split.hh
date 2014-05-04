@@ -96,6 +96,7 @@ int leaf<P>::split_into(leaf<P>* nr, int p, const key_type& ka,
             nr->assign_initialize(x - mid, ka, ti);
         else {
             nr->assign_initialize(x - mid, this, pv & 15, ti);
+            nksuf_ -= has_ksuf(pv & 15);
             pv >>= 4;
         }
     permuter_type permr = permuter_type::make_sorted(width + 1 - mid);
