@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -38,7 +38,7 @@ class query_table {
         return table_;
     }
     basic_table<P>& table() {
-	return table_;
+        return table_;
     }
 
     void initialize(threadinfo& ti) {
@@ -58,7 +58,7 @@ class query_table {
     static void test(threadinfo& ti);
 
     static const char* name() {
-	return "mb";
+        return "mb";
     }
 
   private:

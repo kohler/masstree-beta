@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -30,69 +30,69 @@ template <typename N, bool CONCURRENT = N::concurrent> struct btree_leaflink {};
 template <typename N> struct btree_leaflink<N, true> {
   private:
     static inline N *mark(N *n) {
-	return reinterpret_cast<N *>(reinterpret_cast<uintptr_t>(n) + 1);
+        return reinterpret_cast<N *>(reinterpret_cast<uintptr_t>(n) + 1);
     }
     static inline bool is_marked(N *n) {
-	return reinterpret_cast<uintptr_t>(n) & 1;
+        return reinterpret_cast<uintptr_t>(n) & 1;
     }
     template <typename SF>
     static inline N *lock_next(N *n, SF spin_function) {
-	while (1) {
-	    N *next = n->next_.ptr;
-	    if (!next
-		|| (!is_marked(next)
-		    && bool_cmpxchg(&n->next_.ptr, next, mark(next))))
-		return next;
-	    spin_function();
-	}
+        while (1) {
+            N *next = n->next_.ptr;
+            if (!next
+                || (!is_marked(next)
+                    && bool_cmpxchg(&n->next_.ptr, next, mark(next))))
+                return next;
+            spin_function();
+        }
     }
 
   public:
     /** @brief Insert a new node @a nr at the right of node @a n.
-	@pre @a n is locked.
+        @pre @a n is locked.
 
-	Concurrency correctness: Ensures that all "next" pointers are always
-	valid, even if @a n's successor is deleted concurrently. */
+        Concurrency correctness: Ensures that all "next" pointers are always
+        valid, even if @a n's successor is deleted concurrently. */
     static void link_split(N *n, N *nr) {
-	link_split(n, nr, relax_fence_function());
+        link_split(n, nr, relax_fence_function());
     }
     /** @overload */
     template <typename SF>
     static void link_split(N *n, N *nr, SF spin_function) {
-	nr->prev_ = n;
-	N *next = lock_next(n, spin_function);
-	nr->next_.ptr = next;
-	if (next)
-	    next->prev_ = nr;
-	fence();
-	n->next_.ptr = nr;
+        nr->prev_ = n;
+        N *next = lock_next(n, spin_function);
+        nr->next_.ptr = next;
+        if (next)
+            next->prev_ = nr;
+        fence();
+        n->next_.ptr = nr;
     }
 
     /** @brief Unlink @a n from the list.
-	@pre @a n is locked.
+        @pre @a n is locked.
 
-	Concurrency correctness: Works even in the presence of concurrent
-	splits and deletes. */
+        Concurrency correctness: Works even in the presence of concurrent
+        splits and deletes. */
     static void unlink(N *n) {
-	unlink(n, relax_fence_function());
+        unlink(n, relax_fence_function());
     }
     /** @overload */
     template <typename SF>
     static void unlink(N *n, SF spin_function) {
-	// Assume node order A <-> N <-> B. Since n is locked, n cannot split;
-	// next node will always be B or one of its successors.
-	N *next = lock_next(n, spin_function);
-	N *prev;
-	while (1) {
-	    prev = n->prev_;
-	    if (bool_cmpxchg(&prev->next_.ptr, n, mark(n)))
-		break;
-	    spin_function();
-	}
-	if (next)
-	    next->prev_ = prev;
-	fence();
-	prev->next_.ptr = next;
+        // Assume node order A <-> N <-> B. Since n is locked, n cannot split;
+        // next node will always be B or one of its successors.
+        N *next = lock_next(n, spin_function);
+        N *prev;
+        while (1) {
+            prev = n->prev_;
+            if (bool_cmpxchg(&prev->next_.ptr, n, mark(n)))
+                break;
+            spin_function();
+        }
+        if (next)
+            next->prev_ = prev;
+        fence();
+        prev->next_.ptr = next;
     }
 };
 
@@ -100,24 +100,24 @@ template <typename N> struct btree_leaflink<N, true> {
 // This is the single-threaded-only fast version of btree_leaflink.
 template <typename N> struct btree_leaflink<N, false> {
     static void link_split(N *n, N *nr) {
-	link_split(n, nr, do_nothing());
+        link_split(n, nr, do_nothing());
     }
     template <typename SF>
     static void link_split(N *n, N *nr, SF) {
-	nr->prev_ = n;
-	nr->next_.ptr = n->next_.ptr;
-	n->next_.ptr = nr;
-	if (nr->next_.ptr)
-	    nr->next_.ptr->prev_ = nr;
+        nr->prev_ = n;
+        nr->next_.ptr = n->next_.ptr;
+        n->next_.ptr = nr;
+        if (nr->next_.ptr)
+            nr->next_.ptr->prev_ = nr;
     }
     static void unlink(N *n) {
-	unlink(n, do_nothing());
+        unlink(n, do_nothing());
     }
     template <typename SF>
     static void unlink(N *n, SF) {
-	if (n->next_.ptr)
-	    n->next_.ptr->prev_ = n->prev_;
-	n->prev_->next_.ptr = n->next_.ptr;
+        if (n->next_.ptr)
+            n->next_.ptr->prev_ = n->prev_;
+        n->prev_->next_.ptr = n->next_.ptr;
     }
 };
 
