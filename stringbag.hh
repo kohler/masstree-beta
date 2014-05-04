@@ -21,8 +21,13 @@
 /** */
 template <typename L>
 class stringbag {
-    typedef L info_type;
-    static constexpr int max_halfinfo = (1 << (4 * sizeof(info_type))) - 1;
+    struct info_type {
+        L pos;
+        L len;
+        info_type(int p, int l)
+            : pos(p), len(l) {
+        }
+    };
     typedef string_slice<uintptr_t> slice_type;
 
   public:
@@ -30,8 +35,9 @@ class stringbag {
     stringbag(int width, size_t allocated_size) {
         size_t firstpos = overhead(width);
         assert(allocated_size >= firstpos
-               && allocated_size <= (size_t) max_halfinfo);
-        main_ = make_info((int) firstpos, (int) allocated_size);
+               && allocated_size <= (size_t) (L) -1);
+        size_ = firstpos;
+        allocated_size_ = allocated_size;
         memset(info_, 0, sizeof(info_type) * width);
     }
 
@@ -40,31 +46,31 @@ class stringbag {
     }
 
     int size() const {
-        return info_pos(main_);
+        return size_;
     }
     int allocated_size() const {
-        return info_len(main_);
+        return allocated_size_;
     }
 
     lcdf::Str get(int p) const {
         info_type info = info_[p];
-        return lcdf::Str(s_ + info_pos(info), info_len(info));
+        return lcdf::Str(s_ + info.pos, info.len);
     }
 
     bool equals_sloppy(int p, const char *s, int len) const {
         info_type info = info_[p];
-        if (info_len(info) != len)
+        if (info.len != len)
             return false;
         else
-            return slice_type::equals_sloppy(s, s_ + info_pos(info), len);
+            return slice_type::equals_sloppy(s, s_ + info.pos, len);
     }
     bool equals_sloppy(int p, lcdf::Str s) const {
         return equals_sloppy(p, s.s, s.len);
     }
     bool equals(int p, const char *s, int len) const {
         info_type info = info_[p];
-        return info_len(info) == len
-            && memcmp(s_ + info_pos(info), s, len) == 0;
+        return info.len == len
+            && memcmp(s_ + info.pos, s, len) == 0;
     }
     bool equals(int p, lcdf::Str s) const {
         return equals(p, s.s, s.len);
@@ -72,26 +78,26 @@ class stringbag {
 
     int compare(int p, const char *s, int len) const {
         info_type info = info_[p];
-        int minlen = std::min(len, info_len(info));
-        int cmp = memcmp(s_ + info_pos(info), s, minlen);
-        return cmp ? cmp : ::compare(info_len(info), len);
+        int minlen = std::min(len, (int) info.len);
+        int cmp = memcmp(s_ + info.pos, s, minlen);
+        return cmp ? cmp : ::compare((int) info.len, len);
     }
     int compare(int p, lcdf::Str s) const {
         return compare(p, s.s, s.len);
     }
 
     bool assign(int p, const char *s, int len) {
-        int pos, mylen = info_len(info_[p]);
+        int pos, mylen = info_[p].len;
         if (mylen >= len)
-            pos = info_pos(info_[p]);
+            pos = info_[p].pos;
         else if (size() + std::max(len, slice_type::size)
                    <= allocated_size()) {
             pos = size();
-            main_ = make_info(pos + len, allocated_size());
+            size_ += len;
         } else
             return false;
         memcpy(s_ + pos, s, len);
-        info_[p] = make_info(pos, len);
+        info_[p] = info_type(pos, len);
         return true;
     }
     bool assign(int p, lcdf::Str s) {
@@ -99,34 +105,23 @@ class stringbag {
     }
 
     void print(int width, FILE *f, const char *prefix, int indent) {
-        fprintf(f, "%s%*s%p (%d:)%d:%d [%d]...\n", prefix, indent, "",
-                this, (int) overhead(width), size(), allocated_size(), max_halfinfo + 1);
+        fprintf(f, "%s%*s%p (%d:)%d:%d...\n", prefix, indent, "",
+                this, (int) overhead(width), size(), allocated_size());
         for (int i = 0; i < width; ++i)
-            if (info_len(info_[i]))
+            if (info_[i].len)
                 fprintf(f, "%s%*s  #%x %d:%d %.*s\n", prefix, indent, "",
-                        i, info_pos(info_[i]), info_len(info_[i]), std::min(info_len(info_[i]), 40), s_ + info_pos(info_[i]));
+                        i, info_[i].pos, info_[i].len, std::min((int) info_[i].len, 40), s_ + info_[i].pos);
     }
 
   private:
-
     union {
         struct {
-            info_type main_;
+            L size_;
+            L allocated_size_;
             info_type info_[0];
         };
         char s_[0];
     };
-
-    static info_type make_info(int pos, int len) {
-        return (info_type(pos) << (4 * sizeof(info_type))) | len;
-    }
-    static int info_pos(info_type info) {
-        return info >> (4 * sizeof(info));
-    }
-    static int info_len(info_type info) {
-        return info & ((info_type(1) << (4 * sizeof(info))) - 1);
-    }
-
 };
 
 #endif

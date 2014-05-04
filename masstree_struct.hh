@@ -264,6 +264,8 @@ class leaf : public node_base<P> {
     typedef typename P::ikey_type ikey_type;
     typedef typename key_bound<width, P::bound_method>::type bound_type;
     typedef typename P::threadinfo_type threadinfo;
+    typedef stringbag<uint8_t> internal_ksuf_type;
+    typedef stringbag<uint16_t> external_ksuf_type;
 
     int8_t extrasize64_;
     int8_t nremoved_;
@@ -271,8 +273,7 @@ class leaf : public node_base<P> {
     typename permuter_type::storage_type permutation_;
     ikey_type ikey0_[width];
     leafvalue_type lv_[width];
-    stringbag<uint32_t>* ksuf_; // a real rockstar would save this space
-                                // when it is unsed
+    external_ksuf_type* ksuf_;
     union {
         leaf<P>* ptr;
         uintptr_t x;
@@ -281,7 +282,7 @@ class leaf : public node_base<P> {
     node_base<P>* parent_;
     kvtimestamp_t node_ts_;
     kvtimestamp_t created_at_[P::debug_level > 0];
-    stringbag<uint16_t> iksuf_[0];
+    internal_ksuf_type iksuf_[0];
 
     leaf(size_t sz, kvtimestamp_t node_ts)
         : node_base<P>(true), nremoved_(0),
@@ -290,7 +291,7 @@ class leaf : public node_base<P> {
         masstree_precondition(sz % 64 == 0 && sz / 64 < 128);
         extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
         if (extrasize64_ > 0)
-            new((void *)&iksuf_[0]) stringbag<uint16_t>(width, sz - sizeof(*this));
+            new((void *)&iksuf_[0]) internal_ksuf_type(width, sz - sizeof(*this));
     }
 
     static leaf<P>* make(int ksufsize, kvtimestamp_t node_ts, threadinfo& ti) {
@@ -669,8 +670,8 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
     if (ksuf_ && ksuf_->assign(p, s))
         return;
 
-    stringbag<uint16_t> *iksuf;
-    stringbag<uint32_t> *oksuf;
+    internal_ksuf_type* iksuf;
+    external_ksuf_type* oksuf;
     if (extrasize64_ > 0)
         iksuf = &iksuf_[0], oksuf = 0;
     else
@@ -684,11 +685,11 @@ void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
     else
         csz = 0;
     size_t sz = iceil_log2(std::max(csz, size_t(4 * width)) * 2);
-    while (sz < csz + stringbag<uint32_t>::overhead(width) + s.len)
+    while (sz < csz + external_ksuf_type::overhead(width) + s.len)
         sz *= 2;
 
-    void *ptr = ti.allocate(sz, memtag_masstree_ksuffixes);
-    stringbag<uint32_t> *nksuf = new(ptr) stringbag<uint32_t>(width, sz);
+    void* ptr = ti.allocate(sz, memtag_masstree_ksuffixes);
+    external_ksuf_type* nksuf = new(ptr) external_ksuf_type(width, sz);
     permuter_type perm(permutation_);
     int n = initializing ? p : perm.size();
     for (int i = 0; i < n; ++i) {
