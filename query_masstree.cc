@@ -125,12 +125,15 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
 
         // key suffix information
         if (lf->allocated_size() != lf->min_allocated_size()
-            && lf->ksuf_external())
+            && lf->ksuf_external()) {
+            j["overridden_ksuf"] += 1;
             j["overridden_ksuf_allocated_size"] += lf->allocated_size() - lf->min_allocated_size();
+        }
         if (lf->ksuf_allocated_size()) {
             size_t all_ksuf_len = 0;
             for (int i = 0; i < lf->width; ++i)
                 all_ksuf_len += lf->ksuf_storage(i).len;
+            j["ksuf"] += 1;
             j["ksuf_allocated_size"] += lf->ksuf_allocated_size();
             j["ksuf_len"] += used_ksuf_len;
             j["ksuf_wasted_len"] += all_ksuf_len - used_ksuf_len;
@@ -140,7 +143,8 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
                 j["unused_ksuf_by_layer"][layer] += 1;
                 if (lf->ksuf_external())
                     j["unused_ksuf_external"] += 1;
-            }
+            } else
+                j["used_ksuf_by_layer"][layer] += 1;
         }
     } else {
         internode<P> *in = static_cast<internode<P> *>(n);
@@ -161,7 +165,8 @@ void query_table<P>::json_stats(lcdf::Json& j, threadinfo& ti)
     const char* jarrays[] = {
         "node_by_depth", "leaf_by_depth", "leaf_by_size",
         "l1_node_by_depth", "l1_leaf_by_depth", "l1_leaf_by_size",
-        "key_by_layer", "key_by_length", "ksuf_by_layer", "unused_ksuf_by_layer"
+        "key_by_layer", "key_by_length",
+        "ksuf_by_layer", "unused_ksuf_by_layer", "used_ksuf_by_layer"
     };
     for (const char** x = jarrays; x != jarrays + sizeof(jarrays) / sizeof(*jarrays); ++x)
         j[*x] = Json::make_array();

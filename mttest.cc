@@ -606,7 +606,7 @@ struct test_thread {
             Json j;
             kvtest_json_stats(*table_, j, *tt.client_.ti_);
             if (j) {
-                fprintf(stderr, "%s\n", j.unparse(Json::indent_depth(4).tab_width(2).newline_terminator(true)).c_str());
+                fprintf(stderr, "%s\n", j.unparse(Json::indent_depth(1).tab_width(2).newline_terminator(true)).c_str());
                 tt.client_.json_.merge(j);
             }
         }
