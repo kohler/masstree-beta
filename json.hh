@@ -1667,8 +1667,7 @@ inline bool Json::is_i() const {
     return is_int();
 }
 inline bool Json::is_unsigned() const {
-    return u_.x.type == j_unsigned
-        || (u_.x.type == j_int && u_.i.x >= 0);
+    return u_.x.type == j_unsigned;
 }
 inline bool Json::is_u() const {
     return is_unsigned();
