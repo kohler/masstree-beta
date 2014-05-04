@@ -3,7 +3,7 @@
  * jsontest.{cc,hh} -- regression tests for Json
  * Eddie Kohler
  *
- * Copyright (c) 2012-2013 Eddie Kohler
+ * Copyright (c) 2012-2014 Eddie Kohler
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -492,6 +492,25 @@ int main(int argc, char** argv) {
         CHECK(r == x + 18);
         CHECK(jsp.success());
         CHECK(jsp.result().unparse() == "[0,1,2,3,400000,10.2]");
+    }
+
+    {
+        unsigned long s = 77;
+        Json j = Json::array(0, s, "foo");
+        CHECK(j.is_a());
+        CHECK(j[1].is_u());
+        CHECK(j[1] == s);
+        CHECK(j[1] == 77);
+
+        j = Json::array((uint64_t) -1, (int64_t) -1,
+                        (uint64_t) 1, (int64_t) 1,
+                        (uint64_t) 2, (int64_t) 2);
+        CHECK(j[0] != j[1]);
+        CHECK(j[2] == j[3]);
+        CHECK(j[4] == j[5]);
+        CHECK(j[0] != j[2]);
+        CHECK(j[2] != j[4]);
+        CHECK_JUP(j, "[18446744073709551615,-1,1,1,2,2]");
     }
 
     {
