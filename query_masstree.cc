@@ -124,6 +124,9 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
         j["key_by_layer"][layer] += n;
 
         // key suffix information
+        if (lf->allocated_size() != lf->min_allocated_size()
+            && lf->ksuf_external())
+            j["overridden_ksuf_allocated_size"] += lf->allocated_size() - lf->min_allocated_size();
         if (lf->ksuf_allocated_size()) {
             size_t all_ksuf_len = 0;
             for (int i = 0; i < lf->width; ++i)

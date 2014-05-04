@@ -312,6 +312,9 @@ class leaf : public node_base<P> {
         return n;
     }
 
+    static size_t min_allocated_size() {
+        return (sizeof(leaf<P>) + 63) & ~size_t(63);
+    }
     size_t allocated_size() const {
         int es = (extrasize64_ >= 0 ? extrasize64_ : -extrasize64_ - 1);
         return (sizeof(*this) + es * 64 + 63) & ~size_t(63);
