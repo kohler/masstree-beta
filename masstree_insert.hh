@@ -77,24 +77,38 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     key_type oka(n_->ksuf(kp_));
     ka_.shift();
     int kc = key_compare(oka, ka_);
+
+    // Create a twig of nodes until the suffixes diverge
+    leaf_type* twig_head = n_;
+    leaf_type* twig_tail = n_;
+    while (kc == 0) {
+        leaf_type* nl = leaf_type::make_root(0, twig_tail, ti);
+        nl->assign_initialize_for_layer(0, oka);
+        if (twig_head != n_)
+            twig_tail->lv_[0] = nl;
+        else
+            twig_head = nl;
+        nl->permutation_ = permuter_type::make_sorted(1);
+        twig_tail = nl;
+        oka.shift();
+        ka_.shift();
+        kc = key_compare(oka, ka_);
+    }
+
     // Estimate how much space will be required for keysuffixes
     size_t ksufsize;
-    if (kc && (ka_.has_suffix() || oka.has_suffix()))
+    if (ka_.has_suffix() || oka.has_suffix())
         ksufsize = (std::max(0, ka_.suffix_length())
                     + std::max(0, oka.suffix_length())) * (n_->width / 2)
             + n_->iksuf_[0].overhead(n_->width);
     else
         ksufsize = 0;
-    leaf_type *nl = leaf_type::make_root(ksufsize, n_, ti);
-    nl->assign_initialize(0, kc <= 0 ? oka : ka_, ti);
-    if (kc != 0)
-        nl->assign_initialize(1, kc <= 0 ? ka_ : oka, ti);
+    leaf_type *nl = leaf_type::make_root(ksufsize, twig_tail, ti);
+    nl->assign_initialize(0, kc < 0 ? oka : ka_, ti);
+    nl->assign_initialize(1, kc < 0 ? ka_ : oka, ti);
     nl->lv_[kc > 0] = n_->lv_[kp_];
-    if (kc != 0) {
-        nl->lock(*nl, ti.lock_fence(tc_leaf_lock));
-        nl->lv_[kc < 0] = leafvalue_type::make_empty();
-    }
-    if (kc <= 0)
+    nl->lock(*nl, ti.lock_fence(tc_leaf_lock));
+    if (kc < 0)
         nl->permutation_ = permuter_type::make_sorted(1);
     else {
         permuter_type permnl = permuter_type::make_sorted(2);
@@ -110,19 +124,21 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     // retry. The first keylenx_ write informs a reader that the value is
     // in flux, the second informs it of the true value. On x86 we only
     // need compiler barriers.
-    n_->keylenx_[kp_] = sizeof(n_->ikey0_[0]) + 65;
+    n_->keylenx_[kp_] = n_->unstable_layer_keylenx;
+    if (twig_tail != n_)
+        twig_tail->lv_[0] = nl;
     fence();
-    n_->lv_[kp_] = nl;
+    if (twig_head != n_)
+        n_->lv_[kp_] = twig_head;
+    else
+        n_->lv_[kp_] = nl;
     fence();
-    n_->keylenx_[kp_] = sizeof(n_->ikey0_[0]) + 129;
-    n_->nksuf_ -= !!oka.length();
+    n_->keylenx_[kp_] = n_->stable_layer_keylenx;
+    --n_->nksuf_;
     n_->unlock(v);
-    if (kc != 0) {
-        n_ = nl;
-        ki_ = kp_ = kc < 0;
-        return insert_marker();
-    } else
-        return nl;
+    n_ = nl;
+    ki_ = kp_ = kc < 0;
+    return insert_marker();
 }
 
 template <typename P>

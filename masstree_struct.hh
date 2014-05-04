@@ -266,6 +266,8 @@ class leaf : public node_base<P> {
     typedef typename P::threadinfo_type threadinfo;
     typedef stringbag<uint8_t> internal_ksuf_type;
     typedef stringbag<uint16_t> external_ksuf_type;
+    static constexpr int unstable_layer_keylenx = sizeof(ikey_type) + 65;
+    static constexpr int stable_layer_keylenx = sizeof(ikey_type) + 129;
 
     int8_t extrasize64_;
     int8_t nremoved_;
@@ -493,6 +495,11 @@ class leaf : public node_base<P> {
             assign_ksuf(p, x->ksuf(xp), true, ti);
         ikey0_[p] = x->ikey0_[xp];
         keylenx_[p] = x->keylenx_[xp];
+    }
+    inline void assign_initialize_for_layer(int p, const key_type& ka) {
+        assert(ka.has_suffix());
+        ikey0_[p] = ka.ikey();
+        keylenx_[p] = stable_layer_keylenx;
     }
     inline void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
         if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
