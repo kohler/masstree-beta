@@ -159,6 +159,7 @@ class tcursor {
     inline node_type* get_leaf_locked(node_type* root, nodeversion_type& v, threadinfo& ti);
     inline node_type* check_leaf_locked(node_type* root, nodeversion_type v, threadinfo& ti);
     inline node_type* check_leaf_insert(node_type* root, nodeversion_type v, threadinfo& ti);
+    node_type* check_leaf_new_layer(nodeversion_type v, threadinfo& ti);
     static inline node_type* insert_marker() {
         return reinterpret_cast<node_type*>(uintptr_t(1));
     }
