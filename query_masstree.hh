@@ -52,6 +52,11 @@ class query_table {
 
     void stats(FILE* f);
     void json_stats(lcdf::Json& j, threadinfo& ti);
+    inline lcdf::Json json_stats(threadinfo& ti) {
+        lcdf::Json j;
+        json_stats(j, ti);
+        return j;
+    }
 
     void print(FILE* f, int indent) const;
 

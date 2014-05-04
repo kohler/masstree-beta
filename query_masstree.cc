@@ -88,12 +88,16 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
     if (!n)
         return;
     else if (n->isleaf()) {
-        leaf<P> *lf = static_cast<leaf<P> *>(n);
+        leaf<P>* lf = static_cast<leaf<P>*>(n);
+        // track number of leaves by depth and size
         j[&"l1_node_by_depth"[!layer * 3]][depth] += 1;
         j[&"l1_leaf_by_depth"[!layer * 3]][depth] += 1;
         j[&"l1_leaf_by_size"[!layer * 3]][lf->size()] += 1;
+
+        // per-key information
         typename leaf<P>::permuter_type perm(lf->permutation_);
         int n = 0;
+        size_t used_ksuf_len = 0;
         for (int i = 0; i < perm.size(); ++i)
             if (lf->value_is_layer(perm[i])) {
                 lcdf::Json x = j["l1_size"];
@@ -106,13 +110,33 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
                 ++n;
                 int l = sizeof(typename P::ikey_type) * layer
                     + lf->keylenx_[perm[i]];
-                if (lf->has_ksuf(perm[i]))
-                    l += lf->ksuf(perm[i]).len - 1;
+                if (lf->has_ksuf(perm[i])) {
+                    size_t ksuf_len = lf->ksuf(perm[i]).len;
+                    l += ksuf_len - 1;
+                    used_ksuf_len += ksuf_len;
+                }
                 j["key_by_length"][l] += 1;
             }
         j["size"] += n;
         j["l1_size"] += n;
         j["key_by_layer"][layer] += n;
+
+        // key suffix information
+        if (lf->ksuf_allocated_size()) {
+            size_t all_ksuf_len = 0;
+            for (int i = 0; i < lf->width; ++i)
+                all_ksuf_len += lf->ksuf_storage(i).len;
+            j["ksuf_allocated_size"] += lf->ksuf_allocated_size();
+            j["ksuf_len"] += used_ksuf_len;
+            j["ksuf_wasted_len"] += all_ksuf_len - used_ksuf_len;
+            j["ksuf_by_depth"][depth] += 1;
+            if (!used_ksuf_len) {
+                j["unused_ksuf_allocated_size"] += lf->ksuf_allocated_size();
+                j["unused_ksuf_by_depth"][depth] += 1;
+                if (lf->ksuf_external())
+                    j["unused_ksuf_external"] += 1;
+            }
+        }
     } else {
         internode<P> *in = static_cast<internode<P> *>(n);
         for (int i = 0; i <= n->size(); ++i)
@@ -129,16 +153,25 @@ void query_table<P>::json_stats(lcdf::Json& j, threadinfo& ti)
     j["size"] = 0.0;
     j["l1_count"] = 0;
     j["l1_size"] = 0;
-    j["node_by_depth"] = Json::make_array();
-    j["l1_node_by_depth"] = Json::make_array();
-    j["leaf_by_depth"] = Json::make_array();
-    j["l1_leaf_by_depth"] = Json::make_array();
-    j["leaf_by_size"] = Json::make_array();
-    j["l1_leaf_by_size"] = Json::make_array();
-    j["key_by_layer"] = Json::make_array();
-    j["key_by_length"] = Json::make_array();
+    const char* jarrays[] = {
+        "node_by_depth", "leaf_by_depth", "leaf_by_size",
+        "l1_node_by_depth", "l1_leaf_by_depth", "l1_leaf_by_size",
+        "key_by_layer", "key_by_length", "ksuf_by_depth", "unused_ksuf_by_depth"
+    };
+    for (const char** x = jarrays; x != jarrays + sizeof(jarrays) / sizeof(*jarrays); ++x)
+        j[*x] = Json::make_array();
+
     json_stats1(table_.root(), j, 0, 0, ti);
+
     j.unset("l1_size");
+    for (const char** x = jarrays; x != jarrays + sizeof(jarrays) / sizeof(*jarrays); ++x) {
+        Json& a = j[*x];
+        for (Json* it = a.array_data(); it != a.end_array_data(); ++it)
+            if (!*it)
+                *it = Json((size_t) 0);
+        if (a.empty())
+            j.unset(*x);
+    }
 }
 
 template <typename N>

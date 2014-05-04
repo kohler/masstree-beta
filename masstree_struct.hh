@@ -353,19 +353,6 @@ class leaf : public node_base<P> {
     inline leaf<P>* advance_to_key(const key_type& k, nodeversion_type& version,
                                    threadinfo& ti) const;
 
-    bool value_is_layer(int p) const {
-        return keylenx_is_layer(keylenx_[p]);
-    }
-    bool value_is_stable_layer(int p) const {
-        return keylenx_is_stable_layer(keylenx_[p]);
-    }
-    bool has_ksuf(int p) const {
-        return keylenx_has_ksuf(keylenx_[p]);
-    }
-    Str ksuf(int p) const {
-        masstree_precondition(has_ksuf(p));
-        return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
-    }
     static int keylenx_ikeylen(int keylenx) {
         return keylenx & 63;
     }
@@ -381,11 +368,19 @@ class leaf : public node_base<P> {
     static bool keylenx_has_ksuf(int keylenx) {
         return keylenx == (int) sizeof(ikey_type) + 1;
     }
-    size_t ksuf_size() const {
-        if (extrasize64_ <= 0)
-            return ksuf_ ? ksuf_->size() : 0;
-        else
-            return iksuf_[0].size();
+
+    bool value_is_layer(int p) const {
+        return keylenx_is_layer(keylenx_[p]);
+    }
+    bool value_is_stable_layer(int p) const {
+        return keylenx_is_stable_layer(keylenx_[p]);
+    }
+    bool has_ksuf(int p) const {
+        return keylenx_has_ksuf(keylenx_[p]);
+    }
+    Str ksuf(int p) const {
+        masstree_precondition(has_ksuf(p));
+        return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
     }
     bool ksuf_equals(int p, const key_type& ka) {
         // Precondition: keylenx_[p] == ka.ikeylen() && ikey0_[p] == ka.ikey()
@@ -404,6 +399,34 @@ class leaf : public node_base<P> {
             return iksuf_[0].compare(p, ka.suffix());
         else
             return ksuf_->compare(p, ka.suffix());
+    }
+
+    size_t ksuf_size() const {
+        if (ksuf_)
+            return ksuf_->size();
+        else if (extrasize64_ > 0)
+            return iksuf_[0].size();
+        else
+            return 0;
+    }
+    size_t ksuf_allocated_size() const {
+        if (ksuf_)
+            return ksuf_->allocated_size();
+        else if (extrasize64_ > 0)
+            return iksuf_[0].allocated_size();
+        else
+            return 0;
+    }
+    bool ksuf_external() const {
+        return ksuf_;
+    }
+    Str ksuf_storage(int p) const {
+        if (ksuf_)
+            return ksuf_->get(p);
+        else if (extrasize64_ > 0)
+            return iksuf_[0].get(p);
+        else
+            return Str();
     }
 
     bool deleted_layer() const {
