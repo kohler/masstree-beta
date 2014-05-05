@@ -46,30 +46,6 @@ $ ./mttest
 0: {"table":"mb","test":"rw1","trial":0,"thread":0,"puts":13243551,"puts_per_sec":1324492.05531,"gets":13243551,"gets_per_sec":1497267.13928,"ops":26487102,"ops_per_sec":1405590.1258}
 1: {"table":"mb","test":"rw1","trial":0,"thread":1,"puts":13242601,"puts_per_sec":1324397.45602,"gets":13242601,"gets_per_sec":1481151.35726,"ops":26485202,"ops_per_sec":1398395.26601}
 EXPERIMENT x0
-set title "mat (2 cores)"
-set terminal png
-set xrange [0.96:1.44]
-set xtics rotate ("rw1/mb" 1, "rw1/mb" 1.2, "rw1/mb" 1.4)
-set key top left Left reverse
-set ylabel "count, normalized per test"
-plot  '-' using 1:($3/$6):($2/$6):($5/$6):($4/$6) with candlesticks lt 1 title 'ops_per_sec', \
- '-' using 1:($2/$3):($2/$3):($2/$3):($2/$3) with candlesticks lt 1 notitle, \
- '-' using 1:($3/$6):($2/$6):($5/$6):($4/$6) with candlesticks lt 2 title 'puts_per_sec', \
- '-' using 1:($2/$3):($2/$3):($2/$3):($2/$3) with candlesticks lt 2 notitle, \
- '-' using 1:($3/$6):($2/$6):($5/$6):($4/$6) with candlesticks lt 3 title 'gets_per_sec', \
- '-' using 1:($2/$3):($2/$3):($2/$3):($2/$3) with candlesticks lt 3 notitle
-1 1398395.26601 1400193.98096 1403791.41085 1405590.1258 1401992.6959
-e
-1 1401992.6959 1401992.6959
-e
-1.2 1324397.45602 1324421.10584 1324468.40549 1324492.05531 1324444.75567
-e
-1.2 1324444.75567 1324444.75567
-e
-1.4 1481151.35726 1485180.30276 1493238.19378 1497267.13928 1489209.24827
-e
-1.4 1489209.24827 1489209.24827
-e
 </pre>
 
 The test starts a process which hosts a Masstree, and generates and
@@ -83,12 +59,14 @@ For a list of workloads, run `./mttest --help`.
 The output summarizes the throughput of each core. The `1/1 rw1/m` line says
 that `mttest` is running the first trial (out of one trials), of the `rw1`
 workload using Masstree (`m` for short) as the internal data structure.
+When the run completes (the `now getting` lines are printed during the
+test), `mttest` generates a per-core throughput summary, as indicated by
+`0: {"table":"mb","test":"rw1",...}`.
 
-The rest of the result comprises of two parts. First is the per-core
-throughput summary, as indicated by `0: {"table":"mb","test":"rw1",...}`. The
-rest is the gnuplot source that plot the median per-core throughput. If you
-plot it, each candlestick has five points, each represents the
-min,20%,50%,70%,max of the corresponding metric among all threads.
+If you redirect its standard output to a file or pipe, `mttest` will produce
+gnuplot source that plots the median per-core throughput. Each candlestick
+has five points for the min,20%,50%,70%,max of the corresponding metrics
+among all threads.
 
 `mttest` also writes the output as JSON into file for further analysis. For
 example, after `./mttest`, `notebook-mttest.json` will contain:
