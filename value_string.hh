@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -51,11 +51,11 @@ class value_string {
     inline void checkpoint_write(UNPARSER& unpar) const;
 
     void print(FILE* f, const char* prefix, int indent, Str key,
-	       kvtimestamp_t initial_ts, const char* suffix = "") {
-	kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
-	fprintf(f, "%s%*s%.*s = %.*s @" PRIKVTSPARTS "%s\n", prefix, indent, "",
-		key.len, key.s, std::min(40U, vallen_), s_,
-		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
+               kvtimestamp_t initial_ts, const char* suffix = "") {
+        kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
+        fprintf(f, "%s%*s%.*s = %.*s @" PRIKVTSPARTS "%s\n", prefix, indent, "",
+                key.len, key.s, std::min(40U, vallen_), s_,
+                KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 
     static inline index_type make_index(unsigned offset, unsigned length);

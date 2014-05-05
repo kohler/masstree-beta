@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,47 +24,47 @@ class circular_int {
     typedef typename mass::make_signed<T>::type difference_type;
 
     circular_int()
-	: v_() {
+        : v_() {
     }
     circular_int(T x)
-	: v_(x) {
+        : v_(x) {
     }
 
     value_type value() const {
-	return v_;
+        return v_;
     }
 
     circular_int<T> &operator++() {
-	++v_;
-	return *this;
+        ++v_;
+        return *this;
     }
     circular_int<T> operator++(int) {
-	++v_;
-	return circular_int<T>(v_ - 1);
+        ++v_;
+        return circular_int<T>(v_ - 1);
     }
     circular_int<T> &operator--() {
-	--v_;
-	return *this;
+        --v_;
+        return *this;
     }
     circular_int<T> operator--(int) {
-	--v_;
-	return circular_int<T>(v_ + 1);
+        --v_;
+        return circular_int<T>(v_ + 1);
     }
     circular_int<T> &operator+=(unsigned x) {
-	v_ += x;
-	return *this;
+        v_ += x;
+        return *this;
     }
     circular_int<T> &operator+=(int x) {
-	v_ += x;
-	return *this;
+        v_ += x;
+        return *this;
     }
     circular_int<T> &operator-=(unsigned x) {
-	v_ -= x;
-	return *this;
+        v_ -= x;
+        return *this;
     }
     circular_int<T> &operator-=(int x) {
-	v_ -= x;
-	return *this;
+        v_ -= x;
+        return *this;
     }
 
     circular_int<T> cmpxchg(circular_int<T> expected, circular_int<T> desired) {
@@ -76,59 +76,59 @@ class circular_int {
 
     typedef value_type (circular_int<T>::*unspecified_bool_type)() const;
     operator unspecified_bool_type() const {
-	return v_ != 0 ? &circular_int<T>::value : 0;
+        return v_ != 0 ? &circular_int<T>::value : 0;
     }
     bool operator!() const {
-	return v_ == 0;
+        return v_ == 0;
     }
 
     circular_int<T> operator+(unsigned x) const {
-	return circular_int<T>(v_ + x);
+        return circular_int<T>(v_ + x);
     }
     circular_int<T> operator+(int x) const {
-	return circular_int<T>(v_ + x);
+        return circular_int<T>(v_ + x);
     }
     circular_int<T> next_nonzero() const {
-	value_type v = v_ + 1;
-	return circular_int<T>(v + !v);
+        value_type v = v_ + 1;
+        return circular_int<T>(v + !v);
     }
     static value_type next_nonzero(value_type x) {
-	++x;
-	return x + !x;
+        ++x;
+        return x + !x;
     }
     circular_int<T> operator-(unsigned x) const {
-	return circular_int<T>(v_ - x);
+        return circular_int<T>(v_ - x);
     }
     circular_int<T> operator-(int x) const {
-	return circular_int<T>(v_ - x);
+        return circular_int<T>(v_ - x);
     }
     difference_type operator-(circular_int<T> x) const {
-	return v_ - x.v_;
+        return v_ - x.v_;
     }
 
     bool operator==(circular_int<T> x) const {
-	return v_ == x.v_;
+        return v_ == x.v_;
     }
     bool operator!=(circular_int<T> x) const {
-	return !(*this == x);
+        return !(*this == x);
     }
     static bool less(value_type a, value_type b) {
-	return difference_type(a - b) < 0;
+        return difference_type(a - b) < 0;
     }
     static bool less_equal(value_type a, value_type b) {
-	return difference_type(a - b) <= 0;
+        return difference_type(a - b) <= 0;
     }
     bool operator<(circular_int<T> x) const {
-	return less(v_, x.v_);
+        return less(v_, x.v_);
     }
     bool operator<=(circular_int<T> x) const {
-	return !less(x.v_, v_);
+        return !less(x.v_, v_);
     }
     bool operator>=(circular_int<T> x) const {
-	return !less(v_, x.v_);
+        return !less(v_, x.v_);
     }
     bool operator>(circular_int<T> x) const {
-	return less(x.v_, v_);
+        return less(x.v_, v_);
     }
 
   private:

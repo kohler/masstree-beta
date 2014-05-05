@@ -57,12 +57,12 @@ class local_vector {
 
   private:
     struct rep : public A {
-	T* v_;
-	size_type size_;
-	size_type capacity_;
-	char lv_[sizeof(T) * N];
+        T* v_;
+        size_type size_;
+        size_type capacity_;
+        char lv_[sizeof(T) * N];
 
-	inline rep(const A& a);
+        inline rep(const A& a);
     };
     rep r_;
 
@@ -96,9 +96,9 @@ local_vector<T, N, A>::local_vector(const local_vector<T, NN, AA>& x)
 template <typename T, int N, typename A>
 inline local_vector<T, N, A>::~local_vector() {
     for (size_type i = 0; i != r_.size_; ++i)
-	r_.destroy(&r_.v_[i]);
+        r_.destroy(&r_.v_[i]);
     if (r_.v_ != reinterpret_cast<T*>(r_.lv_))
-	r_.deallocate(r_.v_, r_.capacity_);
+        r_.deallocate(r_.v_, r_.capacity_);
 }
 
 template <typename T, int N, typename A>
@@ -125,11 +125,11 @@ template <typename T, int N, typename A>
 void local_vector<T, N, A>::grow() {
     T* m = r_.allocate(r_.capacity_ * 2);
     for (size_type i = 0; i != r_.size_; ++i) {
-	r_.construct(&m[i], std::move(r_.v_[i]));
-	r_.destroy(&r_.v_[i]);
+        r_.construct(&m[i], std::move(r_.v_[i]));
+        r_.destroy(&r_.v_[i]);
     }
     if (r_.v_ != reinterpret_cast<T*>(r_.lv_))
-	r_.deallocate(r_.v_, r_.capacity_);
+        r_.deallocate(r_.v_, r_.capacity_);
     r_.v_ = m;
     r_.capacity_ *= 2;
 }
@@ -227,7 +227,7 @@ inline const T& local_vector<T, N, A>::back() const {
 template <typename T, int N, typename A>
 inline void local_vector<T, N, A>::push_back(const T& x) {
     if (r_.size_ == r_.capacity_)
-	grow();
+        grow();
     r_.construct(&r_.v_[r_.size_], x);
     ++r_.size_;
 }
@@ -235,7 +235,7 @@ inline void local_vector<T, N, A>::push_back(const T& x) {
 template <typename T, int N, typename A>
 inline void local_vector<T, N, A>::push_back(T&& x) {
     if (r_.size_ == r_.capacity_)
-	grow();
+        grow();
     r_.construct(&r_.v_[r_.size_], std::move(x));
     ++r_.size_;
 }
@@ -243,7 +243,7 @@ inline void local_vector<T, N, A>::push_back(T&& x) {
 template <typename T, int N, typename A> template <typename... Args>
 inline void local_vector<T, N, A>::emplace_back(Args&&... args) {
     if (r_.size_ == r_.capacity_)
-	grow();
+        grow();
     r_.construct(&r_.v_[r_.size_], std::forward<Args>(args)...);
     ++r_.size_;
 }

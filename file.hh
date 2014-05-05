@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -25,16 +25,16 @@ safe_read(int fd, void *buf, size_t count)
 {
     size_t pos = 0;
     while (pos != count) {
-	ssize_t x = ::read(fd, buf, count - pos);
-	if (x != -1 && x != 0) {
-	    buf = reinterpret_cast<char *>(buf) + x;
-	    pos += x;
-	} else if (x == 0)
-	    break;
-	else if (errno != EINTR && pos == 0)
-	    return -1;
-	else if (errno != EINTR)
-	    break;
+        ssize_t x = ::read(fd, buf, count - pos);
+        if (x != -1 && x != 0) {
+            buf = reinterpret_cast<char *>(buf) + x;
+            pos += x;
+        } else if (x == 0)
+            break;
+        else if (errno != EINTR && pos == 0)
+            return -1;
+        else if (errno != EINTR)
+            break;
     }
     return pos;
 }
@@ -44,16 +44,16 @@ safe_write(int fd, const void *buf, size_t count)
 {
     size_t pos = 0;
     while (pos != count) {
-	ssize_t x = ::write(fd, buf, count - pos);
-	if (x != -1 && x != 0) {
-	    buf = reinterpret_cast<const char *>(buf) + x;
-	    pos += x;
-	} else if (x == 0)
-	    break;
-	else if (errno != EINTR && pos == 0)
-	    return -1;
-	else if (errno != EINTR)
-	    break;
+        ssize_t x = ::write(fd, buf, count - pos);
+        if (x != -1 && x != 0) {
+            buf = reinterpret_cast<const char *>(buf) + x;
+            pos += x;
+        } else if (x == 0)
+            break;
+        else if (errno != EINTR && pos == 0)
+            return -1;
+        else if (errno != EINTR)
+            break;
     }
     return pos;
 }
@@ -75,8 +75,8 @@ checked_write(int fd, const T *x)
 lcdf::String read_file_contents(int fd);
 lcdf::String read_file_contents(const char *filename);
 int sync_write_file_contents(const char *filename, const lcdf::String &contents,
-			     mode_t mode = 0666);
+                             mode_t mode = 0666);
 int atomic_write_file_contents(const char *filename, const lcdf::String &contents,
-			       mode_t mode = 0666);
+                               mode_t mode = 0666);
 
 #endif

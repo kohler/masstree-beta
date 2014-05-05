@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -45,19 +45,19 @@
 const char *serverip = "127.0.0.1";
 
 typedef void (*get_async_cb)(struct child *c, struct async *a,
-			     bool has_val, const Str &val);
+                             bool has_val, const Str &val);
 typedef void (*put_async_cb)(struct child *c, struct async *a,
-			     int status);
+                             int status);
 typedef void (*remove_async_cb)(struct child *c, struct async *a,
-				int status);
+                                int status);
 
 struct async {
     int cmd; // Cmd_ constant
     unsigned seq;
     union {
-	get_async_cb get_fn;
-	put_async_cb put_fn;
-	remove_async_cb remove_fn;
+        get_async_cb get_fn;
+        put_async_cb put_fn;
+        remove_async_cb remove_fn;
     };
     char key[16]; // just first 16 bytes
     char wanted[16]; // just first 16 bytes
@@ -152,16 +152,16 @@ static int maxkeyletter = '9';
 
 struct kvtest_client {
     kvtest_client(struct child& c)
-	: c_(&c) {
+        : c_(&c) {
     }
     struct child* child() const {
         return c_;
     }
     int id() const {
-	return c_->childno;
+        return c_->childno;
     }
     int nthreads() const {
-	return ::children;
+        return ::children;
     }
     char minkeyletter() const {
         return ::minkeyletter;
@@ -170,13 +170,13 @@ struct kvtest_client {
         return ::maxkeyletter;
     }
     void register_timeouts(int n) {
-	(void) n;
+        (void) n;
     }
     bool timeout(int which) const {
-	return ::timeout[which];
+        return ::timeout[which];
     }
     uint64_t limit() const {
-	return ::limit;
+        return ::limit;
     }
     int getratio() const {
         assert(::getratio >= 0);
@@ -192,41 +192,41 @@ struct kvtest_client {
         return ::prefixLen;
     }
     double now() const {
-	return ::now();
+        return ::now();
     }
 
     void get(long ikey, Str *value) {
-	quick_istr key(ikey);
-	aget(c_, key.string(),
-	     Str(reinterpret_cast<const char *>(&value), sizeof(value)),
-	     asyncgetcb);
+        quick_istr key(ikey);
+        aget(c_, key.string(),
+             Str(reinterpret_cast<const char *>(&value), sizeof(value)),
+             asyncgetcb);
     }
     void get(const Str &key, int *ivalue) {
-	aget(c_, key,
-	     Str(reinterpret_cast<const char *>(&ivalue), sizeof(ivalue)),
-	     asyncgetcb_int);
+        aget(c_, key,
+             Str(reinterpret_cast<const char *>(&ivalue), sizeof(ivalue)),
+             asyncgetcb_int);
     }
     bool get_sync(long ikey) {
-	char got[512];
-	quick_istr key(ikey);
-	return ::get(c_, key.string(), got, sizeof(got)) >= 0;
+        char got[512];
+        quick_istr key(ikey);
+        return ::get(c_, key.string(), got, sizeof(got)) >= 0;
     }
     void get_check(long ikey, long iexpected) {
-	aget(c_, ikey, iexpected, 0);
+        aget(c_, ikey, iexpected, 0);
     }
     void get_check(const char *key, const char *val) {
-	aget(c_, Str(key), Str(val), 0);
+        aget(c_, Str(key), Str(val), 0);
     }
     void get_check(const Str &key, const Str &val) {
-	aget(c_, key, val, 0);
+        aget(c_, key, val, 0);
     }
     void get_check_key8(long ikey, long iexpected) {
-	quick_istr key(ikey, 8), expected(iexpected);
-	aget(c_, key.string(), expected.string(), 0);
+        quick_istr key(ikey, 8), expected(iexpected);
+        aget(c_, key.string(), expected.string(), 0);
     }
     void get_check_key10(long ikey, long iexpected) {
-	quick_istr key(ikey, 10), expected(iexpected);
-	aget(c_, key.string(), expected.string(), 0);
+        quick_istr key(ikey, 10), expected(iexpected);
+        aget(c_, key.string(), expected.string(), 0);
     }
     void many_get_check(int, long [], long []) {
         assert(0);
@@ -235,19 +235,19 @@ struct kvtest_client {
         aget_col(c_, key, col, value, 0);
     }
     void get_col_check(long ikey, int col, long ivalue) {
-	quick_istr key(ikey), value(ivalue);
-	get_col_check(key.string(), col, value.string());
+        quick_istr key(ikey), value(ivalue);
+        get_col_check(key.string(), col, value.string());
     }
     void get_col_check_key10(long ikey, int col, long ivalue) {
-	quick_istr key(ikey, 10), value(ivalue);
-	get_col_check(key.string(), col, value.string());
+        quick_istr key(ikey, 10), value(ivalue);
+        get_col_check(key.string(), col, value.string());
     }
     void get_check_sync(long ikey, long iexpected) {
         char key[512], val[512], got[512];
         sprintf(key, "%010ld", ikey);
         sprintf(val, "%ld", iexpected);
         memset(got, 0, sizeof(got));
-	::get(c_, Str(key), got, sizeof(got));
+        ::get(c_, Str(key), got, sizeof(got));
         if (strcmp(val, got)) {
             fprintf(stderr, "key %s, expected %s, got %s\n", key, val, got);
             always_assert(0);
@@ -255,58 +255,58 @@ struct kvtest_client {
     }
 
     void put(const Str &key, const Str &value) {
-	aput(c_, key, value);
+        aput(c_, key, value);
     }
     void put(const Str &key, const Str &value, int *status) {
-	aput(c_, key, value,
-	     asyncputcb,
-	     Str(reinterpret_cast<const char *>(&status), sizeof(status)));
+        aput(c_, key, value,
+             asyncputcb,
+             Str(reinterpret_cast<const char *>(&status), sizeof(status)));
     }
     void put(const char *key, const char *value) {
-	aput(c_, Str(key), Str(value));
+        aput(c_, Str(key), Str(value));
     }
     void put(const Str &key, long ivalue) {
-	quick_istr value(ivalue);
-	aput(c_, key, value.string());
+        quick_istr value(ivalue);
+        aput(c_, key, value.string());
     }
     void put(long ikey, long ivalue) {
-	quick_istr key(ikey), value(ivalue);
-	aput(c_, key.string(), value.string());
+        quick_istr key(ikey), value(ivalue);
+        aput(c_, key.string(), value.string());
     }
     void put_key8(long ikey, long ivalue) {
-	quick_istr key(ikey, 8), value(ivalue);
-	aput(c_, key.string(), value.string());
+        quick_istr key(ikey, 8), value(ivalue);
+        aput(c_, key.string(), value.string());
     }
     void put_key10(long ikey, long ivalue) {
-	quick_istr key(ikey, 10), value(ivalue);
-	aput(c_, key.string(), value.string());
+        quick_istr key(ikey, 10), value(ivalue);
+        aput(c_, key.string(), value.string());
     }
     void put_col(const Str &key, int col, const Str &value) {
         aput_col(c_, key, col, value);
     }
     void put_col(long ikey, int col, long ivalue) {
-	quick_istr key(ikey), value(ivalue);
-	put_col(key.string(), col, value.string());
+        quick_istr key(ikey), value(ivalue);
+        put_col(key.string(), col, value.string());
     }
     void put_col_key10(long ikey, int col, long ivalue) {
-	quick_istr key(ikey, 10), value(ivalue);
-	put_col(key.string(), col, value.string());
+        quick_istr key(ikey, 10), value(ivalue);
+        put_col(key.string(), col, value.string());
     }
     void put_sync(long ikey, long ivalue) {
-	quick_istr key(ikey, 10), value(ivalue);
-	::put(c_, key.string(), value.string());
+        quick_istr key(ikey, 10), value(ivalue);
+        ::put(c_, key.string(), value.string());
     }
 
     void remove(const Str &key) {
-	aremove(c_, key, 0);
+        aremove(c_, key, 0);
     }
     void remove(long ikey) {
-	quick_istr key(ikey);
-	remove(key.string());
+        quick_istr key(ikey);
+        remove(key.string());
     }
     bool remove_sync(long ikey) {
-	quick_istr key(ikey);
-	return ::remove(c_, key.string());
+        quick_istr key(ikey);
+        return ::remove(c_, key.string());
     }
 
     int ruscale_partsz() const {
@@ -319,49 +319,49 @@ struct kvtest_client {
         return 16 * ::rscale_partsz;
     }
     void wait_all() {
-	checkasync(c_, 2);
+        checkasync(c_, 2);
     }
     void puts_done() {
     }
     void rcu_quiesce() {
     }
     void notice(String s) {
-	if (!quiet) {
-	    if (!s.empty() && s.back() == '\n')
-		s = s.substring(0, -1);
-	    if (s.empty() || isspace((unsigned char) s[0]))
-		fprintf(stderr, "%d%.*s\n", c_->childno, s.length(), s.data());
-	    else
-		fprintf(stderr, "%d %.*s\n", c_->childno, s.length(), s.data());
-	}
+        if (!quiet) {
+            if (!s.empty() && s.back() == '\n')
+                s = s.substring(0, -1);
+            if (s.empty() || isspace((unsigned char) s[0]))
+                fprintf(stderr, "%d%.*s\n", c_->childno, s.length(), s.data());
+            else
+                fprintf(stderr, "%d %.*s\n", c_->childno, s.length(), s.data());
+        }
     }
     void notice(const char *fmt, ...) {
-	if (!quiet) {
-	    va_list val;
-	    va_start(val, fmt);
-	    String x;
-	    if (!*fmt || isspace((unsigned char) *fmt))
-		x = String(c_->childno) + fmt;
-	    else
-		x = String(c_->childno) + String(" ") + fmt;
-	    vfprintf(stderr, x.c_str(), val);
-	    va_end(val);
-	}
+        if (!quiet) {
+            va_list val;
+            va_start(val, fmt);
+            String x;
+            if (!*fmt || isspace((unsigned char) *fmt))
+                x = String(c_->childno) + fmt;
+            else
+                x = String(c_->childno) + String(" ") + fmt;
+            vfprintf(stderr, x.c_str(), val);
+            va_end(val);
+        }
     }
     void report(const Json &result) {
-	if (!quiet) {
-	    lcdf::StringAccum sa;
-	    double dv;
-	    if (result.count("puts"))
-		sa << " total " << result.get("puts");
-	    if (result.get("puts_per_sec", dv))
-		sa.snprintf(100, " %.0f put/s", dv);
-	    if (result.get("gets_per_sec", dv))
-		sa.snprintf(100, " %.0f get/s", dv);
-	    if (!sa.empty())
-		notice(sa.take_string());
-	}
-	printf("%s\n", result.unparse().c_str());
+        if (!quiet) {
+            lcdf::StringAccum sa;
+            double dv;
+            if (result.count("puts"))
+                sa << " total " << result.get("puts");
+            if (result.get("puts_per_sec", dv))
+                sa.snprintf(100, " %.0f put/s", dv);
+            if (result.get("gets_per_sec", dv))
+                sa.snprintf(100, " %.0f get/s", dv);
+            if (!sa.empty())
+                notice(sa.take_string());
+        }
+        printf("%s\n", result.unparse().c_str());
     }
     kvrandom_random rand;
     struct child *c_;
@@ -427,8 +427,8 @@ void
 usage()
 {
   fprintf(stderr, "Usage: mtclient [-s serverip] [-w window] [--udp] "\
-	  "[-j nchildren] [-d duration] [--ssp] [--flp first_local_port] "\
-	  "[--fsp first_server_port] [-i json_input]\nTests:\n");
+          "[-j nchildren] [-d duration] [--ssp] [--flp first_local_port] "\
+          "[--fsp first_server_port] [-i json_input]\nTests:\n");
   testrunner::print_names(stderr, 5);
   exit(1);
 }
@@ -439,7 +439,7 @@ settimeout(int)
   if (!timeout[0]) {
     timeout[0] = true;
     if (duration2)
-	alarm((int) ceil(duration2));
+        alarm((int) ceil(duration2));
   } else
     timeout[1] = true;
 }
@@ -495,77 +495,77 @@ main(int argc, char *argv[])
   while ((opt = Clp_Next(clp)) != Clp_Done) {
       switch (opt) {
       case opt_threads:
-	  children = clp->val.i;
-	  break;
+          children = clp->val.i;
+          break;
       case opt_threads_deprecated:
-	  Clp_OptionError(clp, "%<%O%> is deprecated, use %<-j%>");
-	  children = clp->val.i;
-	  break;
+          Clp_OptionError(clp, "%<%O%> is deprecated, use %<-j%>");
+          children = clp->val.i;
+          break;
       case opt_duration:
-	  duration = clp->val.d;
-	  break;
+          duration = clp->val.d;
+          break;
       case opt_duration2:
-	  duration2 = clp->val.d;
-	  break;
+          duration2 = clp->val.d;
+          break;
       case opt_window:
-	  window = clp->val.u;
+          window = clp->val.u;
           always_assert(window <= MAXWINDOW);
           always_assert((window & (window - 1)) == 0); // power of 2
-	  break;
+          break;
       case opt_server:
-	  serverip = clp->vstr;
-	  break;
+          serverip = clp->vstr;
+          break;
       case opt_first_server_port:
-	  first_server_port = clp->val.i;
-	  break;
+          first_server_port = clp->val.i;
+          break;
       case opt_quiet:
-	  quiet = !clp->negated;
-	  break;
+          quiet = !clp->negated;
+          break;
       case opt_udp:
-	  udpflag = !clp->negated;
-	  break;
+          udpflag = !clp->negated;
+          break;
       case opt_first_local_port:
-	  first_local_port = clp->val.i;
-	  break;
+          first_local_port = clp->val.i;
+          break;
       case opt_share_server_port:
-	  share_server_port = !clp->negated;
-	  break;
+          share_server_port = !clp->negated;
+          break;
       case opt_input:
-	  input = clp->vstr;
-	  break;
+          input = clp->vstr;
+          break;
       case opt_rsinit_part:
-	  rsinit_part = clp->val.i;
-	  break;
+          rsinit_part = clp->val.i;
+          break;
       case opt_first_seed:
-	  kvtest_first_seed = clp->val.i;
-	  break;
+          kvtest_first_seed = clp->val.i;
+          break;
       case opt_rscale_partsz:
-	  rscale_partsz = clp->val.i;
-	  break;
+          rscale_partsz = clp->val.i;
+          break;
       case opt_keylen:
-	  keylen = clp->val.i;
-	  break;
+          keylen = clp->val.i;
+          break;
       case opt_limit:
-	  limit = (uint64_t) clp->val.d;
-	  break;
+          limit = (uint64_t) clp->val.d;
+          break;
       case opt_prefix_len:
-	  prefixLen = clp->val.i;
-	  break;
+          prefixLen = clp->val.i;
+          break;
       case opt_nkeys:
-	  nkeys = clp->val.i;
-	  break;
+          nkeys = clp->val.i;
+          break;
       case opt_get_ratio:
-	  getratio = clp->val.i;
-	  break;
+          getratio = clp->val.i;
+          break;
       case opt_minkeyletter:
-	  minkeyletter = clp->vstr[0];
-	  break;
+          minkeyletter = clp->vstr[0];
+          break;
       case opt_maxkeyletter:
-	  maxkeyletter = clp->vstr[0];
-	  break;
+          maxkeyletter = clp->vstr[0];
+          break;
       case opt_nofork:
-	  dofork = !clp->negated;
-	  break;
+          dofork = !clp->negated;
+          break;
       case Clp_NotOption:
           test = testrunner::find(clp->vstr);
           if (!test)
@@ -589,33 +589,33 @@ main(int argc, char *argv[])
 
   if (dofork) {
       for(i = 0; i < children; i++){
-	  int ptmp[2];
-	  int r = pipe(ptmp);
-	  always_assert(r == 0);
-	  pid = fork();
-	  if(pid < 0){
-	      perror("fork");
-	      exit(1);
-	  }
-	  if(pid == 0){
-	      close(ptmp[0]);
-	      dup2(ptmp[1], 1);
-	      close(ptmp[1]);
-	      signal(SIGALRM, settimeout);
-	      alarm((int) ceil(duration));
-	      run_child(test, i);
-	      exit(0);
-	  }
-	  pipes[i] = ptmp[0];
-	  close(ptmp[1]);
+          int ptmp[2];
+          int r = pipe(ptmp);
+          always_assert(r == 0);
+          pid = fork();
+          if(pid < 0){
+              perror("fork");
+              exit(1);
+          }
+          if(pid == 0){
+              close(ptmp[0]);
+              dup2(ptmp[1], 1);
+              close(ptmp[1]);
+              signal(SIGALRM, settimeout);
+              alarm((int) ceil(duration));
+              run_child(test, i);
+              exit(0);
+          }
+          pipes[i] = ptmp[0];
+          close(ptmp[1]);
       }
       for(i = 0; i < children; i++){
-	  if(wait(&status) <= 0){
-	      perror("wait");
-	      exit(1);
-	  }
-	  if (WIFSIGNALED(status))
-	      fprintf(stderr, "child %d died by signal %d\n", i, WTERMSIG(status));
+          if(wait(&status) <= 0){
+              perror("wait");
+              exit(1);
+          }
+          if (WIFSIGNALED(status))
+              fprintf(stderr, "child %d died by signal %d\n", i, WTERMSIG(status));
       }
   } else {
       int ptmp[2];
@@ -648,24 +648,24 @@ main(int argc, char *argv[])
     long long iv;
     double dv;
     if (bufj.to_i(iv))
-	total += iv;
+        total += iv;
     else if (bufj.is_object()) {
-	if (bufj.get("ops", iv)
-	    || bufj.get("total", iv)
-	    || bufj.get("count", iv))
-	    total += iv;
-	if (bufj.get("puts", iv))
-	    puts.add(iv);
-	if (bufj.get("gets", iv))
-	    gets.add(iv);
-	if (bufj.get("scans", iv))
-	    scans.add(iv);
-	if (bufj.get("puts_per_sec", dv))
-	    puts_per_sec.add(dv);
-	if (bufj.get("gets_per_sec", dv))
-	    gets_per_sec.add(dv);
-	if (bufj.get("scans_per_sec", dv))
-	    scans_per_sec.add(dv);
+        if (bufj.get("ops", iv)
+            || bufj.get("total", iv)
+            || bufj.get("count", iv))
+            total += iv;
+        if (bufj.get("puts", iv))
+            puts.add(iv);
+        if (bufj.get("gets", iv))
+            gets.add(iv);
+        if (bufj.get("scans", iv))
+            scans.add(iv);
+        if (bufj.get("puts_per_sec", dv))
+            puts_per_sec.add(dv);
+        if (bufj.get("gets_per_sec", dv))
+            gets_per_sec.add(dv);
+        if (bufj.get("scans_per_sec", dv))
+            scans_per_sec.add(dv);
     }
   }
 
@@ -810,15 +810,15 @@ asyncgetcb_int(struct child *, struct async *a, bool, const Str &val)
     memcpy(&vptr, a->wanted, sizeof(int *));
     long x = 0;
     if (val.len <= 0)
-	x = -1;
+        x = -1;
     else
-	for (int i = 0; i < val.len; ++i)
-	    if (val.s[i] >= '0' && val.s[i] <= '9')
-		x = (x * 10) + (val.s[i] - '0');
-	    else {
-		x = -1;
-		break;
-	    }
+        for (int i = 0; i < val.len; ++i)
+            if (val.s[i] >= '0' && val.s[i] <= '9')
+                x = (x * 10) + (val.s[i] - '0');
+            else {
+                x = -1;
+                break;
+            }
     *vptr = x;
 }
 
@@ -829,13 +829,13 @@ defaultget(struct child *, struct async *a, bool have_val, const Str &val)
     // check that we got the expected value
     int wanted_avail = std::min(a->wantedlen, int(sizeof(a->wanted)));
     if (!have_val
-	|| a->wantedlen != val.len
-	|| memcmp(val.s, a->wanted, wanted_avail) != 0)
-	fprintf(stderr, "oops wanted %.*s(%d) got %.*s(%d)\n",
-		wanted_avail, a->wanted, a->wantedlen, val.len, val.s, val.len);
+        || a->wantedlen != val.len
+        || memcmp(val.s, a->wanted, wanted_avail) != 0)
+        fprintf(stderr, "oops wanted %.*s(%d) got %.*s(%d)\n",
+                wanted_avail, a->wanted, a->wantedlen, val.len, val.s, val.len);
     else {
-	always_assert(a->wantedlen == val.len);
-	always_assert(memcmp(val.s, a->wanted, wanted_avail) == 0);
+        always_assert(a->wantedlen == val.len);
+        always_assert(memcmp(val.s, a->wanted, wanted_avail) == 0);
     }
 }
 
@@ -1501,9 +1501,9 @@ volt1b(struct child *c)
     if(i > 1)
       checkasync(c, 1); // try to avoid deadlock, only 2 reqs outstanding
     if((random() % 2) == 0)
-	aget(c, Str(key, 50), Str(wanted, VOLT1SIZE), 0);
+        aget(c, Str(key, 50), Str(wanted, VOLT1SIZE), 0);
     else
-	aput(c, Str(key, 50), Str(wanted, VOLT1SIZE));
+        aput(c, Str(key, 50), Str(wanted, VOLT1SIZE));
   }
   n = i;
 

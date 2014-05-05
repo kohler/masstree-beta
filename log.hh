@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -52,9 +52,9 @@ class loginfo {
         waitlist* next;
     };
     struct front {
-	uint32_t lock_;
-	waitlist* waiting_;
-	lcdf::String::rep_type filename_;
+        uint32_t lock_;
+        waitlist* waiting_;
+        lcdf::String::rep_type filename_;
         logset* logset_;
     };
     struct logset_info {
@@ -120,13 +120,13 @@ extern struct timeval log_epoch_interval;
 
 enum logcommand {
     logcmd_none = 0,
-    logcmd_put = 0x5455506B,		// "kPUT" in little endian
-    logcmd_replace = 0x3155506B,	// "kPU1"
-    logcmd_modify = 0x444F4D6B,		// "kMOD"
-    logcmd_remove = 0x4D45526B,		// "kREM"
-    logcmd_epoch = 0x4F50456B,		// "kEPO"
-    logcmd_quiesce = 0x4955516B,	// "kQUI"
-    logcmd_wake = 0x4B41576B		// "kWAK"
+    logcmd_put = 0x5455506B,            // "kPUT" in little endian
+    logcmd_replace = 0x3155506B,        // "kPU1"
+    logcmd_modify = 0x444F4D6B,         // "kMOD"
+    logcmd_remove = 0x4D45526B,         // "kREM"
+    logcmd_epoch = 0x4F50456B,          // "kEPO"
+    logcmd_quiesce = 0x4955516B,        // "kQUI"
+    logcmd_wake = 0x4B41576B            // "kWAK"
 };
 
 
@@ -137,11 +137,11 @@ class logreplay {
     int unmap();
 
     struct info_type {
-	kvepoch_t first_epoch;
-	kvepoch_t last_epoch;
-	kvepoch_t wake_epoch;
-	kvepoch_t min_post_quiescent_wake_epoch;
-	bool quiescent;
+        kvepoch_t first_epoch;
+        kvepoch_t last_epoch;
+        kvepoch_t wake_epoch;
+        kvepoch_t min_post_quiescent_wake_epoch;
+        bool quiescent;
     };
     info_type info() const;
     kvepoch_t min_post_quiescent_wake_epoch(kvepoch_t quiescent_epoch) const;
@@ -155,7 +155,7 @@ class logreplay {
     char *buf_;
 
     uint64_t replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
-			     threadinfo *ti);
+                             threadinfo *ti);
     int replay_truncate(size_t len);
     int replay_copy(const char *tmpname, const char *first, const char *last);
 };
@@ -215,11 +215,11 @@ struct row_delta_marker : public row_marker {
 template <typename R>
 inline bool row_is_delta_marker(const R* row) {
     if (row_is_marker(row)) {
-	const row_marker* m =
-	    reinterpret_cast<const row_marker *>(row->col(0).s);
-	return m->marker_type_ == m->mt_delta;
+        const row_marker* m =
+            reinterpret_cast<const row_marker *>(row->col(0).s);
+        return m->marker_type_ == m->mt_delta;
     } else
-	return false;
+        return false;
 }
 
 template <typename R>
@@ -227,7 +227,7 @@ inline row_delta_marker<R>* row_get_delta_marker(const R* row, bool force = fals
     (void) force;
     assert(force || row_is_delta_marker(row));
     return reinterpret_cast<row_delta_marker<R>*>
-	(const_cast<char*>(row->col(0).s));
+        (const_cast<char*>(row->col(0).s));
 }
 
 #endif

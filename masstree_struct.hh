@@ -266,8 +266,8 @@ class leaf : public node_base<P> {
     typedef typename P::threadinfo_type threadinfo;
     typedef stringbag<uint8_t> internal_ksuf_type;
     typedef stringbag<uint16_t> external_ksuf_type;
-    static constexpr int unstable_layer_keylenx = sizeof(ikey_type) + 65;
-    static constexpr int stable_layer_keylenx = sizeof(ikey_type) + 129;
+    static constexpr int unstable_layer_keylenx = sizeof(ikey_type) + 1 + 64;
+    static constexpr int stable_layer_keylenx = sizeof(ikey_type) + 1 + 128;
 
     int8_t extrasize64_;
     int8_t nremoved_;
@@ -361,7 +361,7 @@ class leaf : public node_base<P> {
                                    threadinfo& ti) const;
 
     static int keylenx_ikeylen(int keylenx) {
-        return keylenx & 63;
+        return keylenx & 31;
     }
     static bool keylenx_is_layer(int keylenx) {
         return keylenx > 63;
@@ -460,7 +460,7 @@ class leaf : public node_base<P> {
     void deallocate(threadinfo& ti) {
         if (ksuf_)
             ti.deallocate(ksuf_, ksuf_->allocated_size(),
-                              memtag_masstree_ksuffixes);
+                          memtag_masstree_ksuffixes);
         ti.pool_deallocate(this, allocated_size(), memtag_masstree_leaf);
     }
     void deallocate_rcu(threadinfo& ti) {

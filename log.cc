@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -48,22 +48,22 @@ struct logrec_base {
     uint32_t size_;
 
     static size_t size() {
-	return sizeof(logrec_base);
+        return sizeof(logrec_base);
     }
     static size_t store(char *buf, uint32_t command) {
-	// XXX check alignment on some architectures
-	logrec_base *lr = reinterpret_cast<logrec_base *>(buf);
-	lr->command_ = command;
-	lr->size_ = sizeof(*lr);
-	return sizeof(*lr);
+        // XXX check alignment on some architectures
+        logrec_base *lr = reinterpret_cast<logrec_base *>(buf);
+        lr->command_ = command;
+        lr->size_ = sizeof(*lr);
+        return sizeof(*lr);
     }
     static bool check(const char *buf) {
-	const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
-	return lr->size_ >= sizeof(*lr);
+        const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
+        return lr->size_ >= sizeof(*lr);
     }
     static uint32_t command(const char *buf) {
-	const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
-	return lr->command_;
+        const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
+        return lr->command_;
     }
 };
 
@@ -73,19 +73,19 @@ struct logrec_epoch {
     kvepoch_t epoch_;
 
     static size_t size() {
-	return sizeof(logrec_epoch);
+        return sizeof(logrec_epoch);
     }
     static size_t store(char *buf, uint32_t command, kvepoch_t epoch) {
-	// XXX check alignment on some architectures
-	logrec_epoch *lr = reinterpret_cast<logrec_epoch *>(buf);
-	lr->command_ = command;
-	lr->size_ = sizeof(*lr);
-	lr->epoch_ = epoch;
-	return sizeof(*lr);
+        // XXX check alignment on some architectures
+        logrec_epoch *lr = reinterpret_cast<logrec_epoch *>(buf);
+        lr->command_ = command;
+        lr->size_ = sizeof(*lr);
+        lr->epoch_ = epoch;
+        return sizeof(*lr);
     }
     static bool check(const char *buf) {
-	const logrec_epoch *lr = reinterpret_cast<const logrec_epoch *>(buf);
-	return lr->size_ >= sizeof(*lr);
+        const logrec_epoch *lr = reinterpret_cast<const logrec_epoch *>(buf);
+        return lr->size_ >= sizeof(*lr);
     }
 };
 
@@ -97,25 +97,25 @@ struct logrec_kv {
     char buf_[0];
 
     static size_t size(uint32_t keylen, uint32_t vallen) {
-	return sizeof(logrec_kv) + keylen + vallen;
+        return sizeof(logrec_kv) + keylen + vallen;
     }
     static size_t store(char *buf, uint32_t command,
-			Str key, Str val,
-			kvtimestamp_t ts) {
-	// XXX check alignment on some architectures
-	logrec_kv *lr = reinterpret_cast<logrec_kv *>(buf);
-	lr->command_ = command;
-	lr->size_ = sizeof(*lr) + key.len + val.len;
-	lr->ts_ = ts;
-	lr->keylen_ = key.len;
-	memcpy(lr->buf_, key.s, key.len);
-	memcpy(lr->buf_ + key.len, val.s, val.len);
-	return sizeof(*lr) + key.len + val.len;
+                        Str key, Str val,
+                        kvtimestamp_t ts) {
+        // XXX check alignment on some architectures
+        logrec_kv *lr = reinterpret_cast<logrec_kv *>(buf);
+        lr->command_ = command;
+        lr->size_ = sizeof(*lr) + key.len + val.len;
+        lr->ts_ = ts;
+        lr->keylen_ = key.len;
+        memcpy(lr->buf_, key.s, key.len);
+        memcpy(lr->buf_ + key.len, val.s, val.len);
+        return sizeof(*lr) + key.len + val.len;
     }
     static bool check(const char *buf) {
-	const logrec_kv *lr = reinterpret_cast<const logrec_kv *>(buf);
-	return lr->size_ >= sizeof(*lr)
-	    && lr->size_ >= sizeof(*lr) + lr->keylen_;
+        const logrec_kv *lr = reinterpret_cast<const logrec_kv *>(buf);
+        return lr->size_ >= sizeof(*lr)
+            && lr->size_ >= sizeof(*lr) + lr->keylen_;
     }
 };
 
@@ -128,26 +128,26 @@ struct logrec_kvdelta {
     char buf_[0];
 
     static size_t size(uint32_t keylen, uint32_t vallen) {
-	return sizeof(logrec_kvdelta) + keylen + vallen;
+        return sizeof(logrec_kvdelta) + keylen + vallen;
     }
     static size_t store(char *buf, uint32_t command,
-			Str key, Str val,
-			kvtimestamp_t prev_ts, kvtimestamp_t ts) {
-	// XXX check alignment on some architectures
-	logrec_kvdelta *lr = reinterpret_cast<logrec_kvdelta *>(buf);
-	lr->command_ = command;
-	lr->size_ = sizeof(*lr) + key.len + val.len;
-	lr->ts_ = ts;
-	lr->prev_ts_ = prev_ts;
-	lr->keylen_ = key.len;
-	memcpy(lr->buf_, key.s, key.len);
-	memcpy(lr->buf_ + key.len, val.s, val.len);
-	return sizeof(*lr) + key.len + val.len;
+                        Str key, Str val,
+                        kvtimestamp_t prev_ts, kvtimestamp_t ts) {
+        // XXX check alignment on some architectures
+        logrec_kvdelta *lr = reinterpret_cast<logrec_kvdelta *>(buf);
+        lr->command_ = command;
+        lr->size_ = sizeof(*lr) + key.len + val.len;
+        lr->ts_ = ts;
+        lr->prev_ts_ = prev_ts;
+        lr->keylen_ = key.len;
+        memcpy(lr->buf_, key.s, key.len);
+        memcpy(lr->buf_ + key.len, val.s, val.len);
+        return sizeof(*lr) + key.len + val.len;
     }
     static bool check(const char *buf) {
-	const logrec_kvdelta *lr = reinterpret_cast<const logrec_kvdelta *>(buf);
-	return lr->size_ >= sizeof(*lr)
-	    && lr->size_ >= sizeof(*lr) + lr->keylen_;
+        const logrec_kvdelta *lr = reinterpret_cast<const logrec_kvdelta *>(buf);
+        return lr->size_ >= sizeof(*lr)
+            && lr->size_ >= sizeof(*lr) + lr->keylen_;
     }
 };
 
@@ -219,16 +219,16 @@ static void check_epoch() {
     struct timeval tv;
     gettimeofday(&tv, 0);
     if (timercmp(&tv, &log_epoch_time, >)) {
-	log_epoch_time = tv;
-	timeradd(&log_epoch_time, &log_epoch_interval, &log_epoch_time);
-	global_log_epoch = global_log_epoch.next_nonzero(); // 0 isn't valid
+        log_epoch_time = tv;
+        timeradd(&log_epoch_time, &log_epoch_interval, &log_epoch_time);
+        global_log_epoch = global_log_epoch.next_nonzero(); // 0 isn't valid
     }
 }
 
 void* loginfo::run() {
     {
-	logreplay replayer(f_.filename_);
-	replayer.replay(ti_->index(), ti_);
+        logreplay replayer(f_.filename_);
+        replayer.replay(ti_->index(), ti_);
     }
 
     int fd = open(String(f_.filename_).c_str(),
@@ -238,44 +238,44 @@ void* loginfo::run() {
     always_assert(x_buf);
 
     while (1) {
-	uint32_t nb = 0;
+        uint32_t nb = 0;
         acquire();
-	kvepoch_t ge = global_log_epoch, we = global_wake_epoch;
-	if (wake_epoch_ != we) {
-	    wake_epoch_ = we;
-	    quiescent_epoch_ = 0;
-	}
-	// If the writing threads appear quiescent, and aren't about to write
-	// to the log (f_.waiting_ != 0), then write a quiescence
-	// notification.
-	if (!recovering && pos_ == 0 && !quiescent_epoch_
-	    && ge != log_epoch_ && ge != we && !f_.waiting_) {
-	    quiescent_epoch_ = log_epoch_ = ge;
-	    char *p = buf_;
-	    p += logrec_epoch::store(p, logcmd_epoch, log_epoch_);
+        kvepoch_t ge = global_log_epoch, we = global_wake_epoch;
+        if (wake_epoch_ != we) {
+            wake_epoch_ = we;
+            quiescent_epoch_ = 0;
+        }
+        // If the writing threads appear quiescent, and aren't about to write
+        // to the log (f_.waiting_ != 0), then write a quiescence
+        // notification.
+        if (!recovering && pos_ == 0 && !quiescent_epoch_
+            && ge != log_epoch_ && ge != we && !f_.waiting_) {
+            quiescent_epoch_ = log_epoch_ = ge;
+            char *p = buf_;
+            p += logrec_epoch::store(p, logcmd_epoch, log_epoch_);
             if (log_epoch_ == wake_epoch_)
                 p += logrec_base::store(p, logcmd_wake);
-	    p += logrec_base::store(p, logcmd_quiesce);
-	    pos_ = p - buf_;
-	}
-	if (!recovering && pos_ > 0) {
-	    uint32_t x_pos = pos_;
-	    std::swap(buf_, x_buf);
-	    pos_ = 0;
-	    kvepoch_t x_epoch = log_epoch_;
-	    release();
-	    ssize_t r = write(fd, x_buf, x_pos);
-	    always_assert(r == ssize_t(x_pos));
-	    fsync(fd);
-	    flushed_epoch_ = x_epoch;
-	    // printf("log %d %d\n", ti_->index(), x_pos);
-	    nb = x_pos;
-	} else
-	    release();
-	if (nb < len_ / 4)
-	    napms(200);
-	if (ti_->index() == 0)
-	    check_epoch();
+            p += logrec_base::store(p, logcmd_quiesce);
+            pos_ = p - buf_;
+        }
+        if (!recovering && pos_ > 0) {
+            uint32_t x_pos = pos_;
+            std::swap(buf_, x_buf);
+            pos_ = 0;
+            kvepoch_t x_epoch = log_epoch_;
+            release();
+            ssize_t r = write(fd, x_buf, x_pos);
+            always_assert(r == ssize_t(x_pos));
+            fsync(fd);
+            flushed_epoch_ = x_epoch;
+            // printf("log %d %d\n", ti_->index(), x_pos);
+            nb = x_pos;
+        } else
+            release();
+        if (nb < len_ / 4)
+            napms(200);
+        if (ti_->index() == 0)
+            check_epoch();
     }
 
     return 0;
@@ -297,24 +297,24 @@ void loginfo::record(int command, const query_times& qtimes,
     waitlist wait = { &wait };
     int stalls = 0;
     while (1) {
-	if (len_ - pos_ >= n
-	    && (wait.next == &wait || f_.waiting_ == &wait)) {
+        if (len_ - pos_ >= n
+            && (wait.next == &wait || f_.waiting_ == &wait)) {
             kvepoch_t we = global_wake_epoch;
 
             // Potentially record a new epoch.
-	    if (qtimes.epoch != log_epoch_) {
-		log_epoch_ = qtimes.epoch;
-		pos_ += logrec_epoch::store(buf_ + pos_, logcmd_epoch, qtimes.epoch);
-	    }
+            if (qtimes.epoch != log_epoch_) {
+                log_epoch_ = qtimes.epoch;
+                pos_ += logrec_epoch::store(buf_ + pos_, logcmd_epoch, qtimes.epoch);
+            }
 
             if (quiescent_epoch_) {
-		// We're recording a new log record on a log that's been
-		// quiescent for a while. If the quiescence marker has been
-		// flushed, then all epochs less than the query epoch are
-		// effectively on disk.
-		if (flushed_epoch_ == quiescent_epoch_)
-		    flushed_epoch_ = qtimes.epoch;
-		quiescent_epoch_ = 0;
+                // We're recording a new log record on a log that's been
+                // quiescent for a while. If the quiescence marker has been
+                // flushed, then all epochs less than the query epoch are
+                // effectively on disk.
+                if (flushed_epoch_ == quiescent_epoch_)
+                    flushed_epoch_ = qtimes.epoch;
+                quiescent_epoch_ = 0;
                 while (we < qtimes.epoch)
                     we = cmpxchg(&global_wake_epoch, we, qtimes.epoch);
             }
@@ -331,37 +331,37 @@ void loginfo::record(int command, const query_times& qtimes,
                 pos_ += logrec_base::store(buf_ + pos_, logcmd_wake);
             }
 
-	    if (command == logcmd_put && qtimes.prev_ts
+            if (command == logcmd_put && qtimes.prev_ts
                 && !(qtimes.prev_ts & 1))
-		pos_ += logrec_kvdelta::store(buf_ + pos_,
+                pos_ += logrec_kvdelta::store(buf_ + pos_,
                                               logcmd_modify, key, value,
                                               qtimes.prev_ts, qtimes.ts);
-	    else
-		pos_ += logrec_kv::store(buf_ + pos_,
+            else
+                pos_ += logrec_kv::store(buf_ + pos_,
                                          command, key, value, qtimes.ts);
 
-	    if (f_.waiting_ == &wait)
+            if (f_.waiting_ == &wait)
                 f_.waiting_ = wait.next;
-	    release();
-	    return;
-	}
+            release();
+            return;
+        }
 
-	// Otherwise must spin
-	if (wait.next == &wait) {
+        // Otherwise must spin
+        if (wait.next == &wait) {
             waitlist** p = &f_.waiting_;
             while (*p)
                 p = &(*p)->next;
             *p = &wait;
             wait.next = 0;
-	}
-	release();
-	if (stalls == 0)
-	    printf("stall\n");
-	else if (stalls % 25 == 0)
-	    printf("stall %d\n", stalls);
-	++stalls;
-	napms(50);
-	acquire();
+        }
+        release();
+        if (stalls == 0)
+            printf("stall\n");
+        else if (stalls % 25 == 0)
+            printf("stall %d\n", stalls);
+        ++stalls;
+        napms(50);
+        acquire();
     }
 }
 
@@ -384,26 +384,26 @@ logreplay::logreplay(const String &filename)
     int fd = open(filename_.c_str(), O_RDONLY);
     if (fd == -1) {
     fail:
-	errno_ = errno;
-	buf_ = 0;
-	if (fd != -1)
-	    (void) close(fd);
-	return;
+        errno_ = errno;
+        buf_ = 0;
+        if (fd != -1)
+            (void) close(fd);
+        return;
     }
 
     struct stat sb;
     int r = fstat(fd, &sb);
     if (r == -1)
-	goto fail;
+        goto fail;
 
     size_ = sb.st_size;
     if (size_ != 0) {
-	// XXX what if filename_ is too big to mmap in its entirety?
-	// XXX should support mmaping/writing in pieces
-	buf_ = (char *) ::mmap(0, size_, PROT_READ, MAP_FILE | MAP_PRIVATE,
-			       fd, 0);
-	if (buf_ == MAP_FAILED)
-	    goto fail;
+        // XXX what if filename_ is too big to mmap in its entirety?
+        // XXX should support mmaping/writing in pieces
+        buf_ = (char *) ::mmap(0, size_, PROT_READ, MAP_FILE | MAP_PRIVATE,
+                               fd, 0);
+        if (buf_ == MAP_FAILED)
+            goto fail;
     }
 
     (void) close(fd);
@@ -419,8 +419,8 @@ logreplay::unmap()
 {
     int r = 0;
     if (buf_) {
-	r = munmap(buf_, size_);
-	buf_ = 0;
+        r = munmap(buf_, size_);
+        buf_ = 0;
     }
     return r;
 }
@@ -449,39 +449,39 @@ logrecord::extract(const char *buf, const char *end)
 {
     const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
     if (unlikely(size_t(end - buf) < sizeof(*lr)
-		 || lr->size_ < sizeof(*lr)
-		 || size_t(end - buf) < lr->size_
-		 || lr->command_ == logcmd_none)) {
+                 || lr->size_ < sizeof(*lr)
+                 || size_t(end - buf) < lr->size_
+                 || lr->command_ == logcmd_none)) {
     fail:
-	command = logcmd_none;
-	return end;
+        command = logcmd_none;
+        return end;
     }
 
     command = lr->command_;
     if (command == logcmd_put || command == logcmd_replace
-	|| command == logcmd_remove) {
-	const logrec_kv *lk = reinterpret_cast<const logrec_kv *>(buf);
-	if (unlikely(lk->size_ < sizeof(*lk)
-		     || lk->keylen_ > MASSTREE_MAXKEYLEN
-		     || sizeof(*lk) + lk->keylen_ > lk->size_))
-	    goto fail;
-	ts = lk->ts_;
-	key.assign(lk->buf_, lk->keylen_);
-	val.assign(lk->buf_ + lk->keylen_, lk->size_ - sizeof(*lk) - lk->keylen_);
+        || command == logcmd_remove) {
+        const logrec_kv *lk = reinterpret_cast<const logrec_kv *>(buf);
+        if (unlikely(lk->size_ < sizeof(*lk)
+                     || lk->keylen_ > MASSTREE_MAXKEYLEN
+                     || sizeof(*lk) + lk->keylen_ > lk->size_))
+            goto fail;
+        ts = lk->ts_;
+        key.assign(lk->buf_, lk->keylen_);
+        val.assign(lk->buf_ + lk->keylen_, lk->size_ - sizeof(*lk) - lk->keylen_);
     } else if (command == logcmd_modify) {
-	const logrec_kvdelta *lk = reinterpret_cast<const logrec_kvdelta *>(buf);
-	if (unlikely(lk->keylen_ > MASSTREE_MAXKEYLEN
-		     || sizeof(*lk) + lk->keylen_ > lk->size_))
-	    goto fail;
-	ts = lk->ts_;
-	prev_ts = lk->prev_ts_;
-	key.assign(lk->buf_, lk->keylen_);
-	val.assign(lk->buf_ + lk->keylen_, lk->size_ - sizeof(*lk) - lk->keylen_);
+        const logrec_kvdelta *lk = reinterpret_cast<const logrec_kvdelta *>(buf);
+        if (unlikely(lk->keylen_ > MASSTREE_MAXKEYLEN
+                     || sizeof(*lk) + lk->keylen_ > lk->size_))
+            goto fail;
+        ts = lk->ts_;
+        prev_ts = lk->prev_ts_;
+        key.assign(lk->buf_, lk->keylen_);
+        val.assign(lk->buf_ + lk->keylen_, lk->size_ - sizeof(*lk) - lk->keylen_);
     } else if (command == logcmd_epoch) {
-	const logrec_epoch *lre = reinterpret_cast<const logrec_epoch *>(buf);
-	if (unlikely(lre->size_ < logrec_epoch::size()))
-	    goto fail;
-	epoch = lre->epoch_;
+        const logrec_epoch *lre = reinterpret_cast<const logrec_epoch *>(buf);
+        if (unlikely(lre->size_ < logrec_epoch::size()))
+            goto fail;
+        epoch = lre->epoch_;
     }
 
     return buf + lr->size_;
@@ -611,46 +611,46 @@ logreplay::info() const
     off_t nr = 0;
     bool log_corrupt = false;
     while (buf + sizeof(logrec_base) <= end) {
-	const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
-	if (unlikely(lr->size_ < sizeof(logrec_base))) {
-	    log_corrupt = true;
-	    break;
-	} else if (unlikely(buf + lr->size_ > end))
-	    break;
-	x.quiescent = lr->command_ == logcmd_quiesce;
-	if (lr->command_ == logcmd_epoch) {
-	    const logrec_epoch *lre =
-		reinterpret_cast<const logrec_epoch *>(buf);
-	    if (unlikely(lre->size_ < sizeof(*lre))) {
-		log_corrupt = true;
-		break;
-	    }
-	    if (!x.first_epoch)
-		x.first_epoch = lre->epoch_;
-	    x.last_epoch = lre->epoch_;
-	    if (x.wake_epoch && x.wake_epoch > x.last_epoch) // wrap-around
-		x.wake_epoch = 0;
-	} else if (lr->command_ == logcmd_wake)
-	    x.wake_epoch = x.last_epoch;
+        const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
+        if (unlikely(lr->size_ < sizeof(logrec_base))) {
+            log_corrupt = true;
+            break;
+        } else if (unlikely(buf + lr->size_ > end))
+            break;
+        x.quiescent = lr->command_ == logcmd_quiesce;
+        if (lr->command_ == logcmd_epoch) {
+            const logrec_epoch *lre =
+                reinterpret_cast<const logrec_epoch *>(buf);
+            if (unlikely(lre->size_ < sizeof(*lre))) {
+                log_corrupt = true;
+                break;
+            }
+            if (!x.first_epoch)
+                x.first_epoch = lre->epoch_;
+            x.last_epoch = lre->epoch_;
+            if (x.wake_epoch && x.wake_epoch > x.last_epoch) // wrap-around
+                x.wake_epoch = 0;
+        } else if (lr->command_ == logcmd_wake)
+            x.wake_epoch = x.last_epoch;
 #if !NDEBUG
-	else if (lr->command_ != logcmd_put
-		 && lr->command_ != logcmd_replace
-		 && lr->command_ != logcmd_modify
-		 && lr->command_ != logcmd_remove
-		 && lr->command_ != logcmd_quiesce) {
-	    log_corrupt = true;
-	    break;
-	}
+        else if (lr->command_ != logcmd_put
+                 && lr->command_ != logcmd_replace
+                 && lr->command_ != logcmd_modify
+                 && lr->command_ != logcmd_remove
+                 && lr->command_ != logcmd_quiesce) {
+            log_corrupt = true;
+            break;
+        }
 #endif
-	buf += lr->size_;
-	++nr;
+        buf += lr->size_;
+        ++nr;
     }
 
     fprintf(stderr, "replay %s: %" PRIdOFF_T " records, first %" PRIu64 ", last %" PRIu64 ", wake %" PRIu64 "%s%s @%zu\n",
-	    filename_.c_str(), nr, x.first_epoch.value(),
-	    x.last_epoch.value(), x.wake_epoch.value(),
-	    x.quiescent ? ", quiescent" : "",
-	    log_corrupt ? ", CORRUPT" : "", buf - buf_);
+            filename_.c_str(), nr, x.first_epoch.value(),
+            x.last_epoch.value(), x.wake_epoch.value(),
+            x.quiescent ? ", quiescent" : "",
+            log_corrupt ? ", CORRUPT" : "", buf - buf_);
     return x;
 }
 
@@ -661,25 +661,25 @@ logreplay::min_post_quiescent_wake_epoch(kvepoch_t quiescent_epoch) const
     const char *buf = buf_, *end = buf_ + size_;
     bool log_corrupt = false;
     while (buf + sizeof(logrec_base) <= end) {
-	const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
-	if (unlikely(lr->size_ < sizeof(logrec_base))) {
-	    log_corrupt = true;
-	    break;
-	} else if (unlikely(buf + lr->size_ > end))
-	    break;
-	if (lr->command_ == logcmd_epoch) {
-	    const logrec_epoch *lre =
-		reinterpret_cast<const logrec_epoch *>(buf);
-	    if (unlikely(lre->size_ < sizeof(*lre))) {
-		log_corrupt = true;
-		break;
-	    }
-	    e = lre->epoch_;
-	} else if (lr->command_ == logcmd_wake
-		   && e
-		   && e >= quiescent_epoch)
-	    return e;
-	buf += lr->size_;
+        const logrec_base *lr = reinterpret_cast<const logrec_base *>(buf);
+        if (unlikely(lr->size_ < sizeof(logrec_base))) {
+            log_corrupt = true;
+            break;
+        } else if (unlikely(buf + lr->size_ > end))
+            break;
+        if (lr->command_ == logcmd_epoch) {
+            const logrec_epoch *lre =
+                reinterpret_cast<const logrec_epoch *>(buf);
+            if (unlikely(lre->size_ < sizeof(*lre))) {
+                log_corrupt = true;
+                break;
+            }
+            e = lre->epoch_;
+        } else if (lr->command_ == logcmd_wake
+                   && e
+                   && e >= quiescent_epoch)
+            return e;
+        buf += lr->size_;
     }
     (void) log_corrupt;
     return 0;
@@ -687,7 +687,7 @@ logreplay::min_post_quiescent_wake_epoch(kvepoch_t quiescent_epoch) const
 
 uint64_t
 logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
-			   threadinfo *ti)
+                           threadinfo *ti)
 {
     uint64_t nr = 0;
     const char *pos = buf_, *end = buf_ + size_;
@@ -697,54 +697,54 @@ logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
 
     // XXX
     while (pos < end) {
-	const char *nextpos = lr.extract(pos, end);
-	if (lr.command == logcmd_none) {
-	    fprintf(stderr, "replay %s: %" PRIu64 " entries replayed, CORRUPT @%zu\n",
-		    filename_.c_str(), nr, pos - buf_);
-	    break;
-	}
-	if (lr.command == logcmd_epoch) {
-	    if ((min_epoch && lr.epoch < min_epoch)
-		|| (!min_epoch && !repbegin))
-		repbegin = pos;
-	    if (lr.epoch >= max_epoch) {
-		always_assert(repbegin);
-		repend = nextpos;
-		break;
-	    }
-	}
-	if (!lr.epoch || (min_epoch && lr.epoch < min_epoch)) {
-	    pos = nextpos;
-	    if (repbegin)
-		repend = nextpos;
-	    continue;
-	}
-	// replay only part of log after checkpoint
-	// could replay everything, the if() here tests
-	// correctness of checkpoint scheme.
-	assert(repbegin);
-	repend = nextpos;
-	if (lr.key.len) { // skip empty entry
+        const char *nextpos = lr.extract(pos, end);
+        if (lr.command == logcmd_none) {
+            fprintf(stderr, "replay %s: %" PRIu64 " entries replayed, CORRUPT @%zu\n",
+                    filename_.c_str(), nr, pos - buf_);
+            break;
+        }
+        if (lr.command == logcmd_epoch) {
+            if ((min_epoch && lr.epoch < min_epoch)
+                || (!min_epoch && !repbegin))
+                repbegin = pos;
+            if (lr.epoch >= max_epoch) {
+                always_assert(repbegin);
+                repend = nextpos;
+                break;
+            }
+        }
+        if (!lr.epoch || (min_epoch && lr.epoch < min_epoch)) {
+            pos = nextpos;
+            if (repbegin)
+                repend = nextpos;
+            continue;
+        }
+        // replay only part of log after checkpoint
+        // could replay everything, the if() here tests
+        // correctness of checkpoint scheme.
+        assert(repbegin);
+        repend = nextpos;
+        if (lr.key.len) { // skip empty entry
             if (lr.command == logcmd_put
                 || lr.command == logcmd_replace
                 || lr.command == logcmd_modify
                 || lr.command == logcmd_remove)
                 lr.run(tree->table(), jrepo, *ti);
-	    ++nr;
-	    if (nr % 100000 == 0)
-		fprintf(stderr,
-			"replay %s: %" PRIu64 " entries replayed\n",
-			filename_.c_str(), nr);
-	}
-	pos = nextpos;
+            ++nr;
+            if (nr % 100000 == 0)
+                fprintf(stderr,
+                        "replay %s: %" PRIu64 " entries replayed\n",
+                        filename_.c_str(), nr);
+        }
+        pos = nextpos;
     }
 
     // rewrite portion of log
     if (!repbegin)
-	repbegin = repend = buf_;
+        repbegin = repend = buf_;
     else if (!repend) {
-	fprintf(stderr, "replay %s: surprise repend\n", filename_.c_str());
-	repend = pos;
+        fprintf(stderr, "replay %s: surprise repend\n", filename_.c_str());
+        repend = pos;
     }
 
     char tmplog[256];
@@ -752,15 +752,15 @@ logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
     always_assert(r >= 0 && size_t(r) < sizeof(tmplog));
 
     printf("replay %s: truncate from %" PRIdOFF_T " to %" PRIdSIZE_T " [%" PRIdSIZE_T ",%" PRIdSIZE_T ")\n",
-	   filename_.c_str(), size_, repend - repbegin,
-	   repbegin - buf_, repend - buf_);
+           filename_.c_str(), size_, repend - repbegin,
+           repbegin - buf_, repend - buf_);
 
     bool need_copy = repbegin != buf_;
     int fd;
     if (!need_copy)
-	fd = replay_truncate(repend - repbegin);
+        fd = replay_truncate(repend - repbegin);
     else
-	fd = replay_copy(tmplog, repbegin, repend);
+        fd = replay_copy(tmplog, repbegin, repend);
 
     r = fsync(fd);
     always_assert(r == 0);
@@ -769,14 +769,14 @@ logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
 
     // replace old log with rewritten log
     if (unmap() != 0)
-	abort();
+        abort();
 
     if (need_copy) {
-	r = rename(tmplog, filename_.c_str());
-	if (r != 0) {
-	    fprintf(stderr, "replay %s: %s\n", filename_.c_str(), strerror(errno));
-	    abort();
-	}
+        r = rename(tmplog, filename_.c_str());
+        if (r != 0) {
+            fprintf(stderr, "replay %s: %s\n", filename_.c_str(), strerror(errno));
+            abort();
+        }
     }
 
     return nr;
@@ -787,30 +787,30 @@ logreplay::replay_truncate(size_t len)
 {
     int fd = open(filename_.c_str(), O_RDWR);
     if (fd < 0) {
-	fprintf(stderr, "replay %s: %s\n", filename_.c_str(), strerror(errno));
-	abort();
+        fprintf(stderr, "replay %s: %s\n", filename_.c_str(), strerror(errno));
+        abort();
     }
 
     struct stat sb;
     int r = fstat(fd, &sb);
     if (r != 0) {
-	fprintf(stderr, "replay %s: %s\n", filename_.c_str(), strerror(errno));
-	abort();
+        fprintf(stderr, "replay %s: %s\n", filename_.c_str(), strerror(errno));
+        abort();
     } else if (sb.st_size < off_t(len)) {
-	fprintf(stderr, "replay %s: bad length %" PRIdOFF_T "\n", filename_.c_str(), sb.st_size);
-	abort();
+        fprintf(stderr, "replay %s: bad length %" PRIdOFF_T "\n", filename_.c_str(), sb.st_size);
+        abort();
     }
 
     r = ftruncate(fd, len);
     if (r != 0) {
-	fprintf(stderr, "replay %s: truncate: %s\n", filename_.c_str(), strerror(errno));
-	abort();
+        fprintf(stderr, "replay %s: truncate: %s\n", filename_.c_str(), strerror(errno));
+        abort();
     }
 
     off_t off = lseek(fd, len, SEEK_SET);
     if (off == (off_t) -1) {
-	fprintf(stderr, "replay %s: seek: %s\n", filename_.c_str(), strerror(errno));
-	abort();
+        fprintf(stderr, "replay %s: seek: %s\n", filename_.c_str(), strerror(errno));
+        abort();
     }
 
     return fd;
@@ -821,8 +821,8 @@ logreplay::replay_copy(const char *tmpname, const char *first, const char *last)
 {
     int fd = creat(tmpname, 0666);
     if (fd < 0) {
-	fprintf(stderr, "replay %s: create: %s\n", tmpname, strerror(errno));
-	abort();
+        fprintf(stderr, "replay %s: create: %s\n", tmpname, strerror(errno));
+        abort();
     }
 
     ssize_t w = safe_write(fd, first, last - first);
@@ -837,10 +837,10 @@ logreplay::replay(int which, threadinfo *ti)
     waituntilphase(REC_LOG_TS);
     // find the maximum timestamp of entries in the log
     if (buf_) {
-	info_type x = info();
-	pthread_mutex_lock(&rec_mu);
-	rec_log_infos[which] = x;
-	pthread_mutex_unlock(&rec_mu);
+        info_type x = info();
+        pthread_mutex_lock(&rec_mu);
+        rec_log_infos[which] = x;
+        pthread_mutex_unlock(&rec_mu);
     }
     inactive();
 
@@ -855,10 +855,10 @@ logreplay::replay(int which, threadinfo *ti)
 
     waituntilphase(REC_LOG_REPLAY);
     if (buf_) {
-	ti->rcu_start();
-	uint64_t nr = replayandclean1(rec_replay_min_epoch, rec_replay_max_epoch, ti);
-	ti->rcu_stop();
-	printf("recovered %" PRIu64 " records from %s\n", nr, filename_.c_str());
+        ti->rcu_start();
+        uint64_t nr = replayandclean1(rec_replay_min_epoch, rec_replay_max_epoch, ti);
+        ti->rcu_stop();
+        printf("recovered %" PRIu64 " records from %s\n", nr, filename_.c_str());
     }
     inactive();
 }

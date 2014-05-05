@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -28,11 +28,11 @@ class value_bag {
 
   private:
     union bagdata {
-	struct {
-	    offset_type ncol_;
-	    offset_type pos_[1];
-	};
-	char s_[0];
+        struct {
+            offset_type ncol_;
+            offset_type pos_[1];
+        };
+        char s_[0];
     };
 
   public:
@@ -74,7 +74,7 @@ class value_bag {
     inline void checkpoint_write(UNPARSER& unpar) const;
 
     void print(FILE* f, const char* prefix, int indent, Str key,
-	       kvtimestamp_t initial_ts, const char* suffix = "");
+               kvtimestamp_t initial_ts, const char* suffix = "");
 
   private:
     kvtimestamp_t ts_;
@@ -147,7 +147,7 @@ value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
             ncol = idx + 1;
     }
     if (ncol > d_.ncol_)
-	sz += (ncol - d_.ncol_) * sizeof(offset_type);
+        sz += (ncol - d_.ncol_) * sizeof(offset_type);
 
     value_bag<O>* row = (value_bag<O>*) ti.allocate(sz, memtag_value);
     row->ts_ = ts;
@@ -166,40 +166,40 @@ value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
     sz = sizeof(bagdata) + ncol * sizeof(offset_type);
     int col = 0;
     while (1) {
-	int this_col = (first != last ? first[0].as_u() : ncol);
+        int this_col = (first != last ? first[0].as_u() : ncol);
 
-	// copy data from old row
-	if (col != this_col && col < d_.ncol_) {
-	    int end_col = std::min(this_col, int(d_.ncol_));
-	    ssize_t delta = sz - d_.pos_[col];
-	    if (delta == 0)
-		memcpy(row->d_.pos_ + col, d_.pos_ + col,
-		       sizeof(offset_type) * (end_col - col));
-	    else
-		for (int i = col; i < end_col; ++i)
-		    row->d_.pos_[i] = d_.pos_[i] + delta;
-	    size_t amt = d_.pos_[end_col] - d_.pos_[col];
-	    memcpy(row->d_.s_ + sz, d_.s_ + sz - delta, amt);
-	    col = end_col;
-	    sz += amt;
-	}
+        // copy data from old row
+        if (col != this_col && col < d_.ncol_) {
+            int end_col = std::min(this_col, int(d_.ncol_));
+            ssize_t delta = sz - d_.pos_[col];
+            if (delta == 0)
+                memcpy(row->d_.pos_ + col, d_.pos_ + col,
+                       sizeof(offset_type) * (end_col - col));
+            else
+                for (int i = col; i < end_col; ++i)
+                    row->d_.pos_[i] = d_.pos_[i] + delta;
+            size_t amt = d_.pos_[end_col] - d_.pos_[col];
+            memcpy(row->d_.s_ + sz, d_.s_ + sz - delta, amt);
+            col = end_col;
+            sz += amt;
+        }
 
         // mark empty columns if we're extending
-	while (col != this_col) {
-	    row->d_.pos_[col] = sz;
-	    ++col;
-	}
+        while (col != this_col) {
+            row->d_.pos_[col] = sz;
+            ++col;
+        }
 
-	if (col == ncol)
-	    break;
+        if (col == ncol)
+            break;
 
-	// copy data from change
-	row->d_.pos_[col] = sz;
+        // copy data from change
+        row->d_.pos_[col] = sz;
         Str val = first[1].as_s();
-	memcpy(row->d_.s_ + sz, val.data(), val.length());
-	sz += val.length();
-	first += 2;
-	++col;
+        memcpy(row->d_.s_ + sz, val.data(), val.length());
+        sz += val.length();
+        first += 2;
+        ++col;
     }
     row->d_.pos_[ncol] = sz;
     return row;
@@ -265,17 +265,17 @@ void value_bag<O>::print(FILE *f, const char *prefix, int indent,
 {
     kvtimestamp_t adj_ts = timestamp_sub(ts_, initial_ts);
     if (d_.ncol_ == 1)
-	fprintf(f, "%s%*s%.*s = %.*s @" PRIKVTSPARTS "%s\n", prefix, indent, "",
-		key.len, key.s, d_.pos_[1] - d_.pos_[0], d_.s_ + d_.pos_[0],
-		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
+        fprintf(f, "%s%*s%.*s = %.*s @" PRIKVTSPARTS "%s\n", prefix, indent, "",
+                key.len, key.s, d_.pos_[1] - d_.pos_[0], d_.s_ + d_.pos_[0],
+                KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     else {
-	fprintf(f, "%s%*s%.*s = [", prefix, indent, "", key.len, key.s);
-	for (int col = 0; col < d_.ncol_; ++col) {
-	    int pos = d_.pos_[col], len = std::min(40, d_.pos_[col + 1] - pos);
-	    fprintf(f, col ? "|%.*s" : "%.*s", len, d_.s_ + pos);
-	}
-	fprintf(f, "] @" PRIKVTSPARTS "%s\n",
-		KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
+        fprintf(f, "%s%*s%.*s = [", prefix, indent, "", key.len, key.s);
+        for (int col = 0; col < d_.ncol_; ++col) {
+            int pos = d_.pos_[col], len = std::min(40, d_.pos_[col + 1] - pos);
+            fprintf(f, col ? "|%.*s" : "%.*s", len, d_.s_ + pos);
+        }
+        fprintf(f, "] @" PRIKVTSPARTS "%s\n",
+                KVTS_HIGHPART(adj_ts), KVTS_LOWPART(adj_ts), suffix);
     }
 }
 
