@@ -900,8 +900,8 @@ canceling(void *)
     // cancel outstanding threads. Checkpointing threads will exit safely
     // when the checkpointing thread 0 sees go_quit, and don't need cancel
     for (threadinfo *ti = threadinfo::allthreads; ti; ti = ti->next())
-        if (ti->purpose_ != threadinfo::TI_MAIN
-            && ti->purpose_ != threadinfo::TI_CHECKPOINT
+        if (ti->purpose() != threadinfo::TI_MAIN
+            && ti->purpose() != threadinfo::TI_CHECKPOINT
             && !pthread_equal(me, ti->threadid())) {
             int r = pthread_cancel(ti->threadid());
             always_assert(r == 0);
@@ -909,7 +909,7 @@ canceling(void *)
 
     // join canceled threads
     for (threadinfo *ti = threadinfo::allthreads; ti; ti = ti->next())
-        if (ti->purpose_ != threadinfo::TI_MAIN
+        if (ti->purpose() != threadinfo::TI_MAIN
             && !pthread_equal(me, ti->threadid())) {
             fprintf(stderr, "joining thread %s:%d\n",
                     threadtype(ti->purpose()), ti->index());
