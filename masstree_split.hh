@@ -168,7 +168,7 @@ template <typename P>
 node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
 {
     node_type *n = n_;
-    node_type *child = leaf_type::make(n_->ksuf_size(), n_->node_ts_, ti);
+    node_type *child = leaf_type::make(n_->ksuf_used_capacity(), n_->node_ts_, ti);
     child->assign_version(*n_);
     ikey_type xikey[2];
     int split_type = n_->split_into(static_cast<leaf_type *>(child),

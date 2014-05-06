@@ -18,81 +18,158 @@
 #include "compiler.hh"
 #include "string_slice.hh"
 
-/** */
-template <typename L>
+/** @brief String collection used for Masstree key suffixes.
+
+    A stringbag is a compact collection of up to W strings, where W is a
+    parameter called the <em>bag width</em>. These strings are stored
+    in contiguously allocated memory.
+
+    The template parameter T is the offset type. This type determines the
+    maximum supported capacity of a stringbag. Smaller types have lower
+    overhead, but support smaller bags.
+
+    Stringbags favor compactness over usability. The bag width W is an
+    important parameter, but you can't recover W from the stringbag itself;
+    you'll need to store that externally. Stringbags cannot be allocated
+    conventionally. You must manage stringbag memory yourself:
+    allocate an array of characters for the stringbag, then use placement
+    new to construct the stringbag on that memory. Stringbag has a
+    trivial destructor. */
+template <typename T>
 class stringbag {
+ public:
+    /** @brief Type of offsets. */
+    typedef T offset_type;
+
+ private:
     struct info_type {
-        L pos;
-        L len;
-        info_type(int p, int l)
+        offset_type pos;
+        offset_type len;
+        info_type(unsigned p, unsigned l)
             : pos(p), len(l) {
         }
     };
     typedef string_slice<uintptr_t> slice_type;
 
-  public:
+ public:
+    /** @brief Return the maximum allowed capacity of a stringbag. */
+    static constexpr unsigned max_size() {
+        return (offset_type) -1;
+    }
+    /** @brief Return the overhead for a stringbag of width @a width.
 
-    stringbag(int width, size_t allocated_size) {
+        This is the number of bytes allocated for overhead. */
+    static constexpr size_t overhead(int width) {
+        return sizeof(stringbag<T>) + width * sizeof(info_type);
+    }
+
+    /** @brief Construct an empty stringbag.
+        @param width Number of strings in the bag
+        @param capacity Number of bytes allocated for the bag
+        @pre @a capacity > overhead(width)
+        @pre @a capacity <= max_offset
+
+        Stringbags should not be constructed on the stack or by a direct call
+        to new. Allocate space for a stringbag, then call the constructor on
+        that space using placement new. @a capacity must be no bigger than
+        the allocated space. */
+    stringbag(int width, size_t capacity) {
         size_t firstpos = overhead(width);
-        assert(allocated_size >= firstpos
-               && allocated_size <= (size_t) (L) -1);
+        assert(capacity >= firstpos && capacity <= max_capacity());
         size_ = firstpos;
-        allocated_size_ = allocated_size;
+        capacity_ = capacity;
         memset(info_, 0, sizeof(info_type) * width);
     }
 
-    static size_t overhead(int width) {
-        return sizeof(stringbag<L>) + width * sizeof(info_type);
+    /** @brief Return the capacity used to construct this bag. */
+    size_t capacity() const {
+        return capacity_;
     }
-
-    int size() const {
+    /** @brief Return the number of bytes used so far (including overhead). */
+    size_t used_capacity() const {
         return size_;
     }
-    int allocated_size() const {
-        return allocated_size_;
-    }
 
+    /** @brief Return the string at position @a p.
+        @pre @a p >= 0 && @a p < bag width */
+    lcdf::Str operator[](int p) const {
+        info_type info = info_[p];
+        return lcdf::Str(s_ + info.pos, info.len);
+    }
+    /** @brief Return the string at position @a p.
+        @pre @a p >= 0 && @a p < bag width */
     lcdf::Str get(int p) const {
         info_type info = info_[p];
         return lcdf::Str(s_ + info.pos, info.len);
     }
 
-    bool equals_sloppy(int p, const char *s, int len) const {
+    /** @brief Test if get(@a p) matches @a s.
+        @param p position
+        @param s string
+        @param len length of string
+        @pre @a p >= 0 && @a p < bag width */
+    bool equals(int p, const char *s, int len) const {
+        info_type info = info_[p];
+        return info.len == len
+            && memcmp(s_ + info.pos, s, len) == 0;
+    }
+    /** @override */
+    bool equals(int p, lcdf::Str s) const {
+        return equals(p, s.s, s.len);
+    }
+
+    /** @brief Test if get(@a p) matches @a s.
+        @param p position
+        @param s string
+        @param len length of string
+        @pre @a p >= 0 && @a p < bag width
+
+        Uses string_slice<uintptr_t>::equals_sloppy. Stringbag ensures that
+        equals_sloppy is safe on its string; the caller must ensure that
+        equals_sloppy is safe on [@a s, @a s + len). */
+    bool equals_sloppy(int p, const char* s, int len) const {
         info_type info = info_[p];
         if (info.len != len)
             return false;
         else
             return slice_type::equals_sloppy(s, s_ + info.pos, len);
     }
+    /** @override */
     bool equals_sloppy(int p, lcdf::Str s) const {
         return equals_sloppy(p, s.s, s.len);
     }
-    bool equals(int p, const char *s, int len) const {
-        info_type info = info_[p];
-        return info.len == len
-            && memcmp(s_ + info.pos, s, len) == 0;
-    }
-    bool equals(int p, lcdf::Str s) const {
-        return equals(p, s.s, s.len);
-    }
 
+    /** @brief Compare get(@a p) with @a s.
+        @param p position
+        @param s string
+        @param len length of string
+        @return < 0 if get(@a p) is less than @a s in lexicographic order,
+            0 if they are equal, and > 0 otherwise.
+        @pre @a p >= 0 && @a p < bag width */
     int compare(int p, const char *s, int len) const {
         info_type info = info_[p];
-        int minlen = std::min(len, (int) info.len);
+        unsigned minlen = std::min<unsigned>(len, info.len);
         int cmp = memcmp(s_ + info.pos, s, minlen);
-        return cmp ? cmp : ::compare((int) info.len, len);
+        return cmp ? cmp : ::compare<unsigned>(info.len, len);
     }
+    /** @override */
     int compare(int p, lcdf::Str s) const {
         return compare(p, s.s, s.len);
     }
 
+    /** @brief Assign the string at position @a p to @a s.
+        @param p position
+        @param s string
+        @param len length of string
+        @return true if the assignment succeeded, false if it failed
+           (because the stringbag is out of capacity)
+        @pre @a p >= 0 && @a p < bag width */
     bool assign(int p, const char *s, int len) {
-        int pos, mylen = info_[p].len;
-        if (mylen >= len)
+        unsigned pos, mylen = info_[p].len;
+        if (mylen >= (unsigned) len)
             pos = info_[p].pos;
-        else if (size() + std::max(len, slice_type::size)
-                   <= allocated_size()) {
-            pos = size();
+        else if (size_ + std::max(len, slice_type::size) <= capacity_) {
+            pos = size_;
             size_ += len;
         } else
             return false;
@@ -100,24 +177,26 @@ class stringbag {
         info_[p] = info_type(pos, len);
         return true;
     }
+    /** @override */
     bool assign(int p, lcdf::Str s) {
         return assign(p, s.s, s.len);
     }
 
+    /** @brief Print a representation of the stringbag to @a f. */
     void print(int width, FILE *f, const char *prefix, int indent) {
         fprintf(f, "%s%*s%p (%d:)%d:%d...\n", prefix, indent, "",
-                this, (int) overhead(width), size(), allocated_size());
+                this, (int) overhead(width), size_, capacity());
         for (int i = 0; i < width; ++i)
             if (info_[i].len)
-                fprintf(f, "%s%*s  #%x %d:%d %.*s\n", prefix, indent, "",
-                        i, info_[i].pos, info_[i].len, std::min((int) info_[i].len, 40), s_ + info_[i].pos);
+                fprintf(f, "%s%*s  #%x %u:%u %.*s\n", prefix, indent, "",
+                        i, info_[i].pos, info_[i].len, std::min(info_[i].len, 40U), s_ + info_[i].pos);
     }
 
   private:
     union {
         struct {
-            L size_;
-            L allocated_size_;
+            offset_type size_;
+            offset_type capacity_;
             info_type info_[0];
         };
         char s_[0];

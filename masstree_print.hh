@@ -72,9 +72,9 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
         fprintf(f, "removed %d, ", nremoved_);
     fprintf(f, "parent %p, prev %p, next %p ", parent_, prev_, next_.ptr);
     if (ksuf_ && extrasize64_ < -1)
-        fprintf(f, "[ksuf i%dx%d] ", -extrasize64_ - 1, ksuf_->allocated_size() / 64);
+        fprintf(f, "[ksuf i%dx%d] ", -extrasize64_ - 1, (int) ksuf_->capacity() / 64);
     else if (ksuf_)
-        fprintf(f, "[ksuf x%d] ", ksuf_->allocated_size() / 64);
+        fprintf(f, "[ksuf x%d] ", (int) ksuf_->capacity() / 64);
     else if (extrasize64_)
         fprintf(f, "[ksuf i%d] ", extrasize64_);
     if (P::debug_level > 0) {

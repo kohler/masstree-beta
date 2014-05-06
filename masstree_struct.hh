@@ -408,19 +408,19 @@ class leaf : public node_base<P> {
             return ksuf_->compare(p, ka.suffix());
     }
 
-    size_t ksuf_size() const {
+    size_t ksuf_used_capacity() const {
         if (ksuf_)
-            return ksuf_->size();
+            return ksuf_->used_capacity();
         else if (extrasize64_ > 0)
-            return iksuf_[0].size();
+            return iksuf_[0].used_capacity();
         else
             return 0;
     }
-    size_t ksuf_allocated_size() const {
+    size_t ksuf_capacity() const {
         if (ksuf_)
-            return ksuf_->allocated_size();
+            return ksuf_->capacity();
         else if (extrasize64_ > 0)
-            return iksuf_[0].allocated_size();
+            return iksuf_[0].capacity();
         else
             return 0;
     }
@@ -459,13 +459,15 @@ class leaf : public node_base<P> {
 
     void deallocate(threadinfo& ti) {
         if (ksuf_)
-            ti.deallocate(ksuf_, ksuf_->allocated_size(),
+            ti.deallocate(ksuf_, ksuf_->capacity(),
                           memtag_masstree_ksuffixes);
+        if (extrasize64_ != 0)
+            iksuf_[0].~stringbag();
         ti.pool_deallocate(this, allocated_size(), memtag_masstree_leaf);
     }
     void deallocate_rcu(threadinfo& ti) {
         if (ksuf_)
-            ti.deallocate_rcu(ksuf_, ksuf_->allocated_size(),
+            ti.deallocate_rcu(ksuf_, ksuf_->capacity(),
                               memtag_masstree_ksuffixes);
         ti.pool_deallocate_rcu(this, allocated_size(), memtag_masstree_leaf);
     }
@@ -687,9 +689,9 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
 
     size_t csz;
     if (iksuf)
-        csz = iksuf->allocated_size() - iksuf->overhead(width);
+        csz = iksuf->capacity() - iksuf->overhead(width);
     else if (oksuf)
-        csz = oksuf->allocated_size() - oksuf->overhead(width);
+        csz = oksuf->capacity() - oksuf->overhead(width);
     else
         csz = 0;
     size_t sz = iceil_log2(std::max(csz, size_t(4 * width)) * 2);
@@ -722,7 +724,7 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
         extrasize64_ = -extrasize64_ - 1;
 
     if (oksuf)
-        ti.deallocate_rcu(oksuf, oksuf->allocated_size(),
+        ti.deallocate_rcu(oksuf, oksuf->capacity(),
                           memtag_masstree_ksuffixes);
 }
 

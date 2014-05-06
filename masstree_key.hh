@@ -20,7 +20,7 @@
 
 namespace Masstree {
 
-/** @brief Type for strings used as Masstree keys.
+/** @brief Strings used as Masstree keys.
 
     Masstree key strings are divided into parts: an initial slice, called
     the <em>ikey</em>, and a suffix. The ikey is stored as a byte-swapped

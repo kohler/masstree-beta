@@ -97,7 +97,7 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
         // per-key information
         typename leaf<P>::permuter_type perm(lf->permutation_);
         int n = 0, nksuf = 0;
-        size_t used_ksuf_len = 0;
+        size_t active_ksuf_len = 0;
         for (int i = 0; i < perm.size(); ++i)
             if (lf->value_is_layer(perm[i])) {
                 lcdf::Json x = j["l1_size"];
@@ -113,7 +113,7 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
                 if (lf->has_ksuf(perm[i])) {
                     size_t ksuf_len = lf->ksuf(perm[i]).len;
                     l += ksuf_len - 1;
-                    used_ksuf_len += ksuf_len;
+                    active_ksuf_len += ksuf_len;
                     ++nksuf;
                 }
                 j["key_by_length"][l] += 1;
@@ -127,19 +127,15 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
         if (lf->allocated_size() != lf->min_allocated_size()
             && lf->ksuf_external()) {
             j["overridden_ksuf"] += 1;
-            j["overridden_ksuf_allocated_size"] += lf->allocated_size() - lf->min_allocated_size();
+            j["overridden_ksuf_capacity"] += lf->allocated_size() - lf->min_allocated_size();
         }
-        if (lf->ksuf_allocated_size()) {
-            size_t all_ksuf_len = 0;
-            for (int i = 0; i < lf->width; ++i)
-                all_ksuf_len += lf->ksuf_storage(i).len;
+        if (lf->ksuf_capacity()) {
             j["ksuf"] += 1;
-            j["ksuf_allocated_size"] += lf->ksuf_allocated_size();
-            j["ksuf_len"] += used_ksuf_len;
-            j["ksuf_wasted_len"] += all_ksuf_len - used_ksuf_len;
+            j["ksuf_capacity"] += lf->ksuf_capacity();
+            j["ksuf_len"] += active_ksuf_len;
             j["ksuf_by_layer"][layer] += 1;
-            if (!used_ksuf_len) {
-                j["unused_ksuf_allocated_size"] += lf->ksuf_allocated_size();
+            if (!active_ksuf_len) {
+                j["unused_ksuf_capacity"] += lf->ksuf_capacity();
                 j["unused_ksuf_by_layer"][layer] += 1;
                 if (lf->ksuf_external())
                     j["unused_ksuf_external"] += 1;
