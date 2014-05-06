@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright (c) 2012-2013 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -501,12 +501,7 @@ class leaf : public node_base<P> {
         ikey0_[p] = ka.ikey();
         keylenx_[p] = stable_layer_keylenx;
     }
-    inline void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
-        if (extrasize64_ <= 0 || !iksuf_[0].assign(p, s))
-            hard_assign_ksuf(p, s, initializing, ti);
-        ++nksuf_;
-    }
-    void hard_assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
+    void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
 
     inline ikey_type ikey_after_insert(const permuter_type& perm, int i,
                                        const key_type& ka, int ka_i) const;
@@ -677,9 +672,10 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     positions [0,p) are ready: keysuffixes in that range are copied. In either
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
-void leaf<P>::hard_assign_ksuf(int p, Str s, bool initializing,
-                               threadinfo& ti) {
-    if (ksuf_ && ksuf_->assign(p, s))
+void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
+    ++nksuf_;
+    if ((ksuf_ && ksuf_->assign(p, s))
+        || (extrasize64_ > 0 && iksuf_[0].assign(p, s)))
         return;
 
     internal_ksuf_type* iksuf;
