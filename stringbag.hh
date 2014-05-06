@@ -75,7 +75,7 @@ class stringbag {
         the allocated space. */
     stringbag(int width, size_t capacity) {
         size_t firstpos = overhead(width);
-        assert(capacity >= firstpos && capacity <= max_capacity());
+        assert(capacity >= firstpos && capacity <= max_size());
         size_ = firstpos;
         capacity_ = capacity;
         memset(info_, 0, sizeof(info_type) * width);
