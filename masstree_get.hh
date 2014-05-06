@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2013 President and Fellows of Harvard College
- * Copyright-2013 (c) 2012 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2014 President and Fellows of Harvard College
+ * Copyright (c) 2012-2014 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -135,7 +135,8 @@ inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
             leafvalue_type entry(n_->lv_[kp_]);
             entry.layer()->prefetch_full();
             fence();
-            if (likely(!v.deleted()) && !n_->has_changed(oldv, old_perm)
+            if (likely(!v.deleted())
+                && !n_->has_changed(oldv, old_perm)
                 && !entry.layer()->has_split()) {
                 ka_.shift();
                 return entry.layer();
@@ -171,7 +172,8 @@ inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
         if (kp_ >= 0) {
             n_->lv_[kp_].prefetch(n_->keylenx_[kp_]);
             goto found;
-        } else if (likely(ki_ != n_->size() || !v.has_split(oldv))
+        } else if (likely(ki_ != n_->size())
+                   || likely(!v.has_split(oldv))
                    || !(next = n_->safe_next())
                    || compare(ka_.ikey(), next->ikey_bound()) < 0)
             goto found;
@@ -181,7 +183,8 @@ inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
         do {
             n_ = next;
             oldv = n_->stable();
-        } while (!unlikely(oldv.deleted()) && (next = n_->safe_next())
+        } while (!unlikely(oldv.deleted())
+                 && (next = n_->safe_next())
                  && compare(ka_.ikey(), next->ikey_bound()) >= 0);
         n_->prefetch();
         v = n_->lock(oldv, ti.lock_fence(tc_leaf_lock));
