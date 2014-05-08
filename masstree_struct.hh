@@ -680,23 +680,16 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
         || (extrasize64_ > 0 && iksuf_[0].assign(p, s)))
         return;
 
-    internal_ksuf_type* iksuf;
-    external_ksuf_type* oksuf;
-    if (extrasize64_ > 0)
-        iksuf = &iksuf_[0], oksuf = 0;
-    else
-        iksuf = 0, oksuf = ksuf_;
+    external_ksuf_type* oksuf = ksuf_;
 
-    size_t csz;
-    if (iksuf)
-        csz = iksuf->capacity() - iksuf->overhead(width);
-    else if (oksuf)
-        csz = oksuf->capacity() - oksuf->overhead(width);
-    else
-        csz = 0;
-    size_t sz = iceil_log2(std::max(csz, size_t(4 * width)) * 2);
-    while (sz < csz + external_ksuf_type::overhead(width) + s.len)
-        sz *= 2;
+    size_t csz = 0;
+    if (nksuf_)
+        for (int i = 0; i != width; ++i)
+            if (has_ksuf(i))
+                csz += ksuf(i).len;
+    size_t sz = iceil_log2(external_ksuf_type::safe_size(width, csz + s.len));
+    if (oksuf)
+        sz = std::max(sz, oksuf->capacity());
 
     void* ptr = ti.allocate(sz, memtag_masstree_ksuffixes);
     external_ksuf_type* nksuf = new(ptr) external_ksuf_type(width, sz);

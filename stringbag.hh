@@ -54,13 +54,19 @@ class stringbag {
  public:
     /** @brief Return the maximum allowed capacity of a stringbag. */
     static constexpr unsigned max_size() {
-        return (offset_type) -1;
+        return ((unsigned) (offset_type) -1) + 1;
     }
     /** @brief Return the overhead for a stringbag of width @a width.
 
         This is the number of bytes allocated for overhead. */
     static constexpr size_t overhead(int width) {
         return sizeof(stringbag<T>) + width * sizeof(info_type);
+    }
+    /** @brief Return a capacity that can definitely contain a stringbag.
+        @param width number of strings in bag
+        @param len total number of bytes in bag's strings */
+    static constexpr size_t safe_size(int width, unsigned len) {
+        return overhead(width) + len + slice_type::size - 1;
     }
 
     /** @brief Construct an empty stringbag.
@@ -77,13 +83,13 @@ class stringbag {
         size_t firstpos = overhead(width);
         assert(capacity >= firstpos && capacity <= max_size());
         size_ = firstpos;
-        capacity_ = capacity;
+        capacity_ = capacity - 1;
         memset(info_, 0, sizeof(info_type) * width);
     }
 
     /** @brief Return the capacity used to construct this bag. */
     size_t capacity() const {
-        return capacity_;
+        return capacity_ + 1;
     }
     /** @brief Return the number of bytes used so far (including overhead). */
     size_t used_capacity() const {
@@ -168,7 +174,7 @@ class stringbag {
         unsigned pos, mylen = info_[p].len;
         if (mylen >= (unsigned) len)
             pos = info_[p].pos;
-        else if (size_ + std::max(len, slice_type::size) <= capacity_) {
+        else if (size_ + std::max(len, slice_type::size) <= capacity()) {
             pos = size_;
             size_ += len;
         } else
