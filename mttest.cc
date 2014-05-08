@@ -37,6 +37,9 @@
 #if HAVE_SYS_EPOLL_H
 #include <sys/epoll.h>
 #endif
+#if HAVE_EXECINFO_H
+#include <execinfo.h>
+#endif
 #if __linux__
 #include <asm-generic/mman.h>
 #endif
@@ -759,6 +762,25 @@ enum { normtype_none, normtype_pertest, normtype_firsttest };
 static void print_gnuplot(FILE *f, const char * const *types_begin, const char * const *types_end, std::vector<String> &comparisons, int normalizetype);
 static void update_labnotebook(String notebook);
 
+#if HAVE_EXECINFO_H
+static const int abortable_signals[] = {
+    SIGSEGV, SIGBUS, SIGILL, SIGABRT, SIGFPE
+};
+
+static void abortable_signal_handler(int) {
+    // reset signals so if a signal recurs, we exit
+    for (const int* it = abortable_signals;
+         it != abortable_signals + arraysize(abortable_signals); ++it)
+        signal(*it, SIG_DFL);
+    // dump backtrace to standard error
+    void* return_addrs[50];
+    int n = backtrace(return_addrs, arraysize(return_addrs));
+    backtrace_symbols_fd(return_addrs, n, STDERR_FILENO);
+    // re-abort
+    abort();
+}
+#endif
+
 int
 main(int argc, char *argv[])
 {
@@ -922,6 +944,12 @@ Try 'mttest --help' for options.\n");
             numa.back().size = numa_node_size64(i, &numa.back().free);
         }
 #endif
+#if HAVE_EXECINFO_H
+    for (const int* it = abortable_signals;
+         it != abortable_signals + arraysize(abortable_signals); ++it)
+        signal(*it, abortable_signal_handler);
+#endif
+
     if (treetypes.empty())
         treetypes.push_back("m");
     if (tests.empty())

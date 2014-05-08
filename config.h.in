@@ -44,6 +44,9 @@
    don't. */
 #undef HAVE_DECL_GETLINE
 
+/* Define to 1 if you have the <execinfo.h> header file. */
+#undef HAVE_EXECINFO_H
+
 /* Define if you are using libflow for malloc. */
 #undef HAVE_FLOW_MALLOC
 

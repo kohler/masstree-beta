@@ -288,7 +288,7 @@ AC_CHECK_SIZEOF([void *])
 
 AC_CHECK_DECLS([getline])
 
-AC_CHECK_HEADERS([time.h])
+AC_CHECK_HEADERS([time.h execinfo.h])
 AC_CHECK_DECLS([clock_gettime], [], [], [#if HAVE_TIME_H
 # include <time.h>
 #endif])
