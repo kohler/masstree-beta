@@ -537,6 +537,12 @@ MAKE_TESTRUNNER(splitremove1, kvtest_splitremove1(client));
 MAKE_TESTRUNNER(url, kvtest_url(client));
 
 
+enum {
+    test_thread_initialize = 1,
+    test_thread_destroy = 2,
+    test_thread_stats = 3
+};
+
 template <typename T>
 struct test_thread {
     test_thread(threadinfo* ti) {
@@ -546,17 +552,22 @@ struct test_thread {
     ~test_thread() {
         client_.ti_->rcu_stop();
     }
-    static void* go(threadinfo* ti) {
-        if (!table_) {
+    static void setup(threadinfo* ti, int action) {
+        if (action == test_thread_initialize) {
+            assert(!table_);
             table_ = new T;
             table_->initialize(*ti);
-            //Masstree::default_table::test((threadinfo *) arg);
-            return 0;
-        }
-        if (!ti) {
+        } else if (action == test_thread_destroy) {
+            assert(table_);
+            delete table_;
+            table_ = 0;
+        } else if (action == test_thread_stats) {
+            assert(table_);
             table_->stats(test_output_file);
-            return 0;
         }
+    }
+    static void* go(threadinfo* ti) {
+        assert(table_);
 #if __linux__
         if (pinthreads) {
             cpu_set_t cs;
@@ -626,15 +637,18 @@ struct test_thread {
 template <typename T> T *test_thread<T>::table_;
 template <typename T> unsigned test_thread<T>::active_threads_;
 
+typedef test_thread<Masstree::default_table> masstree_test_thread;
+
 static struct {
     const char *treetype;
-    void* (*func)(threadinfo*);
+    void* (*go_func)(threadinfo*);
+    void (*setup_func)(threadinfo*, int);
 } test_thread_map[] = {
-    { "masstree", test_thread<Masstree::default_table>::go },
-    { "mass", test_thread<Masstree::default_table>::go },
-    { "mbtree", test_thread<Masstree::default_table>::go },
-    { "mb", test_thread<Masstree::default_table>::go },
-    { "m", test_thread<Masstree::default_table>::go }
+    { "masstree", masstree_test_thread::go, masstree_test_thread::setup },
+    { "mass", masstree_test_thread::go, masstree_test_thread::setup },
+    { "mbtree", masstree_test_thread::go, masstree_test_thread::setup },
+    { "mb", masstree_test_thread::go, masstree_test_thread::setup },
+    { "m", masstree_test_thread::go, masstree_test_thread::setup }
 };
 
 
@@ -975,7 +989,7 @@ Try 'mttest --help' for options.\n");
         print_gnuplot(stdout, kvstats_name, kvstats_name + arraysize(kvstats_name),
                       comparisons, normtype);
 
-    exit(0);
+    return 0;
 }
 
 static void run_one_test_body(int trial, const char *treetype, const char *test) {
@@ -986,10 +1000,11 @@ static void run_one_test_body(int trial, const char *treetype, const char *test)
         if (strcmp(test_thread_map[i].treetype, treetype) == 0) {
             current_test_name = test;
             current_trial = trial;
-            test_thread_map[i].func(main_ti); // initialize table
-            runtest(tcpthreads, test_thread_map[i].func);
+            test_thread_map[i].setup_func(main_ti, test_thread_initialize);
+            runtest(tcpthreads, test_thread_map[i].go_func);
             if (tree_stats)
-                test_thread_map[i].func(0); // print tree_stats
+                test_thread_map[i].setup_func(main_ti, test_thread_stats);
+            test_thread_map[i].setup_func(main_ti, test_thread_destroy);
             break;
         }
 }
