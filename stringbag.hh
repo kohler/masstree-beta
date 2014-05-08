@@ -174,7 +174,8 @@ class stringbag {
         unsigned pos, mylen = info_[p].len;
         if (mylen >= (unsigned) len)
             pos = info_[p].pos;
-        else if (size_ + std::max(len, slice_type::size) <= capacity()) {
+        else if (size_ + (unsigned) std::max(len, slice_type::size)
+                   <= capacity()) {
             pos = size_;
             size_ += len;
         } else
