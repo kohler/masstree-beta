@@ -922,7 +922,7 @@ aget(struct child *c, const Str &key, const Str &wanted, get_async_cb fn)
     a->cmd = Cmd_Get;
     a->seq = c->seq1_;
     a->get_fn = (fn ? fn : defaultget);
-    assert(key.len < int(sizeof(a->key)) - 1);
+    assert(key.len < int(sizeof(a->key)));
     memcpy(a->key, key.s, key.len);
     a->key[key.len] = 0;
     a->wantedlen = wanted.len;
@@ -947,7 +947,7 @@ void aget_col(struct child *c, const Str& key, int col, const Str& wanted,
     a->cmd = Cmd_Get;
     a->seq = c->seq1_;
     a->get_fn = (fn ? fn : defaultget);
-    assert(key.len < int(sizeof(a->key)) - 1);
+    assert(key.len < int(sizeof(a->key)));
     memcpy(a->key, key.s, key.len);
     a->key[key.len] = 0;
     a->wantedlen = wanted.len;
