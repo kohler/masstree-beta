@@ -132,13 +132,12 @@ private:
 
 #endif
 
-namespace Masstree {
-
 template <typename V>
 class MassTrans : public Shared {
 public:
   typedef V value_type;
   typedef debug_threadinfo threadinfo;
+  typedef Masstree::Str Str;
 
 private:
   typedef uint32_t Version;
@@ -467,19 +466,17 @@ private:
     } while (vers != v2);
   }
 
-  struct table_params : public nodeparams<15,15> {
+  struct table_params : public Masstree::nodeparams<15,15> {
     typedef versioned_value* value_type;
-    typedef value_print<value_type> value_print_type;
+    typedef Masstree::value_print<value_type> value_print_type;
     typedef debug_threadinfo threadinfo_type;
   };
-  typedef basic_table<table_params> table_type;
-  typedef unlocked_tcursor<table_params> unlocked_cursor_type;
-  typedef tcursor<table_params> cursor_type;
-  typedef leaf<table_params> leaf_type;
+  typedef Masstree::basic_table<table_params> table_type;
+  typedef Masstree::unlocked_tcursor<table_params> unlocked_cursor_type;
+  typedef Masstree::tcursor<table_params> cursor_type;
+  typedef Masstree::leaf<table_params> leaf_type;
   table_type table_;
 };
 
   template <typename V>
   __thread typename MassTrans<V>::threadinfo MassTrans<V>::mythreadinfo;
-
-}
