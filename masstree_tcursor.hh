@@ -15,7 +15,7 @@
  */
 #ifndef MASSTREE_TCURSOR_HH
 #define MASSTREE_TCURSOR_HH 1
-#include <vector>
+#include "local_vector.hh"
 #include "masstree_key.hh"
 #include "masstree_struct.hh"
 namespace Masstree {
@@ -98,6 +98,8 @@ class tcursor {
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
     typedef typename nodeversion_type::value_type nodeversion_value_type;
     typedef typename P::threadinfo_type threadinfo;
+    static constexpr int newnodes_size = 1;
+    typedef local_vector<std::pair<leaf_type*, nodeversion_value_type>, newnodes_size> newnodes_vector_type;
 
     tcursor(basic_table<P>& table, Str str)
         : ka_(str), root_(table.fix_root()) {
@@ -136,6 +138,22 @@ class tcursor {
         return n_->node_ts_;
     }
 
+    inline leaf_type *old_node() const {
+        return oldn_;
+    }
+
+    inline nodeversion_value_type old_version_value() const {
+        return oldv_;
+    }
+
+    inline nodeversion_value_type new_version_value() const {
+        return newv_;
+    }
+
+    inline const newnodes_vector_type &newnodes() const {
+        return newnodes_;
+    }
+
     inline bool find_locked(threadinfo& ti);
     inline bool find_insert(threadinfo& ti);
 
@@ -152,12 +170,10 @@ class tcursor {
     node_base<P>* root_;
     int state_;
 
-public:
     leaf_type *oldn_;
     nodeversion_value_type oldv_;
     nodeversion_value_type newv_;
-    std::vector<std::pair<leaf_type*, nodeversion_value_type>> newnodes_;
-private:
+    newnodes_vector_type newnodes_;
 
     inline node_type* reset_retry() {
         ka_.unshift_all();

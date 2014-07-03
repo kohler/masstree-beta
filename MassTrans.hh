@@ -250,9 +250,9 @@ public:
       lp.finish(1, ti);
       fence();
 
-      auto old_node = lp.oldn_;
-      auto old_version = lp.oldv_;
-      auto new_version = lp.newv_;
+      auto old_node = lp.old_node();
+      auto old_version = lp.old_version_value();
+      auto new_version = lp.new_version_value();
 
       auto node_item = t.has_item(this, tag_inter(old_node));
       if (node_item) {
@@ -260,7 +260,7 @@ public:
             old_version == node_item->template read_value<typename unlocked_cursor_type::nodeversion_value_type>()) {
           t.add_read(*node_item, new_version);
           // add any new nodes as a result of splits, etc. to the read/absent set
-          for (auto&& pair : lp.newnodes_) {
+          for (auto&& pair : lp.newnodes()) {
             t.add_read(t.add_item<false>(this, tag_inter(pair.first)), pair.second);
           }
         } else {

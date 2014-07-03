@@ -14,7 +14,7 @@ kvtimestamp_t initial_timestamp;
 volatile bool recovering = false; // so don't add log entries, and free old value immediately
 
 int main() {
-  Masstree::MassTrans<std::string> tree;
+  MassTrans<std::string> tree;
   unsigned char buzz[64] = "buzz";
   char foo[64] =  "foo";
   unsigned char *b;
