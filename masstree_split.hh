@@ -229,6 +229,13 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
                 ki_ = kp_ = ki_ - perml.size();
                 n_ = nr;
             }
+            // versions/sizes shouldn't change after this
+            if (nl != n_) {
+                assert(nr == n_);
+                // we don't add n_ until lp.finish() is called (this avoids next_version_value() annoyances)
+                newv_ = nl->full_unlocked_version_value();
+            } else
+                newnodes_.emplace_back(nr, nr->full_unlocked_version_value());
         }
 
         if (n != n_)

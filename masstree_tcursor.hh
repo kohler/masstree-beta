@@ -15,6 +15,7 @@
  */
 #ifndef MASSTREE_TCURSOR_HH
 #define MASSTREE_TCURSOR_HH 1
+#include <vector>
 #include "masstree_key.hh"
 #include "masstree_struct.hh"
 namespace Masstree {
@@ -150,6 +151,13 @@ class tcursor {
     int kp_;
     node_base<P>* root_;
     int state_;
+
+public:
+    leaf_type *oldn_;
+    nodeversion_value_type oldv_;
+    nodeversion_value_type newv_;
+    std::vector<std::pair<leaf_type*, nodeversion_value_type>> newnodes_;
+private:
 
     inline node_type* reset_retry() {
         ka_.unshift_all();

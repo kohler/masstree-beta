@@ -331,6 +331,15 @@ class leaf : public node_base<P> {
         static_assert(int(nodeversion_type::traits_type::top_stable_bits) >= int(permuter_type::size_bits), "not enough bits to add size to version");
         return (this->version_value() << permuter_type::size_bits) + size();
     }
+    typename nodeversion_type::value_type full_unlocked_version_value() const {
+        static_assert(int(nodeversion_type::traits_type::top_stable_bits) >= int(permuter_type::size_bits), "not enough bits to add size to version");
+        typename node_base<P>::nodeversion_type v(*this);
+        if (v.locked())
+            // subtlely, unlocked_version_value() is different than v.unlock(); v.version_value() because the latter will add a
+            // split bit if we're doing a split. So we do the latter to get the fully correct version.
+            v.unlock();
+        return (v.version_value() << permuter_type::size_bits) + size();
+    }
 
     using node_base<P>::has_changed;
     bool has_changed(nodeversion_type oldv,
