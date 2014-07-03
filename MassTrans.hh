@@ -9,12 +9,136 @@
 #include "string.hh"
 #include "sto/Transaction.hh"
 
+#if 1
+class debug_threadinfo {
+public:
+#if 0
+  debug_threadinfo()
+    : ts_(0) { // XXX?
+  }
+#endif
+
+  class rcu_callback {
+  public:
+    virtual void operator()(debug_threadinfo& ti) = 0;
+  };
+
+private:
+  static inline void rcu_callback_function(void* p) {
+    debug_threadinfo ti;
+    static_cast<rcu_callback*>(p)->operator()(ti);
+  }
+
+
+public:
+  // XXX Correct node timstamps are needed for recovery, but for no other
+  // reason.
+  kvtimestamp_t operation_timestamp() const {
+    return 0;
+  }
+  kvtimestamp_t update_timestamp() const {
+    return ts_;
+  }
+  kvtimestamp_t update_timestamp(kvtimestamp_t x) const {
+    if (circular_int<kvtimestamp_t>::less_equal(ts_, x))
+      // x might be a marker timestamp; ensure result is not
+      ts_ = (x | 1) + 1;
+    return ts_;
+  }
+  kvtimestamp_t update_timestamp(kvtimestamp_t x, kvtimestamp_t y) const {
+    if (circular_int<kvtimestamp_t>::less(x, y))
+      x = y;
+    if (circular_int<kvtimestamp_t>::less_equal(ts_, x))
+      // x might be a marker timestamp; ensure result is not
+      ts_ = (x | 1) + 1;
+    return ts_;
+  }
+  void increment_timestamp() {
+    ts_ += 2;
+  }
+  void advance_timestamp(kvtimestamp_t x) {
+    if (circular_int<kvtimestamp_t>::less(ts_, x))
+      ts_ = x;
+  }
+
+  // event counters
+  void mark(threadcounter) {
+  }
+  void mark(threadcounter, int64_t) {
+  }
+  bool has_counter(threadcounter) const {
+    return false;
+  }
+  uint64_t counter(threadcounter ci) const {
+    return 0;
+  }
+
+  /** @brief Return a function object that calls mark(ci); relax_fence().
+   *
+   * This function object can be used to count the number of relax_fence()s
+   * executed. */
+  relax_fence_function accounting_relax_fence(threadcounter) {
+    return relax_fence_function();
+  }
+
+  class accounting_relax_fence_function {
+  public:
+    template <typename V>
+    void operator()(V) {
+      relax_fence();
+    }
+  };
+  /** @brief Return a function object that calls mark(ci); relax_fence().
+   *
+   * This function object can be used to count the number of relax_fence()s
+   * executed. */
+  accounting_relax_fence_function stable_fence() {
+    return accounting_relax_fence_function();
+  }
+
+  relax_fence_function lock_fence(threadcounter) {
+    return relax_fence_function();
+  }
+
+  void* allocate(size_t sz, memtag) {
+    return malloc(sz);
+  }
+  void deallocate(void* p, size_t sz, memtag) {
+    // in C++ allocators, 'p' must be nonnull
+    free(p);
+  }
+  void deallocate_rcu(void *p, size_t sz, memtag) {
+  }
+
+  void* pool_allocate(size_t sz, memtag) {
+    int nl = (sz + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
+    return malloc(nl * CACHE_LINE_SIZE);
+  }
+  void pool_deallocate(void* p, size_t sz, memtag) {
+  }
+  void pool_deallocate_rcu(void* p, size_t sz, memtag) {
+  }
+
+  // RCU
+  void rcu_register(rcu_callback *cb) {
+    //    scoped_rcu_base<false> guard;
+    //rcu::s_instance.free_with_fn(cb, rcu_callback_function);
+  }
+
+private:
+  mutable kvtimestamp_t ts_;
+};
+
+
+#endif
+
 namespace Masstree {
 
 template <typename V>
 class MassTrans : public Shared {
 public:
   typedef V value_type;
+  typedef debug_threadinfo threadinfo;
 
 private:
   typedef uint32_t Version;
@@ -25,7 +149,7 @@ private:
     void print(FILE* f, const char* prefix,
                int indent, Str key, kvtimestamp_t initial_timestamp,
                char* suffix) {
-      fprintf(f, "%s%*s%.*s = %d%s\n", prefix, indent, "", key.len, key.s, value, suffix);
+      fprintf(f, "%s%*s%.*s = %d%s (version %d)\n", prefix, indent, "", key.len, key.s, value, suffix, version);
     }
   };
 
@@ -112,6 +236,8 @@ public:
       return found;
     } else {
       if (!INSERT) {
+        // TODO: previous_full_version_value is not correct here
+        assert(0);
         ensureNotFound(t, lp.node(), lp.previous_full_version_value());
         lp.finish(0, ti);
         return found;
@@ -120,21 +246,37 @@ public:
       auto val = new versioned_value;
       val->value = value;
       val->version = invalid_bit;
-      lp.value() = val;
-      auto old_version = lp.previous_full_version_value();
-      auto new_version = lp.next_full_version_value(1);
       fence();
+      lp.value() = val;
       lp.finish(1, ti);
-      auto node_item = t.has_item(this, tag_inter(lp.node()));
+      fence();
+
+      auto old_node = lp.oldn_;
+      auto old_version = lp.oldv_;
+      auto new_version = lp.newv_;
+
+      auto node_item = t.has_item(this, tag_inter(old_node));
       if (node_item) {
         if (node_item->has_read() && 
             old_version == node_item->template read_value<typename unlocked_cursor_type::nodeversion_value_type>()) {
           t.add_read(*node_item, new_version);
+          // add any new nodes as a result of splits, etc. to the read/absent set
+          for (auto&& pair : lp.newnodes_) {
+            t.add_read(t.add_item<false>(this, tag_inter(pair.first)), pair.second);
+          }
+        } else {
+          //printf("couldn't find old version: %u vs %u\n", old_version, node_item->template read_value<typename unlocked_cursor_type::nodeversion_value_type>());
+          //auto& item = t.add_item<false>(this, val);
+          //t.add_write(item, key);
+          //t.add_undo(item);
+          //t.abort();
+          //return false;
         }
-      }
+      }// else printf("couldn't find node\n");
       auto& item = t.add_item<false>(this, val);
-      // TODO: this isn't great because it's going to require an alloc...
-      t.add_write(item, key);
+      // TODO: this isn't great because it's going to require an extra alloc (because Str/std::string is 2 words)...
+      // we convert to std::string because Str objects are not copied!!
+      t.add_write(item, std::string(key));
       t.add_undo(item);
       return found;
     }
@@ -142,6 +284,10 @@ public:
 
   bool transUpdate(Transaction& t, Str k, const value_type& v, threadinfo& ti = mythreadinfo) {
     return transPut</*insert*/false, /*set*/true>(t, k, v, ti);
+  }
+
+  bool transInsert(Transaction& t, Str k, const value_type& v, threadinfo&ti = mythreadinfo) {
+    return !transPut</*insert*/true, /*set*/false>(t, k, v, ti);
   }
 
   void lock(versioned_value *e) {
@@ -162,15 +308,20 @@ public:
       auto n = untag_inter(unpack<leaf_type*>(item.key()));
       auto cur_version = n->full_version_value();
       auto read_version = item.template read_value<typename unlocked_cursor_type::nodeversion_value_type>();
+      //      if (cur_version != read_version)
+      //printf("node versions disagree: %d vs %d\n", cur_version, read_version);
       return cur_version == read_version;
         //&& !(cur_version & (unlocked_cursor_type::nodeversion_type::traits_type::lock_bit));
       
     }
     auto e = unpack<versioned_value*>(item.key());
     auto read_version = item.template read_value<Version>();
+    //    if (read_version != e->version)
+    //printf("leaf versions disagree: %d vs %d\n", e->version, read_version);
     return validityCheck(item, e) && versionCheck(read_version, e->version) && (isReadWrite || !is_locked(e->version));
   }
   void install(TransItem& item) {
+    assert(!is_inter(item.key()));
     auto e = unpack<versioned_value*>(item.key());
     assert(is_locked(e->version));
     if (!has_insert(item))
@@ -181,7 +332,10 @@ public:
 
   void undo(TransItem& item) {
     // remove node
-    
+    auto& stdstr = item.template write_value<std::string>();
+    Str s(stdstr);
+    bool success = remove(s);
+    assert(success);
   }
 
   void cleanup(TransItem& item) {
@@ -190,6 +344,15 @@ public:
       free_packed<Version>(item.data.rdata);
     if (item.has_write())
       free_packed<value_type>(item.data.wdata);
+  }
+
+  bool remove(const Str& key) {
+    auto ti = mythreadinfo;
+    cursor_type lp(table_, key);
+    bool found = lp.find_locked(ti);
+    lp.finish(found ? -1 : 0, ti);
+    // rcu the value
+    return found;
   }
 
 #endif
@@ -307,7 +470,7 @@ private:
   struct table_params : public nodeparams<15,15> {
     typedef versioned_value* value_type;
     typedef value_print<value_type> value_print_type;
-    typedef threadinfo threadinfo_type;
+    typedef debug_threadinfo threadinfo_type;
   };
   typedef basic_table<table_params> table_type;
   typedef unlocked_tcursor<table_params> unlocked_cursor_type;
@@ -317,6 +480,6 @@ private:
 };
 
   template <typename V>
-  __thread threadinfo MassTrans<V>::mythreadinfo;
+  __thread typename MassTrans<V>::threadinfo MassTrans<V>::mythreadinfo;
 
 }
