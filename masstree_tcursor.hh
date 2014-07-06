@@ -98,7 +98,7 @@ class tcursor {
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
     typedef typename nodeversion_type::value_type nodeversion_value_type;
     typedef typename P::threadinfo_type threadinfo;
-    static constexpr int newnodes_size = 1;
+    static constexpr int newnodes_size = 1; // unless we make a new trie newnodes will have at most 1 item
     typedef local_vector<std::pair<leaf_type*, nodeversion_value_type>, newnodes_size> newnodes_vector_type;
 
     tcursor(basic_table<P>& table, Str str)

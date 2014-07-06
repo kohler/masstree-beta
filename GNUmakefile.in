@@ -1,7 +1,7 @@
 AR = ar
 CC = @CC@
 CXX = @CXX@
-CFLAGS = -g -W -Wall #-O2
+CFLAGS = -g -W -Wall -O2
 DEPSDIR := .deps
 DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
 ifeq ($(strip $(MEMMGR)), )
@@ -19,7 +19,7 @@ endif
 LIBS = @LIBS@ -lpthread -lm
 LDFLAGS = @LDFLAGS@
 
-all: test_atomics mtd mtclient mttest mbtatest
+all: test_atomics mtd mtclient mttest
 
 %.o: %.c config.h $(DEPSDIR)/stamp
 	$(CXX) $(CFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
@@ -47,10 +47,6 @@ mtclient: mtclient.o misc.o testrunner.o kvio.o libjson.a
 	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 mttest: mttest.o misc.o checkpoint.o $(KVTREES) testrunner.o \
-	kvio.o libjson.a
-	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
-
-mbtatest: mbtatest.o misc.o checkpoint.o $(KVTREES) testrunner.o \
 	kvio.o libjson.a
 	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
