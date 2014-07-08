@@ -90,6 +90,7 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
             twig_head = nl;
         nl->permutation_ = permuter_type::make_sorted(1);
         twig_tail = nl;
+        new_nodes_.emplace_back(nl, nl->full_unlocked_version_value());
         oka.shift();
         ka_.shift();
         kc = key_compare(oka, ka_);
@@ -135,6 +136,7 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     fence();
     n_->keylenx_[kp_] = n_->stable_layer_keylenx;
     --n_->nksuf_;
+    updated_v_ = n_->full_unlocked_version_value();
     n_->unlock(v);
     n_ = nl;
     ki_ = kp_ = kc < 0;
@@ -146,8 +148,13 @@ bool tcursor<P>::find_insert(threadinfo& ti)
 {
     node_type* root = root_;
     nodeversion_type v;
+
     while (1) {
         n_ = root->reach_leaf(ka_, v, ti);
+
+        original_n_ = n_;
+        original_v_ = n_->full_unlocked_version_value();
+
         root = check_leaf_insert(root, v, ti);
         if (reinterpret_cast<uintptr_t>(root) <= reinterpret_cast<uintptr_t>(insert_marker())) {
             state_ = 2 + (root == found_marker());
@@ -174,6 +181,11 @@ inline void tcursor<P>::finish(int state, threadinfo& ti)
             return;
     } else if (state > 0 && state_ == 2)
         finish_insert();
+    // we finally know this!
+    if (n_ == original_n_)
+        updated_v_ = n_->full_unlocked_version_value();
+    else
+        new_nodes_.emplace_back(n_, n_->full_unlocked_version_value());
     n_->unlock();
 }
 
