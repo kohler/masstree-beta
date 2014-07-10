@@ -63,13 +63,14 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
         perm = permutation_;
     } while (this->has_changed(v));
 
+    static const char* modstates[] = {"", "-", "D"};
     char keybuf[MASSTREE_MAXKEYLEN];
-    fprintf(f, "%s%*sleaf %p: %d %s, version %x, permutation %s, ",
+    fprintf(f, "%s%*sleaf %p: %d %s, version %x%s, permutation %s, ",
             prefix, indent, "", this,
             perm.size(), perm.size() == 1 ? "key" : "keys",
-            v.version_value(), perm.unparse().c_str());
-    if (nremoved_)
-        fprintf(f, "removed %d, ", nremoved_);
+            v.version_value(),
+            modstate_ <= 2 ? modstates[modstate_] : "??",
+            perm.unparse().c_str());
     fprintf(f, "parent %p, prev %p, next %p ", parent_, prev_, next_.ptr);
     if (ksuf_ && extrasize64_ < -1)
         fprintf(f, "[ksuf i%dx%d] ", -extrasize64_ - 1, (int) ksuf_->capacity() / 64);

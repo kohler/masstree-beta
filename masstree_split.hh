@@ -60,7 +60,6 @@ int leaf<P>::split_into(leaf<P>* nr, int p, const key_type& ka,
     //   will be former item (mid - 1).
     // If p >= mid, then x goes into nr.
     masstree_precondition(!this->concurrent || (this->locked() && nr->locked()));
-    masstree_precondition(this->nremoved_ == 0);
     masstree_precondition(this->size() >= this->width - 1);
 
     int width = this->size();   // == this->width or this->width - 1
@@ -167,8 +166,24 @@ int internode<P>::split_into(internode<P> *nr, int p, ikey_type ka,
 template <typename P>
 node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
 {
-    node_type *n = n_;
-    node_type *child = leaf_type::make(n_->ksuf_used_capacity(), n_->node_ts_, ti);
+    // We reach here if we might need to split, either because the node is
+    // full, or because we're trying to insert into position 0 (which holds
+    // the ikey_bound). But in the latter case, perhaps we can rearrange the
+    // permutation to do an insert instead.
+    if (n_->size() < n_->width) {
+        permuter_type perm(n_->permutation_);
+        perm.exchange(perm.size(), n_->width - 1);
+        kp_ = perm.back();
+        if (kp_ != 0) {
+            n_->permutation_ = perm.value();
+            fence();
+            n_->assign(kp_, ka_, ti);
+            return insert_marker();
+        }
+    }
+
+    node_type* n = n_;
+    node_type* child = leaf_type::make(n_->ksuf_used_capacity(), n_->node_ts_, ti);
     child->assign_version(*n_);
     ikey_type xikey[2];
     int split_type = n_->split_into(static_cast<leaf_type *>(child),

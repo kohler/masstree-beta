@@ -269,8 +269,12 @@ class leaf : public node_base<P> {
     static constexpr int unstable_layer_keylenx = sizeof(ikey_type) + 1 + 64;
     static constexpr int stable_layer_keylenx = sizeof(ikey_type) + 1 + 128;
 
+    enum {
+        modstate_insert = 0, modstate_remove = 1, modstate_deleted_layer = 2
+    };
+
     int8_t extrasize64_;
-    int8_t nremoved_;
+    uint8_t modstate_;
     int8_t nksuf_;
     uint8_t keylenx_[width];
     typename permuter_type::storage_type permutation_;
@@ -288,7 +292,7 @@ class leaf : public node_base<P> {
     internal_ksuf_type iksuf_[0];
 
     leaf(size_t sz, kvtimestamp_t node_ts)
-        : node_base<P>(true), nremoved_(0), nksuf_(0),
+        : node_base<P>(true), modstate_(modstate_insert), nksuf_(0),
           permutation_(permuter_type::make_empty()),
           ksuf_(), parent_(), node_ts_(node_ts), iksuf_{} {
         masstree_precondition(sz % 64 == 0 && sz / 64 < 128);
@@ -446,7 +450,7 @@ class leaf : public node_base<P> {
     }
 
     bool deleted_layer() const {
-        return nremoved_ > width;
+        return modstate_ == modstate_deleted_layer;
     }
 
     void prefetch() const {
@@ -483,7 +487,7 @@ class leaf : public node_base<P> {
 
   private:
     inline void mark_deleted_layer() {
-        nremoved_ = width + 1;
+        modstate_ = modstate_deleted_layer;
     }
 
     inline void assign(int p, const key_type& ka, threadinfo& ti) {
@@ -715,9 +719,12 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
     assert(ok); (void) ok;
     fence();
 
-    if (nremoved_ > 0)          // removed ksufs are not copied to the new ksuf,
-        this->mark_insert();    // but observers might need removed ksufs:
-                                // make them retry
+    // removed ksufs aren't copied to the new ksuf, but observers
+    // might need them. We ensure that observers must retry by
+    // ensuring that we are not currently in the remove state.
+    // State transitions are accompanied by mark_insert() so observers
+    // will retry.
+    masstree_invariant(modstate_ != modstate_remove);
 
     ksuf_ = nksuf;
     fence();

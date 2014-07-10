@@ -143,10 +143,14 @@ void gc_layer_rcu_callback<P>::make(node_base<P>* root, Str prefix,
 template <typename P>
 bool tcursor<P>::finish_remove(threadinfo& ti)
 {
+    if (n_->modstate_ == leaf<P>::modstate_insert) {
+        n_->mark_insert();
+        n_->modstate_ = leaf<P>::modstate_remove;
+    }
+
     permuter_type perm(n_->permutation_);
     perm.remove(ki_);
     n_->permutation_ = perm.value();
-    ++n_->nremoved_;
     n_->nksuf_ -= ka_.has_suffix();
     if (perm.size())
         return false;

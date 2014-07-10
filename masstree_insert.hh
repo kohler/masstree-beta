@@ -34,37 +34,25 @@ inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
             return check_leaf_new_layer(v, ti);
     }
 
-    // insert
- do_insert:
-    if (n_->size() + n_->nremoved_ < n_->width) {
+    // mark insertion if we are changing modification state
+    if (unlikely(n_->modstate_ != leaf<P>::modstate_insert)) {
+        if (n_->modstate_ == leaf<P>::modstate_remove)
+            n_->mark_insert(v);
+        else { // n_->modstate_ == leaf<P>::modstate_deleted_layer
+            n_->unlock(v);
+            return reset_retry();
+        }
+        n_->modstate_ = leaf<P>::modstate_insert;
+    }
+
+    // base case
+    if (n_->size() < n_->width) {
         kp_ = permuter_type(n_->permutation_).back();
-        // watch out for attempting to use position 0
+        // watch out for attempting to use position 0, which holds the ikey_bound
         if (likely(kp_ != 0) || !n_->prev_ || n_->ikey_bound() == ka_.ikey()) {
             n_->assign(kp_, ka_, ti);
             return insert_marker();
         }
-    }
-
-    // if there have been removals, reuse their space
-    if (n_->nremoved_ > 0) {
-        if (unlikely(n_->deleted_layer())) {
-            n_->unlock(v);
-            return reset_retry();
-        }
-        // since keysuffixes might change as we reassign keys,
-        // mark change so observers retry
-        n_->mark_insert(v);
-        n_->nremoved_ = 0;
-        // Position 0 is hard to reuse; ensure we reuse it last
-        permuter_type perm(n_->permutation_);
-        int zeroidx = find_lowest_zero_nibble(perm.value_from(0));
-        masstree_invariant(perm[zeroidx] == 0 && zeroidx < n_->width);
-        if (zeroidx > perm.size() && n_->prev_) {
-            perm.exchange(perm.size(), zeroidx);
-            n_->permutation_ = perm.value();
-            fence();
-        }
-        goto do_insert;
     }
 
     // split
