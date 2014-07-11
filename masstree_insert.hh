@@ -112,14 +112,13 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     // face of concurrent lockless readers? Mark insertion so they
     // retry.
     v = n_->mark_insert(v);
+    fence();
     if (twig_tail != n_)
         twig_tail->lv_[0] = nl;
-    fence();
     if (twig_head != n_)
         n_->lv_[kp_] = twig_head;
     else
         n_->lv_[kp_] = nl;
-    fence();
     n_->keylenx_[kp_] = n_->layer_keylenx;
     --n_->nksuf_;
     updated_v_ = n_->full_unlocked_version_value();
