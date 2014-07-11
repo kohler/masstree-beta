@@ -33,8 +33,9 @@
 \newcommand{\NOTFOUND}{\textsc{notfound}}
 \newcommand{\VALUE}{\textsc{value}}
 \newcommand{\LAYER}{\textsc{layer}}
-\newcommand{\UNSTABLE}{\textsc{unstable}}
 \newcommand{\MARK}{\textsc{mark}}
+\newcommand{\INSERTING}{\textsc{inserting}}
+\newcommand{\REMOVING}{\textsc{removing}}
 \newcommand{\readnow}[1]{\ensuremath{{}^\circ#1}}
 \newcommand{\fencebase}{\text{- - - - - - - - -}}
 \newcommand{\rcufencebase}{\text{* * * * * * * * *}}
@@ -649,8 +650,6 @@ n.\V{permutation})\) \\
 \> else if \(\pi \neq \NONE\) and \(t = \LAYER\): \\
 \>\> \(root \gets \V{value}\);~ \(k \gets \N{shift\_key}(k)\) \\
 \>\> goto descend \\
-\> else if \(\pi \neq \NONE\) and \(t = \UNSTABLE\): \\
-\>\> goto retry \\
 \> else if \(\pi = \NONE\) or \(\V{suffix} \neq k.\V{suffix}\): \\
 \>\> return \NONE \\
 \> else: \\
@@ -795,8 +794,11 @@ retry:~
 \>\> \(\langle i, \pi \rangle \gets \N{find\_key}(n, k,
 n.\V{permutation})\) \\
 \>\> goto retry \\
-insert:~
-\> if \(n.\V{size} + n.\V{nremoved} < \LEAFWIDTH\): \\
+\> if \(n.\V{modstate} \neq \INSERTING\): \\
+\>\> \(n.\V{modstate} \gets \INSERTING\) \\
+\>\> \(n.\V{version}.\V{inserting} \gets 1\) \\
+\>\> \fence \\
+\> if \(n.\V{size} < \LEAFWIDTH\): \\
 \>\> \(\pi \gets \text{an unused position from \(n.\V{permutation}\)}\) \\
 \>\> \(n.\V{kslice}[\pi] \gets k.\V{slice}\) \\
 \>\> \(n.\V{ksuffix}[\pi] \gets k.\V{suffix}\) \\
@@ -807,8 +809,6 @@ insert:~
 \>\> \(n.\V{permutation} \gets \text{modified permutation with \(\pi\) at
   position \(i\)}\) \\
 \>\> unlock(\(n\));~ return \\
-\> if \(n.\V{nremoved} > 0\): \\
-\>\> \(\N{clean}(n)\);~ goto insert \\
 \> \(\N{split}(n, k, \V{value})\) \\
 \programtabskip
 %
@@ -817,20 +817,14 @@ insert:~
 n.\V{value}[\pi]\) \\
 \> \(n' \gets \text{new locked leaf containing only \V{suffix} and
   \V{value}}\) \\
-\> \(n.\V{type}[\pi] \gets \UNSTABLE\) \\
+\> \(n.\V{version}.\V{inserting} \gets 1\) \\
 \> \fence \\
 \> \(n.\V{value}[\pi] \gets n'\) \\
 \> \(n.\V{ksuffix}[\pi] \gets \text{empty string}\) \\
-\> \fence \\
+%\> \fence \\
 \> \(n.\V{type}[\pi] \gets \LAYER\) \\
 \> unlock(\(n\)) \\
-\> return \(n'\) \\
-\programtabskip
-%
-\textbf{clean}(leaf \(n\)): \\
-\> \(n.\V{version}.\V{inserting} \gets 1\) \\
-\> \(n.\V{nremoved} \gets 0\) \\
-\> \fence
+\> return \(n'\)
 \end{programtabbing}
 \caption{Put implementation (except for split).}
 \end{figure}
@@ -939,12 +933,15 @@ correct---an overlapping reader can return the old value. Alternatively,
 \N{remove} could dirty the node, but this would force readers to retry,
 something we aim to avoid.
 
-However, there is a wrinkle. We must ensure that the node is dirtied
-before the slot is reused, or a concurrent reader might see an
-inconsistent state. We keep track of this through permutation
-manipulations and a per-node \(\V{nremoved}\) counter. The \N{put}
-function detects when a removed slot is reused and dirties the node by
-calling \N{clean}.
+However, there is a wrinkle. We must ensure that a change in the node's keys
+can be detected by examining the node's version---specifically, by examining
+the version and the current node size. Thus, the sequence of operations
+``insert(\textsc{x}); remove(\textsc{x})'' should change the node's version
+number. To this end, we keep track of a per-node modification state, called
+\(n.\V{modstate}\). This is either \INSERTING, if we are currently in the
+midst of inserting keys into the node, or \REMOVING, if we're currently
+removing keys from the node. Switching between modification states requires an
+explicit change to the node's version number.
 
 \subsection{Removing a leaf}
 
@@ -1241,8 +1238,11 @@ a deleted layer, writers retry from the layer-0 root.
 \begin{programtabbing}
 \textbf{remove\_item}(leaf \(n\), int \(i\), int \(\pi\), key \(k\), node
 \V{toproot}): \\
+\> if \(n.\V{modstate} = \INSERTING\): \\
+\>\> \(n.\V{modstate} \gets \REMOVING\) \\
+\>\> \(n.\V{version}.\V{inserting} \gets 1 \) \\
+\>\> \fence \\
 \> \(n.\V{permutation} \gets \N{permremove}(n.\V{permutation}, i)\) \\
-\> \(++n.\V{nremoved}\) \\
 \> fork \(\N{free\_value}(n.\V{value}[\pi])\) \\
 \> if \(n.\V{size} \neq 0\): \\
 \>\> \(\N{unlock}(n)\);~ return \\
