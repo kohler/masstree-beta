@@ -239,7 +239,7 @@ class leafvalue {
     }
 
     void prefetch(int keylenx) const {
-        if (keylenx < 128)
+        if (!leaf<P>::keylenx_is_layer(keylenx))
             prefetcher_type()(u_.v);
         else
             u_.n->prefetch_full();
@@ -266,8 +266,7 @@ class leaf : public node_base<P> {
     typedef typename P::threadinfo_type threadinfo;
     typedef stringbag<uint8_t> internal_ksuf_type;
     typedef stringbag<uint16_t> external_ksuf_type;
-    static constexpr int unstable_layer_keylenx = sizeof(ikey_type) + 1 + 64;
-    static constexpr int stable_layer_keylenx = sizeof(ikey_type) + 1 + 128;
+    static constexpr int layer_keylenx = sizeof(ikey_type) + 1 + 128;
 
     enum {
         modstate_insert = 0, modstate_remove = 1, modstate_deleted_layer = 2
@@ -379,21 +378,12 @@ class leaf : public node_base<P> {
     static bool keylenx_is_layer(int keylenx) {
         return keylenx > 63;
     }
-    static bool keylenx_is_unstable_layer(int keylenx) {
-        return keylenx & 64;
-    }
-    static bool keylenx_is_stable_layer(int keylenx) {
-        return keylenx > 127;   // see also leafvalue
-    }
     static bool keylenx_has_ksuf(int keylenx) {
         return keylenx == (int) sizeof(ikey_type) + 1;
     }
 
-    bool value_is_layer(int p) const {
+    bool is_layer(int p) const {
         return keylenx_is_layer(keylenx_[p]);
-    }
-    bool value_is_stable_layer(int p) const {
-        return keylenx_is_stable_layer(keylenx_[p]);
     }
     bool has_ksuf(int p) const {
         return keylenx_has_ksuf(keylenx_[p]);
@@ -514,7 +504,7 @@ class leaf : public node_base<P> {
     inline void assign_initialize_for_layer(int p, const key_type& ka) {
         assert(ka.has_suffix());
         ikey0_[p] = ka.ikey();
-        keylenx_[p] = stable_layer_keylenx;
+        keylenx_[p] = layer_keylenx;
     }
     void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
 

@@ -109,11 +109,9 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     // values users could assign for true values. So now we use bits in
     // the key length, and changing a leafvalue from true value to
     // recursive tree requires two writes. How to make this work in the
-    // face of concurrent lockless readers? We do it with two bits and
-    // retry. The first keylenx_ write informs a reader that the value is
-    // in flux, the second informs it of the true value. On x86 we only
-    // need compiler barriers.
-    n_->keylenx_[kp_] = n_->unstable_layer_keylenx;
+    // face of concurrent lockless readers? Mark insertion so they
+    // retry.
+    v = n_->mark_insert(v);
     if (twig_tail != n_)
         twig_tail->lv_[0] = nl;
     fence();
@@ -122,7 +120,7 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     else
         n_->lv_[kp_] = nl;
     fence();
-    n_->keylenx_[kp_] = n_->stable_layer_keylenx;
+    n_->keylenx_[kp_] = n_->layer_keylenx;
     --n_->nksuf_;
     updated_v_ = n_->full_unlocked_version_value();
     n_->unlock(v);

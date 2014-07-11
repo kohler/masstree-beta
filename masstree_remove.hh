@@ -42,7 +42,7 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
         return false;
     permuter_type perm(n_->permutation_);
     kp_ = perm[ki_];
-    if (n_->ikey0_[kp_] != ka_.ikey() || !n_->value_is_stable_layer(kp_))
+    if (n_->ikey0_[kp_] != ka_.ikey() || !n_->is_layer(kp_))
         return false;
 
     // remove redundant internode layers
@@ -329,7 +329,7 @@ void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
             typename leaf_type::permuter_type perm = l->permutation();
             for (int i = 0; i != l->size(); ++i) {
                 int p = perm[i];
-                if (l->value_is_layer(p))
+                if (l->is_layer(p))
                     enqueue(l->lv_[p].layer(), tailp);
             }
             l->deallocate(ti);

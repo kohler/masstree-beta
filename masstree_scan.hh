@@ -193,7 +193,6 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
     n_->prefetch();
     perm_ = n_->permutation();
 
- retry_entry:
     ki_ = helper.lower_with_position(ka, this, kp);
     if (kp >= 0) {
         keylenx = n_->keylenx_[kp];
@@ -214,11 +213,8 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
 
     if (kp >= 0) {
         if (n_->keylenx_is_layer(keylenx)) {
-            if (likely(n_->keylenx_is_stable_layer(keylenx))) {
-                this[1].root_ = entry.layer();
-                return scan_down;
-            } else
-                goto retry_entry;
+            this[1].root_ = entry.layer();
+            return scan_down;
         } else if (n_->keylenx_has_ksuf(keylenx)) {
             int ksuf_compare = suffix.compare(ka.suffix());
             if (helper.initial_ksuf_match(ksuf_compare, emit_equal)) {
@@ -275,9 +271,6 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
             ki_ = helper.next(ki_);
             goto retry_entry;
         }
-
-        if (unlikely(n_->keylenx_is_unstable_layer(keylenx)))
-            goto retry_entry;
 
         // We know we can emit the data collected above.
         ka.assign_store_ikey(ikey);
