@@ -15,7 +15,6 @@
  */
 #ifndef MASSTREE_NODEVERSION_HH
 #define MASSTREE_NODEVERSION_HH
-#include <assert.h>
 #include "compiler.hh"
 
 template <typename P>
@@ -101,10 +100,10 @@ class basic_nodeversion {
             spin_function();
             expected.v_ = v_;
         }
-        assert(!(expected.v_ & P::dirty_mask));
+        masstree_invariant(!(expected.v_ & P::dirty_mask));
         expected.v_ |= P::lock_bit;
         acquire_fence();
-        assert(expected.v_ == v_);
+        masstree_invariant(expected.v_ == v_);
         return expected;
     }
 
@@ -112,8 +111,8 @@ class basic_nodeversion {
         unlock(*this);
     }
     void unlock(basic_nodeversion<P> x) {
-        assert((fence(), x.v_ == v_));
-        assert(x.v_ & P::lock_bit);
+        masstree_invariant((fence(), x.v_ == v_));
+        masstree_invariant(x.v_ & P::lock_bit);
         if (x.v_ & P::splitting_bit)
             x.v_ = (x.v_ + P::vsplit_lowbit) & P::split_unlock_mask;
         else
@@ -123,35 +122,35 @@ class basic_nodeversion {
     }
 
     void mark_insert() {
-        assert(locked());
+        masstree_invariant(locked());
         v_ |= P::inserting_bit;
         acquire_fence();
     }
     basic_nodeversion<P> mark_insert(basic_nodeversion<P> current_version) {
-        assert((fence(), v_ == current_version.v_));
-        assert(current_version.v_ & P::lock_bit);
+        masstree_invariant((fence(), v_ == current_version.v_));
+        masstree_invariant(current_version.v_ & P::lock_bit);
         v_ = (current_version.v_ |= P::inserting_bit);
         acquire_fence();
         return current_version;
     }
     void mark_split() {
-        assert(locked());
+        masstree_invariant(locked());
         v_ |= P::splitting_bit;
         acquire_fence();
     }
     void mark_change(bool is_split) {
-        assert(locked());
+        masstree_invariant(locked());
         v_ |= (is_split + 1) << P::inserting_shift;
         acquire_fence();
     }
     basic_nodeversion<P> mark_deleted() {
-        assert(locked());
+        masstree_invariant(locked());
         v_ |= P::deleted_bit | P::splitting_bit;
         acquire_fence();
         return *this;
     }
     void mark_deleted_tree() {
-        assert(locked() && !has_split());
+        masstree_invariant(locked() && !has_split());
         v_ |= P::deleted_bit;
         acquire_fence();
     }
