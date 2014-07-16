@@ -24,6 +24,9 @@
     parameter called the <em>bag width</em>. These strings are stored
     in contiguously allocated memory.
 
+    Stringbag component strings support
+    string_slice<uintptr_t>::equals_sloppy() without memory errors.
+
     The template parameter T is the offset type. This type determines the
     maximum supported capacity of a stringbag. Smaller types have lower
     overhead, but support smaller bags.
@@ -40,6 +43,7 @@ class stringbag {
  public:
     /** @brief Type of offsets. */
     typedef T offset_type;
+    typedef string_slice<uintptr_t> slice_type;
 
  private:
     struct info_type {
@@ -49,7 +53,6 @@ class stringbag {
             : pos(p), len(l) {
         }
     };
-    typedef string_slice<uintptr_t> slice_type;
 
  public:
     /** @brief Return the maximum allowed capacity of a stringbag. */
@@ -107,60 +110,6 @@ class stringbag {
     lcdf::Str get(int p) const {
         info_type info = info_[p];
         return lcdf::Str(s_ + info.pos, info.len);
-    }
-
-    /** @brief Test if get(@a p) matches @a s.
-        @param p position
-        @param s string
-        @param len length of string
-        @pre @a p >= 0 && @a p < bag width */
-    bool equals(int p, const char *s, int len) const {
-        info_type info = info_[p];
-        return info.len == len
-            && memcmp(s_ + info.pos, s, len) == 0;
-    }
-    /** @override */
-    bool equals(int p, lcdf::Str s) const {
-        return equals(p, s.s, s.len);
-    }
-
-    /** @brief Test if get(@a p) matches @a s.
-        @param p position
-        @param s string
-        @param len length of string
-        @pre @a p >= 0 && @a p < bag width
-
-        Uses string_slice<uintptr_t>::equals_sloppy. Stringbag ensures that
-        equals_sloppy is safe on its string; the caller must ensure that
-        equals_sloppy is safe on [@a s, @a s + len). */
-    bool equals_sloppy(int p, const char* s, int len) const {
-        info_type info = info_[p];
-        if (info.len != len)
-            return false;
-        else
-            return slice_type::equals_sloppy(s, s_ + info.pos, len);
-    }
-    /** @override */
-    bool equals_sloppy(int p, lcdf::Str s) const {
-        return equals_sloppy(p, s.s, s.len);
-    }
-
-    /** @brief Compare get(@a p) with @a s.
-        @param p position
-        @param s string
-        @param len length of string
-        @return < 0 if get(@a p) is less than @a s in lexicographic order,
-            0 if they are equal, and > 0 otherwise.
-        @pre @a p >= 0 && @a p < bag width */
-    int compare(int p, const char *s, int len) const {
-        info_type info = info_[p];
-        unsigned minlen = std::min<unsigned>(len, info.len);
-        int cmp = memcmp(s_ + info.pos, s, minlen);
-        return cmp ? cmp : ::compare<unsigned>(info.len, len);
-    }
-    /** @override */
-    int compare(int p, lcdf::Str s) const {
-        return compare(p, s.s, s.len);
     }
 
     /** @brief Assign the string at position @a p to @a s.

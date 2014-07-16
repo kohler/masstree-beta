@@ -391,27 +391,28 @@ class leaf : public node_base<P> {
     bool has_ksuf(int p) const {
         return keylenx_has_ksuf(keylenx_[p]);
     }
-    Str ksuf(int p) const {
-        masstree_precondition(has_ksuf(p));
+    Str ksuf(int p, int keylenx) const {
+        masstree_precondition(keylenx_has_ksuf(keylenx));
         return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
     }
-    bool ksuf_equals(int p, const key_type& ka) {
-        // Precondition: keylenx_[p] == ka.ikeylen() && ikey0_[p] == ka.ikey()
+    Str ksuf(int p) const {
+        return ksuf(p, keylenx_[p]);
+    }
+    bool ksuf_equals(int p, const key_type& ka) const {
         return ksuf_equals(p, ka, keylenx_[p]);
     }
-    bool ksuf_equals(int p, const key_type& ka, int keylenx) {
-        // Precondition: keylenx_[p] == ka.ikeylen() && ikey0_[p] == ka.ikey()
-        return !keylenx_has_ksuf(keylenx)
-            || (!ksuf_ && iksuf_[0].equals_sloppy(p, ka.suffix()))
-            || (ksuf_ && ksuf_->equals_sloppy(p, ka.suffix()));
+    bool ksuf_equals(int p, const key_type& ka, int keylenx) const {
+        if (!keylenx_has_ksuf(keylenx))
+            return true;
+        Str s = ksuf(p, keylenx);
+        return s.len == ka.suffix().len
+            && string_slice<uintptr_t>::equals_sloppy(s.s, ka.suffix().s, s.len);
     }
-    int ksuf_compare(int p, const key_type& ka) {
-        if (!has_ksuf(p))
+    int ksuf_compare(int p, const key_type& ka) const {
+        int keylenx = keylenx_[p];
+        if (!keylenx_has_ksuf(keylenx))
             return 0;
-        else if (!ksuf_)
-            return iksuf_[0].compare(p, ka.suffix());
-        else
-            return ksuf_->compare(p, ka.suffix());
+        return ksuf(p, keylenx).compare(ka.suffix());
     }
 
     size_t ksuf_used_capacity() const {
