@@ -88,10 +88,6 @@ class key {
     int length() const {
         return len_;
     }
-    /** @brief Return the maxkey's length, bounded above by ikey_size + 1. */
-    int ikeylen() const {
-        return std::min(length(), (int) ikey_size + 1);
-    }
     /** @brief Test whether this key has a suffix (length() > ikey_size). */
     bool has_suffix() const {
         return len_ > ikey_size;

@@ -272,7 +272,8 @@ class leaf : public node_base<P> {
     typedef typename P::threadinfo_type threadinfo;
     typedef stringbag<uint8_t> internal_ksuf_type;
     typedef stringbag<uint16_t> external_ksuf_type;
-    static constexpr int layer_keylenx = sizeof(ikey_type) + 1 + 128;
+    static constexpr int ksuf_keylenx = 64;
+    static constexpr int layer_keylenx = 128;
 
     enum {
         modstate_insert = 0, modstate_remove = 1, modstate_deleted_layer = 2
@@ -356,9 +357,9 @@ class leaf : public node_base<P> {
     }
 
     key_type get_key(int p) const {
-        int kl = keylenx_[p];
-        if (!keylenx_has_ksuf(kl))
-            return key_type(ikey0_[p], kl);
+        int keylenx = keylenx_[p];
+        if (!keylenx_has_ksuf(keylenx))
+            return key_type(ikey0_[p], keylenx);
         else
             return key_type(ikey0_[p], ksuf(p));
     }
@@ -367,9 +368,6 @@ class leaf : public node_base<P> {
     }
     ikey_type ikey_bound() const {
         return ikey0_[0];
-    }
-    int ikeylen(int p) const {
-        return keylenx_ikeylen(keylenx_[p]);
     }
     int compare_key(const key_type& a, int bp) const {
         return a.compare(ikey(bp), keylenx_[bp]);
@@ -380,14 +378,11 @@ class leaf : public node_base<P> {
     inline leaf<P>* advance_to_key(const key_type& k, nodeversion_type& version,
                                    threadinfo& ti) const;
 
-    static int keylenx_ikeylen(int keylenx) {
-        return keylenx & 31;
-    }
     static bool keylenx_is_layer(int keylenx) {
-        return keylenx > 63;
+        return keylenx > 127;
     }
     static bool keylenx_has_ksuf(int keylenx) {
-        return keylenx == (int) sizeof(ikey_type) + 1;
+        return keylenx == ksuf_keylenx;
     }
 
     bool is_layer(int p) const {
@@ -490,24 +485,30 @@ class leaf : public node_base<P> {
 
     inline void assign(int p, const key_type& ka, threadinfo& ti) {
         lv_[p] = leafvalue_type::make_empty();
-        if (ka.has_suffix())
-            assign_ksuf(p, ka.suffix(), false, ti);
         ikey0_[p] = ka.ikey();
-        keylenx_[p] = ka.ikeylen();
+        if (!ka.has_suffix())
+            keylenx_[p] = ka.length();
+        else {
+            keylenx_[p] = ksuf_keylenx;
+            assign_ksuf(p, ka.suffix(), false, ti);
+        }
     }
     inline void assign_initialize(int p, const key_type& ka, threadinfo& ti) {
         lv_[p] = leafvalue_type::make_empty();
-        if (ka.has_suffix())
-            assign_ksuf(p, ka.suffix(), true, ti);
         ikey0_[p] = ka.ikey();
-        keylenx_[p] = ka.ikeylen();
+        if (!ka.has_suffix())
+            keylenx_[p] = ka.length();
+        else {
+            keylenx_[p] = ksuf_keylenx;
+            assign_ksuf(p, ka.suffix(), true, ti);
+        }
     }
     inline void assign_initialize(int p, leaf<P>* x, int xp, threadinfo& ti) {
         lv_[p] = x->lv_[xp];
-        if (x->has_ksuf(xp))
-            assign_ksuf(p, x->ksuf(xp), true, ti);
         ikey0_[p] = x->ikey0_[xp];
         keylenx_[p] = x->keylenx_[xp];
+        if (x->has_ksuf(xp))
+            assign_ksuf(p, x->ksuf(xp), true, ti);
     }
     inline void assign_initialize_for_layer(int p, const key_type& ka) {
         assert(ka.has_suffix());
@@ -672,9 +673,7 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
 
 /** @brief Assign position @a p's keysuffix to @a s.
 
-    This version of assign_ksuf() is called when @a s might not fit into
-    the current keysuffix container. It may allocate a new container, copying
-    suffixes over.
+    This may allocate a new suffix container, copying suffixes over.
 
     The @a initializing parameter determines which suffixes are copied. If @a
     initializing is false, then this is an insertion into a live node. The
