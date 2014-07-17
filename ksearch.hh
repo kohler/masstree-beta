@@ -36,7 +36,7 @@ struct key_indexed_position {
 
 
 template <typename KA, typename T, typename F>
-int key_upper_bound_by(const KA &ka, const T &n, F comparator)
+int key_upper_bound_by(const KA& ka, const T& n, F comparator)
 {
     typename key_permuter<T>::type perm = key_permuter<T>::permutation(n);
     int l = 0, r = perm.size();
@@ -55,7 +55,7 @@ int key_upper_bound_by(const KA &ka, const T &n, F comparator)
 }
 
 template <typename KA, typename T>
-inline int key_upper_bound(const KA &ka, const T &n)
+inline int key_upper_bound(const KA& ka, const T& n)
 {
     return key_upper_bound_by(ka, n, key_comparator<KA, T>());
 }
@@ -87,7 +87,7 @@ inline key_indexed_position key_lower_bound(const KA& ka, const T& n)
 
 
 template <typename KA, typename T, typename F>
-int key_find_upper_bound_by(const KA &ka, const T &n, F comparator)
+int key_find_upper_bound_by(const KA& ka, const T& n, F comparator)
 {
     typename key_permuter<T>::type perm = key_permuter<T>::permutation(n);
     int l = 0, r = perm.size();
@@ -124,7 +124,7 @@ key_indexed_position key_find_lower_bound_by(const KA& ka, const T& n, F compara
 struct key_bound_binary {
     static constexpr bool is_binary = true;
     template <typename KA, typename T>
-    static inline int upper(const KA &ka, const T &n) {
+    static inline int upper(const KA& ka, const T& n) {
         return key_upper_bound_by(ka, n, key_comparator<KA, T>());
     }
     template <typename KA, typename T>
@@ -140,7 +140,7 @@ struct key_bound_binary {
 struct key_bound_linear {
     static constexpr bool is_binary = false;
     template <typename KA, typename T>
-    static inline int upper(const KA &ka, const T &n) {
+    static inline int upper(const KA& ka, const T& n) {
         return key_find_upper_bound_by(ka, n, key_comparator<KA, T>());
     }
     template <typename KA, typename T>

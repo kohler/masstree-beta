@@ -298,13 +298,13 @@ template <typename T> struct has_permuter_type {
 template <typename T, bool HP = has_permuter_type<T>::value> struct key_permuter {};
 template <typename T> struct key_permuter<T, true> {
     typedef typename T::permuter_type type;
-    static type permutation(const T &n) {
+    static type permutation(const T& n) {
         return n.permutation();
     }
 };
 template <typename T> struct key_permuter<T, false> {
     typedef identity_kpermuter type;
-    static type permutation(const T &n) {
+    static type permutation(const T& n) {
         return identity_kpermuter(n.size());
     }
 };
