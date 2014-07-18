@@ -32,7 +32,7 @@ class testrunner_base {
     testrunner_base* next_;
 };
 
-#ifdef TESTRUNNER_SIGNATURE
+#ifdef TESTRUNNER_CLIENT_TYPE
 
 class testrunner : public testrunner_base {
   public:
@@ -45,7 +45,7 @@ class testrunner : public testrunner_base {
     static testrunner* find(const lcdf::String& name) {
         return static_cast<testrunner*>(testrunner_base::find(name));
     }
-    virtual void run(TESTRUNNER_SIGNATURE) = 0;
+    virtual void run(TESTRUNNER_CLIENT_TYPE) = 0;
 };
 
 #define MAKE_TESTRUNNER(name, text)                    \
@@ -53,7 +53,7 @@ class testrunner : public testrunner_base {
     class testrunner_##name : public testrunner {      \
     public:                                            \
         testrunner_##name() : testrunner(#name) {}     \
-        void run(TESTRUNNER_SIGNATURE) { text; } \
+        void run(TESTRUNNER_CLIENT_TYPE client) { text; client.finish(); } \
     }; static testrunner_##name testrunner_##name##_instance; }
 
 #endif

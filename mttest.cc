@@ -141,7 +141,7 @@ struct kvtest_client {
         ti_ = ti;
     }
     void reset(const String &test, int trial) {
-        json_ = Json().set("table", T().name())
+        report_ = Json().set("table", T().name())
             .set("test", test).set("trial", trial)
             .set("thread", ti_->index());
     }
@@ -282,16 +282,18 @@ struct kvtest_client {
     String make_message(lcdf::StringAccum &sa) const;
     void notice(const char *fmt, ...);
     void fail(const char *fmt, ...);
-    void report(const Json &result) {
-        json_.merge(result);
+    const Json& report(const Json& x) {
+        return report_.merge(x);
+    }
+    void finish() {
         Json counters;
         for (int i = 0; i < tc_max; ++i)
             if (uint64_t c = ti_->counter(threadcounter(i)))
                 counters.set(threadcounter_names[i], c);
         if (counters)
-            json_.set("counters", counters);
+            report_.set("counters", counters);
         if (!quiet)
-            fprintf(stderr, "%d: %s\n", ti_->index(), json_.unparse().c_str());
+            fprintf(stderr, "%d: %s\n", ti_->index(), report_.unparse().c_str());
     }
 
     T *table_;
@@ -299,7 +301,7 @@ struct kvtest_client {
     query<row_type> q_[1];
     kvrandom_lcg_nr rand;
     uint64_t limit_;
-    Json json_;
+    Json report_;
     int ncores_;
     kvout *kvo_;
 
@@ -498,7 +500,7 @@ static FILE *test_output_file;
 static pthread_mutex_t subtest_mutex;
 static pthread_cond_t subtest_cond;
 
-#define TESTRUNNER_SIGNATURE kvtest_client<Masstree::default_table>& client
+#define TESTRUNNER_CLIENT_TYPE kvtest_client<Masstree::default_table>&
 #include "testrunner.hh"
 
 MAKE_TESTRUNNER(rw1, kvtest_rw1(client));
@@ -506,6 +508,7 @@ MAKE_TESTRUNNER(rw1, kvtest_rw1(client));
 // MAKE_TESTRUNNER(palmb, kvtest_palmb(client));
 MAKE_TESTRUNNER(rw1fixed, kvtest_rw1fixed(client));
 MAKE_TESTRUNNER(rw1long, kvtest_rw1long(client));
+MAKE_TESTRUNNER(rw1puts, kvtest_rw1puts(client));
 MAKE_TESTRUNNER(rw2, kvtest_rw2(client));
 MAKE_TESTRUNNER(rw2fixed, kvtest_rw2fixed(client));
 MAKE_TESTRUNNER(rw2g90, kvtest_rw2g90(client));
@@ -607,7 +610,7 @@ struct test_thread {
                 tt.ready_timeouts();
             } else
                 pthread_cond_wait(&subtest_cond, &subtest_mutex);
-            fprintf(test_output_file, "%s\n", tt.client_.json_.unparse().c_str());
+            fprintf(test_output_file, "%s\n", tt.client_.report_.unparse().c_str());
             pthread_mutex_unlock(&subtest_mutex);
             fetch_and_add(&active_threads_, 1);
             pos = comma + 1;
@@ -621,10 +624,10 @@ struct test_thread {
             kvtest_json_stats(*table_, j, *tt.client_.ti_);
             if (j) {
                 fprintf(stderr, "%s\n", j.unparse(Json::indent_depth(1).tab_width(2).newline_terminator(true)).c_str());
-                tt.client_.json_.merge(j);
+                tt.client_.report_.merge(j);
             }
         }
-        fprintf(test_output_file, "%s\n", tt.client_.json_.unparse().c_str());
+        fprintf(test_output_file, "%s\n", tt.client_.report_.unparse().c_str());
         return 0;
     }
     void ready_timeouts() {

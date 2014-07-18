@@ -348,27 +348,31 @@ struct kvtest_client {
             va_end(val);
         }
     }
-    void report(const Json &result) {
+    const Json& report(const Json& x) {
+        return report_.merge(x);
+    }
+    void finish() {
         if (!quiet) {
             lcdf::StringAccum sa;
             double dv;
-            if (result.count("puts"))
-                sa << " total " << result.get("puts");
-            if (result.get("puts_per_sec", dv))
+            if (report_.count("puts"))
+                sa << " total " << report_.get("puts");
+            if (report_.get("puts_per_sec", dv))
                 sa.snprintf(100, " %.0f put/s", dv);
-            if (result.get("gets_per_sec", dv))
+            if (report_.get("gets_per_sec", dv))
                 sa.snprintf(100, " %.0f get/s", dv);
             if (!sa.empty())
                 notice(sa.take_string());
         }
-        printf("%s\n", result.unparse().c_str());
+        printf("%s\n", report_.unparse().c_str());
     }
     kvrandom_random rand;
     struct child *c_;
+    Json report_;
 };
 
 
-#define TESTRUNNER_SIGNATURE kvtest_client& client
+#define TESTRUNNER_CLIENT_TYPE kvtest_client&
 #include "testrunner.hh"
 
 MAKE_TESTRUNNER(rw1, kvtest_rw1(client));

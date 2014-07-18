@@ -237,16 +237,18 @@ struct kvtest_client {
     String make_message(StringAccum &sa) const;
     void notice(const char *fmt, ...);
     void fail(const char *fmt, ...);
-    void report(const Json &result) {
-        json_.merge(result);
-        fprintf(stderr, "%d: %s\n", ti_->index(), json_.unparse().c_str());
+    const Json& report(const Json& x) {
+        return report_.merge(x);
+    }
+    void finish() {
+        fprintf(stderr, "%d: %s\n", ti_->index(), report_.unparse().c_str());
     }
     threadinfo *ti_;
     query<row_type> q_[10];
     const char *testname_;
     kvrandom_lcg_nr rand;
     int checks_;
-    Json json_;
+    Json report_;
     struct kvout *kvo_;
     static volatile int failing;
 };
@@ -451,7 +453,7 @@ void runtest(const char *testname, int nthreads) {
     kvstats kvs[arraysize(kvstats_name)];
     for (int i = 0; i < nthreads; ++i)
         for (int j = 0; j < (int) arraysize(kvstats_name); ++j)
-            if (double x = clients[i].json_.get_d(kvstats_name[j]))
+            if (double x = clients[i].report_.get_d(kvstats_name[j]))
                 kvs[j].add(x);
     for (int j = 0; j < (int) arraysize(kvstats_name); ++j)
         kvs[j].print_report(kvstats_name[j]);

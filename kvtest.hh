@@ -29,12 +29,19 @@ extern int kvtest_first_seed;
 // the kvd binary.
 
 template <typename N>
-inline Json &kvtest_set_time(Json &result, const lcdf::String &base, N n, double delta_t)
+inline Json& kvtest_set_time(Json& result, const lcdf::String& base, N n, double delta_t)
 {
     result.set(base, n);
     if (delta_t > 0)
         result.set(base + "_per_sec", n / delta_t);
     return result;
+}
+
+template <typename N>
+inline Json kvtest_set_time(const Json& result, const lcdf::String& base, N n, double delta_t) {
+    Json x(result);
+    kvtest_set_time(x, base, n, delta_t);
+    return x;
 }
 
 template <typename C>
@@ -81,12 +88,8 @@ void kvtest_sync_rw1(C &client)
     kvtest_sync_rw1_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
-// do a bunch of inserts to distinct keys, then check that they all showed up.
-// sometimes overwrites, but only w/ same value.
-// different clients might use same key sometimes.
 template <typename C>
-void kvtest_rw1_seed(C &client, int seed)
-{
+unsigned kvtest_rw1puts_seed(C& client, int seed) {
     client.rand.reset(seed);
     double tp0 = client.now();
     unsigned n;
@@ -96,8 +99,20 @@ void kvtest_rw1_seed(C &client, int seed)
     }
     client.wait_all();
     double tp1 = client.now();
-
     client.puts_done();
+
+    client.report(kvtest_set_time(Json(), "puts", n, tp1 - tp0));
+    return n;
+}
+
+// do a bunch of inserts to distinct keys, then check that they all showed up.
+// sometimes overwrites, but only w/ same value.
+// different clients might use same key sometimes.
+template <typename C>
+void kvtest_rw1_seed(C &client, int seed)
+{
+    unsigned n = kvtest_rw1puts_seed(client, seed);
+
     client.notice("now getting\n");
     int32_t *a = (int32_t *) malloc(sizeof(int32_t) * n);
     assert(a);
@@ -126,12 +141,18 @@ void kvtest_rw1_seed(C &client, int seed)
     client.wait_all();
     double tg1 = client.now();
 
-    Json result = Json();
-    kvtest_set_time(result, "puts", n, tp1 - tp0);
+    Json result = client.report(Json());
     kvtest_set_time(result, "gets", g, tg1 - tg0);
-    kvtest_set_time(result, "ops", n + g, (tp1 - tp0) + (tg1 - tg0));
+    double delta_puts = n / result["puts_per_sec"].as_d();
+    kvtest_set_time(result, "ops", n + g, delta_puts + (tg1 - tg0));
     client.report(result);
     free(a);
+}
+
+template <typename C>
+void kvtest_rw1puts(C &client)
+{
+    kvtest_rw1puts_seed(client, kvtest_first_seed + client.id() % 48);
 }
 
 template <typename C>
@@ -830,7 +851,7 @@ void kvtest_tri1_check(unsigned initial_pos, int incr, C &client)
 
 #define PALMN   128000000
 enum { PalmBatch = 8192 / 24 };
-#define PALM_DEBUG 1    // use get_check in palmb, which force palm::get 
+#define PALM_DEBUG 1    // use get_check in palmb, which force palm::get
                         // to touch the cachline of the value
 template <typename C>
 void kvtest_palma(C &client)
