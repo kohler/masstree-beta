@@ -640,9 +640,9 @@ retry:~
 \> \(\langle i, \pi \rangle \gets \text{find\_key}(n, k,
 n.\V{permutation})\) \\
 \> if \(\pi \neq \NONE\): \\
-\>\> \(t \gets n.\V{type}[\pi]\) \\
-\>\> \fence \\
-\>\> \(\V{suffix} \gets n.\V{ksuffix}[\pi]\);~ \(\V{value} \gets n.\V{value}[\pi]\) \\
+\>\> \(t \gets n.\V{type}[\pi]\);~
+    \(\V{suffix} \gets n.\V{ksuffix}[\pi]\);~
+    \(\V{value} \gets n.\V{value}[\pi]\) \\
 \> \fence \\
 \> if \(v \oplus \readnow{n.\V{version}} > \V{locked}\): \\
 \>\> $\langle n, v \rangle \gets \text{advance}(n, k)$ \\

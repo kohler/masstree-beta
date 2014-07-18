@@ -39,7 +39,6 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
     kx = leaf<P>::bound_type::lower(ka_, *this);
     if (kx.p >= 0) {
         keylenx = n_->keylenx_[kx.p];
-        fence();                // see note in check_leaf_insert()
         lv_ = n_->lv_[kx.p];
         lv_.prefetch(keylenx);
         ksuf_match = n_->ksuf_equals(kx.p, ka_, keylenx);
