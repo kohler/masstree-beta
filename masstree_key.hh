@@ -110,6 +110,13 @@ class key {
         len_ -= ikey_size;
         ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, len_);
     }
+    /** @brief Shift this key forward to model the current key's suffix.
+        @pre has_suffix() */
+    void shift_by(int delta) {
+        s_ += delta;
+        len_ -= delta;
+        ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, len_);
+    }
     /** @brief Test whether this key has been shifted by shift(). */
     bool is_shifted() const {
         return first_ != s_;

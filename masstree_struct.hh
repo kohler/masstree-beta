@@ -408,6 +408,17 @@ class leaf : public node_base<P> {
         return s.len == ka.suffix().len
             && string_slice<uintptr_t>::equals_sloppy(s.s, ka.suffix().s, s.len);
     }
+    // Returns 1 if match & not layer, 0 if no match, <0 if match and layer
+    int ksuf_matches(int p, const key_type& ka) const {
+        int keylenx = keylenx_[p];
+        if (keylenx < ksuf_keylenx)
+            return 1;
+        if (keylenx == layer_keylenx)
+            return -(int) sizeof(ikey_type);
+        Str s = ksuf(p, keylenx);
+        return s.len == ka.suffix().len
+            && string_slice<uintptr_t>::equals_sloppy(s.s, ka.suffix().s, s.len);
+    }
     int ksuf_compare(int p, const key_type& ka) const {
         int keylenx = keylenx_[p];
         if (!keylenx_has_ksuf(keylenx))

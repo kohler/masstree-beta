@@ -22,9 +22,8 @@ namespace Masstree {
 template <typename P>
 bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 {
-    bool ksuf_match = false;
+    int match = 0;
     key_indexed_position kx;
-    int keylenx = 0;
     node_base<P>* root = const_cast<node_base<P>*>(root_);
 
  retry:
@@ -38,10 +37,9 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
     perm_ = n_->permutation();
     kx = leaf<P>::bound_type::lower(ka_, *this);
     if (kx.p >= 0) {
-        keylenx = n_->keylenx_[kx.p];
         lv_ = n_->lv_[kx.p];
-        lv_.prefetch(keylenx);
-        ksuf_match = n_->ksuf_equals(kx.p, ka_, keylenx);
+        lv_.prefetch(n_->keylenx_[kx.p]);
+        match = n_->ksuf_matches(kx.p, ka_);
     }
     if (n_->has_changed(v_)) {
         ti.mark(threadcounter(tc_stable_leaf_insert + n_->simple_has_split(v_)));
@@ -49,14 +47,12 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
         goto forward;
     }
 
-    if (kx.p < 0)
-        return false;
-    else if (n_->keylenx_is_layer(keylenx)) {
-        ka_.shift();
+    if (match < 0) {
+        ka_.shift_by(-match);
         root = lv_.layer();
         goto retry;
     } else
-        return ksuf_match;
+        return match;
 }
 
 template <typename P>
