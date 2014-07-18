@@ -163,7 +163,7 @@ int internode<P>::split_into(internode<P> *nr, int p, ikey_type ka,
 
 
 template <typename P>
-node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
+bool tcursor<P>::make_split(threadinfo& ti)
 {
     // We reach here if we might need to split, either because the node is
     // full, or because we're trying to insert into position 0 (which holds
@@ -177,7 +177,7 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
             n_->permutation_ = perm.value();
             fence();
             n_->assign(kx_.p, ka_, ti);
-            return insert_marker();
+            return false;
         }
     }
 
@@ -267,7 +267,7 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
             break;
     }
 
-    return insert_marker();
+    return false;
 }
 
 } // namespace Masstree

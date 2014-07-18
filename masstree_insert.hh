@@ -20,56 +20,54 @@
 namespace Masstree {
 
 template <typename P>
-inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
-                                                   nodeversion_type v,
-                                                   threadinfo& ti)
+bool tcursor<P>::find_insert(threadinfo& ti)
 {
-    if (node_type* next_root = get_leaf_locked(root, v, ti))
-        return next_root;
+    find_locked(ti);
+    original_n_ = n_;
+    original_v_ = n_->full_unlocked_version_value();
 
-    if (kx_.p >= 0) {
-        if (n_->ksuf_equals(kx_.p, ka_))
-            return found_marker();
-        else
-            return check_leaf_new_layer(v, ti);
-    }
+    // maybe we found it
+    if (state_)
+        return true;
+
+    // otherwise mark as inserted but not present
+    state_ = 2;
+
+    // maybe we need a new layer
+    if (kx_.p >= 0)
+        return make_new_layer(ti);
 
     // mark insertion if we are changing modification state
     if (unlikely(n_->modstate_ != leaf<P>::modstate_insert)) {
-        if (n_->modstate_ == leaf<P>::modstate_remove)
-            n_->mark_insert(v);
-        else { // n_->modstate_ == leaf<P>::modstate_deleted_layer
-            n_->unlock(v);
-            return reset_retry();
-        }
+        masstree_invariant(n_->modstate_ == leaf<P>::modstate_remove);
+        n_->mark_insert();
         n_->modstate_ = leaf<P>::modstate_insert;
     }
 
-    // base case
+    // try inserting into this node
     if (n_->size() < n_->width) {
         kx_.p = permuter_type(n_->permutation_).back();
-        // watch out for attempting to use position 0, which holds the ikey_bound
+        // don't inappropriately reuse position 0, which holds the ikey_bound
         if (likely(kx_.p != 0) || !n_->prev_ || n_->ikey_bound() == ka_.ikey()) {
             n_->assign(kx_.p, ka_, ti);
-            return insert_marker();
+            return false;
         }
     }
 
-    // split
-    return finish_split(ti);
+    // otherwise must split
+    return make_split(ti);
 }
 
 template <typename P>
-node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
-                                               threadinfo& ti) {
+bool tcursor<P>::make_new_layer(threadinfo& ti) {
     key_type oka(n_->ksuf(kx_.p));
     ka_.shift();
-    int kc = oka.compare(ka_);
+    int kcmp = oka.compare(ka_);
 
     // Create a twig of nodes until the suffixes diverge
     leaf_type* twig_head = n_;
     leaf_type* twig_tail = n_;
-    while (kc == 0) {
+    while (kcmp == 0) {
         leaf_type* nl = leaf_type::make_root(0, twig_tail, ti);
         nl->assign_initialize_for_layer(0, oka);
         if (twig_head != n_)
@@ -81,7 +79,7 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
         new_nodes_.emplace_back(nl, nl->full_unlocked_version_value());
         oka.shift();
         ka_.shift();
-        kc = oka.compare(ka_);
+        kcmp = oka.compare(ka_);
     }
 
     // Estimate how much space will be required for keysuffixes
@@ -93,11 +91,11 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     else
         ksufsize = 0;
     leaf_type *nl = leaf_type::make_root(ksufsize, twig_tail, ti);
-    nl->assign_initialize(0, kc < 0 ? oka : ka_, ti);
-    nl->assign_initialize(1, kc < 0 ? ka_ : oka, ti);
-    nl->lv_[kc > 0] = n_->lv_[kx_.p];
+    nl->assign_initialize(0, kcmp < 0 ? oka : ka_, ti);
+    nl->assign_initialize(1, kcmp < 0 ? ka_ : oka, ti);
+    nl->lv_[kcmp > 0] = n_->lv_[kx_.p];
     nl->lock(*nl, ti.lock_fence(tc_leaf_lock));
-    if (kc < 0)
+    if (kcmp < 0)
         nl->permutation_ = permuter_type::make_sorted(1);
     else {
         permuter_type permnl = permuter_type::make_sorted(2);
@@ -111,7 +109,7 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     // recursive tree requires two writes. How to make this work in the
     // face of concurrent lockless readers? Mark insertion so they
     // retry.
-    v = n_->mark_insert(v);
+    n_->mark_insert();
     fence();
     if (twig_tail != n_)
         twig_tail->lv_[0] = nl;
@@ -121,29 +119,10 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
         n_->lv_[kx_.p] = nl;
     n_->keylenx_[kx_.p] = n_->layer_keylenx;
     updated_v_ = n_->full_unlocked_version_value();
-    n_->unlock(v);
+    n_->unlock();
     n_ = nl;
-    kx_.i = kx_.p = kc < 0;
-    return insert_marker();
-}
-
-template <typename P>
-bool tcursor<P>::find_insert(threadinfo& ti)
-{
-    node_type* root = root_;
-    nodeversion_type v;
-
-    while (1) {
-        n_ = root->reach_leaf(ka_, v, ti);
-        original_n_ = n_;
-        original_v_ = n_->full_unlocked_version_value();
-
-        root = check_leaf_insert(root, v, ti);
-        if (reinterpret_cast<uintptr_t>(root) <= reinterpret_cast<uintptr_t>(insert_marker())) {
-            state_ = 2 + (root == found_marker());
-            return root == found_marker();
-        }
-    }
+    kx_.i = kx_.p = kcmp < 0;
+    return false;
 }
 
 template <typename P>
@@ -159,7 +138,7 @@ void tcursor<P>::finish_insert()
 template <typename P>
 inline void tcursor<P>::finish(int state, threadinfo& ti)
 {
-    if (state < 0 && (state_ & 1)) {
+    if (state < 0 && state_ == 1) {
         if (finish_remove(ti))
             return;
     } else if (state > 0 && state_ == 2)

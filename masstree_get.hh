@@ -22,7 +22,7 @@ namespace Masstree {
 template <typename P>
 bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 {
-    int match = 0;
+    int match;
     key_indexed_position kx;
     node_base<P>* root = const_cast<node_base<P>*>(root_);
 
@@ -40,7 +40,8 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
         lv_ = n_->lv_[kx.p];
         lv_.prefetch(n_->keylenx_[kx.p]);
         match = n_->ksuf_matches(kx.p, ka_);
-    }
+    } else
+        match = 0;
     if (n_->has_changed(v_)) {
         ti.mark(threadcounter(tc_stable_leaf_insert + n_->simple_has_split(v_)));
         n_ = n_->advance_to_key(ka_, v_, ti);
@@ -67,118 +68,52 @@ inline bool basic_table<P>::get(Str key, value_type &value,
 }
 
 template <typename P>
-inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
-                                                 nodeversion_type& v,
-                                                 threadinfo& ti)
-{
-    nodeversion_type oldv = v;
-    typename permuter_type::storage_type old_perm;
-    leaf_type *next;
-
-    n_->prefetch();
-
-    if (!ka_.has_suffix())
-        v = n_->lock(oldv, ti.lock_fence(tc_leaf_lock));
-    else {
-        // First, look up without locking.
-        // The goal is to avoid dirtying cache lines on upper layers of a long
-        // key walk. But we do lock if the next layer has split.
-        old_perm = n_->permutation_;
-        kx_ = leaf_type::bound_type::lower(ka_, *n_);
-        if (kx_.p >= 0 && n_->is_layer(kx_.p)) {
-            fence();
-            leafvalue_type entry(n_->lv_[kx_.p]);
-            entry.layer()->prefetch_full();
-            fence();
-            if (likely(!v.deleted())
-                && !n_->has_changed(oldv, old_perm)
-                && !entry.layer()->has_split()) {
-                ka_.shift();
-                return entry.layer();
-            }
-        }
-
-        // Otherwise lock.
-        v = n_->lock(oldv, ti.lock_fence(tc_leaf_lock));
-
-        // Maybe the old position works.
-        if (likely(!v.deleted()) && !n_->has_changed(oldv, old_perm)) {
-        found:
-            if (kx_.p >= 0 && n_->is_layer(kx_.p)) {
-                root = n_->lv_[kx_.p].layer();
-                if (root->has_split())
-                    n_->lv_[kx_.p] = root = root->unsplit_ancestor();
-                n_->unlock(v);
-                ka_.shift();
-                return root;
-            } else
-                return 0;
-        }
-    }
-
-
-    // Walk along leaves.
-    while (1) {
-        if (unlikely(v.deleted())) {
-            n_->unlock(v);
-            return root;
-        }
-        kx_ = leaf_type::bound_type::lower(ka_, *n_);
-        if (kx_.p >= 0) {
-            n_->lv_[kx_.p].prefetch(n_->keylenx_[kx_.p]);
-            goto found;
-        } else if (likely(kx_.i != n_->size())
-                   || likely(!v.has_split(oldv))
-                   || !(next = n_->safe_next())
-                   || compare(ka_.ikey(), next->ikey_bound()) < 0)
-            goto found;
-        n_->unlock(v);
-        ti.mark(tc_leaf_retry);
-        ti.mark(tc_leaf_walk);
-        do {
-            n_ = next;
-            oldv = n_->stable();
-        } while (!unlikely(oldv.deleted())
-                 && (next = n_->safe_next())
-                 && compare(ka_.ikey(), next->ikey_bound()) >= 0);
-        n_->prefetch();
-        v = n_->lock(oldv, ti.lock_fence(tc_leaf_lock));
-    }
-}
-
-template <typename P>
-inline node_base<P>* tcursor<P>::check_leaf_locked(node_type* root,
-                                                   nodeversion_type v,
-                                                   threadinfo& ti)
-{
-    if (node_type* next_root = get_leaf_locked(root, v, ti))
-        return next_root;
-    if (kx_.p >= 0) {
-        if (!n_->ksuf_equals(kx_.p, ka_))
-            kx_.p = -1;
-    } else if (kx_.i == 0 && unlikely(n_->deleted_layer())) {
-        n_->unlock();
-        return reset_retry();
-    }
-    return 0;
-}
-
-template <typename P>
 bool tcursor<P>::find_locked(threadinfo& ti)
 {
+    node_base<P>* root = const_cast<node_base<P>*>(root_);
     nodeversion_type v;
-    node_type* root = root_;
-    while (1) {
-        n_ = root->reach_leaf(ka_, v, ti);
-        original_n_ = n_;
-        original_v_ = n_->full_unlocked_version_value();
+    permuter_type perm;
 
-        root = check_leaf_locked(root, v, ti);
-        if (!root) {
-            state_ = kx_.p >= 0;
-            return kx_.p >= 0;
+ retry:
+    n_ = root->reach_leaf(ka_, v, ti);
+
+ forward:
+    if (v.deleted())
+        goto retry;
+
+    n_->prefetch();
+    perm = n_->permutation();
+    fence();
+    kx_ = leaf<P>::bound_type::lower(ka_, *n_);
+    if (kx_.p >= 0) {
+        leafvalue<P> lv = n_->lv_[kx_.p];
+        lv.prefetch(n_->keylenx_[kx_.p]);
+        state_ = n_->ksuf_matches(kx_.p, ka_);
+        if (state_ < 0 && !n_->has_changed(v) && !lv.layer()->has_split()) {
+            ka_.shift_by(-state_);
+            root = lv.layer();
+            goto retry;
         }
+    } else
+        state_ = 0;
+
+    n_->lock(v, ti.lock_fence(tc_leaf_lock));
+    if (n_->has_changed(v) || n_->permutation() != perm) {
+        ti.mark(threadcounter(tc_stable_leaf_insert + n_->simple_has_split(v)));
+        n_->unlock();
+        n_ = n_->advance_to_key(ka_, v, ti);
+        goto forward;
+    } else if (unlikely(state_ < 0)) {
+        ka_.shift_by(-state_);
+        n_->lv_[kx_.p] = root = n_->lv_[kx_.p].layer()->unsplit_ancestor();
+        n_->unlock();
+        goto retry;
+    } else if (unlikely(n_->deleted_layer())) {
+        ka_.unshift_all();
+        root = const_cast<node_base<P>*>(root_);
+        goto retry;
     }
+    return state_;
 }
 
 } // namespace Masstree

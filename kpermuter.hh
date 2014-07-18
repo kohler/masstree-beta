@@ -30,6 +30,12 @@ class identity_kpermuter {
     int operator[](int i) const {
         return i;
     }
+    bool operator==(const identity_kpermuter&) const {
+        return true;
+    }
+    bool operator!=(const identity_kpermuter&) const {
+        return false;
+    }
 };
 
 template <int C> struct sized_kpermuter_info {};
@@ -253,6 +259,13 @@ template <int width> class kpermuter {
     }
 
     lcdf::String unparse() const;
+
+    bool operator==(const kpermuter<width>& x) const {
+        return x_ == x.x_;
+    }
+    bool operator!=(const kpermuter<width>& x) const {
+        return !(*this == x);
+    }
 
     static inline int size(value_type p) {
         return p & 15;

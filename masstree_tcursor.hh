@@ -183,18 +183,8 @@ class tcursor {
         return root_;
     }
 
-    inline node_type* get_leaf_locked(node_type* root, nodeversion_type& v, threadinfo& ti);
-    inline node_type* check_leaf_locked(node_type* root, nodeversion_type v, threadinfo& ti);
-    inline node_type* check_leaf_insert(node_type* root, nodeversion_type v, threadinfo& ti);
-    node_type* check_leaf_new_layer(nodeversion_type v, threadinfo& ti);
-    static inline node_type* insert_marker() {
-        return reinterpret_cast<node_type*>(uintptr_t(1));
-    }
-    static inline node_type* found_marker() {
-        return reinterpret_cast<node_type*>(uintptr_t(0));
-    }
-
-    node_type* finish_split(threadinfo& ti);
+    bool make_new_layer(threadinfo& ti);
+    bool make_split(threadinfo& ti);
     inline void finish_insert();
     inline bool finish_remove(threadinfo& ti);
 
