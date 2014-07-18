@@ -1176,7 +1176,7 @@ void gnuplot_info::print(FILE *f, const char * const *types_begin) {
             udpthreads);
     fprintf(f, "set terminal png\n");
     fprintf(f, "set xrange [%g:%g]\n", 1 - treetypedelta, pos + treetypedelta);
-    fprintf(f, "set xtics rotate (%s)\n", xtics.c_str());
+    fprintf(f, "set xtics rotate by 45 right (%s) font \"Verdana,9\"\n", xtics.c_str());
     fprintf(f, "set key top left Left reverse\n");
     if (normalizetype == normtype_none)
         fprintf(f, "set ylabel \"count\"\n");
