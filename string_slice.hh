@@ -53,9 +53,11 @@ template <typename T> struct string_slice {
 
     /** @brief Return a T that compares similarly to a string's prefix.
 
-        If a = make_comparable(s1, l1) and b = make_comparable(s2, l2),
-        then a < b iff the string (s1, l1) is lexicographically less than
-        the string (s2, l2), and similarly for other comparators. */
+        If a = make_comparable(s1, l1), b = make_comparable(s2, l2), and
+        a < b, then the string (s1, l1) is lexicographically less than
+        the string (s2, l2). Similarly, if a > b, then (s1, l1) is
+        lexicographically greater than (s2, l2). If a == b, then the
+        prefixes of (s1, l1) and (s2, l2) are lexicographically equal. */
     static T make_comparable(const char *s, int len) {
         return net_to_host_order(make(s, len));
     }
