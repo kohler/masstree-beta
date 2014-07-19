@@ -137,6 +137,10 @@ class stringbag {
     bool assign(int p, lcdf::Str s) {
         return assign(p, s.s, s.len);
     }
+    void reduce_length(int p, int new_len) {
+        masstree_invariant(info_[p].len >= new_len);
+        info_[p].len = new_len;
+    }
 
     /** @brief Print a representation of the stringbag to @a f. */
     void print(int width, FILE *f, const char *prefix, int indent) {

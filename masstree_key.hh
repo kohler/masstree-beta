@@ -40,19 +40,20 @@ class key {
     typedef I ikey_type;
     /** @brief Size of ikeys in bytes. */
     static constexpr int ikey_size = sizeof(ikey_type);
+    typedef string_slice<ikey_type> slice_type;
 
     /** @brief Construct an uninitialized key. */
     key() {
     }
     /** @brief Construct a key for string @a s. */
     key(Str s)
-        : ikey0_(string_slice<ikey_type>::make_comparable(s.s, s.len)),
+        : ikey0_(slice_type::make_comparable(s.s, s.len)),
           len_(s.len), s_(s.s), first_(s.s) {
     }
     /** @brief Construct a key for string @a s with length @a len.
         @pre @a len >= 0 */
     key(const char* s, int len)
-        : ikey0_(string_slice<ikey_type>::make_comparable(s, len)),
+        : ikey0_(slice_type::make_comparable(s, len)),
           len_(len), s_(s), first_(s) {
     }
     /** @brief Construct a key for ikey @a ikey.
@@ -108,25 +109,32 @@ class key {
     void shift() {
         s_ += ikey_size;
         len_ -= ikey_size;
-        ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, len_);
+        ikey0_ = slice_type::make_comparable_sloppy(s_, len_);
     }
     /** @brief Shift this key forward to model the current key's suffix.
-        @pre has_suffix() */
+        @param a number of bytes to shift
+        @pre has_suffix()
+        @pre @a delta % ikey_size == 0
+        @pre @a delta < suffix_length() */
     void shift_by(int delta) {
         s_ += delta;
         len_ -= delta;
-        ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, len_);
+        ikey0_ = slice_type::make_comparable_sloppy(s_, len_);
     }
     /** @brief Test whether this key has been shifted by shift(). */
     bool is_shifted() const {
         return first_ != s_;
+    }
+    /** @brief Return the amount by which this key has been shifted. */
+    int offset() const {
+        return s_ - first_;
     }
     /** @brief Undo all previous shift() calls. */
     void unshift_all() {
         if (s_ != first_) {
             len_ += s_ - first_;
             s_ = first_;
-            ikey0_ = string_slice<ikey_type>::make_comparable(s_, len_);
+            ikey0_ = slice_type::make_comparable(s_, len_);
         }
     }
 
@@ -147,7 +155,7 @@ class key {
 
     int unparse(char* data, int datalen) const {
         int cplen = std::min(len_, datalen);
-        string_slice<ikey_type>::unparse_comparable(data, cplen, ikey0_, ikey_size);
+        slice_type::unparse_comparable(data, cplen, ikey0_, ikey_size);
         if (cplen > ikey_size)
             memcpy(data + ikey_size, s_ + ikey_size, cplen - ikey_size);
         return cplen;
@@ -206,7 +214,7 @@ class key {
     void unshift() {
         masstree_precondition(is_shifted());
         s_ -= ikey_size;
-        ikey0_ = string_slice<ikey_type>::make_comparable_sloppy(s_, ikey_size);
+        ikey0_ = slice_type::make_comparable_sloppy(s_, ikey_size);
         len_ = ikey_size + 1;
     }
     void shift_clear() {

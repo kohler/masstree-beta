@@ -274,6 +274,7 @@ class leaf : public node_base<P> {
     typedef stringbag<uint16_t> external_ksuf_type;
     static constexpr int ksuf_keylenx = 64;
     static constexpr int layer_keylenx = 128;
+    static constexpr int ksuf_layer_keylenx = ksuf_keylenx + layer_keylenx;
 
     enum {
         modstate_insert = 0, modstate_remove = 1, modstate_deleted_layer = 2
@@ -382,7 +383,7 @@ class leaf : public node_base<P> {
         return keylenx > 127;
     }
     static bool keylenx_has_ksuf(int keylenx) {
-        return keylenx == ksuf_keylenx;
+        return keylenx & ksuf_keylenx;
     }
 
     bool is_layer(int p) const {
@@ -417,8 +418,15 @@ class leaf : public node_base<P> {
         if (keylenx == layer_keylenx)
             return -(int) sizeof(ikey_type);
         Str s = ksuf(p, keylenx);
-        return s.len == ka.suffix().len
-            && string_slice<uintptr_t>::equals_sloppy(s.s, ka.suffix().s, s.len);
+        if ((keylenx == ksuf_keylenx
+             ? s.len != ka.suffix().len
+             : s.len >= ka.suffix().len)
+            || !string_slice<uintptr_t>::equals_sloppy(s.s, ka.suffix().s, s.len))
+            return 0;
+        else if (keylenx == ksuf_keylenx)
+            return 1;
+        else
+            return -s.len - (int) sizeof(ikey_type);
     }
     int ksuf_compare(int p, const key_type& ka) const {
         int keylenx = keylenx_[p];
@@ -522,6 +530,14 @@ class leaf : public node_base<P> {
         keylenx_[p] = x->keylenx_[xp];
         if (x->has_ksuf(xp))
             assign_ksuf(p, x->ksuf(xp), true, ti);
+    }
+    inline void reassign_for_layer(int p, const key_type& ka, leaf<P>* layer) {
+        if (ka.offset()) {
+            ksuf_ ? ksuf_->reduce_length(p, ka.offset()) : iksuf_[0].reduce_length(p, ka.offset());
+            keylenx_[p] = ksuf_layer_keylenx;
+        } else
+            keylenx_[p] = layer_keylenx;
+        lv_[p] = layer;
     }
     inline void assign_initialize_for_layer(int p, const key_type& ka) {
         assert(ka.has_suffix());
@@ -688,14 +704,14 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
 
     This may allocate a new suffix container, copying suffixes over.
 
-    The @a initializing parameter determines which suffixes are copied. If @a
-    initializing is false, then this is an insertion into a live node. The
-    live node's permutation indicates which keysuffixes are active, and only
-    active suffixes are copied. If @a initializing is true, then this
+    The @a initializing parameter determines which suffixes are copied. If
+    @a initializing is false, then this is an insertion into a live node.
+    The live node's permutation indicates which keysuffixes are active, and
+    only active suffixes are copied. If @a initializing is true, then this
     assignment is part of the initialization process for a new node. The
-    permutation might not be set up yet. In this case, it is assumed that key
-    positions [0,p) are ready: keysuffixes in that range are copied. In either
-    case, the key at position p is NOT copied; it is assigned to @a s. */
+    permutation might not be set up yet. It is assumed that key positions
+    [0,p) are ready: keysuffixes in that range are copied. In either case,
+    the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
 void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
     if ((ksuf_ && ksuf_->assign(p, s))
