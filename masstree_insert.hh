@@ -120,7 +120,6 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     else
         n_->lv_[kp_] = nl;
     n_->keylenx_[kp_] = n_->layer_keylenx;
-    --n_->nksuf_;
     updated_v_ = n_->full_unlocked_version_value();
     n_->unlock(v);
     n_ = nl;

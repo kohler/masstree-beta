@@ -118,7 +118,6 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
                 }
                 j["key_by_length"][l] += 1;
             }
-        assert(lf->nksuf_ == nksuf);
         j["size"] += n;
         j["l1_size"] += n;
         j["key_by_layer"][layer] += n;
