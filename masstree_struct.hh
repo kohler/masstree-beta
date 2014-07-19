@@ -685,19 +685,22 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
 
     external_ksuf_type* oksuf = ksuf_;
 
+    permuter_type perm(permutation_);
+    int n = initializing ? p : perm.size();
+
     size_t csz = 0;
-    if (nksuf_)
-        for (int i = 0; i != width; ++i)
-            if (has_ksuf(i))
-                csz += ksuf(i).len;
+    for (int i = 0; i < n; ++i) {
+        int mp = initializing ? i : perm[i];
+        if (mp != p && has_ksuf(mp))
+            csz += ksuf(mp).len;
+    }
+
     size_t sz = iceil_log2(external_ksuf_type::safe_size(width, csz + s.len));
     if (oksuf)
         sz = std::max(sz, oksuf->capacity());
 
     void* ptr = ti.allocate(sz, memtag_masstree_ksuffixes);
     external_ksuf_type* nksuf = new(ptr) external_ksuf_type(width, sz);
-    permuter_type perm(permutation_);
-    int n = initializing ? p : perm.size();
     for (int i = 0; i < n; ++i) {
         int mp = initializing ? i : perm[i];
         if (mp != p && has_ksuf(mp)) {
