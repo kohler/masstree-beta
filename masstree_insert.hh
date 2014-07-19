@@ -62,25 +62,24 @@ template <typename P>
 bool tcursor<P>::make_new_layer(threadinfo& ti) {
     key_type oka(n_->ksuf(kx_.p));
     ka_.shift();
-    int kcmp = oka.compare(ka_);
-
-    // Create a twig of nodes until the suffixes diverge
-    leaf_type* twig_head = n_;
-    leaf_type* twig_tail = n_;
-    while (kcmp == 0) {
-        leaf_type* nl = leaf_type::make_root(0, twig_tail, ti);
-        nl->assign_initialize_for_layer(0, oka);
-        if (twig_head != n_)
-            twig_tail->lv_[0] = nl;
-        else
-            twig_head = nl;
-        nl->permutation_ = permuter_type::make_sorted(1);
-        twig_tail = nl;
-        new_nodes_.emplace_back(nl, nl->full_unlocked_version_value());
+    int kcmp;
+    while ((kcmp = oka.compare(ka_)) == 0 && oka.has_suffix()) {
+        masstree_invariant(ka_.has_suffix());
         oka.shift();
         ka_.shift();
-        kcmp = oka.compare(ka_);
     }
+    // Although oka != ka_ as a precondition, we might actually have
+    // kcmp==0. This happens when the old key pointed to a layer, and the
+    // new key exactly equals the layer's suffix. Example:
+    // Tree:    abcdefghijklmnop |LAYERBOUNDARY| qrst
+    //                                           uvwx...
+    // New key: abcdefghijklmnop
+    // This should turn into:
+    // Tree:    abcdefgh |LAYERBOUNDARY| ijklmnop
+    //                                   ijklmnop |LAYERBOUNDARY| qrst
+    //                                                            uvwx...
+    // So when kcmp==0, the new key is actually less than the old key.
+    masstree_invariant(kcmp || !ka_.has_suffix());
 
     // Estimate how much space will be required for keysuffixes
     size_t ksufsize;
@@ -90,10 +89,12 @@ bool tcursor<P>::make_new_layer(threadinfo& ti) {
             + n_->iksuf_[0].overhead(n_->width);
     else
         ksufsize = 0;
-    leaf_type *nl = leaf_type::make_root(ksufsize, twig_tail, ti);
+    leaf_type *nl = leaf_type::make_root(ksufsize, n_, ti);
     nl->assign_initialize(0, kcmp < 0 ? oka : ka_, ti);
     nl->assign_initialize(1, kcmp < 0 ? ka_ : oka, ti);
-    nl->lv_[kcmp > 0] = n_->lv_[kx_.p];
+    nl->lv_[kcmp >= 0] = n_->lv_[kx_.p];
+    if (n_->is_layer(kx_.p))
+        nl->keylenx_[kcmp >= 0] = oka.has_suffix() ? nl->ksuf_layer_keylenx : nl->layer_keylenx;
     nl->lock(*nl, ti.lock_fence(tc_leaf_lock));
     if (kcmp < 0)
         nl->permutation_ = permuter_type::make_sorted(1);
@@ -111,13 +112,7 @@ bool tcursor<P>::make_new_layer(threadinfo& ti) {
     // retry.
     n_->mark_insert();
     fence();
-    if (twig_tail != n_)
-        twig_tail->lv_[0] = nl;
-    if (twig_head != n_)
-        n_->lv_[kx_.p] = twig_head;
-    else
-        n_->lv_[kx_.p] = nl;
-    n_->keylenx_[kx_.p] = n_->layer_keylenx;
+    n_->reassign_for_layer(kx_.p, oka, nl);
     updated_v_ = n_->full_unlocked_version_value();
     n_->unlock();
     n_ = nl;
