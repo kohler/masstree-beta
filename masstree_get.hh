@@ -212,6 +212,9 @@ bool tcursor<P>::find_locked(threadinfo& ti)
     node_type* root = root_;
     while (1) {
         n_ = root->reach_leaf(ka_, v, ti);
+        original_n_ = n_;
+        original_v_ = n_->full_unlocked_version_value();
+
         root = check_leaf_locked(root, v, ti);
         if (!root) {
             state_ = kp_ >= 0;

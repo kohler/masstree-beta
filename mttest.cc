@@ -1129,9 +1129,11 @@ void gnuplot_info::one(const String &xname, int ti, const String &datatype_name)
 
     std::vector<int> trials;
     for (Json::object_iterator it = experiment_stats.obegin();
-         it != experiment_stats.oend(); ++it)
-        if (experiment_run_test_table(it.key()) == xname)
-            trials.push_back(strtol(it.key().begin() + xname.length() + 1, 0, 0));
+         it != experiment_stats.oend(); ++it) {
+        String key = it.key();
+        if (experiment_run_test_table(key) == xname)
+            trials.push_back(strtol(key.c_str() + xname.length() + 1, 0, 0));
+    }
     std::sort(trials.begin(), trials.end());
 
     for (std::vector<int>::iterator tit = trials.begin();

@@ -166,6 +166,7 @@ class Json {
     inline String to_s() const;
     inline bool to_s(Str& x) const;
     inline bool to_s(String& x) const;
+    inline String& as_s();
     inline const String& as_s() const;
     inline const String& as_s(const String& default_value) const;
 
@@ -2015,6 +2016,12 @@ inline bool Json::to_s(String& x) const {
 inline const String& Json::as_s() const {
     precondition(u_.x.type <= 0 && u_.x.x);
     return reinterpret_cast<const String&>(u_.str);
+}
+
+/** @overload */
+inline String& Json::as_s() {
+    precondition(u_.x.type <= 0 && u_.x.x);
+    return reinterpret_cast<String&>(u_.str);
 }
 
 /** @brief Return the value of this string Json or @a default_value. */

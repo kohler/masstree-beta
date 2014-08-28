@@ -264,8 +264,12 @@ class query_json_scanner {
   public:
     query_json_scanner(query<R> &q, lcdf::Json& request)
 	: q_(q), nleft_(request[3].as_i()), request_(request) {
+        std::swap(request[2].value().as_s(), firstkey_);
         request_.resize(2);
         q_.scankeypos_ = 0;
+    }
+    const lcdf::String& firstkey() const {
+        return firstkey_;
     }
     template <typename SS, typename K>
     void visit_leaf(const SS&, const K&, threadinfo&) {
@@ -291,28 +295,27 @@ class query_json_scanner {
     query<R> &q_;
     int nleft_;
     lcdf::Json& request_;
+    lcdf::String firstkey_;
 };
 
 template <typename R> template <typename T>
 void query<R>::run_scan(T& table, Json& request, threadinfo& ti) {
     assert(request[3].as_i() > 0);
-    lcdf::Str key = request[2].as_s();
     f_.clear();
     for (int i = 4; i != request.size(); ++i)
         f_.push_back(request[i].as_i());
     query_json_scanner<R> scanf(*this, request);
-    table.scan(key, true, scanf, ti);
+    table.scan(scanf.firstkey(), true, scanf, ti);
 }
 
 template <typename R> template <typename T>
 void query<R>::run_rscan(T& table, Json& request, threadinfo& ti) {
     assert(request[3].as_i() > 0);
-    lcdf::Str key = request[2].as_s();
     f_.clear();
     for (int i = 4; i != request.size(); ++i)
         f_.push_back(request[i].as_i());
     query_json_scanner<R> scanf(*this, request);
-    table.rscan(key, true, scanf, ti);
+    table.rscan(scanf.firstkey(), true, scanf, ti);
 }
 
 #endif

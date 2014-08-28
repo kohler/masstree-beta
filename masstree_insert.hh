@@ -135,7 +135,6 @@ bool tcursor<P>::find_insert(threadinfo& ti)
 
     while (1) {
         n_ = root->reach_leaf(ka_, v, ti);
-
         original_n_ = n_;
         original_v_ = n_->full_unlocked_version_value();
 
