@@ -594,7 +594,7 @@ struct test_thread {
         for (int pos = 0; pos < test.length(); ) {
             int comma = test.find_left(',', pos);
             comma = (comma < 0 ? test.length() : comma);
-            String subtest = test.substring(pos, comma - pos), tname;
+            String subtest = test.substr(pos, comma - pos), tname;
             testrunner* tr = testrunner::find(subtest);
             tname = (subtest == test ? subtest : test + String("@") + String(subtestno));
             tt.client_.reset(tname, ::current_trial);

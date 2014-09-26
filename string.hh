@@ -80,8 +80,8 @@ class String : public String_base<String> {
     inline String fast_substring(const char* first, const char* last) const;
     inline String fast_substring(const unsigned char* first,
                                  const unsigned char* last) const;
-    String substring(int pos, int len) const;
-    inline String substring(int pos) const;
+    String substr(int pos, int len) const;
+    inline String substr(int pos) const;
     String ltrim() const;
     String rtrim() const;
     String trim() const;
@@ -613,8 +613,8 @@ inline String String::fast_substring(const unsigned char* first, const unsigned 
 
     @note String::substring() is intended to behave like Perl's
     substr(). */
-inline String String::substring(int pos) const {
-    return substring((pos <= -_r.length ? 0 : pos), _r.length);
+inline String String::substr(int pos) const {
+    return substr((pos <= -_r.length ? 0 : pos), _r.length);
 }
 
 inline void String::assign(const rep_type& rep) {

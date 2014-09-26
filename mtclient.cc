@@ -328,7 +328,7 @@ struct kvtest_client {
     void notice(String s) {
         if (!quiet) {
             if (!s.empty() && s.back() == '\n')
-                s = s.substring(0, -1);
+                s = s.substr(0, -1);
             if (s.empty() || isspace((unsigned char) s[0]))
                 fprintf(stderr, "%d%.*s\n", c_->childno, s.length(), s.data());
             else

@@ -284,7 +284,7 @@ class query_json_scanner {
         }
         memcpy(const_cast<char*>(q_.scankey_.data() + q_.scankeypos_),
                key.data(), key.length());
-        request_.push_back(q_.scankey_.substring(q_.scankeypos_, key.length()));
+        request_.push_back(q_.scankey_.substr(q_.scankeypos_, key.length()));
         q_.scankeypos_ += key.length();
         request_.push_back(lcdf::Json());
         q_.emit_fields1(value, request_.back(), ti);
