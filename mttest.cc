@@ -541,6 +541,7 @@ MAKE_TESTRUNNER(rscan1, kvtest_rscan1(client, 0));
 MAKE_TESTRUNNER(rscan1q80, kvtest_rscan1(client, 0.8));
 MAKE_TESTRUNNER(splitremove1, kvtest_splitremove1(client));
 MAKE_TESTRUNNER(url, kvtest_url(client));
+MAKE_TESTRUNNER(urlsimple, kvtest_urlsimple(client));
 
 
 enum {

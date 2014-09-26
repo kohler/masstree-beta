@@ -1624,4 +1624,23 @@ void kvtest_url(C &client)
   kvtest_url_seed(client);
 }
 
+template <typename C>
+void kvtest_urlsimple(C &client)
+{
+    if (!client.id()) {
+        client.put("abcdefg/hijklmn/opqrstuv", 20);
+        client.put("abcdefg/hijklmn/opqrstuw", 30);
+        client.put("abcdefg/hijklmn/", 10);
+        client.put("uk.ac.abdn.bms.www/communications/coverage/content.php?id=434", 1);
+        client.put("uk.ac.abdn.bms.www/communications/coverage/content.php?id=724", 1);
+        client.put("uk.ac.abdn.bms.www/communications/coverage/content.php?id=237", 1);
+        client.put("uk.ac.abdn.bms.www/communications/coverage/content.php?id=140", 1);
+        client.put("uk.ac.abdn.bms.www/communications/coverage/content.php?id=530", 1);
+        client.put("uk.ac.abdn.bms.www/communications/coverage/content.php?id=628", 1);
+        client.put("uk.ac.abdn.bms.www/communications/coverage/month.php?month=January&year=2007", 1);
+        client.put("uk.ac.abdn.bms.www/communications/coverage/content.php?id=336", 1);
+    }
+    client.report(Json());
+}
+
 #endif
