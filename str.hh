@@ -122,10 +122,6 @@ struct Str : public String_base<Str> {
 	return String_generic::trim(*this);
     }
 
-    operator std::string() const {
-        return std::string(s, len);
-    }
-
     long to_i() const {		// XXX does not handle negative
 	long x = 0;
 	int p;
