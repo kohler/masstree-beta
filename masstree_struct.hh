@@ -152,6 +152,12 @@ class internode : public node_base<P> {
     ikey_type ikey(int p) const {
         return ikey0_[p];
     }
+    int compare_key(ikey_type a, int bp) const {
+        return ::compare(a, ikey(bp));
+    }
+    int compare_key(const key_type& a, int bp) const {
+        return ::compare(a.ikey(), ikey(bp));
+    }
     inline int stable_last_key_compare(const key_type& k, nodeversion_type v,
                                        threadinfo& ti) const;
 
@@ -365,6 +371,9 @@ class leaf : public node_base<P> {
     int ikeylen(int p) const {
         return keylenx_ikeylen(keylenx_[p]);
     }
+    int compare_key(const key_type& a, int bp) const {
+        return a.compare(ikey(bp), keylenx_[bp]);
+    }
     inline int stable_last_key_compare(const key_type& k, nodeversion_type v,
                                        threadinfo& ti) const;
 
@@ -547,7 +556,7 @@ internode<P>* node_base<P>::locked_parent(threadinfo& ti) const
 }
 
 
-/** @brief Return the result of key_compare(k, LAST KEY IN NODE).
+/** @brief Return the result of compare_key(k, LAST KEY IN NODE).
 
     Reruns the comparison until a stable comparison is obtained. */
 template <typename P>
@@ -556,7 +565,7 @@ internode<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
                                       threadinfo& ti) const
 {
     while (1) {
-        int cmp = key_compare(k, *this, size() - 1);
+        int cmp = compare_key(k, size() - 1);
         if (likely(!this->has_changed(v)))
             return cmp;
         v = this->stable_annotated(ti.stable_fence());
@@ -571,7 +580,7 @@ leaf<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
     while (1) {
         typename leaf<P>::permuter_type perm(permutation_);
         int p = perm[perm.size() - 1];
-        int cmp = key_compare(k, *this, p);
+        int cmp = compare_key(k, p);
         if (likely(!this->has_changed(v)))
             return cmp;
         v = this->stable_annotated(ti.stable_fence());

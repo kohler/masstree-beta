@@ -200,7 +200,7 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
         n->unlock();
 
         int kp = internode_type::bound_type::upper(ikey, *p);
-        masstree_invariant(kp == 0 || key_compare(ikey, *p, kp - 1) == 0);
+        masstree_invariant(kp == 0 || p->compare_key(ikey, kp - 1) == 0);
 
         if (kp > 0) {
             p->mark_insert();

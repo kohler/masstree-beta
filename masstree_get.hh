@@ -26,7 +26,7 @@ inline int unlocked_tcursor<P>::lower_bound_binary() const
     while (l < r) {
         int m = (l + r) >> 1;
         int mp = perm_[m];
-        int cmp = key_compare(ka_, *n_, mp);
+        int cmp = n_->compare_key(ka_, mp);
         if (cmp < 0)
             r = m;
         else if (cmp == 0)
@@ -43,7 +43,7 @@ inline int unlocked_tcursor<P>::lower_bound_linear() const
     int l = 0, r = perm_.size();
     while (l < r) {
         int lp = perm_[l];
-        int cmp = key_compare(ka_, *n_, lp);
+        int cmp = n_->compare_key(ka_, lp);
         if (cmp < 0)
             break;
         else if (cmp == 0)

@@ -64,7 +64,7 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
                                                threadinfo& ti) {
     key_type oka(n_->ksuf(kp_));
     ka_.shift();
-    int kc = key_compare(oka, ka_);
+    int kc = oka.compare(ka_);
 
     // Create a twig of nodes until the suffixes diverge
     leaf_type* twig_head = n_;
@@ -81,7 +81,7 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
         new_nodes_.emplace_back(nl, nl->full_unlocked_version_value());
         oka.shift();
         ka_.shift();
-        kc = key_compare(oka, ka_);
+        kc = oka.compare(ka_);
     }
 
     // Estimate how much space will be required for keysuffixes

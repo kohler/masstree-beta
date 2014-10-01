@@ -44,7 +44,7 @@ class scanstackelt {
         return perm_;
     }
     int operator()(const key_type &k, const scanstackelt<P> &n, int p) {
-        return ::key_compare(k, *n.n_, p);
+        return n.n_->compare_key(k, p);
     }
 
   private:

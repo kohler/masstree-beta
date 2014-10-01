@@ -138,6 +138,9 @@ class key {
         }
         return cmp;
     }
+    int compare(const key<I>& x) const {
+        return compare(x.ikey(), x.length());
+    }
 
     int unparse(char* data, int datalen) const {
         int cplen = std::min(len_, datalen);
@@ -224,34 +227,6 @@ class key {
 template <typename I> constexpr int key<I>::ikey_size;
 
 } // namespace Masstree
-
-template <typename P>
-inline int key_compare(typename P::ikey_type a,
-                       const Masstree::internode<P>& b, int bp)
-{
-    return compare(a, b.ikey(bp));
-}
-
-template <typename P>
-inline int key_compare(const Masstree::key<typename P::ikey_type>& a,
-                       const Masstree::internode<P>& b, int bp)
-{
-    return compare(a.ikey(), b.ikey(bp));
-}
-
-template <typename P>
-inline int key_compare(const Masstree::key<typename P::ikey_type>& a,
-                       const Masstree::leaf<P>& b, int bp)
-{
-    return a.compare(b.ikey(bp), b.keylenx_[bp]);
-}
-
-template <typename I>
-inline int key_compare(const Masstree::key<I>& a,
-                       const Masstree::key<I>& b)
-{
-    return a.compare(b.ikey(), b.length());
-}
 
 template <typename I>
 inline std::ostream& operator<<(std::ostream& stream,
