@@ -29,6 +29,7 @@ class unlocked_tcursor {
     typedef typename P::threadinfo_type threadinfo;
     typedef typename leaf<P>::nodeversion_type nodeversion_type;
     typedef typename nodeversion_type::value_type nodeversion_value_type;
+    typedef typename leaf<P>::permuter_type permuter_type;
 
     inline unlocked_tcursor(const basic_table<P>& table, Str str)
         : ka_(str), lv_(leafvalue<P>::make_empty()),
@@ -67,6 +68,12 @@ class unlocked_tcursor {
     inline leaf<P>* node() const {
         return n_;
     }
+    inline permuter_type permutation() const {
+        return perm_;
+    }
+    inline int compare_key(const key_type& a, int bp) const {
+        return n_->compare_key(a, bp);
+    }
     inline nodeversion_value_type full_version_value() const {
         static_assert(int(nodeversion_type::traits_type::top_stable_bits) >= int(leaf<P>::permuter_type::size_bits), "not enough bits to add size to version");
         return (v_.version_value() << leaf<P>::permuter_type::size_bits) + perm_.size();
@@ -76,12 +83,9 @@ class unlocked_tcursor {
     leaf<P>* n_;
     key_type ka_;
     typename leaf<P>::nodeversion_type v_;
-    typename leaf<P>::permuter_type perm_;
+    permuter_type perm_;
     leafvalue<P> lv_;
     const node_base<P>* root_;
-
-    inline int lower_bound_binary() const;
-    inline int lower_bound_linear() const;
 };
 
 template <typename P>

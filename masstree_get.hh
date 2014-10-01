@@ -20,41 +20,6 @@
 namespace Masstree {
 
 template <typename P>
-inline int unlocked_tcursor<P>::lower_bound_binary() const
-{
-    int l = 0, r = perm_.size();
-    while (l < r) {
-        int m = (l + r) >> 1;
-        int mp = perm_[m];
-        int cmp = n_->compare_key(ka_, mp);
-        if (cmp < 0)
-            r = m;
-        else if (cmp == 0)
-            return mp;
-        else
-            l = m + 1;
-    }
-    return -1;
-}
-
-template <typename P>
-inline int unlocked_tcursor<P>::lower_bound_linear() const
-{
-    int l = 0, r = perm_.size();
-    while (l < r) {
-        int lp = perm_[l];
-        int cmp = n_->compare_key(ka_, lp);
-        if (cmp < 0)
-            break;
-        else if (cmp == 0)
-            return lp;
-        else
-            ++l;
-    }
-    return -1;
-}
-
-template <typename P>
 bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 {
     bool ksuf_match = false;
@@ -70,10 +35,7 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 
     n_->prefetch();
     perm_ = n_->permutation();
-    if (leaf<P>::bound_type::is_binary)
-        kp = lower_bound_binary();
-    else
-        kp = lower_bound_linear();
+    (void) leaf<P>::bound_type::lower_with_position(ka_, *this, kp);
     if (kp >= 0) {
         keylenx = n_->keylenx_[kp];
         fence();                // see note in check_leaf_insert()
