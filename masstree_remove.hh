@@ -37,20 +37,20 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
     // for the next tree layer, which has keylenx_ corresponding to ikey_size+1.
     // So if has_value(), then we found an entry for the same ikey, but with
     // length ikey_size; we need to adjust ki_.
-    ki_ += has_value();
-    if (ki_ >= n_->size())
+    kx_.i += has_value();
+    if (kx_.i >= n_->size())
         return false;
     permuter_type perm(n_->permutation_);
-    kp_ = perm[ki_];
-    if (n_->ikey0_[kp_] != ka_.ikey() || !n_->is_layer(kp_))
+    kx_.p = perm[kx_.i];
+    if (n_->ikey0_[kx_.p] != ka_.ikey() || !n_->is_layer(kx_.p))
         return false;
 
     // remove redundant internode layers
     node_type *layer;
     while (1) {
-        layer = n_->lv_[kp_].layer();
+        layer = n_->lv_[kx_.p].layer();
         if (layer->has_split())
-            n_->lv_[kp_] = layer = layer->unsplit_ancestor();
+            n_->lv_[kx_.p] = layer = layer->unsplit_ancestor();
         if (layer->isleaf())
             break;
 
@@ -67,7 +67,7 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
 
         node_type *child = in->child_[0];
         child->set_parent(node_type::parent_for_layer_root(n_));
-        n_->lv_[kp_] = child;
+        n_->lv_[kx_.p] = child;
         in->mark_split();
         in->set_parent(child);  // ensure concurrent reader finds true root
                                 // NB: now p->parent() might weirdly be a LEAF!
@@ -149,7 +149,7 @@ bool tcursor<P>::finish_remove(threadinfo& ti)
     }
 
     permuter_type perm(n_->permutation_);
-    perm.remove(ki_);
+    perm.remove(kx_.i);
     n_->permutation_ = perm.value();
     if (perm.size())
         return false;

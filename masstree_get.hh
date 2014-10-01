@@ -23,7 +23,8 @@ template <typename P>
 bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 {
     bool ksuf_match = false;
-    int kp, keylenx = 0;
+    key_indexed_position kx;
+    int keylenx = 0;
     node_base<P>* root = const_cast<node_base<P>*>(root_);
 
  retry:
@@ -35,13 +36,13 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
 
     n_->prefetch();
     perm_ = n_->permutation();
-    (void) leaf<P>::bound_type::lower_with_position(ka_, *this, kp);
-    if (kp >= 0) {
-        keylenx = n_->keylenx_[kp];
+    kx = leaf<P>::bound_type::lower(ka_, *this);
+    if (kx.p >= 0) {
+        keylenx = n_->keylenx_[kx.p];
         fence();                // see note in check_leaf_insert()
-        lv_ = n_->lv_[kp];
+        lv_ = n_->lv_[kx.p];
         lv_.prefetch(keylenx);
-        ksuf_match = n_->ksuf_equals(kp, ka_, keylenx);
+        ksuf_match = n_->ksuf_equals(kx.p, ka_, keylenx);
     }
     if (n_->has_changed(v_)) {
         ti.mark(threadcounter(tc_stable_leaf_insert + n_->simple_has_split(v_)));
@@ -49,7 +50,7 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
         goto forward;
     }
 
-    if (kp < 0)
+    if (kx.p < 0)
         return false;
     else if (n_->keylenx_is_layer(keylenx)) {
         ka_.shift();
@@ -88,10 +89,10 @@ inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
         // The goal is to avoid dirtying cache lines on upper layers of a long
         // key walk. But we do lock if the next layer has split.
         old_perm = n_->permutation_;
-        ki_ = leaf_type::bound_type::lower_with_position(ka_, *n_, kp_);
-        if (kp_ >= 0 && n_->is_layer(kp_)) {
+        kx_ = leaf_type::bound_type::lower(ka_, *n_);
+        if (kx_.p >= 0 && n_->is_layer(kx_.p)) {
             fence();
-            leafvalue_type entry(n_->lv_[kp_]);
+            leafvalue_type entry(n_->lv_[kx_.p]);
             entry.layer()->prefetch_full();
             fence();
             if (likely(!v.deleted())
@@ -108,10 +109,10 @@ inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
         // Maybe the old position works.
         if (likely(!v.deleted()) && !n_->has_changed(oldv, old_perm)) {
         found:
-            if (kp_ >= 0 && n_->is_layer(kp_)) {
-                root = n_->lv_[kp_].layer();
+            if (kx_.p >= 0 && n_->is_layer(kx_.p)) {
+                root = n_->lv_[kx_.p].layer();
                 if (root->has_split())
-                    n_->lv_[kp_] = root = root->unsplit_ancestor();
+                    n_->lv_[kx_.p] = root = root->unsplit_ancestor();
                 n_->unlock(v);
                 ka_.shift();
                 return root;
@@ -127,11 +128,11 @@ inline node_base<P>* tcursor<P>::get_leaf_locked(node_type* root,
             n_->unlock(v);
             return root;
         }
-        ki_ = leaf_type::bound_type::lower_with_position(ka_, *n_, kp_);
-        if (kp_ >= 0) {
-            n_->lv_[kp_].prefetch(n_->keylenx_[kp_]);
+        kx_ = leaf_type::bound_type::lower(ka_, *n_);
+        if (kx_.p >= 0) {
+            n_->lv_[kx_.p].prefetch(n_->keylenx_[kx_.p]);
             goto found;
-        } else if (likely(ki_ != n_->size())
+        } else if (likely(kx_.i != n_->size())
                    || likely(!v.has_split(oldv))
                    || !(next = n_->safe_next())
                    || compare(ka_.ikey(), next->ikey_bound()) < 0)
@@ -157,10 +158,10 @@ inline node_base<P>* tcursor<P>::check_leaf_locked(node_type* root,
 {
     if (node_type* next_root = get_leaf_locked(root, v, ti))
         return next_root;
-    if (kp_ >= 0) {
-        if (!n_->ksuf_equals(kp_, ka_))
-            kp_ = -1;
-    } else if (ki_ == 0 && unlikely(n_->deleted_layer())) {
+    if (kx_.p >= 0) {
+        if (!n_->ksuf_equals(kx_.p, ka_))
+            kx_.p = -1;
+    } else if (kx_.i == 0 && unlikely(n_->deleted_layer())) {
         n_->unlock();
         return reset_retry();
     }
@@ -179,8 +180,8 @@ bool tcursor<P>::find_locked(threadinfo& ti)
 
         root = check_leaf_locked(root, v, ti);
         if (!root) {
-            state_ = kp_ >= 0;
-            return kp_ >= 0;
+            state_ = kx_.p >= 0;
+            return kx_.p >= 0;
         }
     }
 }

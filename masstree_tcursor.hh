@@ -122,10 +122,10 @@ class tcursor {
     }
 
     inline bool has_value() const {
-        return kp_ >= 0;
+        return kx_.p >= 0;
     }
     inline value_type &value() const {
-        return n_->lv_[kp_].value();
+        return n_->lv_[kx_.p].value();
     }
 
     inline bool is_first_layer() const {
@@ -169,8 +169,7 @@ class tcursor {
   private:
     leaf_type *n_;
     key_type ka_;
-    int ki_;
-    int kp_;
+    key_indexed_position kx_;
     node_base<P>* root_;
     int state_;
 

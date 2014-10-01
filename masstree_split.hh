@@ -172,11 +172,11 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
     if (n_->size() < n_->width) {
         permuter_type perm(n_->permutation_);
         perm.exchange(perm.size(), n_->width - 1);
-        kp_ = perm.back();
-        if (kp_ != 0) {
+        kx_.p = perm.back();
+        if (kx_.p != 0) {
             n_->permutation_ = perm.value();
             fence();
-            n_->assign(kp_, ka_, ti);
+            n_->assign(kx_.p, ka_, ti);
             return insert_marker();
         }
     }
@@ -186,7 +186,7 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
     child->assign_version(*n_);
     ikey_type xikey[2];
     int split_type = n_->split_into(static_cast<leaf_type *>(child),
-                                    ki_, ka_, xikey[0], ti);
+                                    kx_.i, ka_, xikey[0], ti);
     bool sense = false;
 
     while (1) {
@@ -237,10 +237,10 @@ node_base<P>* tcursor<P>::finish_split(threadinfo& ti)
             nl->mark_split();
             nl->permutation_ = perml.value();
             if (split_type == 0) {
-                kp_ = perml.back();
-                nl->assign(kp_, ka_, ti);
+                kx_.p = perml.back();
+                nl->assign(kx_.p, ka_, ti);
             } else {
-                ki_ = kp_ = ki_ - perml.size();
+                kx_.i = kx_.p = kx_.i - perml.size();
                 n_ = nr;
             }
             // versions/sizes shouldn't change after this

@@ -87,11 +87,13 @@ struct forward_scan_helper {
         return k.compare(ikey, keylenx) >= 0;
     }
     template <typename K, typename N> int lower(const K &k, const N *n) const {
-        return N::bound_type::lower_by(k, *n, *n);
+        return N::bound_type::lower_by(k, *n, *n).i;
     }
     template <typename K, typename N>
     int lower_with_position(const K &k, const N *n, int &kp) const {
-        return N::bound_type::lower_with_position_by(k, *n, kp, *n);
+        key_indexed_position kx = N::bound_type::lower_by(k, *n, *n);
+        kp = kx.p;
+        return kx.i;
     }
     void found() const {
     }
@@ -134,13 +136,14 @@ struct reverse_scan_helper {
     template <typename K, typename N> int lower(const K &k, const N *n) const {
         if (upper_bound_)
             return n->size() - 1;
-        int kp, ki = N::bound_type::lower_with_position_by(k, *n, kp, *n);
-        return ki - (kp < 0);
+        key_indexed_position kx = N::bound_type::lower_by(k, *n, *n);
+        return kx.i - (kx.p < 0);
     }
     template <typename K, typename N>
     int lower_with_position(const K &k, const N *n, int &kp) const {
-        int ki = N::bound_type::lower_with_position_by(k, *n, kp, *n);
-        return ki - (kp < 0);
+        key_indexed_position kx = N::bound_type::lower_by(k, *n, *n);
+        kp = kx.p;
+        return kx.i - (kx.p < 0);
     }
     int next(int ki) const {
         return ki - 1;

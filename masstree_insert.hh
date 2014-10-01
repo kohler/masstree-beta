@@ -27,8 +27,8 @@ inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
     if (node_type* next_root = get_leaf_locked(root, v, ti))
         return next_root;
 
-    if (kp_ >= 0) {
-        if (n_->ksuf_equals(kp_, ka_))
+    if (kx_.p >= 0) {
+        if (n_->ksuf_equals(kx_.p, ka_))
             return found_marker();
         else
             return check_leaf_new_layer(v, ti);
@@ -47,10 +47,10 @@ inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
 
     // base case
     if (n_->size() < n_->width) {
-        kp_ = permuter_type(n_->permutation_).back();
+        kx_.p = permuter_type(n_->permutation_).back();
         // watch out for attempting to use position 0, which holds the ikey_bound
-        if (likely(kp_ != 0) || !n_->prev_ || n_->ikey_bound() == ka_.ikey()) {
-            n_->assign(kp_, ka_, ti);
+        if (likely(kx_.p != 0) || !n_->prev_ || n_->ikey_bound() == ka_.ikey()) {
+            n_->assign(kx_.p, ka_, ti);
             return insert_marker();
         }
     }
@@ -62,7 +62,7 @@ inline node_base<P>* tcursor<P>::check_leaf_insert(node_type* root,
 template <typename P>
 node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
                                                threadinfo& ti) {
-    key_type oka(n_->ksuf(kp_));
+    key_type oka(n_->ksuf(kx_.p));
     ka_.shift();
     int kc = oka.compare(ka_);
 
@@ -95,7 +95,7 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     leaf_type *nl = leaf_type::make_root(ksufsize, twig_tail, ti);
     nl->assign_initialize(0, kc < 0 ? oka : ka_, ti);
     nl->assign_initialize(1, kc < 0 ? ka_ : oka, ti);
-    nl->lv_[kc > 0] = n_->lv_[kp_];
+    nl->lv_[kc > 0] = n_->lv_[kx_.p];
     nl->lock(*nl, ti.lock_fence(tc_leaf_lock));
     if (kc < 0)
         nl->permutation_ = permuter_type::make_sorted(1);
@@ -116,14 +116,14 @@ node_base<P>* tcursor<P>::check_leaf_new_layer(nodeversion_type v,
     if (twig_tail != n_)
         twig_tail->lv_[0] = nl;
     if (twig_head != n_)
-        n_->lv_[kp_] = twig_head;
+        n_->lv_[kx_.p] = twig_head;
     else
-        n_->lv_[kp_] = nl;
-    n_->keylenx_[kp_] = n_->layer_keylenx;
+        n_->lv_[kx_.p] = nl;
+    n_->keylenx_[kx_.p] = n_->layer_keylenx;
     updated_v_ = n_->full_unlocked_version_value();
     n_->unlock(v);
     n_ = nl;
-    ki_ = kp_ = kc < 0;
+    kx_.i = kx_.p = kc < 0;
     return insert_marker();
 }
 
@@ -150,8 +150,8 @@ template <typename P>
 void tcursor<P>::finish_insert()
 {
     permuter_type perm(n_->permutation_);
-    masstree_invariant(perm.back() == kp_);
-    perm.insert_from_back(ki_);
+    masstree_invariant(perm.back() == kx_.p);
+    perm.insert_from_back(kx_.i);
     fence();
     n_->permutation_ = perm.value();
 }
