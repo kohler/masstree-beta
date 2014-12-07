@@ -33,7 +33,7 @@
  * OR IMPLIED. This notice is a summary of the Click LICENSE file; the
  * license in that file is binding. */
 
-#ifdef HAVE_CONFIG_H
+#if HAVE_CONFIG_H
 # include <config.h>
 #endif
 #include "clp.h"
@@ -53,7 +53,8 @@
 #endif
 #if defined(HAVE_INTTYPES_H) || !defined(HAVE_CONFIG_H)
 # include <inttypes.h>
-#elif !defined(HAVE_UINTPTR_T)
+#endif
+#if !defined(HAVE_UINTPTR_T) && defined(HAVE_CONFIG_H)
 typedef unsigned long uintptr_t;
 #endif
 
@@ -1977,7 +1978,7 @@ Clp_Next(Clp_Parser *clp)
 	if (atr->func(clp, clp->vstr, complain, atr->user_data) <= 0) {
 	    /* parser failed */
 	    clp->have_val = 0;
-	    if (cli->iopt[optno].imandatory) {
+	    if (complain) {
 		clp->option = &clp_option_sentinel[-Clp_BadOption];
 		return Clp_BadOption;
 	    } else {
