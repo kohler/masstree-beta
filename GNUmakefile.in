@@ -1,7 +1,7 @@
 AR = ar
 CC = @CC@
 CXX = @CXX@
-CFLAGS = -g -W -Wall -O2
+CFLAGS = -g -W -Wall -O3
 DEPSDIR := .deps
 DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
 ifeq ($(strip $(MEMMGR)), )
