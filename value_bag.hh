@@ -132,12 +132,15 @@ inline void value_bag<O>::deallocate_rcu(ALLOC& ti) {
     ti.deallocate_rcu(this, size(), memtag_value);
 }
 
+// prerequisite: [first, last) is an array [column, value, column, value, ...]
+// each column is unsigned; the columns are strictly increasing;
+// each value is a string
 template <typename O> template <typename ALLOC>
 value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
                                    kvtimestamp_t ts, ALLOC& ti) const
 {
     size_t sz = size();
-    int ncol = d_.ncol_;
+    unsigned ncol = d_.ncol_;
     for (auto it = first; it != last; it += 2) {
         unsigned idx = it[0].as_u();
         sz += it[1].as_s().length();
@@ -164,24 +167,24 @@ value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
     // Otherwise need to do more work
     row->d_.ncol_ = ncol;
     sz = sizeof(bagdata) + ncol * sizeof(offset_type);
-    int col = 0;
+    unsigned col = 0;
     while (1) {
-        int this_col = (first != last ? first[0].as_u() : ncol);
+        unsigned this_col = (first != last ? first[0].as_u() : ncol);
 
         // copy data from old row
         if (col != this_col && col < d_.ncol_) {
-            int end_col = std::min(this_col, int(d_.ncol_));
+            unsigned end_col = std::min(this_col, unsigned(d_.ncol_));
             ssize_t delta = sz - d_.pos_[col];
             if (delta == 0)
                 memcpy(row->d_.pos_ + col, d_.pos_ + col,
                        sizeof(offset_type) * (end_col - col));
             else
-                for (int i = col; i < end_col; ++i)
+                for (unsigned i = col; i < end_col; ++i)
                     row->d_.pos_[i] = d_.pos_[i] + delta;
             size_t amt = d_.pos_[end_col] - d_.pos_[col];
-            memcpy(row->d_.s_ + sz, d_.s_ + sz - delta, amt);
-            col = end_col;
+            memcpy(row->d_.s_ + sz, d_.s_ + d_.pos_[col], amt);
             sz += amt;
+            col = end_col;
         }
 
         // mark empty columns if we're extending
@@ -206,17 +209,17 @@ value_bag<O>* value_bag<O>::update(const Json* first, const Json* last,
 }
 
 template <typename O> template <typename ALLOC>
-inline value_bag<O>* value_bag<O>::create(const Json* first, const Json* last,
-                                          kvtimestamp_t ts, ALLOC& ti) {
-    value_bag<O> empty;
-    return empty.update(first, last, ts, ti);
-}
-
-template <typename O> template <typename ALLOC>
 inline value_bag<O>* value_bag<O>::update(int col, Str value, kvtimestamp_t ts,
                                           ALLOC& ti) const {
     Json change[2] = {Json(col), Json(value)};
     return update(&change[0], &change[2], ts, ti);
+}
+
+template <typename O> template <typename ALLOC>
+inline value_bag<O>* value_bag<O>::create(const Json* first, const Json* last,
+                                          kvtimestamp_t ts, ALLOC& ti) {
+    value_bag<O> empty;
+    return empty.update(first, last, ts, ti);
 }
 
 template <typename O> template <typename ALLOC>
