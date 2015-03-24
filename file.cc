@@ -51,7 +51,8 @@ lcdf::String read_file_contents(const char *filename) {
         int saved_errno = errno;
         close(fd);
         errno = saved_errno;
-    }
+    } else
+        close(fd);
     return text;
 }
 
@@ -65,19 +66,16 @@ int sync_write_file_contents(const char *filename, const lcdf::String &contents,
     ssize_t x = safe_write(fd, contents.data(), contents.length());
     if (x != contents.length()) {
     error:
+        int saved_errno = errno;
         close(fd);
+        errno = saved_errno;
         return -1;
     }
 
-    int r = fsync(fd);
-    if (r != 0)
+    if (fsync(fd) != 0)
         goto error;
 
-    r = close(fd);
-    if (r != 0)
-        goto error;
-
-    return 0;
+    return close(fd);
 }
 
 int atomic_write_file_contents(const char *filename, const lcdf::String &contents,
