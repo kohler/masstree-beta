@@ -89,6 +89,7 @@ class Json {
     inline Json(double x);
     inline Json(bool x);
     inline Json(const String& x);
+    inline Json(const std::string& x);
     inline Json(Str x);
     inline Json(const char* x);
     template <typename T> inline Json(const std::vector<T>& x);
@@ -104,6 +105,7 @@ class Json {
     template <typename... Args>
     static inline Json object(Args&&... rest);
     static inline Json make_string(const String& x);
+    static inline Json make_string(const std::string& x);
     static inline Json make_string(const char* s, int len);
 
     // Type information
@@ -197,6 +199,7 @@ class Json {
 
     const Json& operator[](Str key) const;
     inline Json_object_proxy<Json> operator[](const String& key);
+    inline Json_object_str_proxy<Json> operator[](const std::string& key);
     inline Json_object_str_proxy<Json> operator[](Str key);
     inline Json_object_str_proxy<Json> operator[](const char* key);
 
@@ -609,8 +612,8 @@ inline bool operator!=(const Json::const_object_iterator& a, const Json::const_o
 class Json::const_array_iterator { public:
     typedef Json::size_type difference_type;
     typedef Json value_type;
-    typedef const Json* pointer_type;
-    typedef const Json& reference_type;
+    typedef const Json* pointer;
+    typedef const Json& reference;
     typedef std::random_access_iterator_tag iterator_category;
 
     const_array_iterator() {
@@ -638,14 +641,16 @@ class Json::const_array_iterator { public:
     void operator++(int) {
         ++i_;
     }
-    void operator++() {
+    const_array_iterator& operator++() {
         ++i_;
+        return *this;
     }
     void operator--(int) {
         --i_;
     }
-    void operator--() {
+    const_array_iterator& operator--() {
         --i_;
+        return *this;
     }
     const_array_iterator& operator+=(difference_type x) {
         i_ += x;
@@ -669,8 +674,8 @@ class Json::const_array_iterator { public:
 };
 
 class Json::array_iterator : public const_array_iterator { public:
-    typedef const Json* pointer_type;
-    typedef const Json& reference_type;
+    typedef const Json* pointer;
+    typedef const Json& reference;
 
     array_iterator() {
     }
@@ -687,6 +692,14 @@ class Json::array_iterator : public const_array_iterator { public:
     }
     Json& value() const {
         return **this;
+    }
+    array_iterator& operator++() {
+        ++i_;
+        return *this;
+    }
+    array_iterator& operator--() {
+        --i_;
+        return *this;
     }
     array_iterator& operator+=(difference_type x) {
         i_ += x;
@@ -748,8 +761,8 @@ inline Json::const_array_iterator::difference_type operator-(const Json::const_a
 
 class Json::const_iterator { public:
     typedef std::pair<const String, Json&> value_type;
-    typedef const value_type* pointer_type;
-    typedef const value_type& reference_type;
+    typedef const value_type* pointer;
+    typedef const value_type& reference;
     typedef std::forward_iterator_tag iterator_category;
 
     const_iterator()
@@ -819,8 +832,8 @@ class Json::const_iterator { public:
 };
 
 class Json::iterator : public const_iterator { public:
-    typedef value_type* pointer_type;
-    typedef value_type& reference_type;
+    typedef value_type* pointer;
+    typedef value_type& reference;
 
     iterator() {
     }
@@ -1072,6 +1085,9 @@ class Json_proxy_base {
     }
     Json_object_proxy<P> operator[](const String& key) {
         return Json_object_proxy<P>(*static_cast<P*>(this), key);
+    }
+    Json_object_str_proxy<P> operator[](std::string key) {
+        return Json_object_str_proxy<P>(*static_cast<P*>(this), Str(key.data(), key.length()));
     }
     Json_object_str_proxy<P> operator[](Str key) {
         return Json_object_str_proxy<P>(*static_cast<P*>(this), key);
@@ -1542,6 +1558,11 @@ inline Json::Json(const String& x) {
     u_.str = x.internal_rep();
     u_.str.ref();
 }
+inline Json::Json(const std::string& x) {
+    u_.str.reset_ref();
+    String str(x);
+    str.swap(u_.str);
+}
 inline Json::Json(Str x) {
     u_.str.reset_ref();
     String str(x);
@@ -1638,7 +1659,11 @@ inline Json Json::object(Args&&... rest) {
     return j;
 }
 /** @brief Return a string-valued Json. */
-inline Json Json::make_string(const String &x) {
+inline Json Json::make_string(const String& x) {
+    return Json(x);
+}
+/** @overload */
+inline Json Json::make_string(const std::string& x) {
     return Json(x);
 }
 /** @overload */
@@ -2244,6 +2269,11 @@ inline const Json& Json::operator[](Str key) const {
     to contain the new value. */
 inline Json_object_proxy<Json> Json::operator[](const String& key) {
     return Json_object_proxy<Json>(*this, key);
+}
+
+/** @overload */
+inline Json_object_str_proxy<Json> Json::operator[](const std::string& key) {
+    return Json_object_str_proxy<Json>(*this, Str(key.data(), key.length()));
 }
 
 /** @overload */
@@ -3076,21 +3106,21 @@ inline Json& Json::operator-=(double x) {
     return subtract(x);
 }
 inline Json& Json::operator+=(const Json& x) {
-    if (!x.is_null()) {
-        // XXX what if both are integers
-        force_number();
-        u_.d.x = as_d() + x.as_d();
-        u_.d.type = j_double;
-    }
+    if (x.is_unsigned())
+        add(u_.u.x);
+    else if (x.is_int())
+        add(u_.i.x);
+    else if (!x.is_null())
+        add(x.as_d());
     return *this;
 }
 inline Json& Json::operator-=(const Json& x) {
-    if (!x.is_null()) {
-        // XXX what if both are integers
-        force_number();
-        u_.d.x = as_d() - x.as_d();
-        u_.d.type = j_double;
-    }
+    if (x.is_unsigned())
+        subtract(u_.u.x);
+    else if (x.is_int())
+        subtract(u_.i.x);
+    else if (!x.is_null())
+        subtract(x.as_d());
     return *this;
 }
 inline Json operator+(Json x) {
