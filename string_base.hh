@@ -79,12 +79,15 @@ class String_base {
     typedef const_iterator iterator;
     typedef const unsigned char* const_unsigned_iterator;
     typedef const_unsigned_iterator unsigned_iterator;
-    typedef int (String_base<T>::*unspecified_bool_type)() const;
+    typedef size_t (String_base<T>::*unspecified_bool_type)() const;
 
     const char* data() const {
         return static_cast<const T*>(this)->data();
     }
-    int length() const {
+    size_t length() const {
+        return static_cast<const T*>(this)->length();
+    }
+    size_t size() const {
         return static_cast<const T*>(this)->length();
     }
 
