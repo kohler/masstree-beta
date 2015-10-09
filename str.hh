@@ -81,7 +81,7 @@ struct Str : public String_base<Str> {
     const char *data() const {
 	return s;
     }
-    int length() const {
+    size_t length() const {
 	return len;
     }
     char* mutable_data() {

@@ -64,7 +64,7 @@ int sync_write_file_contents(const char *filename, const lcdf::String &contents,
         return -1;
 
     ssize_t x = safe_write(fd, contents.data(), contents.length());
-    if (x != contents.length()) {
+    if ((size_t) x != contents.length()) {
     error:
         int saved_errno = errno;
         close(fd);

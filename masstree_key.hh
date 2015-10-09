@@ -157,9 +157,9 @@ class key {
         unparse(s.mutable_data(), s.length());
         return s;
     }
-    int unparse_printable(char* data, int datalen) const {
+    int unparse_printable(char* data, size_t datalen) const {
         String s = unparse().printable();
-        int cplen = std::min(s.length(), datalen);
+        size_t cplen = std::min(s.length(), datalen);
         memcpy(data, s.data(), cplen);
         return cplen;
     }
