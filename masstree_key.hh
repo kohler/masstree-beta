@@ -172,7 +172,7 @@ class key {
     Str prefix_string() const {
         return Str(first_, s_);
     }
-    int prefix_length() const {
+    size_t prefix_length() const {
         return s_ - first_;
     }
     Str full_string() const {
@@ -196,7 +196,7 @@ class key {
         ikey0_ = ikey;
         *reinterpret_cast<ikey_type*>(const_cast<char*>(s_)) = host_to_net_order(ikey);
     }
-    int assign_store_suffix(Str s) {
+    size_t assign_store_suffix(Str s) {
         memcpy(const_cast<char*>(s_ + ikey_size), s.s, s.len);
         return ikey_size + s.len;
     }
