@@ -1,20 +1,21 @@
 AR = ar
 CC = @CC@
 CXX = @CXX@
-CFLAGS = -g -W -Wall -O3
+CPPFLAGS = @CPPFLAGS@
+CXXFLAGS = @CXXFLAGS@
 DEPSDIR := .deps
 DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
 ifeq ($(strip $(MEMMGR)), )
   MEMMGR = @MALLOC_LIBS@
 endif
 ifneq ($(strip $(KEYSWAP)), )
-  CFLAGS += -DKEYSWAP
+  CPPFLAGS += -DKEYSWAP
 endif
 ifneq ($(strip $(NOPREFETCH)), )
-  CFLAGS += -DNOPREFETCH
+  CPPFLAGS += -DNOPREFETCH
 endif
 ifneq ($(strip $(NOSUPERPAGE)), )
-  CFLAGS += -DNOSUPERPAGE
+  CPPFLAGS += -DNOSUPERPAGE
 endif
 LIBS = @LIBS@ -lpthread -lm
 LDFLAGS = @LDFLAGS@
@@ -22,10 +23,10 @@ LDFLAGS = @LDFLAGS@
 all: test_atomics mtd mtclient mttest
 
 %.o: %.c config.h $(DEPSDIR)/stamp
-	$(CXX) $(CFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
 %.o: %.cc config.h $(DEPSDIR)/stamp
-	$(CXX) $(CFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
 %.S: %.o
 	objdump -S $< > $@
@@ -41,27 +42,27 @@ KVTREES = query_masstree.o \
 
 mtd: mtd.o log.o checkpoint.o file.o misc.o $(KVTREES) \
 	kvio.o libjson.a
-	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 mtclient: mtclient.o misc.o testrunner.o kvio.o libjson.a
-	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 mttest: mttest.o misc.o checkpoint.o $(KVTREES) testrunner.o \
 	kvio.o libjson.a
-	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 test_string: test_string.o string.o straccum.o compiler.o
-	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 test_atomics: test_atomics.o string.o straccum.o kvrandom.o \
 	json.o compiler.o kvio.o
-	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 jsontest: jsontest.o string.o straccum.o json.o compiler.o
-	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 msgpacktest: msgpacktest.o string.o straccum.o json.o compiler.o msgpack.o
-	$(CXX) $(CFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 config.h: stamp-h
 
