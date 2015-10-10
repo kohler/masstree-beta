@@ -29,7 +29,7 @@ void testrunner_base::print_names(FILE* stream, int ncol) {
         names.push_back(tr->name());
 
     size_t percol;
-    std::vector<size_t> colwidth;
+    std::vector<int> colwidth;
     while (1) {
         percol = (names.size() + ncol - 1) / ncol;
         colwidth.assign(ncol, 0);

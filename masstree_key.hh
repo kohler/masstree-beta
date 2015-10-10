@@ -157,9 +157,9 @@ class key {
         unparse(s.mutable_data(), s.length());
         return s;
     }
-    int unparse_printable(char* data, size_t datalen) const {
+    int unparse_printable(char* data, int datalen) const {
         String s = unparse().printable();
-        size_t cplen = std::min(s.length(), datalen);
+        int cplen = std::min(s.length(), datalen);
         memcpy(data, s.data(), cplen);
         return cplen;
     }
@@ -172,7 +172,7 @@ class key {
     Str prefix_string() const {
         return Str(first_, s_);
     }
-    size_t prefix_length() const {
+    int prefix_length() const {
         return s_ - first_;
     }
     Str full_string() const {
@@ -196,7 +196,7 @@ class key {
         ikey0_ = ikey;
         *reinterpret_cast<ikey_type*>(const_cast<char*>(s_)) = host_to_net_order(ikey);
     }
-    size_t assign_store_suffix(Str s) {
+    int assign_store_suffix(Str s) {
         memcpy(const_cast<char*>(s_ + ikey_size), s.s, s.len);
         return ikey_size + s.len;
     }

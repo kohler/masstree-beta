@@ -70,7 +70,7 @@ class String : public String_base<String> {
     static inline const String& make_zero();
 
     inline const char* data() const;
-    inline size_t length() const;
+    inline int length() const;
 
     inline const char *c_str() const;
 
@@ -531,7 +531,7 @@ inline const char* String::data() const {
 }
 
 /** @brief Return the string's length. */
-inline size_t String::length() const {
+inline int String::length() const {
     return _r.length;
 }
 

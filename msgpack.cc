@@ -26,13 +26,13 @@ const uint8_t* streaming_parser::consume(const uint8_t* first,
     if (state_ < 0)
         return first;
     if (state_ == st_partial || state_ == st_string) {
-        size_t nneed;
+        int nneed;
         if (state_ == st_partial)
             nneed = nbytes[str_.udata()[0] - 0xC0];
         else
             nneed = stack_.back().size;
         const uint8_t* next;
-        if ((size_t) (last - first) < nneed - str_.length())
+        if (last - first < nneed - str_.length())
             next = last;
         else
             next = first + (nneed - str_.length());
