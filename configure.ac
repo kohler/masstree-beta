@@ -174,6 +174,12 @@ if test $ac_cv_have___has_trivial_copy = yes; then
     AC_DEFINE([HAVE___HAS_TRIVIAL_COPY], [1], [Define if you have the __has_trivial_copy compiler intrinsic.])
 fi
 
+AC_CACHE_CHECK([for __has_trivial_destructor], [ac_cv_have___has_trivial_destructor], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [[long x = 1; if (__has_trivial_destructor(long)) x = 0;]])], [ac_cv_have___has_trivial_destructor=yes], [ac_cv_have___has_trivial_destructor=no])])
+if test $ac_cv_have___has_trivial_destructor = yes; then
+    AC_DEFINE([HAVE___HAS_TRIVIAL_DESTRUCTOR], [1], [Define if you have the __has_trivial_destructor compiler intrinsic.])
+fi
+
 if test "$ac_cv_cxx_rvalue_references" = yes; then
     AC_MSG_CHECKING([for std::move])
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <utility>], [[long x = 0; long &&y = std::move(x);]])], [ac_cv_std_move=yes], [ac_cv_std_move=no])
@@ -192,6 +198,12 @@ AC_CACHE_CHECK([for std::is_trivially_copyable], [ac_cv_have_std_is_trivially_co
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <type_traits>], [[return std::is_trivially_copyable<int>::value;]])], [ac_cv_have_std_is_trivially_copyable=yes], [ac_cv_have_std_is_trivially_copyable=no])])
 if test $ac_cv_have_std_is_trivially_copyable = yes; then
     AC_DEFINE([HAVE_STD_IS_TRIVIALLY_COPYABLE], [1], [Define if you have the std::is_trivially_copyable template.])
+fi
+
+AC_CACHE_CHECK([for std::is_trivially_destructible], [ac_cv_have_std_is_trivially_destructible], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <type_traits>], [[return std::is_trivially_destructible<int>::value;]])], [ac_cv_have_std_is_trivially_destructible=yes], [ac_cv_have_std_is_trivially_destructible=no])])
+if test $ac_cv_have_std_is_trivially_destructible = yes; then
+    AC_DEFINE([HAVE_STD_IS_TRIVIALLY_DESTRUCTIBLE], [1], [Define if you have the std::is_trivially_destructible template.])
 fi
 
 AC_CACHE_CHECK([for std::is_rvalue_reference], [ac_cv_have_std_is_rvalue_reference], [

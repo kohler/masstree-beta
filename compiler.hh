@@ -1087,6 +1087,7 @@ template <> struct make_signed<long long> : public type_synonym<long long> {};
 template <> struct make_signed<unsigned long long> : public type_synonym<long long> {};
 #endif
 
+
 /** @class is_trivially_copyable
   @brief Template determining whether T may be copied by memcpy.
 
@@ -1110,14 +1111,26 @@ template <> struct is_trivially_copyable<unsigned long> : public true_type {};
 template <> struct is_trivially_copyable<long> : public true_type {};
 template <> struct is_trivially_copyable<unsigned long long> : public true_type {};
 template <> struct is_trivially_copyable<long long> : public true_type {};
-template <typename T> struct is_trivially_copyable<T *> : public true_type {};
+template <typename T> struct is_trivially_copyable<T*> : public true_type {};
+#endif
+
+
+/** @class is_trivially_destructible
+  @brief Template determining whether T may be trivially destructed. */
+
+#if HAVE_CXX_TEMPLATE_ALIAS && HAVE_TYPE_TRAITS && HAVE_STD_IS_TRIVIALLY_DESTRUCTIBLE
+template <typename T> using is_trivially_destructible = std::is_trivially_destructible<T>;
+#elif HAVE___HAS_TRIVIAL_DESTRUCTOR
+template <typename T> struct is_trivially_destructible : public integral_constant<bool, __has_trivial_destructor(T)> {};
+#else
+template <typename T> struct is_trivially_destructible : public is_trivially_copyable<T> {};
 #endif
 
 
 /** @class fast_argument
   @brief Template defining a fast argument type for objects of type T.
 
-  fast_argument<T>::type equals either "const T &" or "T".
+  fast_argument<T>::type equals either "const T&" or "T".
   fast_argument<T>::is_reference is true iff fast_argument<T>::type is
   a reference. If fast_argument<T>::is_reference is true, then
   fast_argument<T>::enable_rvalue_reference is a typedef to void; otherwise
@@ -1129,7 +1142,7 @@ struct fast_argument;
 
 template <typename T> struct fast_argument<T, true> {
     static constexpr bool is_reference = true;
-    typedef const T &type;
+    typedef const T& type;
 #if HAVE_CXX_RVALUE_REFERENCES
     typedef void enable_rvalue_reference;
 #endif
