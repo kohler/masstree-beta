@@ -11,8 +11,10 @@ results.
 
 ## Installation ##
 
-Masstree is tested on Debian, Ubuntu and Mac OS X. To build:
+Masstree is tested on Debian, Ubuntu and Mac OS X. To build from
+source:
 
+    $ ./bootstrap.sh
     $ ./configure
     $ make
 
