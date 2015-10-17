@@ -5,7 +5,7 @@
 #include <iterator>
 #include <assert.h>
 
-template <typename T, int N, typename A = std::allocator<T> >
+template <typename T, unsigned N, typename A = std::allocator<T> >
 class small_vector {
   public:
     typedef bool (small_vector<T, N, A>::*unspecified_bool_type)() const;
@@ -15,10 +15,11 @@ class small_vector {
     typedef std::reverse_iterator<iterator> reverse_iterator;
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
     typedef unsigned size_type;
+    static constexpr size_type small_capacity = N;
 
     inline small_vector(const A& allocator = A());
     small_vector(const small_vector<T, N, A>& x);
-    template <int NN, typename AA>
+    template <unsigned NN, typename AA>
     small_vector(const small_vector<T, NN, AA>& x);
     inline ~small_vector();
 
@@ -59,7 +60,7 @@ class small_vector {
     iterator erase(iterator first, iterator last);
 
     inline small_vector<T, N, A>& operator=(const small_vector<T, N, A>& x);
-    template <int NN, typename AA>
+    template <unsigned NN, typename AA>
     inline small_vector<T, N, A>& operator=(const small_vector<T, NN, AA>& x);
 
   private:
@@ -76,32 +77,33 @@ class small_vector {
     void grow(size_type n = 0);
 };
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline small_vector<T, N, A>::rep::rep(const A& a)
     : A(a), first_(reinterpret_cast<T*>(lv_)),
       last_(first_), capacity_(first_ + N) {
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline small_vector<T, N, A>::small_vector(const A& allocator)
     : r_(allocator) {
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 small_vector<T, N, A>::small_vector(const small_vector<T, N, A>& x)
     : r_(A()) {
     for (const T* it = x.r_.first_; it != x.r_.last_; ++it)
         push_back(*it);
 }
 
-template <typename T, int N, typename A> template <int NN, typename AA>
+template <typename T, unsigned N, typename A>
+template <unsigned NN, typename AA>
 small_vector<T, N, A>::small_vector(const small_vector<T, NN, AA>& x)
     : r_(A()) {
     for (const T* it = x.r_.first_; it != x.r_.last_; ++it)
         push_back(*it);
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline small_vector<T, N, A>::~small_vector() {
     for (T* it = r_.first_; it != r_.last_; ++it)
         r_.destroy(it);
@@ -109,32 +111,32 @@ inline small_vector<T, N, A>::~small_vector() {
         r_.deallocate(r_.first_, r_.capacity_ - r_.first_);
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline unsigned small_vector<T, N, A>::size() const {
     return r_.last_ - r_.first_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline unsigned small_vector<T, N, A>::capacity() const {
     return r_.capacity_ - r_.first_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline bool small_vector<T, N, A>::empty() const {
     return r_.first_ == r_.last_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline small_vector<T, N, A>::operator unspecified_bool_type() const {
     return empty() ? 0 : &small_vector<T, N, A>::empty;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline bool small_vector<T, N, A>::operator!() const {
     return empty();
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 void small_vector<T, N, A>::grow(size_type n) {
     size_t newcap = capacity() * 2;
     while (newcap < n)
@@ -151,97 +153,97 @@ void small_vector<T, N, A>::grow(size_type n) {
     r_.capacity_ = m + newcap;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::begin() -> iterator {
     return r_.first_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::end() -> iterator {
     return r_.last_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::begin() const -> const_iterator {
     return r_.first_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::end() const -> const_iterator {
     return r_.last_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::cbegin() const -> const_iterator {
     return r_.first_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::cend() const -> const_iterator {
     return r_.last_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::rbegin() -> reverse_iterator {
     return reverse_iterator(end());
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::rend() -> reverse_iterator {
     return reverse_iterator(begin());
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::rbegin() const -> const_reverse_iterator {
     return const_reverse_iterator(end());
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::rend() const -> const_reverse_iterator {
     return const_reverse_iterator(begin());
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::crbegin() const -> const_reverse_iterator {
     return const_reverse_iterator(end());
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline auto small_vector<T, N, A>::crend() const -> const_reverse_iterator {
     return const_reverse_iterator(begin());
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline T& small_vector<T, N, A>::operator[](size_type i) {
     return r_.first_[i];
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline const T& small_vector<T, N, A>::operator[](size_type i) const {
     return r_.first_[i];
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline T& small_vector<T, N, A>::front() {
     return r_.first_[0];
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline const T& small_vector<T, N, A>::front() const {
     return r_.first_[0];
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline T& small_vector<T, N, A>::back() {
     return r_.last_[-1];
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline const T& small_vector<T, N, A>::back() const {
     return r_.last_[-1];
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline void small_vector<T, N, A>::push_back(const T& x) {
     if (r_.last_ == r_.capacity_)
         grow();
@@ -249,7 +251,7 @@ inline void small_vector<T, N, A>::push_back(const T& x) {
     ++r_.last_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline void small_vector<T, N, A>::push_back(T&& x) {
     if (r_.last_ == r_.capacity_)
         grow();
@@ -257,7 +259,7 @@ inline void small_vector<T, N, A>::push_back(T&& x) {
     ++r_.last_;
 }
 
-template <typename T, int N, typename A> template <typename... Args>
+template <typename T, unsigned N, typename A> template <typename... Args>
 inline void small_vector<T, N, A>::emplace_back(Args&&... args) {
     if (r_.last_ == r_.capacity_)
         grow();
@@ -265,21 +267,21 @@ inline void small_vector<T, N, A>::emplace_back(Args&&... args) {
     ++r_.last_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline void small_vector<T, N, A>::pop_back() {
     assert(r_.first_ != r_.last_);
     --r_.last_;
     r_.destroy(r_.last_);
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline void small_vector<T, N, A>::clear() {
     for (auto it = r_.first_; it != r_.last_; ++it)
         r_.destroy(it);
     r_.last_ = r_.first_;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline void small_vector<T, N, A>::resize(size_type n, value_type v) {
     if (capacity() < n)
         grow(n);
@@ -292,7 +294,7 @@ inline void small_vector<T, N, A>::resize(size_type n, value_type v) {
         r_.construct(xt, v);
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 small_vector<T, N, A>&
 small_vector<T, N, A>::operator=(const small_vector<T, N, A>& x) {
     if (&x != this) {
@@ -305,7 +307,8 @@ small_vector<T, N, A>::operator=(const small_vector<T, N, A>& x) {
     return *this;
 }
 
-template <typename T, int N, typename A> template <int NN, typename AA>
+template <typename T, unsigned N, typename A>
+template <unsigned NN, typename AA>
 small_vector<T, N, A>&
 small_vector<T, N, A>::operator=(const small_vector<T, NN, AA>& x) {
     clear();
@@ -316,12 +319,12 @@ small_vector<T, N, A>::operator=(const small_vector<T, NN, AA>& x) {
     return *this;
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 inline T* small_vector<T, N, A>::erase(iterator position) {
     return erase(position, position + 1);
 }
 
-template <typename T, int N, typename A>
+template <typename T, unsigned N, typename A>
 T* small_vector<T, N, A>::erase(iterator first, iterator last) {
     if (first != last) {
         iterator it = first, xend = end();
@@ -333,5 +336,9 @@ T* small_vector<T, N, A>::erase(iterator first, iterator last) {
     }
     return first;
 }
+
+template <typename T, unsigned N, typename A>
+constexpr typename small_vector<T, N, A>::size_type
+  small_vector<T, N, A>::small_capacity;
 
 #endif
