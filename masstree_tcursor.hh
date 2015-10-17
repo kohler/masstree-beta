@@ -15,7 +15,7 @@
  */
 #ifndef MASSTREE_TCURSOR_HH
 #define MASSTREE_TCURSOR_HH 1
-#include "local_vector.hh"
+#include "small_vector.hh"
 #include "masstree_key.hh"
 #include "masstree_struct.hh"
 namespace Masstree {
@@ -103,7 +103,7 @@ class tcursor {
     typedef typename nodeversion_type::value_type nodeversion_value_type;
     typedef typename P::threadinfo_type threadinfo;
     static constexpr int new_nodes_size = 1; // unless we make a new trie newnodes will have at most 1 item
-    typedef local_vector<std::pair<leaf_type*, nodeversion_value_type>, new_nodes_size> new_nodes_type;
+    typedef small_vector<std::pair<leaf_type*, nodeversion_value_type>, new_nodes_size> new_nodes_type;
 
     tcursor(basic_table<P>& table, Str str)
         : ka_(str), root_(table.fix_root()) {

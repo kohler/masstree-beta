@@ -1,7 +1,7 @@
 #ifndef GSTORE_MSGPACK_HH
 #define GSTORE_MSGPACK_HH
 #include "json.hh"
-#include "local_vector.hh"
+#include "small_vector.hh"
 #include "straccum.hh"
 #include <vector>
 namespace msgpack {
@@ -366,7 +366,7 @@ class streaming_parser {
         int size;
     };
     int state_;
-    local_vector<selem, 2> stack_;
+    small_vector<selem, 2> stack_;
     String str_;
     Json json_;
     Json jokey_;

@@ -1,14 +1,14 @@
-#ifndef GSTORE_LOCAL_VECTOR_HH
-#define GSTORE_LOCAL_VECTOR_HH 1
+#ifndef GSTORE_SMALL_VECTOR_HH
+#define GSTORE_SMALL_VECTOR_HH 1
 #include "compiler.hh"
 #include <memory>
 #include <iterator>
 #include <assert.h>
 
 template <typename T, int N, typename A = std::allocator<T> >
-class local_vector {
+class small_vector {
   public:
-    typedef bool (local_vector<T, N, A>::*unspecified_bool_type)() const;
+    typedef bool (small_vector<T, N, A>::*unspecified_bool_type)() const;
     typedef T value_type;
     typedef value_type* iterator;
     typedef const value_type* const_iterator;
@@ -16,11 +16,11 @@ class local_vector {
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
     typedef unsigned size_type;
 
-    inline local_vector(const A& allocator = A());
-    local_vector(const local_vector<T, N, A>& x);
+    inline small_vector(const A& allocator = A());
+    small_vector(const small_vector<T, N, A>& x);
     template <int NN, typename AA>
-    local_vector(const local_vector<T, NN, AA>& x);
-    inline ~local_vector();
+    small_vector(const small_vector<T, NN, AA>& x);
+    inline ~small_vector();
 
     inline size_type size() const;
     inline size_type capacity() const;
@@ -58,9 +58,9 @@ class local_vector {
     iterator erase(iterator position);
     iterator erase(iterator first, iterator last);
 
-    inline local_vector<T, N, A>& operator=(const local_vector<T, N, A>& x);
+    inline small_vector<T, N, A>& operator=(const small_vector<T, N, A>& x);
     template <int NN, typename AA>
-    inline local_vector<T, N, A>& operator=(const local_vector<T, NN, AA>& x);
+    inline small_vector<T, N, A>& operator=(const small_vector<T, NN, AA>& x);
 
   private:
     struct rep : public A {
@@ -77,32 +77,32 @@ class local_vector {
 };
 
 template <typename T, int N, typename A>
-inline local_vector<T, N, A>::rep::rep(const A& a)
+inline small_vector<T, N, A>::rep::rep(const A& a)
     : A(a), first_(reinterpret_cast<T*>(lv_)),
       last_(first_), capacity_(first_ + N) {
 }
 
 template <typename T, int N, typename A>
-inline local_vector<T, N, A>::local_vector(const A& allocator)
+inline small_vector<T, N, A>::small_vector(const A& allocator)
     : r_(allocator) {
 }
 
 template <typename T, int N, typename A>
-local_vector<T, N, A>::local_vector(const local_vector<T, N, A>& x)
+small_vector<T, N, A>::small_vector(const small_vector<T, N, A>& x)
     : r_(A()) {
     for (const T* it = x.r_.first_; it != x.r_.last_; ++it)
         push_back(*it);
 }
 
 template <typename T, int N, typename A> template <int NN, typename AA>
-local_vector<T, N, A>::local_vector(const local_vector<T, NN, AA>& x)
+small_vector<T, N, A>::small_vector(const small_vector<T, NN, AA>& x)
     : r_(A()) {
     for (const T* it = x.r_.first_; it != x.r_.last_; ++it)
         push_back(*it);
 }
 
 template <typename T, int N, typename A>
-inline local_vector<T, N, A>::~local_vector() {
+inline small_vector<T, N, A>::~small_vector() {
     for (T* it = r_.first_; it != r_.last_; ++it)
         r_.destroy(it);
     if (r_.first_ != reinterpret_cast<T*>(r_.lv_))
@@ -110,32 +110,32 @@ inline local_vector<T, N, A>::~local_vector() {
 }
 
 template <typename T, int N, typename A>
-inline unsigned local_vector<T, N, A>::size() const {
+inline unsigned small_vector<T, N, A>::size() const {
     return r_.last_ - r_.first_;
 }
 
 template <typename T, int N, typename A>
-inline unsigned local_vector<T, N, A>::capacity() const {
+inline unsigned small_vector<T, N, A>::capacity() const {
     return r_.capacity_ - r_.first_;
 }
 
 template <typename T, int N, typename A>
-inline bool local_vector<T, N, A>::empty() const {
+inline bool small_vector<T, N, A>::empty() const {
     return r_.first_ == r_.last_;
 }
 
 template <typename T, int N, typename A>
-inline local_vector<T, N, A>::operator unspecified_bool_type() const {
-    return empty() ? 0 : &local_vector<T, N, A>::empty;
+inline small_vector<T, N, A>::operator unspecified_bool_type() const {
+    return empty() ? 0 : &small_vector<T, N, A>::empty;
 }
 
 template <typename T, int N, typename A>
-inline bool local_vector<T, N, A>::operator!() const {
+inline bool small_vector<T, N, A>::operator!() const {
     return empty();
 }
 
 template <typename T, int N, typename A>
-void local_vector<T, N, A>::grow(size_type n) {
+void small_vector<T, N, A>::grow(size_type n) {
     size_t newcap = capacity() * 2;
     while (newcap < n)
         newcap *= 2;
@@ -152,97 +152,97 @@ void local_vector<T, N, A>::grow(size_type n) {
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::begin() -> iterator {
+inline auto small_vector<T, N, A>::begin() -> iterator {
     return r_.first_;
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::end() -> iterator {
+inline auto small_vector<T, N, A>::end() -> iterator {
     return r_.last_;
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::begin() const -> const_iterator {
+inline auto small_vector<T, N, A>::begin() const -> const_iterator {
     return r_.first_;
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::end() const -> const_iterator {
+inline auto small_vector<T, N, A>::end() const -> const_iterator {
     return r_.last_;
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::cbegin() const -> const_iterator {
+inline auto small_vector<T, N, A>::cbegin() const -> const_iterator {
     return r_.first_;
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::cend() const -> const_iterator {
+inline auto small_vector<T, N, A>::cend() const -> const_iterator {
     return r_.last_;
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::rbegin() -> reverse_iterator {
+inline auto small_vector<T, N, A>::rbegin() -> reverse_iterator {
     return reverse_iterator(end());
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::rend() -> reverse_iterator {
+inline auto small_vector<T, N, A>::rend() -> reverse_iterator {
     return reverse_iterator(begin());
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::rbegin() const -> const_reverse_iterator {
+inline auto small_vector<T, N, A>::rbegin() const -> const_reverse_iterator {
     return const_reverse_iterator(end());
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::rend() const -> const_reverse_iterator {
+inline auto small_vector<T, N, A>::rend() const -> const_reverse_iterator {
     return const_reverse_iterator(begin());
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::crbegin() const -> const_reverse_iterator {
+inline auto small_vector<T, N, A>::crbegin() const -> const_reverse_iterator {
     return const_reverse_iterator(end());
 }
 
 template <typename T, int N, typename A>
-inline auto local_vector<T, N, A>::crend() const -> const_reverse_iterator {
+inline auto small_vector<T, N, A>::crend() const -> const_reverse_iterator {
     return const_reverse_iterator(begin());
 }
 
 template <typename T, int N, typename A>
-inline T& local_vector<T, N, A>::operator[](size_type i) {
+inline T& small_vector<T, N, A>::operator[](size_type i) {
     return r_.first_[i];
 }
 
 template <typename T, int N, typename A>
-inline const T& local_vector<T, N, A>::operator[](size_type i) const {
+inline const T& small_vector<T, N, A>::operator[](size_type i) const {
     return r_.first_[i];
 }
 
 template <typename T, int N, typename A>
-inline T& local_vector<T, N, A>::front() {
+inline T& small_vector<T, N, A>::front() {
     return r_.first_[0];
 }
 
 template <typename T, int N, typename A>
-inline const T& local_vector<T, N, A>::front() const {
+inline const T& small_vector<T, N, A>::front() const {
     return r_.first_[0];
 }
 
 template <typename T, int N, typename A>
-inline T& local_vector<T, N, A>::back() {
+inline T& small_vector<T, N, A>::back() {
     return r_.last_[-1];
 }
 
 template <typename T, int N, typename A>
-inline const T& local_vector<T, N, A>::back() const {
+inline const T& small_vector<T, N, A>::back() const {
     return r_.last_[-1];
 }
 
 template <typename T, int N, typename A>
-inline void local_vector<T, N, A>::push_back(const T& x) {
+inline void small_vector<T, N, A>::push_back(const T& x) {
     if (r_.last_ == r_.capacity_)
         grow();
     r_.construct(r_.last_, x);
@@ -250,7 +250,7 @@ inline void local_vector<T, N, A>::push_back(const T& x) {
 }
 
 template <typename T, int N, typename A>
-inline void local_vector<T, N, A>::push_back(T&& x) {
+inline void small_vector<T, N, A>::push_back(T&& x) {
     if (r_.last_ == r_.capacity_)
         grow();
     r_.construct(r_.last_, std::move(x));
@@ -258,7 +258,7 @@ inline void local_vector<T, N, A>::push_back(T&& x) {
 }
 
 template <typename T, int N, typename A> template <typename... Args>
-inline void local_vector<T, N, A>::emplace_back(Args&&... args) {
+inline void small_vector<T, N, A>::emplace_back(Args&&... args) {
     if (r_.last_ == r_.capacity_)
         grow();
     r_.construct(r_.last_, std::forward<Args>(args)...);
@@ -266,21 +266,21 @@ inline void local_vector<T, N, A>::emplace_back(Args&&... args) {
 }
 
 template <typename T, int N, typename A>
-inline void local_vector<T, N, A>::pop_back() {
+inline void small_vector<T, N, A>::pop_back() {
     assert(r_.first_ != r_.last_);
     --r_.last_;
     r_.destroy(r_.last_);
 }
 
 template <typename T, int N, typename A>
-inline void local_vector<T, N, A>::clear() {
+inline void small_vector<T, N, A>::clear() {
     for (auto it = r_.first_; it != r_.last_; ++it)
         r_.destroy(it);
     r_.last_ = r_.first_;
 }
 
 template <typename T, int N, typename A>
-inline void local_vector<T, N, A>::resize(size_type n, value_type v) {
+inline void small_vector<T, N, A>::resize(size_type n, value_type v) {
     if (capacity() < n)
         grow(n);
     auto it = r_.first_ + n;
@@ -293,8 +293,8 @@ inline void local_vector<T, N, A>::resize(size_type n, value_type v) {
 }
 
 template <typename T, int N, typename A>
-local_vector<T, N, A>&
-local_vector<T, N, A>::operator=(const local_vector<T, N, A>& x) {
+small_vector<T, N, A>&
+small_vector<T, N, A>::operator=(const small_vector<T, N, A>& x) {
     if (&x != this) {
         clear();
         if (capacity() < x.capacity())
@@ -306,8 +306,8 @@ local_vector<T, N, A>::operator=(const local_vector<T, N, A>& x) {
 }
 
 template <typename T, int N, typename A> template <int NN, typename AA>
-local_vector<T, N, A>&
-local_vector<T, N, A>::operator=(const local_vector<T, NN, AA>& x) {
+small_vector<T, N, A>&
+small_vector<T, N, A>::operator=(const small_vector<T, NN, AA>& x) {
     clear();
     if (capacity() < x.capacity())
         grow(x.capacity());
@@ -317,12 +317,12 @@ local_vector<T, N, A>::operator=(const local_vector<T, NN, AA>& x) {
 }
 
 template <typename T, int N, typename A>
-inline T* local_vector<T, N, A>::erase(iterator position) {
+inline T* small_vector<T, N, A>::erase(iterator position) {
     return erase(position, position + 1);
 }
 
 template <typename T, int N, typename A>
-T* local_vector<T, N, A>::erase(iterator first, iterator last) {
+T* small_vector<T, N, A>::erase(iterator first, iterator last) {
     if (first != last) {
         iterator it = first, xend = end();
         for (; last != xend; ++it, ++last)
