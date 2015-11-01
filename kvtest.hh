@@ -1486,6 +1486,83 @@ void kvtest_rscan1(C &client, double writer_quiet)
     client.report(result);
 }
 
+template <typename C>
+void kvtest_iscan1(C &client, double writer_quiet)
+{
+    int n, wq65536 = int(writer_quiet * 65536);
+    if (client.limit() == ~(uint64_t) 0)
+        n = 10000;
+    else
+        n = std::min(client.limit(), (uint64_t) 97655);
+    Json result;
+
+    if (client.id() % 24 == 0) {
+        for (int i = 0; i < n; ++i)
+            client.put_key8(i * 1024, i);
+        client.wait_all();
+
+        int pos = 0, mypos = 0, scansteps = 0;
+        quick_istr key;
+        std::vector<Str> keys, values;
+        Json errj;
+        while (!client.timeout(0) && errj.size() < 1000) {
+            key.set(pos, 8);
+            client.iscan_sync(key.string(), 100, keys, values);
+            if (keys.size() == 0) {
+                if (mypos < n * 1024)
+                    errj.push_back("missing " + String(mypos) + " through " + String((n - 1) * 1024));
+                pos = mypos = 0;
+            } else {
+                for (size_t i = 0; i < keys.size(); ++i) {
+                    int val = keys[i].to_i();
+                    if (val < 0) {
+                        errj.push_back("unexpected key " + String(keys[i].s, keys[i].len));
+                        continue;
+                    }
+                    if (val < pos)
+                        errj.push_back("got " + String(keys[i].s, keys[i].len) + ", expected " + String(pos) + " or later");
+                    pos = val + 1;
+                    while (val > mypos) {
+                        errj.push_back("got " + String(keys[i].s, keys[i].len) + ", missing " + String(mypos) + " @" + String(scansteps) + "+" + String(i));
+                        mypos += 1024;
+                    }
+                    if (val == mypos) {
+                        mypos = val + 1024;
+                        ++scansteps;
+                    }
+                }
+            }
+            client.rcu_quiesce();
+        }
+        if (errj.size() >= 1000)
+            errj.push_back("too many errors, giving up");
+        result.set("ok", errj.empty()).set("scansteps", scansteps);
+        if (errj)
+            result.set("errors", errj);
+
+    } else {
+        int delta = 1 + (client.id() % 30) * 32, rounds = 0;
+        while (!client.timeout(0)) {
+            int first = (client.rand.next() % n) * 1024 + delta;
+            int rand = client.rand.next() % 65536;
+            if (rand < wq65536) {
+                for (int d = 0; d < 31; ++d)
+                    relax_fence();
+            } else if (rounds > 100 && (rand % 2) == 1) {
+                for (int d = 0; d < 31; ++d)
+                    client.remove_key8(d + first);
+            } else {
+                for (int d = 0; d < 31; ++d)
+                    client.put_key8(d + first, d + first);
+            }
+            ++rounds;
+            client.rcu_quiesce();
+        }
+    }
+
+    client.report(result);
+}
+
 // test concurrent splits with removes in lower layers
 template <typename C>
 void kvtest_splitremove1(C &client)

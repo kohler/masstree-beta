@@ -185,7 +185,6 @@ class key {
         // Return true iff wrapped.
         if (has_suffix()) {
             ++ikey0_;
-            len_ = 1;
             return unlikely(!ikey0_);
         } else {
             ++len_;

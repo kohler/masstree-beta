@@ -60,6 +60,7 @@ class basic_table {
     typedef typename P::threadinfo_type threadinfo;
     typedef unlocked_tcursor<P> unlocked_cursor_type;
     typedef tcursor<P> cursor_type;
+    typedef std::pair<Str, value_type> itvalue_type;
 
     inline basic_table();
 
@@ -75,6 +76,11 @@ class basic_table {
     int scan(Str firstkey, bool matchfirst, F& scanner, threadinfo& ti) const;
     template <typename F>
     int rscan(Str firstkey, bool matchfirst, F& scanner, threadinfo& ti) const;
+
+    class iterator;
+    iterator begin(threadinfo& ti);
+    iterator iterate_from(Str firstkey, threadinfo& ti);
+    iterator end(threadinfo& ti);
 
     template <typename F>
     inline int modify(Str key, F& f, threadinfo& ti);

@@ -66,6 +66,8 @@ class query {
     void run_scan(T& table, Json& request, threadinfo& ti);
     template <typename T>
     void run_rscan(T& table, Json& request, threadinfo& ti);
+    template <typename T>
+    void run_iscan(T& table, Json& request, threadinfo& ti);
 
     const loginfo::query_times& query_times() const {
         return qtimes_;
@@ -316,6 +318,38 @@ void query<R>::run_rscan(T& table, Json& request, threadinfo& ti) {
         f_.push_back(request[i].as_i());
     query_json_scanner<R> scanf(*this, request);
     table.rscan(scanf.firstkey(), true, scanf, ti);
+}
+
+template <typename R> template <typename T>
+void query<R>::run_iscan(T& table, Json& request, threadinfo& ti) {
+    assert(request[3].as_i() > 0);
+    f_.clear();
+    for (int i = 4; i != request.size(); ++i)
+        f_.push_back(request[i].as_i());
+    int nleft = request[3].as_i();
+    lcdf::String firstkey;
+    std::swap(request[2].value().as_s(), firstkey);
+    request.resize(2);
+    scankeypos_ = 0;
+    typename T::iterator it = table.iterate_from(firstkey, ti);
+    for (; nleft != 0 && it != table.end(ti); nleft--) {
+        Str key = it->first;
+        R* value = it->second;
+        if (row_is_marker(value))
+            break;
+        // NB the `key` is not stable! We must save space for it.
+        while (scankeypos_ + key.length() > scankey_.length()) {
+            scankey_ = lcdf::String::make_uninitialized(scankey_.length() ? scankey_.length() * 2 : 1024);
+            scankeypos_ = 0;
+        }
+        memcpy(const_cast<char*>(scankey_.data() + scankeypos_),
+               key.data(), key.length());
+        request.push_back(scankey_.substr(scankeypos_, key.length()));
+        scankeypos_ += key.length();
+        request.push_back(lcdf::Json());
+        emit_fields1(value, request.back(), ti);
+        it++;
+    }
 }
 
 #endif

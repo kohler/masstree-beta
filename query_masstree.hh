@@ -61,6 +61,7 @@ class query_table {
     void print(FILE* f, int indent) const;
 
     static void test(threadinfo& ti);
+    static void iterator_test(threadinfo& ti);
 
     static const char* name() {
         return "mb";

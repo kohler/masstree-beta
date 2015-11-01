@@ -59,6 +59,7 @@
 #include "masstree_tcursor.hh"
 #include "masstree_insert.hh"
 #include "masstree_remove.hh"
+#include "masstree_iterator.hh"
 #include "masstree_scan.hh"
 #include "timestamp.hh"
 #include "json.hh"
@@ -218,6 +219,8 @@ struct kvtest_client {
     void scan_sync(const Str &firstkey, int n,
                    std::vector<Str> &keys, std::vector<Str> &values);
     void rscan_sync(const Str &firstkey, int n,
+                    std::vector<Str> &keys, std::vector<Str> &values);
+    void iscan_sync(const Str &firstkey, int n,
                     std::vector<Str> &keys, std::vector<Str> &values);
 
     void put(const Str &key, const Str &value);
@@ -404,6 +407,15 @@ void kvtest_client<T>::rscan_sync(const Str &firstkey, int n,
 }
 
 template <typename T>
+void kvtest_client<T>::iscan_sync(const Str &firstkey, int n,
+                                  std::vector<Str> &keys,
+                                  std::vector<Str> &values) {
+    Json req = Json::array(0, 0, firstkey, n);
+    q_[0].run_iscan(table_->table(), req, *ti_);
+    output_scan(req, keys, values);
+}
+
+template <typename T>
 void kvtest_client<T>::output_scan(const Json& req, std::vector<Str>& keys,
                                    std::vector<Str>& values) const {
     keys.clear();
@@ -540,6 +552,7 @@ MAKE_TESTRUNNER(scan1, kvtest_scan1(client, 0));
 MAKE_TESTRUNNER(scan1q80, kvtest_scan1(client, 0.8));
 MAKE_TESTRUNNER(rscan1, kvtest_rscan1(client, 0));
 MAKE_TESTRUNNER(rscan1q80, kvtest_rscan1(client, 0.8));
+MAKE_TESTRUNNER(iscan1, kvtest_iscan1(client, 0));
 MAKE_TESTRUNNER(splitremove1, kvtest_splitremove1(client));
 MAKE_TESTRUNNER(url, kvtest_url(client));
 
