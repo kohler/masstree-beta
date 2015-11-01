@@ -418,7 +418,7 @@ void query_table<P>::print(FILE *f, int indent) const {
     table_.print(f, indent);
 }
 
-template class basic_table<default_table::param_type>;
-template class query_table<default_table::param_type>;
+template class basic_table<default_table::parameters_type>;
+template class query_table<default_table::parameters_type>;
 
 }

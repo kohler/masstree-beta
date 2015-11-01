@@ -322,7 +322,7 @@ int basic_table<P>::scan(H helper,
     memcpy(keybuf.s, firstkey.s, firstkey.len);
     key_type ka(keybuf.s, firstkey.len);
 
-    typedef scanstackelt<param_type> mystack_type;
+    typedef scanstackelt<P> mystack_type;
     mystack_type stack;
     stack.root_ = root_;
     leafvalue_type entry = leafvalue_type::make_empty();

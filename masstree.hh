@@ -34,6 +34,7 @@ template <int LW = 15, int IW = LW> struct nodeparams {
     static constexpr int debug_level = 0;
     static constexpr bool printable_keys = true;
     typedef uint64_t ikey_type;
+    typedef uint32_t nodeversion_value_type;
 };
 
 template <int LW, int IW> constexpr int nodeparams<LW, IW>::leaf_width;
@@ -52,7 +53,7 @@ template <typename P> class tcursor;
 template <typename P>
 class basic_table {
   public:
-    typedef P param_type;
+    typedef P parameters_type;
     typedef node_base<P> node_type;
     typedef leaf<P> leaf_type;
     typedef typename P::value_type value_type;

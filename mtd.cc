@@ -357,8 +357,8 @@ void kvtest_client::notice(const char *fmt, ...) {
 }
 
 void kvtest_client::fail(const char *fmt, ...) {
-    static nodeversion failing_lock(false);
-    static nodeversion fail_message_lock(false);
+    static nodeversion32 failing_lock(false);
+    static nodeversion32 fail_message_lock(false);
     static String fail_message;
     failing = 1;
 

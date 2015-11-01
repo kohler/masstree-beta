@@ -468,8 +468,8 @@ void kvtest_client<T>::notice(const char *fmt, ...) {
 
 template <typename T>
 void kvtest_client<T>::fail(const char *fmt, ...) {
-    static nodeversion failing_lock(false);
-    static nodeversion fail_message_lock(false);
+    static nodeversion32 failing_lock(false);
+    static nodeversion32 fail_message_lock(false);
     static String fail_message;
 
     va_list val;

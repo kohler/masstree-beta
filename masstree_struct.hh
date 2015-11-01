@@ -24,9 +24,10 @@ namespace Masstree {
 
 template <typename P>
 struct make_nodeversion {
+    typedef nodeversion_parameters<typename P::nodeversion_value_type> parameters_type;
     typedef typename mass::conditional<P::concurrent,
-                                       nodeversion,
-                                       singlethreaded_nodeversion>::type type;
+                                       nodeversion<parameters_type>,
+                                       singlethreaded_nodeversion<parameters_type> >::type type;
 };
 
 template <typename P>
