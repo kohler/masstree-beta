@@ -91,10 +91,8 @@ struct forward_scan_helper {
         return N::bound_type::lower_by(k, *n, *n).i;
     }
     template <typename K, typename N>
-    int lower_with_position(const K &k, const N *n, int &kp) const {
-        key_indexed_position kx = N::bound_type::lower_by(k, *n, *n);
-        kp = kx.p;
-        return kx.i;
+    key_indexed_position lower_with_position(const K &k, const N *n) const {
+        return N::bound_type::lower_by(k, *n, *n);
     }
     void found() const {
     }
@@ -141,10 +139,10 @@ struct reverse_scan_helper {
         return kx.i - (kx.p < 0);
     }
     template <typename K, typename N>
-    int lower_with_position(const K &k, const N *n, int &kp) const {
+    key_indexed_position lower_with_position(const K &k, const N *n) const {
         key_indexed_position kx = N::bound_type::lower_by(k, *n, *n);
-        kp = kx.p;
-        return kx.i - (kx.p < 0);
+        kx.i -= kx.p < 0;
+        return kx;
     }
     int next(int ki) const {
         return ki - 1;
@@ -184,7 +182,8 @@ template <typename P> template <typename H>
 int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
                                   leafvalue_type& entry, threadinfo& ti)
 {
-    int kp, keylenx = 0;
+    key_indexed_position kx;
+    int keylenx = 0;
     char suffixbuf[MASSTREE_MAXKEYLEN];
     Str suffix;
 
@@ -197,14 +196,14 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
     n_->prefetch();
     perm_ = n_->permutation();
 
-    ki_ = helper.lower_with_position(ka, this, kp);
-    if (kp >= 0) {
-        keylenx = n_->keylenx_[kp];
+    kx = helper.lower_with_position(ka, this);
+    if (kx.p >= 0) {
+        keylenx = n_->keylenx_[kx.p];
         fence();
-        entry = n_->lv_[kp];
+        entry = n_->lv_[kx.p];
         entry.prefetch(keylenx);
         if (n_->keylenx_has_ksuf(keylenx)) {
-            suffix = n_->ksuf(kp);
+            suffix = n_->ksuf(kx.p);
             memcpy(suffixbuf, suffix.s, suffix.len);
             suffix.s = suffixbuf;
         }
@@ -215,7 +214,8 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
         goto retry_node;
     }
 
-    if (kp >= 0) {
+    ki_ = kx.i;
+    if (kx.p >= 0) {
         if (n_->keylenx_is_layer(keylenx)) {
             node_stack_.push_back(root_);
             node_stack_.push_back(n_);
@@ -233,7 +233,6 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
         // otherwise, this entry must be skipped
         ki_ = helper.next(ki_);
     }
-
     return scan_find_next;
 }
 
