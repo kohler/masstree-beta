@@ -8,6 +8,7 @@
 /config.h
 /config.log
 /config.status
+/configure
 /msgpacktest
 /mtclient
 /mtd
