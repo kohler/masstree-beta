@@ -21,9 +21,6 @@
 /* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
 
-/* Define if the C++ compiler understands 'auto'. */
-#undef HAVE_CXX_AUTO
-
 /* Define if the C++ compiler understands constexpr. */
 #undef HAVE_CXX_CONSTEXPR
 
