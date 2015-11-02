@@ -715,10 +715,6 @@ main(int argc, char *argv[])
       always_assert(ret == 0);
   }
 
-  // arrange for a per-thread threadinfo pointer
-  ret = pthread_key_create(&threadinfo::key, 0);
-  always_assert(ret == 0);
-
   // for parallel recovery
   ret = pthread_cond_init(&rec_cond, 0);
   always_assert(ret == 0);

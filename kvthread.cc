@@ -25,7 +25,6 @@
 #endif
 
 threadinfo *threadinfo::allthreads;
-pthread_key_t threadinfo::key;
 #if ENABLE_ASSERTIONS
 int threadinfo::no_pool_value;
 #endif
@@ -298,7 +297,6 @@ void threadinfo::refill_pool(int nl) {
 
 void threadinfo::run() {
     threadid_ = pthread_self();
-    pthread_setspecific(key, this);
 }
 
 void* threadinfo::thread_trampoline(void* argument) {

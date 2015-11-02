@@ -194,7 +194,6 @@ class threadinfo {
 
     static threadinfo *make(int purpose, int index);
     // XXX destructor
-    static pthread_key_t key;
 
     // thread information
     int purpose() const {
@@ -387,10 +386,6 @@ class threadinfo {
     }
     void* thread_data() const {
         return thread_data_;
-    }
-
-    static threadinfo *current() {
-        return (threadinfo *) pthread_getspecific(key);
     }
 
     void report_rcu(void *ptr) const;

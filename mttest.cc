@@ -958,9 +958,6 @@ Try 'mttest --help' for options.\n");
     if (tests.empty())
         tests.push_back("rw1");
 
-    // arrange for a per-thread threadinfo pointer
-    ret = pthread_key_create(&threadinfo::key, 0);
-    always_assert(ret == 0);
     pthread_mutex_init(&subtest_mutex, 0);
     pthread_cond_init(&subtest_cond, 0);
 
