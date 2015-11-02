@@ -64,6 +64,9 @@ jsontest: jsontest.o string.o straccum.o json.o compiler.o
 msgpacktest: msgpacktest.o string.o straccum.o json.o compiler.o msgpack.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
+scantest: scantest.o compiler.o misc.o $(KVTREES) libjson.a
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+
 config.h: stamp-h
 
 GNUmakefile: GNUmakefile.in config.status

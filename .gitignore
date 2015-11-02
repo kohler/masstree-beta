@@ -16,10 +16,11 @@ kvd-log-*
 kvd-ckp-*
 notebook-kvtest.json
 stamp-h
-jsontest
-test_atomics
-test_binsearch
-test_string
+/jsontest
+/scantest
+/test_atomics
+/test_binsearch
+/test_string
 bench/GNUmakefile
 bench/client
 bench/load/YCSB
