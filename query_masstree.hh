@@ -27,7 +27,6 @@ class query_table {
   public:
     typedef P parameters_type;
     typedef node_base<P> node_type;
-    typedef typename node_type::nodeversion_type nodeversion_type;
     typedef typename P::threadinfo_type threadinfo;
     typedef unlocked_tcursor<P> unlocked_cursor_type;
     typedef tcursor<P> cursor_type;
