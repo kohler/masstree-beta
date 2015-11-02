@@ -464,6 +464,11 @@ class threadinfo {
     }
 #endif
 
+    inline threadinfo(int purpose, int index);
+    threadinfo(const threadinfo&) = delete;
+    ~threadinfo() {}
+    threadinfo& operator=(const threadinfo&) = delete;
+
     void hard_rcu_quiesce();
     static void* thread_trampoline(void*);
     friend class loginfo;

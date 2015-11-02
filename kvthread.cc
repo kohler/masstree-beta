@@ -94,19 +94,23 @@ memdebug::hard_assert_use(const void *ptr, memtag tag1, memtag tag2) {
 }
 #endif
 
+inline threadinfo::threadinfo(int purpose, int index) {
+    memset(this, 0, sizeof(*this));
+    purpose_ = purpose;
+    index_ = index;
+
+    void *limbo_space = allocate(sizeof(limbo_group), memtag_limbo);
+    mark(tc_limbo_slots, limbo_group::capacity);
+    limbo_head_ = limbo_tail_ = new(limbo_space) limbo_group;
+    ts_ = 2;
+}
+
 threadinfo *threadinfo::make(int purpose, int index) {
     static int threads_initialized;
 
-    threadinfo *ti = (threadinfo *) malloc(8192);
-    memset(ti, 0, sizeof(*ti));
+    threadinfo* ti = new(malloc(8192)) threadinfo(purpose, index);
     ti->next_ = allthreads;
-    ti->purpose_ = purpose;
-    ti->index_ = index;
-    ti->allthreads = ti;
-    ti->ts_ = 2;
-    void *limbo_space = ti->allocate(sizeof(limbo_group), memtag_limbo);
-    ti->mark(tc_limbo_slots, limbo_group::capacity);
-    ti->limbo_head_ = ti->limbo_tail_ = new(limbo_space) limbo_group;
+    allthreads = ti;
 
     if (!threads_initialized) {
 #if ENABLE_ASSERTIONS
