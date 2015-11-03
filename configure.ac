@@ -107,20 +107,23 @@ KVDB_CHECK_BUILTIN([__sync_lock_release_set],
 
 dnl C++ features
 
-AC_CACHE_CHECK([whether the C++ compiler understands 'auto'], [ac_cv_cxx_auto], [
+dnl Mimics AC_CACHE_CHECK(MESSAGE, CACHE-ID, COMMANDS), but retries COMMANDS
+dnl with CXX='${CXX} -std=gnu++0x' if the user has not specified CXX.
+AC_DEFUN([KVDB_CHECK_C11_FEATURE], [
+    AC_CACHE_CHECK([$1], [$2], [$3])
+
+    if test "$$2" != yes -a -z "$ac_user_cxx"; then
+        CXX="${CXX} -std=gnu++0x"
+        AC_MSG_CHECKING([$1 with -std=gnu++0x])
+        $3
+        AC_MSG_RESULT([$$2])
+    fi
+])
+
+KVDB_CHECK_C11_FEATURE([whether the C++ compiler understands 'auto'], [ac_cv_cxx_auto], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[struct s { int a; }; int f(s x) { auto &y = x; return y.a; }]], [[]])],
 	[ac_cv_cxx_auto=yes], [ac_cv_cxx_auto=no])])
-if test "$ac_cv_cxx_auto" != yes -a -z "$ac_user_cxx"; then
-    CXX="${CXX} -std=gnu++0x"
-    AC_MSG_CHECKING([whether the C++ compiler with -std=gnu++0x understands 'auto'])
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[struct s { int a; }; int f(s x) { auto &y = x; return y.a; }]], [[]])],
-	[ac_cv_cxx_auto=yes], [ac_cv_cxx_auto=no])
-    AC_MSG_RESULT([$ac_cv_cxx_auto])
-fi
-
-if test "$ac_cv_cxx_auto" = yes; then
-    AC_DEFINE([HAVE_CXX_AUTO], [1], [Define if the C++ compiler understands 'auto'.])
-else
+if test "$ac_cv_cxx_auto" != yes; then
     AC_MSG_ERROR([
 
 The C++ compiler does not appear to understand C++11.
@@ -130,28 +133,28 @@ such as "./configure CXX='c++ -std=gnu++0x'".
 ========================================================])
 fi
 
-AC_CACHE_CHECK([whether the C++ compiler understands constexpr], [ac_cv_cxx_constexpr], [
+KVDB_CHECK_C11_FEATURE([whether the C++ compiler understands constexpr], [ac_cv_cxx_constexpr], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[constexpr int f(int x) { return x + 1; }]], [[]])],
 	[ac_cv_cxx_constexpr=yes], [ac_cv_cxx_constexpr=no])])
 if test "$ac_cv_cxx_constexpr" = yes; then
     AC_DEFINE([HAVE_CXX_CONSTEXPR], [1], [Define if the C++ compiler understands constexpr.])
 fi
 
-AC_CACHE_CHECK([whether the C++ compiler understands static_assert], [ac_cv_cxx_static_assert], [
+KVDB_CHECK_C11_FEATURE([whether the C++ compiler understands static_assert], [ac_cv_cxx_static_assert], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[const int f = 2;]], [[static_assert(f == 2, "f should be 2");]])],
 	[ac_cv_cxx_static_assert=yes], [ac_cv_cxx_static_assert=no])])
 if test "$ac_cv_cxx_static_assert" = yes; then
     AC_DEFINE([HAVE_CXX_STATIC_ASSERT], [1], [Define if the C++ compiler understands static_assert.])
 fi
 
-AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_cxx_rvalue_references], [
+KVDB_CHECK_C11_FEATURE([whether the C++ compiler understands rvalue references], [ac_cv_cxx_rvalue_references], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
 	[ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
 if test "$ac_cv_cxx_rvalue_references" = yes; then
     AC_DEFINE([HAVE_CXX_RVALUE_REFERENCES], [1], [Define if the C++ compiler understands rvalue references.])
 fi
 
-AC_CACHE_CHECK([whether the C++ compiler understands template alias], [ac_cv_cxx_template_alias], [
+KVDB_CHECK_C11_FEATURE([whether the C++ compiler understands template alias], [ac_cv_cxx_template_alias], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[template <typename T> struct X { typedef T type; }; template <typename T> using Y = X<T>; int f(int x) { return x; }]], [[return f(Y<int>::type());]])],
 	[ac_cv_cxx_template_alias=yes], [ac_cv_cxx_template_alias=no])])
 if test "$ac_cv_cxx_template_alias" = yes; then
@@ -160,7 +163,7 @@ fi
 
 AC_CHECK_HEADERS([type_traits])
 
-AC_CACHE_CHECK([for std::hash], [ac_cv_have_std_hash], [
+KVDB_CHECK_C11_FEATURE([for std::hash], [ac_cv_have_std_hash], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <functional>
 #include <stddef.h>],
         [[std::hash<int> h; size_t x = h(1); return x == 0;]])],
@@ -169,22 +172,21 @@ if test $ac_cv_have_std_hash = yes; then
     AC_DEFINE([HAVE_STD_HASH], [1], [Define if you have std::hash.])
 fi
 
-AC_CACHE_CHECK([for __has_trivial_copy], [ac_cv_have___has_trivial_copy], [
+KVDB_CHECK_C11_FEATURE([for __has_trivial_copy], [ac_cv_have___has_trivial_copy], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [[long x = 1; if (__has_trivial_copy(long)) x = 0;]])], [ac_cv_have___has_trivial_copy=yes], [ac_cv_have___has_trivial_copy=no])])
 if test $ac_cv_have___has_trivial_copy = yes; then
     AC_DEFINE([HAVE___HAS_TRIVIAL_COPY], [1], [Define if you have the __has_trivial_copy compiler intrinsic.])
 fi
 
-AC_CACHE_CHECK([for __has_trivial_destructor], [ac_cv_have___has_trivial_destructor], [
+KVDB_CHECK_C11_FEATURE([for __has_trivial_destructor], [ac_cv_have___has_trivial_destructor], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [[long x = 1; if (__has_trivial_destructor(long)) x = 0;]])], [ac_cv_have___has_trivial_destructor=yes], [ac_cv_have___has_trivial_destructor=no])])
 if test $ac_cv_have___has_trivial_destructor = yes; then
     AC_DEFINE([HAVE___HAS_TRIVIAL_DESTRUCTOR], [1], [Define if you have the __has_trivial_destructor compiler intrinsic.])
 fi
 
 if test "$ac_cv_cxx_rvalue_references" = yes; then
-    AC_MSG_CHECKING([for std::move])
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <utility>], [[long x = 0; long &&y = std::move(x);]])], [ac_cv_std_move=yes], [ac_cv_std_move=no])
-    AC_MSG_RESULT([$ac_cv_std_move])
+    KVDB_CHECK_C11_FEATURE([for std::move], [ac_cv_std_move], [
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <utility>], [[long x = 0; long &&y = std::move(x);]])], [ac_cv_std_move=yes], [ac_cv_std_move=no])])
     if test "$ac_cv_std_move" != yes; then
         AC_MSG_ERROR([
 
@@ -195,19 +197,19 @@ If you are using clang on Mac, ensure the -stdlib=libc++ option.
     fi
 fi
 
-AC_CACHE_CHECK([for std::is_trivially_copyable], [ac_cv_have_std_is_trivially_copyable], [
+KVDB_CHECK_C11_FEATURE([for std::is_trivially_copyable], [ac_cv_have_std_is_trivially_copyable], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <type_traits>], [[return std::is_trivially_copyable<int>::value;]])], [ac_cv_have_std_is_trivially_copyable=yes], [ac_cv_have_std_is_trivially_copyable=no])])
 if test $ac_cv_have_std_is_trivially_copyable = yes; then
     AC_DEFINE([HAVE_STD_IS_TRIVIALLY_COPYABLE], [1], [Define if you have the std::is_trivially_copyable template.])
 fi
 
-AC_CACHE_CHECK([for std::is_trivially_destructible], [ac_cv_have_std_is_trivially_destructible], [
+KVDB_CHECK_C11_FEATURE([for std::is_trivially_destructible], [ac_cv_have_std_is_trivially_destructible], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <type_traits>], [[return std::is_trivially_destructible<int>::value;]])], [ac_cv_have_std_is_trivially_destructible=yes], [ac_cv_have_std_is_trivially_destructible=no])])
 if test $ac_cv_have_std_is_trivially_destructible = yes; then
     AC_DEFINE([HAVE_STD_IS_TRIVIALLY_DESTRUCTIBLE], [1], [Define if you have the std::is_trivially_destructible template.])
 fi
 
-AC_CACHE_CHECK([for std::is_rvalue_reference], [ac_cv_have_std_is_rvalue_reference], [
+KVDB_CHECK_C11_FEATURE([for std::is_rvalue_reference], [ac_cv_have_std_is_rvalue_reference], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <type_traits>], [[return std::is_rvalue_reference<int>::value;]])], [ac_cv_have_std_is_rvalue_reference=yes], [ac_cv_have_std_is_rvalue_reference=no])])
 if test $ac_cv_have_std_is_rvalue_reference = yes; then
     AC_DEFINE([HAVE_STD_IS_RVALUE_REFERENCE], [1], [Define if you have the std::is_rvalue_reference template.])
