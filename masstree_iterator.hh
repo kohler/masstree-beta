@@ -90,8 +90,7 @@ basic_table<P>::iterator::make_end(basic_table<P>* table, threadinfo *ti) {
 template <typename P>
 void
 basic_table<P>::iterator::advance(bool emit_equal) {
-    int ki;
-    bool try_next_index = true;
+    key_indexed_position kip;
     leaf_type* n;
     nodeversion_type v;
     node_type* root;
@@ -104,14 +103,13 @@ basic_table<P>::iterator::advance(bool emit_equal) {
     root = table_->root();
     n = root->reach_leaf(ka_, v, *ti_);
     perm = n->permutation();
-    ki = bound_type::lower(ka_, *n).i;
+    kip = bound_type::lower(ka_, *n);
 
  retry:
     if (v.deleted())
         goto retry_root;
 
-    int kp = (unsigned(ki) < unsigned(perm.size())) ? perm[ki] : -1;
-    if (kp < 0) {
+    if (unsigned(kip.i) >= unsigned(perm.size())) {
         n = n->safe_next();
         if (!n) {
             if (root == table_->root()) {
@@ -128,10 +126,11 @@ basic_table<P>::iterator::advance(bool emit_equal) {
         }
         perm = n->permutation();
         v = n->stable();
-        ki = bound_type::lower(ka_, *n).i;
+        kip = bound_type::lower(ka_, *n);
         goto retry;
     }
 
+    int kp = perm[kip.i];
     int keylenx = n->keylenx_[kp];
     ikey_type ikey = n->ikey0_[kp];
     leafvalue_type entry = n->lv_[kp];
@@ -150,15 +149,15 @@ basic_table<P>::iterator::advance(bool emit_equal) {
         root = entry.layer();
         n = root->reach_leaf(ka_, v, *ti_);
         perm = n->permutation();
-        ki = bound_type::lower(ka_, *n).i;
+        kip = bound_type::lower(ka_, *n);
         goto retry;
     }
 
     // XXX This condition is suspect.
-    if (!emit_equal && try_next_index &&
+    if (!emit_equal && kip.p >= 0 &&
         (!n->keylenx_has_ksuf(keylenx) || suffix.compare(ka_.suffix()) == 0)) {
-        try_next_index = false;
-        ki++;
+        kip.i++;
+        kip.p = -1;
         goto retry;
     }
 
