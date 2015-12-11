@@ -153,7 +153,6 @@ basic_table<P>::iterator::advance(bool emit_equal) {
         goto retry;
     }
 
-    // XXX This condition is suspect.
     if (!emit_equal && kip.p >= 0 &&
         (!n->keylenx_has_ksuf(keylenx) || suffix.compare(ka_.suffix()) == 0)) {
         kip.i++;
