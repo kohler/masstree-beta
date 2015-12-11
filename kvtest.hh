@@ -1563,6 +1563,75 @@ void kvtest_iscan1(C &client, double writer_quiet)
     client.report(result);
 }
 
+// Test scans where nodes are repeatedly removed and inserted
+template <typename C>
+void kvtest_iscan2(C &client)
+{
+    unsigned n;
+    Json result;
+
+    if (client.limit() == ~(uint64_t) 0)
+        n = 10000;
+    else
+        n = std::min(client.limit(), (uint64_t) 97655);
+
+    if (client.id() == 0) {
+        Json errj;
+        unsigned rounds = 0, nfound = 0;
+
+        for (unsigned i = 0; i < n; ++i) {
+            client.put_key16(i * 1024, i * 1024);
+        }
+
+        client.rcu_quiesce();
+        client.wait_all();
+        client.puts_done();
+
+        while (!client.timeout(0) && errj.size() < 1000) {
+            int pos = 0;
+            std::vector<Str> keys, values;
+
+            client.iscan_sync("", INT_MAX, keys, values);
+            for (size_t i = 0; i < keys.size(); ++i) {
+                int val = keys[i].to_i();
+                while (val > pos) {
+                    errj.push_back("got " + String(keys[i].s, keys[i].len) + ", missing " + String(pos) + " @" + String(rounds));
+                    pos += 1024;
+                }
+                if (val == pos) {
+                    nfound++;
+                    pos += 1024;
+                }
+            }
+            client.rcu_quiesce();
+            ++rounds;
+        }
+
+        if (errj.size() >= 1000)
+            errj.push_back("too many errors, giving up");
+
+        if (errj)
+            result.set("errors", errj);
+
+        result.set("nfound", nfound);
+        result.set("rounds", rounds);
+        result.set("success", (float) nfound / rounds);
+    } else {
+        while (!client.timeout(0)) {
+            unsigned i;
+            do {
+                i = client.rand.next() % (n * 1024);
+            } while (i % 1024 == 0);
+            client.remove_key16(i);
+            client.put_key16(i, i);
+            client.rcu_quiesce();
+        }
+    }
+
+    client.report(result);
+}
+
+
 // test concurrent splits with removes in lower layers
 template <typename C>
 void kvtest_splitremove1(C &client)
