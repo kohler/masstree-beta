@@ -560,7 +560,7 @@ struct conninfo {
 enum { clp_val_suffixdouble = Clp_ValFirstUser };
 enum { opt_nolog = 1, opt_pin, opt_logdir, opt_port, opt_ckpdir, opt_duration,
        opt_test, opt_test_name, opt_threads, opt_cores,
-       opt_print, opt_norun, opt_checkpoint, opt_limit };
+       opt_print, opt_norun, opt_checkpoint, opt_limit, opt_epoch_interval };
 static const Clp_Option options[] = {
     { "no-log", 0, opt_nolog, 0, 0 },
     { 0, 'n', opt_nolog, 0, 0 },
@@ -588,7 +588,8 @@ static const Clp_Option options[] = {
     { "test-rw1fixed", 0, opt_test_name, 0, 0 },
     { "threads", 'j', opt_threads, Clp_ValInt, 0 },
     { "cores", 0, opt_cores, Clp_ValString, 0 },
-    { "print", 0, opt_print, 0, Clp_Negate }
+    { "print", 0, opt_print, 0, Clp_Negate },
+    { "epoch-interval", 0, opt_epoch_interval, Clp_ValDouble, 0 }
 };
 
 int
@@ -601,6 +602,7 @@ main(int argc, char *argv[])
   Clp_Parser *clp = Clp_NewParser(argc, argv, (int) arraysize(options), options);
   Clp_AddType(clp, clp_val_suffixdouble, Clp_DisallowOptions, clp_parse_suffixdouble, 0);
   int opt;
+  double epoch_interval_ms = 1000;
   while ((opt = Clp_Next(clp)) >= 0) {
       switch (opt) {
       case opt_nolog:
@@ -679,6 +681,9 @@ main(int argc, char *argv[])
       case opt_norun:
           recovery_only = true;
           break;
+      case opt_epoch_interval:
+	epoch_interval_ms = clp->val.d;
+	break;
       default:
           fprintf(stderr, "Usage: kvd [-np] [--ld dir1[,dir2,...]] [--cd dir1[,dir2,...]]\n");
           exit(EXIT_FAILURE);
@@ -703,14 +708,14 @@ main(int argc, char *argv[])
   log_epoch_interval.tv_sec = 0;
   log_epoch_interval.tv_usec = 200000;
 
-  // increment the global epoch every second
+  // set a timer for incrementing the global epoch
   if (!dotest) {
       signal(SIGALRM, epochinc);
       struct itimerval etimer;
-      etimer.it_interval.tv_sec = 1;
-      etimer.it_interval.tv_usec = 0;
-      etimer.it_value.tv_sec = 1;
-      etimer.it_value.tv_usec = 0;
+      etimer.it_interval.tv_sec = epoch_interval_ms / 1000;
+      etimer.it_interval.tv_usec = fmod(epoch_interval_ms, 1000) * 1000;
+      etimer.it_value.tv_sec = epoch_interval_ms / 1000;
+      etimer.it_value.tv_usec = fmod(epoch_interval_ms, 1000) * 1000;
       ret = setitimer(ITIMER_REAL, &etimer, NULL);
       always_assert(ret == 0);
   }
