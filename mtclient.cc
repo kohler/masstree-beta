@@ -34,6 +34,7 @@
 #include <arpa/inet.h>
 #include <math.h>
 #include <fcntl.h>
+#include <cfloat>
 #include "kvstats.hh"
 #include "kvio.hh"
 #include "json.hh"
@@ -41,6 +42,8 @@
 #include "mtclient.hh"
 #include "kvrandom.hh"
 #include "clp.h"
+
+using namespace std;
 
 const char *serverip = "127.0.0.1";
 
@@ -149,7 +152,7 @@ static int getratio = -1;
 static int minkeyletter = '0';
 static int maxkeyletter = '9';
 
-
+template <bool lat>		// if lat is true, latency testing is enabled
 struct kvtest_client {
     kvtest_client(struct child& c)
         : c_(&c) {
@@ -195,58 +198,182 @@ struct kvtest_client {
         return ::now();
     }
 
+    double get_lat_min = DBL_MAX, get_lat_max = 0;
     void get(long ikey, Str *value) {
         quick_istr key(ikey);
+	double lat_start;
+
+	if (lat)
+	    lat_start = now();
+
         aget(c_, key.string(),
              Str(reinterpret_cast<const char *>(&value), sizeof(value)),
              asyncgetcb);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_lat_min = min(_lat, get_lat_min);
+	    get_lat_max = max(_lat, get_lat_max);
+	}
     }
     void get(const Str &key, int *ivalue) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aget(c_, key,
              Str(reinterpret_cast<const char *>(&ivalue), sizeof(ivalue)),
              asyncgetcb_int);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_lat_min = min(_lat, get_lat_min);
+	    get_lat_max = max(_lat, get_lat_max);
+	}
     }
+
     bool get_sync(long ikey) {
         char got[512];
         quick_istr key(ikey);
         return ::get(c_, key.string(), got, sizeof(got)) >= 0;
     }
+
+    double get_check_lat_min = DBL_MAX, get_check_lat_max = 0;
+
     void get_check(long ikey, long iexpected) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aget(c_, ikey, iexpected, 0);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_check_lat_min = min(_lat, get_check_lat_min);
+	    get_check_lat_max = max(_lat, get_check_lat_max);
+	}
     }
     void get_check(const char *key, const char *val) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aget(c_, Str(key), Str(val), 0);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_check_lat_min = min(_lat, get_check_lat_min);
+	    get_check_lat_max = max(_lat, get_check_lat_max);
+	}
     }
     void get_check(const Str &key, const Str &val) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aget(c_, key, val, 0);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_check_lat_min = min(_lat, get_check_lat_min);
+	    get_check_lat_max = max(_lat, get_check_lat_max);
+	}
     }
+
+    double get_check_key8_lat_min = DBL_MAX, get_check_key8_lat_max = 0;
+
     void get_check_key8(long ikey, long iexpected) {
         quick_istr key(ikey, 8), expected(iexpected);
+
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aget(c_, key.string(), expected.string(), 0);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_check_key8_lat_min = min(_lat, get_check_key8_lat_min);
+	    get_check_key8_lat_max = max(_lat, get_check_key8_lat_max);
+	}
     }
+
+    double get_check_key10_lat_min = DBL_MAX, get_check_key10_lat_max = 0;
+
     void get_check_key10(long ikey, long iexpected) {
         quick_istr key(ikey, 10), expected(iexpected);
+
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aget(c_, key.string(), expected.string(), 0);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_check_key10_lat_min = min(_lat, get_check_key10_lat_min);
+	    get_check_key10_lat_max = max(_lat, get_check_key10_lat_max);
+	}
     }
     void many_get_check(int, long [], long []) {
         assert(0);
     }
+
+    double get_col_check_lat_min = DBL_MAX, get_col_check_lat_max = 0;
+
     void get_col_check(const Str &key, int col, const Str &value) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aget_col(c_, key, col, value, 0);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_col_check_lat_min = min(_lat, get_col_check_lat_min);
+	    get_col_check_lat_max = max(_lat, get_col_check_lat_max);
+	}
     }
     void get_col_check(long ikey, int col, long ivalue) {
         quick_istr key(ikey), value(ivalue);
+
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         get_col_check(key.string(), col, value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_col_check_lat_min = min(_lat, get_col_check_lat_min);
+	    get_col_check_lat_max = max(_lat, get_col_check_lat_max);
+	}
     }
+
+    double get_col_check_key10_lat_min = DBL_MAX, get_col_check_key10_lat_max = 0;
+
     void get_col_check_key10(long ikey, int col, long ivalue) {
         quick_istr key(ikey, 10), value(ivalue);
+
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         get_col_check(key.string(), col, value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    get_col_check_key10_lat_min = min(_lat, get_col_check_key10_lat_min);
+	    get_col_check_key10_lat_max = max(_lat, get_col_check_key10_lat_max);
+	}
     }
+
     void get_check_sync(long ikey, long iexpected) {
         char key[512], val[512], got[512];
         sprintf(key, "%010ld", ikey);
         sprintf(val, "%ld", iexpected);
         memset(got, 0, sizeof(got));
+
         ::get(c_, Str(key), got, sizeof(got));
         if (strcmp(val, got)) {
             fprintf(stderr, "key %s, expected %s, got %s\n", key, val, got);
@@ -254,56 +381,206 @@ struct kvtest_client {
         }
     }
 
+    double put_lat_min = DBL_MAX, put_lat_max = 0;
+
     void put(const Str &key, const Str &value) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aput(c_, key, value);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_lat_min = min(_lat, put_lat_min);
+	    put_lat_max = max(_lat, put_lat_max);
+	}
     }
     void put(const Str &key, const Str &value, int *status) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aput(c_, key, value,
              asyncputcb,
              Str(reinterpret_cast<const char *>(&status), sizeof(status)));
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_lat_min = min(_lat, put_lat_min);
+	    put_lat_max = max(_lat, put_lat_max);
+	}
     }
     void put(const char *key, const char *value) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aput(c_, Str(key), Str(value));
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_lat_min = min(_lat, put_lat_min);
+	    put_lat_max = max(_lat, put_lat_max);
+	}
     }
     void put(const Str &key, long ivalue) {
         quick_istr value(ivalue);
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aput(c_, key, value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_lat_min = min(_lat, put_lat_min);
+	    put_lat_max = max(_lat, put_lat_max);
+	}
     }
     void put(long ikey, long ivalue) {
         quick_istr key(ikey), value(ivalue);
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aput(c_, key.string(), value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_lat_min = min(_lat, put_lat_min);
+	    put_lat_max = max(_lat, put_lat_max);
+	}
     }
+
+    double put_key8_lat_min = DBL_MAX, put_key8_lat_max = 0;
+
     void put_key8(long ikey, long ivalue) {
         quick_istr key(ikey, 8), value(ivalue);
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aput(c_, key.string(), value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_key8_lat_min = min(_lat, put_key8_lat_min);
+	    put_key8_lat_max = max(_lat, put_key8_lat_max);
+	}
     }
+
+    double put_key10_lat_min = DBL_MAX, put_key10_lat_max = 0;
+
     void put_key10(long ikey, long ivalue) {
         quick_istr key(ikey, 10), value(ivalue);
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aput(c_, key.string(), value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_key10_lat_min = min(_lat, put_key10_lat_min);
+	    put_key10_lat_max = max(_lat, put_key10_lat_max);
+	}
     }
+
+    double put_col_lat_min = DBL_MAX, put_col_lat_max = 0;
+
     void put_col(const Str &key, int col, const Str &value) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aput_col(c_, key, col, value);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_col_lat_min = min(_lat, put_col_lat_min);
+	    put_col_lat_max = max(_lat, put_col_lat_max);
+	}
     }
     void put_col(long ikey, int col, long ivalue) {
         quick_istr key(ikey), value(ivalue);
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         put_col(key.string(), col, value.string());
-    }
-    void put_col_key10(long ikey, int col, long ivalue) {
-        quick_istr key(ikey, 10), value(ivalue);
-        put_col(key.string(), col, value.string());
-    }
-    void put_sync(long ikey, long ivalue) {
-        quick_istr key(ikey, 10), value(ivalue);
-        ::put(c_, key.string(), value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_col_lat_min = min(_lat, put_col_lat_min);
+	    put_col_lat_max = max(_lat, put_col_lat_max);
+	}
     }
 
+    double put_col_key10_lat_min = DBL_MAX, put_col_key10_lat_max = 0;
+
+    void put_col_key10(long ikey, int col, long ivalue) {
+        quick_istr key(ikey, 10), value(ivalue);
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
+        put_col(key.string(), col, value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_col_key10_lat_min = min(_lat, put_col_key10_lat_min);
+	    put_col_key10_lat_max = max(_lat, put_col_key10_lat_max);
+	}
+    }
+
+    double put_sync_lat_min = DBL_MAX, put_sync_lat_max = 0;
+
+    void put_sync(long ikey, long ivalue) {
+        quick_istr key(ikey, 10), value(ivalue);
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
+        ::put(c_, key.string(), value.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    put_sync_lat_min = min(_lat, put_sync_lat_min);
+	    put_sync_lat_max = max(_lat, put_sync_lat_max);
+	}
+    }
+
+    double remove_lat_min = DBL_MAX, remove_lat_max = 0;
+
     void remove(const Str &key) {
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         aremove(c_, key, 0);
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    remove_lat_min = min(_lat, remove_lat_min);
+	    remove_lat_max = max(_lat, remove_lat_max);
+	}
     }
     void remove(long ikey) {
         quick_istr key(ikey);
+	double lat_start;
+	if (lat)
+	    lat_start = now();
+
         remove(key.string());
+
+	if (lat) {
+	    double _lat = now() - lat_start;
+	    remove_lat_min = min(_lat, remove_lat_min);
+	    remove_lat_max = max(_lat, remove_lat_max);
+	}
     }
+
     bool remove_sync(long ikey) {
         quick_istr key(ikey);
         return ::remove(c_, key.string());
@@ -364,6 +641,62 @@ struct kvtest_client {
             if (!sa.empty())
                 notice(sa.take_string());
         }
+
+	if (lat) {
+	    if (get_lat_min != DBL_MAX)
+		report_.set("get_lat_min", get_lat_min);
+	    if (get_lat_max != 0)
+		report_.set("get_lat_max", get_lat_max);
+	    if (get_check_lat_min != DBL_MAX)
+		report_.set("get_check_lat_min", get_check_lat_min);
+	    if (get_check_lat_max != 0)
+		report_.set("get_check_lat_max", get_check_lat_max);
+	    if (get_check_key8_lat_min != DBL_MAX)
+		report_.set("get_check_key8_lat_min", get_check_key8_lat_min);
+	    if (get_check_key8_lat_max != 0)
+		report_.set("get_check_key8_lat_max", get_check_key8_lat_max);
+	    if (get_check_key10_lat_min != DBL_MAX)
+		report_.set("get_check_key10_lat_min", get_check_key10_lat_min);
+	    if (get_check_key10_lat_max != 0)
+		report_.set("get_check_key10_lat_max", get_check_key10_lat_max);
+	    if (get_col_check_lat_min != DBL_MAX)
+		report_.set("get_col_check_lat_min", get_col_check_lat_min);
+	    if (get_col_check_lat_max != 0)
+		report_.set("get_col_check_lat_max", get_col_check_lat_max);
+	    if (get_col_check_key10_lat_min != DBL_MAX)
+		report_.set("get_col_check_key10_lat_min", get_col_check_key10_lat_min);
+	    if (get_col_check_key10_lat_max != 0)
+		report_.set("get_col_check_key10_lat_max", get_col_check_key10_lat_max);
+	    if (put_lat_min != DBL_MAX)
+		report_.set("put_lat_min", put_lat_min);
+	    if (put_lat_max != 0)
+		report_.set("put_lat_max", put_lat_max);
+	    if (put_key8_lat_min != DBL_MAX)
+		report_.set("put_key8_lat_min", put_key8_lat_min);
+	    if (put_key8_lat_max != 0)
+		report_.set("put_key8_lat_max", put_key8_lat_max);
+	    if (put_key10_lat_min != DBL_MAX)
+		report_.set("put_key10_lat_min", put_key10_lat_min);
+	    if (put_key10_lat_max != 0)
+		report_.set("put_key10_lat_max", put_key10_lat_max);
+	    if (put_col_lat_min != DBL_MAX)
+		report_.set("put_col_lat_min", put_col_lat_min);
+	    if (put_col_lat_max != 0)
+		report_.set("put_col_lat_max", put_col_lat_max);
+	    if (put_col_key10_lat_min != DBL_MAX)
+		report_.set("put_col_key10_lat_min", put_col_key10_lat_min);
+	    if (put_col_key10_lat_max != 0)
+		report_.set("put_col_key10_lat_max", put_col_key10_lat_max);
+	    if (put_sync_lat_min != DBL_MAX)
+		report_.set("put_sync_lat_min", put_sync_lat_min);
+	    if (put_sync_lat_max != 0)
+		report_.set("put_sync_lat_max", put_sync_lat_max);
+	    if (remove_lat_min != DBL_MAX)
+		report_.set("remove_lat_min", remove_lat_min);
+	    if (remove_lat_max != 0)
+		report_.set("remove_lat_max", remove_lat_max);
+	}
+
         printf("%s\n", report_.unparse().c_str());
     }
     kvrandom_random rand;
@@ -372,7 +705,8 @@ struct kvtest_client {
 };
 
 
-#define TESTRUNNER_CLIENT_TYPE kvtest_client&
+#define TESTRUNNER_CLIENT_TYPE kvtest_client<false>&
+#define TESTRUNNER_CLIENT_LATENCYTEST_TYPE kvtest_client<true>&
 #include "testrunner.hh"
 
 MAKE_TESTRUNNER(rw1, kvtest_rw1(client));
@@ -424,7 +758,7 @@ MAKE_TESTRUNNER(long_init, kvtest_long_init(client));
 MAKE_TESTRUNNER(long_go, kvtest_long_go(client));
 MAKE_TESTRUNNER(udp1, kvtest_udp1(client));
 
-void run_child(testrunner*, int childno);
+void run_child(testrunner*, int childno, int latency_test);
 
 
 void
@@ -432,7 +766,7 @@ usage()
 {
   fprintf(stderr, "Usage: mtclient [-s serverip] [-w window] [--udp] "\
           "[-j nchildren] [-d duration] [--ssp] [--flp first_local_port] "\
-          "[--fsp first_server_port] [-i json_input]\nTests:\n");
+          "[--fsp first_server_port] [-i json_input] [--latency-test]\nTests:\n");
   testrunner::print_names(stderr, 5);
   exit(1);
 }
@@ -454,7 +788,7 @@ enum { opt_threads = 1, opt_threads_deprecated, opt_duration, opt_duration2,
        opt_first_local_port, opt_share_server_port, opt_input,
        opt_rsinit_part, opt_first_seed, opt_rscale_partsz, opt_keylen,
        opt_limit, opt_prefix_len, opt_nkeys, opt_get_ratio, opt_minkeyletter,
-       opt_maxkeyletter, opt_nofork };
+       opt_maxkeyletter, opt_nofork, opt_latency_test };
 static const Clp_Option options[] = {
     { "threads", 'j', opt_threads, Clp_ValInt, 0 },
     { 0, 'n', opt_threads_deprecated, Clp_ValInt, 0 },
@@ -482,7 +816,8 @@ static const Clp_Option options[] = {
     { "getratio", 0, opt_get_ratio, Clp_ValInt, 0 },
     { "minkeyletter", 0, opt_minkeyletter, Clp_ValString, 0 },
     { "maxkeyletter", 0, opt_maxkeyletter, Clp_ValString, 0 },
-    { "no-fork", 0, opt_nofork, 0, 0 }
+    { "no-fork", 0, opt_nofork, 0, 0 },
+    { "latency-test", 'L', opt_latency_test, 0, 0 }
 };
 
 int
@@ -491,7 +826,7 @@ main(int argc, char *argv[])
   int i, pid, status;
   testrunner* test = 0;
   int pipes[512];
-  int dofork = 1;
+  int dofork = 1, latency_test = 0;
 
   Clp_Parser *clp = Clp_NewParser(argc, argv, (int) arraysize(options), options);
   Clp_AddType(clp, clp_val_suffixdouble, Clp_DisallowOptions, clp_parse_suffixdouble, 0);
@@ -570,6 +905,9 @@ main(int argc, char *argv[])
       case opt_nofork:
           dofork = !clp->negated;
           break;
+      case opt_latency_test:
+          latency_test = !clp->negated;
+          break;
       case Clp_NotOption:
           test = testrunner::find(clp->vstr);
           if (!test)
@@ -580,6 +918,7 @@ main(int argc, char *argv[])
           break;
       }
   }
+
   if(children < 1 || (children != 1 && !dofork))
     usage();
   if (!test)
@@ -607,7 +946,7 @@ main(int argc, char *argv[])
               close(ptmp[1]);
               signal(SIGALRM, settimeout);
               alarm((int) ceil(duration));
-              run_child(test, i);
+              run_child(test, i, latency_test);
               exit(0);
           }
           pipes[i] = ptmp[0];
@@ -633,7 +972,7 @@ main(int argc, char *argv[])
       close(ptmp[1]);
       signal(SIGALRM, settimeout);
       alarm((int) ceil(duration));
-      run_child(test, 0);
+      run_child(test, 0, latency_test);
       fflush(stdout);
       r = dup2(stdout_fd, STDOUT_FILENO);
       always_assert(r >= 0);
@@ -642,6 +981,21 @@ main(int argc, char *argv[])
 
   long long total = 0;
   kvstats puts, gets, scans, puts_per_sec, gets_per_sec, scans_per_sec;
+
+  double get_lat_min = DBL_MAX, get_lat_max = 0;
+  double get_check_lat_min = DBL_MAX, get_check_lat_max = 0;
+  double get_check_key8_lat_min = DBL_MAX, get_check_key8_lat_max = 0;
+  double get_check_key10_lat_min = DBL_MAX, get_check_key10_lat_max = 0;
+  double get_col_check_lat_min = DBL_MAX, get_col_check_lat_max = 0;
+  double get_col_check_key10_lat_min = DBL_MAX, get_col_check_key10_lat_max = 0;
+  double put_lat_min = DBL_MAX, put_lat_max = 0;
+  double put_key8_lat_min = DBL_MAX, put_key8_lat_max = 0;
+  double put_key10_lat_min = DBL_MAX, put_key10_lat_max = 0;
+  double put_col_lat_min = DBL_MAX, put_col_lat_max = 0;
+  double put_col_key10_lat_min = DBL_MAX, put_col_key10_lat_max = 0;
+  double put_sync_lat_min = DBL_MAX, put_sync_lat_max = 0;
+  double remove_lat_min = DBL_MAX, remove_lat_max = 0;
+
   for(i = 0; i < children; i++){
     char buf[2048];
     int cc = read(pipes[i], buf, sizeof(buf)-1);
@@ -670,6 +1024,111 @@ main(int argc, char *argv[])
             gets_per_sec.add(dv);
         if (bufj.get("scans_per_sec", dv))
             scans_per_sec.add(dv);
+
+        if (bufj.get("get_lat_min", dv)) {
+	  if (dv < get_lat_min)
+	    get_lat_min = dv;
+	}
+        if (bufj.get("get_lat_max", dv)) {
+	  if (get_lat_max < dv)
+	    get_lat_max = dv;
+	}
+        if (bufj.get("get_check_lat_min", dv)) {
+	  if (dv < get_check_lat_min)
+	    get_check_lat_min = dv;
+	}
+        if (bufj.get("get_check_lat_max", dv)) {
+	  if (get_check_lat_max < dv)
+	    get_check_lat_max = dv;
+	}
+        if (bufj.get("get_check_key8_lat_min", dv)) {
+	  if (dv < get_check_key8_lat_min)
+	    get_check_key8_lat_min = dv;
+	}
+        if (bufj.get("get_check_key8_lat_max", dv)) {
+	  if (get_check_key8_lat_max < dv)
+	    get_check_key8_lat_max = dv;
+	}
+        if (bufj.get("get_check_key10_lat_min", dv)) {
+	  if (dv < get_check_key10_lat_min)
+	    get_check_key10_lat_min = dv;
+	}
+        if (bufj.get("get_check_key10_lat_max", dv)) {
+	  if (get_check_key10_lat_max < dv)
+	    get_check_key10_lat_max = dv;
+	}
+        if (bufj.get("get_col_check_lat_min", dv)) {
+	  if (dv < get_col_check_lat_min)
+	    get_col_check_lat_min = dv;
+	}
+        if (bufj.get("get_col_check_lat_max", dv)) {
+	  if (get_col_check_lat_max < dv)
+	    get_col_check_lat_max = dv;
+	}
+        if (bufj.get("get_col_check_key10_lat_min", dv)) {
+	  if (dv < get_col_check_key10_lat_min)
+	    get_col_check_key10_lat_min = dv;
+	}
+        if (bufj.get("get_col_check_key10_lat_max", dv)) {
+	  if (get_col_check_key10_lat_max < dv)
+	    get_col_check_key10_lat_max = dv;
+	}
+        if (bufj.get("put_lat_min", dv)) {
+	  if (dv < put_lat_min)
+	    put_lat_min = dv;
+	}
+        if (bufj.get("put_lat_max", dv)) {
+	  if (put_lat_max < dv)
+	    put_lat_max = dv;
+	}
+        if (bufj.get("put_key8_lat_min", dv)) {
+	  if (dv < put_key8_lat_min)
+	    put_key8_lat_min = dv;
+	}
+        if (bufj.get("put_key8_lat_max", dv)) {
+	  if (put_key8_lat_max < dv)
+	    put_key8_lat_max = dv;
+	}
+        if (bufj.get("put_key10_lat_min", dv)) {
+	  if (dv < put_key10_lat_min)
+	    put_key10_lat_min = dv;
+	}
+        if (bufj.get("put_key10_lat_max", dv)) {
+	  if (put_key10_lat_max < dv)
+	    put_key10_lat_max = dv;
+	}
+        if (bufj.get("put_col_lat_min", dv)) {
+	  if (dv < put_col_lat_min)
+	    put_col_lat_min = dv;
+	}
+        if (bufj.get("put_col_lat_max", dv)) {
+	  if (put_col_lat_max < dv)
+	    put_col_lat_max = dv;
+	}
+        if (bufj.get("put_col_key10_lat_min", dv)) {
+	  if (dv < put_col_key10_lat_min)
+	    put_col_key10_lat_min = dv;
+	}
+        if (bufj.get("put_col_key10_lat_max", dv)) {
+	  if (put_col_key10_lat_max < dv)
+	    put_col_key10_lat_max = dv;
+	}
+        if (bufj.get("put_sync_lat_min", dv)) {
+	  if (dv < put_sync_lat_min)
+	    put_sync_lat_min = dv;
+	}
+        if (bufj.get("put_sync_lat_max", dv)) {
+	  if (put_sync_lat_max < dv)
+	    put_sync_lat_max = dv;
+	}
+        if (bufj.get("remove_lat_min", dv)) {
+	  if (dv < remove_lat_min)
+	    remove_lat_min = dv;
+	}
+        if (bufj.get("remove_lat_max", dv)) {
+	  if (remove_lat_max < dv)
+	    remove_lat_max = dv;
+	}
     }
   }
 
@@ -681,11 +1140,64 @@ main(int argc, char *argv[])
   gets_per_sec.print_report("gets/s");
   scans_per_sec.print_report("scans/s");
 
+  if (get_lat_min != DBL_MAX)
+    printf("minimum get latency: %lf sec\n", get_lat_min);
+  if (get_lat_max != 0)
+    printf("maximum get latency: %lf sec\n", get_lat_max);
+  if (get_check_lat_min != DBL_MAX)
+    printf("minimum get check latency: %lf sec\n", get_check_lat_min);
+  if (get_check_lat_max != 0)
+    printf("maximum get check latency: %lf sec\n", get_check_lat_max);
+  if (get_check_key8_lat_min != DBL_MAX)
+    printf("minimum get check key8 latency: %lf sec\n", get_check_key8_lat_min);
+  if (get_check_key8_lat_max != 0)
+    printf("maximum get check key8 latency: %lf sec\n", get_check_key8_lat_max);
+  if (get_check_key10_lat_min != DBL_MAX)
+    printf("minimum get check key10 latency: %lf sec\n", get_check_key10_lat_min);
+  if (get_check_key10_lat_max != 0)
+    printf("maximum get check key10 latency: %lf sec\n", get_check_key10_lat_max);
+  if (get_col_check_lat_min != DBL_MAX)
+    printf("minimum col get check latency: %lf sec\n", get_col_check_lat_min);
+  if (get_col_check_lat_max != 0)
+    printf("maximum col get check latency: %lf sec\n", get_col_check_lat_max);
+  if (get_col_check_key10_lat_min != DBL_MAX)
+    printf("minimum col get check key10 latency: %lf sec\n", get_col_check_key10_lat_min);
+  if (get_col_check_key10_lat_max != 0)
+    printf("maximum col get check key10 latency: %lf sec\n", get_col_check_key10_lat_max);
+  if (put_lat_min != DBL_MAX)
+    printf("minimum put latency: %lf sec\n", put_lat_min);
+  if (put_lat_max != 0)
+    printf("maximum put latency: %lf sec\n", put_lat_max);
+  if (put_key8_lat_min != DBL_MAX)
+    printf("minimum put key8 latency: %lf sec\n", put_key8_lat_min);
+  if (put_key8_lat_max != 0)
+    printf("maximum put key8 latency: %lf sec\n", put_key8_lat_max);
+  if (put_key10_lat_min != DBL_MAX)
+    printf("minimum put key10 latency: %lf sec\n", put_key10_lat_min);
+  if (put_key10_lat_max != 0)
+    printf("maximum put key10 latency: %lf sec\n", put_key10_lat_max);
+  if (put_col_lat_min != DBL_MAX)
+    printf("minimum col put key10 latency: %lf sec\n", put_col_lat_min);
+  if (put_col_lat_max != 0)
+    printf("maximum col put key10 latency: %lf sec\n", put_col_lat_max);
+  if (put_col_key10_lat_min != DBL_MAX)
+    printf("minimum col put key10 latency: %lf sec\n", put_col_key10_lat_min);
+  if (put_col_key10_lat_max != 0)
+    printf("maximum col put key10 latency: %lf sec\n", put_col_key10_lat_max);
+  if (put_sync_lat_min != DBL_MAX)
+    printf("minimum sync put latency: %lf sec\n", put_sync_lat_min);
+  if (put_sync_lat_max != 0)
+    printf("maximum sync put latency: %lf sec\n", put_sync_lat_max);
+  if (remove_lat_min != DBL_MAX)
+    printf("minimum remove latency: %lf sec\n", remove_lat_min);
+  if (remove_lat_max != 0)
+    printf("maximum remove latency: %lf sec\n", remove_lat_max);
+
   exit(0);
 }
 
 void
-run_child(testrunner* test, int childno)
+run_child(testrunner* test, int childno, int latency_test)
 {
   struct sockaddr_in sin;
   int ret, yes = 1;
@@ -728,9 +1240,14 @@ run_child(testrunner* test, int childno)
   }
 
   c.conn = new KVConn(c.s, !udpflag);
-  kvtest_client client(c);
 
-  test->run(client);
+  if (!latency_test) {
+    kvtest_client<false> client(c);
+    test->run(client);
+  } else {
+    kvtest_client<true> client(c);
+    test->run_lat(client);
+  }
 
   checkasync(&c, 2);
 

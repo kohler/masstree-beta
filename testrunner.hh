@@ -45,9 +45,13 @@ class testrunner : public testrunner_base {
     static testrunner* find(const lcdf::String& name) {
         return static_cast<testrunner*>(testrunner_base::find(name));
     }
-    virtual void run(TESTRUNNER_CLIENT_TYPE) = 0;
+  virtual void run(TESTRUNNER_CLIENT_TYPE) = 0;
+#ifdef TESTRUNNER_CLIENT_LATENCYTEST_TYPE
+  virtual void run_lat(TESTRUNNER_CLIENT_LATENCYTEST_TYPE) = 0;
+#endif
 };
 
+#ifndef TESTRUNNER_CLIENT_LATENCYTEST_TYPE
 #define MAKE_TESTRUNNER(name, text)                    \
     namespace {                                        \
     class testrunner_##name : public testrunner {      \
@@ -55,6 +59,16 @@ class testrunner : public testrunner_base {
         testrunner_##name() : testrunner(#name) {}     \
         void run(TESTRUNNER_CLIENT_TYPE client) { text; client.finish(); } \
     }; static testrunner_##name testrunner_##name##_instance; }
+#else
+#define MAKE_TESTRUNNER(name, text)                    \
+    namespace {                                        \
+    class testrunner_##name : public testrunner {      \
+    public:                                            \
+        testrunner_##name() : testrunner(#name) {}     \
+        void run(TESTRUNNER_CLIENT_TYPE client) { text; client.finish(); } \
+        void run_lat(TESTRUNNER_CLIENT_LATENCYTEST_TYPE client) { text; client.finish(); } \
+    }; static testrunner_##name testrunner_##name##_instance; }
+#endif
 
 #endif
 #endif
