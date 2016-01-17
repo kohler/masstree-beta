@@ -43,6 +43,8 @@ kvepoch_t rec_replay_min_epoch;
 kvepoch_t rec_replay_max_epoch;
 kvepoch_t rec_replay_min_quiescent_last_epoch;
 
+extern bool enable_quiesce_stat;
+
 struct logrec_base {
     uint32_t command_;
     uint32_t size_;
@@ -209,7 +211,7 @@ void loginfo::initialize(const String& logfile) {
     f_.filename_ = logfile.internal_rep();
     f_.filename_.ref();
 
-    ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_);
+    ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_, enable_quiesce_stat);
     int r = ti_->run(logger_trampoline, this);
     always_assert(r == 0);
 }

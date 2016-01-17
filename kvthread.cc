@@ -94,7 +94,7 @@ memdebug::hard_assert_use(const void *ptr, memtag tag1, memtag tag2) {
 }
 #endif
 
-inline threadinfo::threadinfo(int purpose, int index) {
+inline threadinfo::threadinfo(int purpose, int index, bool enable_quiesce_stat) {
     memset(this, 0, sizeof(*this));
     purpose_ = purpose;
     index_ = index;
@@ -103,12 +103,14 @@ inline threadinfo::threadinfo(int purpose, int index) {
     mark(tc_limbo_slots, limbo_group::capacity);
     limbo_head_ = limbo_tail_ = new(limbo_space) limbo_group;
     ts_ = 2;
+
+    enable_quiesce_stat_ = enable_quiesce_stat;
 }
 
-threadinfo *threadinfo::make(int purpose, int index) {
+threadinfo *threadinfo::make(int purpose, int index, bool enable_quiesce_stat) {
     static int threads_initialized;
 
-    threadinfo* ti = new(malloc(8192)) threadinfo(purpose, index);
+    threadinfo* ti = new(malloc(8192)) threadinfo(purpose, index, enable_quiesce_stat);
     ti->next_ = allthreads;
     allthreads = ti;
 
@@ -151,12 +153,16 @@ void threadinfo::hard_rcu_quiesce()
     limbo_element *lb = &lg->e_[lg->head_];
     limbo_element *le = &lg->e_[lg->tail_];
 
+    double quiesce_start = now();
+    unsigned int nr_freed = 0;
+
     if (lb != le && (int64_t) (lb->epoch_ - min_epoch) < 0) {
         while (1) {
             free_rcu(lb->ptr_, lb->freetype_);
             mark(tc_gc);
 
             ++lb;
+	    nr_freed++;
 
             if (lb == le && lg == limbo_tail_) {
                 lg->head_ = lg->tail_;
@@ -189,6 +195,9 @@ void threadinfo::hard_rcu_quiesce()
     }
 
     limbo_epoch_ = (lb == le ? 0 : lb->epoch_);
+
+    double quiesce_end = now();
+    record_quiesce_stat(min_epoch, nr_freed, quiesce_start, quiesce_end);
 }
 
 void threadinfo::report_rcu(void *ptr) const

@@ -19,6 +19,7 @@
 #include "compiler.hh"
 #include "circular_int.hh"
 #include "timestamp.hh"
+#include "json.hh"
 #include <assert.h>
 #include <pthread.h>
 #include <sys/mman.h>
@@ -186,13 +187,46 @@ struct rcu_callback {
     virtual void operator()(threadinfo& ti) = 0;
 };
 
+class quiesce_stat {
+private:
+    uint64_t min_epoch_;
+    unsigned int nr_freed_;
+    double start_, end_, duration_;
+
+public:
+    quiesce_stat(uint64_t min_epoch, unsigned int nr_freed, double start, double end)
+	: min_epoch_(min_epoch), nr_freed_(nr_freed),
+	  start_(start), end_(end), duration_(end - start) {}
+
+    lcdf::Json to_json() {
+	lcdf::Json result = lcdf::Json();
+
+	result.set("min_epoch", min_epoch_);
+	result.set("nr_freed", nr_freed_);
+	result.set("start", start_);
+	result.set("end", end_);
+	result.set("duration", duration_);
+
+	return result;
+    }
+
+    unsigned int nr_freed() {
+	return nr_freed_;
+    }
+
+    double duration() {
+	return duration_;
+    }
+	
+};
+
 class threadinfo {
   public:
     enum {
         TI_MAIN, TI_PROCESS, TI_LOG, TI_CHECKPOINT
     };
 
-    static threadinfo *make(int purpose, int index);
+    static threadinfo *make(int purpose, int index, bool enable_quiesce_stat);
     // XXX destructor
 
     // thread information
@@ -212,6 +246,11 @@ class threadinfo {
     static threadinfo *allthreads;
     threadinfo* next() const {
         return next_;
+    }
+
+    std::vector<quiesce_stat> quiesce_stats() {
+	// if quiesce stat isn't enabled, it just returns an empty vector
+	return quiesce_stats_;
     }
 
     // timestamps
@@ -423,6 +462,17 @@ class threadinfo {
     void* (*thread_func_)(threadinfo*);
     void* thread_data_;
 
+    bool enable_quiesce_stat_;
+    std::vector<quiesce_stat> quiesce_stats_;
+    void record_quiesce_stat(uint64_t min_epoch, unsigned int nr_freed,
+			     double start, double end) {
+	if (!enable_quiesce_stat_)
+	    return;
+
+	quiesce_stat stat = quiesce_stat(min_epoch, nr_freed, start, end);
+	quiesce_stats_.push_back(stat);
+    }
+
     void refill_pool(int nl);
     void refill_rcu();
 
@@ -464,7 +514,7 @@ class threadinfo {
     }
 #endif
 
-    inline threadinfo(int purpose, int index);
+    inline threadinfo(int purpose, int index, bool enable_quiesce_stat);
     threadinfo(const threadinfo&) = delete;
     ~threadinfo() {}
     threadinfo& operator=(const threadinfo&) = delete;
