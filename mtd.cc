@@ -710,14 +710,18 @@ main(int argc, char *argv[])
 
   // set a timer for incrementing the global epoch
   if (!dotest) {
-      signal(SIGALRM, epochinc);
-      struct itimerval etimer;
-      etimer.it_interval.tv_sec = epoch_interval_ms / 1000;
-      etimer.it_interval.tv_usec = fmod(epoch_interval_ms, 1000) * 1000;
-      etimer.it_value.tv_sec = epoch_interval_ms / 1000;
-      etimer.it_value.tv_usec = fmod(epoch_interval_ms, 1000) * 1000;
-      ret = setitimer(ITIMER_REAL, &etimer, NULL);
-      always_assert(ret == 0);
+      if (!epoch_interval_ms) {
+	  printf("WARNING: epoch interval is 0, it means no GC is executed\n");
+      } else {
+	  signal(SIGALRM, epochinc);
+	  struct itimerval etimer;
+	  etimer.it_interval.tv_sec = epoch_interval_ms / 1000;
+	  etimer.it_interval.tv_usec = fmod(epoch_interval_ms, 1000) * 1000;
+	  etimer.it_value.tv_sec = epoch_interval_ms / 1000;
+	  etimer.it_value.tv_usec = fmod(epoch_interval_ms, 1000) * 1000;
+	  ret = setitimer(ITIMER_REAL, &etimer, NULL);
+	  always_assert(ret == 0);
+      }
   }
 
   // for parallel recovery
