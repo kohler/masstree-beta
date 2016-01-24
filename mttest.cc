@@ -302,6 +302,7 @@ struct kvtest_client {
     kvrandom_lcg_nr rand;
     uint64_t limit_;
     Json report_;
+    Json req_;
     int ncores_;
     kvout *kvo_;
 
@@ -388,18 +389,18 @@ template <typename T>
 void kvtest_client<T>::scan_sync(const Str &firstkey, int n,
                                  std::vector<Str> &keys,
                                  std::vector<Str> &values) {
-    Json req = Json::array(0, 0, firstkey, n);
-    q_[0].run_scan(table_->table(), req, *ti_);
-    output_scan(req, keys, values);
+    req_ = Json::array(0, 0, firstkey, n);
+    q_[0].run_scan(table_->table(), req_, *ti_);
+    output_scan(req_, keys, values);
 }
 
 template <typename T>
 void kvtest_client<T>::rscan_sync(const Str &firstkey, int n,
                                   std::vector<Str> &keys,
                                   std::vector<Str> &values) {
-    Json req = Json::array(0, 0, firstkey, n);
-    q_[0].run_rscan(table_->table(), req, *ti_);
-    output_scan(req, keys, values);
+    req_ = Json::array(0, 0, firstkey, n);
+    q_[0].run_rscan(table_->table(), req_, *ti_);
+    output_scan(req_, keys, values);
 }
 
 template <typename T>
