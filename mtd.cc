@@ -111,6 +111,8 @@ kvtimestamp_t initial_timestamp;
 static pthread_cond_t checkpoint_cond;
 static pthread_mutex_t checkpoint_mu;
 
+static bool async_quiesce = false;
+
 static void prepare_thread(threadinfo *ti);
 static int* tcp_thread_pipes;
 static void* tcp_threadfunc(threadinfo* ti);
@@ -438,7 +440,7 @@ void runtest(const char *testname, int nthreads) {
     std::vector<kvtest_client> clients(nthreads, kvtest_client(testname));
     ::testthreads = nthreads;
     for (int i = 0; i < nthreads; ++i)
-        clients[i].set_thread(threadinfo::make(threadinfo::TI_PROCESS, i));
+        clients[i].set_thread(threadinfo::make(threadinfo::TI_PROCESS, i, async_quiesce));
     bzero((void *)timeout, sizeof(timeout));
     signal(SIGALRM, test_timeout);
     if (duration[0])
@@ -560,7 +562,8 @@ struct conninfo {
 enum { clp_val_suffixdouble = Clp_ValFirstUser };
 enum { opt_nolog = 1, opt_pin, opt_logdir, opt_port, opt_ckpdir, opt_duration,
        opt_test, opt_test_name, opt_threads, opt_cores,
-       opt_print, opt_norun, opt_checkpoint, opt_limit, opt_epoch_interval };
+       opt_print, opt_norun, opt_checkpoint, opt_limit, opt_epoch_interval,
+       opt_async_quiesce };
 static const Clp_Option options[] = {
     { "no-log", 0, opt_nolog, 0, 0 },
     { 0, 'n', opt_nolog, 0, 0 },
@@ -589,7 +592,8 @@ static const Clp_Option options[] = {
     { "threads", 'j', opt_threads, Clp_ValInt, 0 },
     { "cores", 0, opt_cores, Clp_ValString, 0 },
     { "print", 0, opt_print, 0, Clp_Negate },
-    { "epoch-interval", 0, opt_epoch_interval, Clp_ValDouble, 0 }
+    { "epoch-interval", 0, opt_epoch_interval, Clp_ValDouble, 0 },
+    { "async-quiesce", 0, opt_async_quiesce, 0, Clp_Negate }
 };
 
 int
@@ -684,6 +688,9 @@ main(int argc, char *argv[])
       case opt_epoch_interval:
 	epoch_interval_ms = clp->val.d;
 	break;
+      case opt_async_quiesce:
+	async_quiesce = !clp->negated;
+	break;
       default:
           fprintf(stderr, "Usage: mtd [-np] [--ld dir1[,dir2,...]] [--cd dir1[,dir2,...]]\n");
           exit(EXIT_FAILURE);
@@ -736,7 +743,7 @@ main(int argc, char *argv[])
   ret = pthread_mutex_init(&checkpoint_mu, 0);
   always_assert(ret == 0);
 
-  threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
+  threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1, async_quiesce);
   main_ti->run();
 
   initial_timestamp = timestamp();
@@ -760,7 +767,7 @@ main(int argc, char *argv[])
   else
       printf("%d udp threads (ports %d-%d)\n", udpthreads, port, port + udpthreads - 1);
   for(i = 0; i < udpthreads; i++){
-    threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
+    threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i, async_quiesce);
     ret = ti->run(udp_threadfunc);
     always_assert(ret == 0);
   }
@@ -804,7 +811,7 @@ main(int argc, char *argv[])
   tcp_thread_pipes = new int[tcpthreads * 2];
   printf("%d tcp threads (port %d)\n", tcpthreads, port);
   for(i = 0; i < tcpthreads; i++){
-    threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
+    threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i, async_quiesce);
     ret = pipe(&tcp_thread_pipes[i * 2]);
     always_assert(ret == 0);
     ret = ti->run(tcp_threadfunc);
@@ -1254,7 +1261,7 @@ void log_init() {
 
   cks = (ckstate *)malloc(sizeof(ckstate) * nckthreads);
   for (i = 0; i < nckthreads; i++) {
-    threadinfo *ti = threadinfo::make(threadinfo::TI_CHECKPOINT, i);
+    threadinfo *ti = threadinfo::make(threadinfo::TI_CHECKPOINT, i, async_quiesce);
     cks[i].state = CKState_Uninit;
     cks[i].ti = ti;
     ret = ti->run(conc_checkpointer);
