@@ -410,9 +410,9 @@ template <typename T>
 void kvtest_client<T>::iscan_sync(const Str &firstkey, int n,
                                   std::vector<Str> &keys,
                                   std::vector<Str> &values) {
-    Json req = Json::array(0, 0, firstkey, n);
-    q_[0].run_iscan(table_->table(), req, *ti_);
-    output_scan(req, keys, values);
+    req_ = Json::array(0, 0, firstkey, n);
+    q_[0].run_iscan(table_->table(), req_, *ti_);
+    output_scan(req_, keys, values);
 }
 
 template <typename T>
