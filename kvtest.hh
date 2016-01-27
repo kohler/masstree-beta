@@ -1632,6 +1632,68 @@ void kvtest_iscan2(C &client)
 }
 
 
+// Test scans where nodes in a deeper layer are removed
+template <typename C>
+void kvtest_iscan3(C &client)
+{
+    Json report;
+
+    if (client.id() == 0) {
+        unsigned rounds = 0;
+
+        client.put_key8(1, 1);
+        client.put_key16(300000002, 1);
+
+        while (1) {
+            client.remove_key8(2);
+            client.put_key16(300000001, 1);
+
+            std::vector<Str> keys, values;
+            client.iscan_sync("", INT_MAX, keys, values);
+
+            // Valid key sequences:
+            //     - 00000001, 00000002, 0000000300000002
+            //     - 00000001, 00000002, 0000000300000001, 0000000300000002
+            //     - 00000001, 0000000300000001, 0000000300000002
+            //
+            // Invalid key sequences:
+            //     - 00000001, 0000000300000002
+
+            if (keys.size() <= 2) {
+                String seq;
+                for (size_t i = 0; i < keys.size(); ++i) {
+                    if (i != 0)
+                        seq += ", ";
+
+                    seq += String(keys[i]);
+                }
+                client.fail(("invalid key sequence detected: " + seq).c_str());
+            }
+
+            while (client.get_sync_key16(300000001) && !client.timeout(0))
+                ;
+            if (client.timeout(0))
+                break;
+
+            rounds++;
+        }
+
+        report.set("rounds", rounds);
+    } else if (client.id() == 1) {
+        while (1) {
+            while (!client.get_sync_key16(300000001) && !client.timeout(0))
+                client.rcu_quiesce();
+            if (client.timeout(0))
+                break;
+
+            client.put_key8(2, 1);
+            client.remove_key16(300000001);
+        }
+    }
+
+    client.report(report);
+}
+
 // test concurrent splits with removes in lower layers
 template <typename C>
 void kvtest_splitremove1(C &client)

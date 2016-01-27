@@ -145,6 +145,7 @@ basic_table<P>::iterator::advance(bool emit_equal) {
 
     ka_.assign_store_ikey(ikey);
     if (n->keylenx_is_layer(keylenx)) {
+        usleep(1);
         ka_.shift();
         root = entry.layer();
         n = root->reach_leaf(ka_, v, *ti_);
