@@ -309,6 +309,7 @@ AC_CHECK_DECLS([clock_gettime], [], [], [#if HAVE_TIME_H
 #endif])
 AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_CHECK_FUNCS([clock_gettime])
+AC_SEARCH_LIBS([backtrace], [execinfo])
 
 
 AC_ARG_ENABLE([row-type],
