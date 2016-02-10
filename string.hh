@@ -117,6 +117,9 @@ class String : public String_base<String> {
     using String_base<String>::decode_base64;
     String decode_base64() const;
 
+    using String_base<String>::encode_uri_component;
+    String encode_uri_component() const;
+
     inline String& operator=(const String& x);
 #if HAVE_CXX_RVALUE_REFERENCES
     inline String& operator=(String&& x);
@@ -396,12 +399,18 @@ inline String::String(const char* cstr) {
     then takes @c strlen(@a s) characters.
     @return A String containing @a len characters of @a s. */
 inline String::String(const char* s, int len) {
-    assign(s, len, false);
+    if (LCDF_CONSTANT_CSTR(s))
+        _r.assign(s, len, 0);
+    else
+        assign(s, len, false);
 }
 
 /** @overload */
 inline String::String(const unsigned char* s, int len) {
-    assign(reinterpret_cast<const char*>(s), len, false);
+    if (LCDF_CONSTANT_CSTR(reinterpret_cast<const char*>(s)))
+        _r.assign(reinterpret_cast<const char*>(s), len, 0);
+    else
+        assign(reinterpret_cast<const char*>(s), len, false);
 }
 
 /** @brief Construct a String containing the characters from @a first

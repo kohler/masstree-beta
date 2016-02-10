@@ -600,6 +600,9 @@ int main(int argc, char** argv) {
 
     CHECK(String("\\").encode_json() == "\\\\");
     CHECK(String("\011\002\xE2\x80\xA9\xE2\x80\xAA").encode_json() == "\\t\\u0002\\u2029\xE2\x80\xAA");
+    CHECK(String("a").encode_uri_component() == "a");
+    CHECK(String(" ").encode_uri_component() == "%20");
+    CHECK(String("Ab -Ef").encode_uri_component() == "Ab%20-Ef");
 
     std::cout << "All tests pass!\n";
     return 0;
