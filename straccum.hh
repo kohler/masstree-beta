@@ -51,9 +51,9 @@ class StringAccum { public:
     inline ~StringAccum();
     static inline StringAccum make_transfer(String& x);
 
-    inline StringAccum &operator=(const StringAccum& x);
+    inline StringAccum& operator=(const StringAccum& x);
 #if HAVE_CXX_RVALUE_REFERENCES
-    inline StringAccum &operator=(StringAccum&& x);
+    inline StringAccum& operator=(StringAccum&& x);
 #endif
 
     inline const char* data() const;
@@ -63,7 +63,7 @@ class StringAccum { public:
     inline int length() const;
     inline int capacity() const;
 
-    const char *c_str();
+    const char* c_str();
 
     inline operator unspecified_bool_type() const;
     inline bool empty() const;
@@ -75,57 +75,57 @@ class StringAccum { public:
     inline iterator end();
 
     inline char operator[](int i) const;
-    inline char &operator[](int i);
+    inline char& operator[](int i);
     inline char front() const;
-    inline char &front();
+    inline char& front();
     inline char back() const;
-    inline char &back();
+    inline char& back();
 
     inline bool out_of_memory() const;
     void assign_out_of_memory();
 
     inline void clear();
-    inline char *reserve(int n);
+    inline char* reserve(int n);
     inline void set_length(int len);
     int resize(int len);
     inline void adjust_length(int delta);
     inline void set_end(char* end);
     inline void set_end(unsigned char* end);
-    inline char *extend(int nadjust, int nreserve = 0);
+    inline char* extend(int nadjust, int nreserve = 0);
 
     inline void pop_back(int n = 1);
 
     inline void append(char c);
     inline void append(unsigned char c);
     inline bool append_utf8(int ch);
-    inline void append(const char *cstr);
-    inline void append(const char *s, int len);
-    inline void append(const unsigned char *s, int len);
-    inline void append(const char *first, const char *last);
-    inline void append(const unsigned char *first, const unsigned char *last);
+    inline void append(const char* cstr);
+    inline void append(const char* s, int len);
+    inline void append(const unsigned char* s, int len);
+    inline void append(const char* first, const char* last);
+    inline void append(const unsigned char* first, const unsigned char* last);
     void append_fill(int c, int len);
 
     template <typename T>
-    void append_encoded(T &state, const unsigned char *first,
-                        const unsigned char *last);
+    void append_encoded(T& state, const unsigned char* first,
+                        const unsigned char* last);
     template <typename T>
-    inline void append_encoded(T &state, const char *first, const char *last);
+    inline void append_encoded(T& state, const char* first, const char* last);
     template <typename T>
-    void append_encoded(T &state);
+    void append_encoded(T& state);
     template <typename T>
-    inline void append_encoded(const unsigned char *first, const unsigned char *last);
+    inline void append_encoded(const unsigned char* first, const unsigned char* last);
     template <typename T>
-    inline void append_encoded(const char *first, const char *last);
+    inline void append_encoded(const char* first, const char* last);
 
     // word joining
     template <typename I>
-    inline void append_join(const String &joiner, I first, I last);
+    inline void append_join(const String& joiner, I first, I last);
     template <typename T>
-    inline void append_join(const String &joiner, const T &x);
-    void append_break_lines(const String &text, int linelen, const String &leftmargin = String());
+    inline void append_join(const String& joiner, const T& x);
+    void append_break_lines(const String& text, int linelen, const String& leftmargin = String());
 
-    StringAccum &snprintf(int n, const char *format, ...) LCDF_SNPRINTF_ATTR;
-    StringAccum &vsnprintf(int n, const char *format, va_list val);
+    StringAccum& snprintf(int n, const char* format, ...) LCDF_SNPRINTF_ATTR;
+    StringAccum& vsnprintf(int n, const char* format, va_list val);
 
     String take_string();
 
@@ -140,11 +140,11 @@ class StringAccum { public:
     };
 
     struct rep_t {
-        unsigned char *s;
+        unsigned char* s;
         int len;
         int cap;
         rep_t()
-            : s(reinterpret_cast<unsigned char *>(const_cast<char *>(String_generic::empty_data))),
+            : s(reinterpret_cast<unsigned char*>(const_cast<char*>(String_generic::empty_data))),
               len(0), cap(0) {
         }
         explicit rep_t(uninitialized_type) {
@@ -155,23 +155,23 @@ class StringAccum { public:
 
     char* grow(int ncap);
     char* hard_extend(int nadjust, int nreserve);
-    void hard_append(const char *s, int len);
-    void hard_append_cstr(const char *cstr);
+    void hard_append(const char* s, int len);
+    void hard_append_cstr(const char* cstr);
     bool append_utf8_hard(int ch);
     void transfer_from(String& x);
 };
 
-inline StringAccum &operator<<(StringAccum &sa, char c);
-inline StringAccum &operator<<(StringAccum &sa, unsigned char c);
-inline StringAccum &operator<<(StringAccum &sa, const char *cstr);
-template <typename T> inline StringAccum &operator<<(StringAccum &sa, const String_base<T> &str);
-inline StringAccum &operator<<(StringAccum &sa, const StringAccum &x);
+inline StringAccum& operator<<(StringAccum& sa, char c);
+inline StringAccum& operator<<(StringAccum& sa, unsigned char c);
+inline StringAccum& operator<<(StringAccum& sa, const char *cstr);
+template <typename T> inline StringAccum& operator<<(StringAccum& sa, const String_base<T>& str);
+inline StringAccum& operator<<(StringAccum& sa, const StringAccum& x);
 
-inline StringAccum &operator<<(StringAccum &sa, bool x);
-inline StringAccum &operator<<(StringAccum &sa, short x);
-inline StringAccum &operator<<(StringAccum &sa, unsigned short x);
-inline StringAccum &operator<<(StringAccum &sa, int x);
-inline StringAccum &operator<<(StringAccum &sa, unsigned x);
+inline StringAccum& operator<<(StringAccum& sa, bool x);
+inline StringAccum& operator<<(StringAccum& sa, short x);
+inline StringAccum& operator<<(StringAccum& sa, unsigned short x);
+inline StringAccum& operator<<(StringAccum& sa, int x);
+inline StringAccum& operator<<(StringAccum& sa, unsigned x);
 StringAccum& operator<<(StringAccum& sa, long x);
 StringAccum& operator<<(StringAccum& sa, unsigned long x);
 StringAccum& operator<<(StringAccum& sa, long long x);
