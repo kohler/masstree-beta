@@ -23,7 +23,7 @@
 template <typename T>
 static bool
 check_straccum_utf8(StringAccum &sa, const char *in, int inlen,
-		    const char *out, int outlen)
+                    const char *out, int outlen)
 {
     sa.clear();
     Encoding::UTF8Encoder<T> encoder;
@@ -34,7 +34,7 @@ check_straccum_utf8(StringAccum &sa, const char *in, int inlen,
 template <typename T>
 static bool
 check_straccum2_utf8(StringAccum &sa, const char *in, int inlen,
-		     const char *out, int outlen)
+                     const char *out, int outlen)
 {
     sa.clear();
     memcpy(sa.reserve(inlen), in, inlen);
@@ -71,19 +71,19 @@ main(int argc, char *argv[])
     check_straccum2_utf8<Encoding::Windows1252>(sa, "\xddHi!", 4, "\xc3\x9dHi!", 5);
 
     if (argc == 2) {
-	FILE *f;
-	if (strcmp(argv[1], "-") == 0)
-	    f = stdin;
-	else if (!(f = fopen(argv[1], "rb"))) {
-	    perror("test_string");
-	    exit(1);
-	}
-	StringAccum sa;
-	while (!feof(f)) {
-	    size_t x = fread(sa.reserve(1024), 1, 1024, f);
-	    sa.adjust_length(x);
-	}
-	String s = sa.take_string().to_utf8(String::utf_strip_bom);
-	fwrite(s.data(), 1, s.length(), stdout);
+        FILE *f;
+        if (strcmp(argv[1], "-") == 0)
+            f = stdin;
+        else if (!(f = fopen(argv[1], "rb"))) {
+            perror("test_string");
+            exit(1);
+        }
+        StringAccum sa;
+        while (!feof(f)) {
+            size_t x = fread(sa.reserve(1024), 1, 1024, f);
+            sa.adjust_length(x);
+        }
+        String s = sa.take_string().to_utf8(String::utf_strip_bom);
+        fwrite(s.data(), 1, s.length(), stdout);
     }
 }

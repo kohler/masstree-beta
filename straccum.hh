@@ -107,7 +107,7 @@ class StringAccum { public:
 
     template <typename T>
     void append_encoded(T &state, const unsigned char *first,
-			const unsigned char *last);
+                        const unsigned char *last);
     template <typename T>
     inline void append_encoded(T &state, const char *first, const char *last);
     template <typename T>
@@ -136,19 +136,19 @@ class StringAccum { public:
   private:
 
     enum {
-	memo_space = String::MEMO_SPACE
+        memo_space = String::MEMO_SPACE
     };
 
     struct rep_t {
-	unsigned char *s;
-	int len;
-	int cap;
-	rep_t()
-	    : s(reinterpret_cast<unsigned char *>(const_cast<char *>(String_generic::empty_data))),
-	      len(0), cap(0) {
-	}
-	explicit rep_t(uninitialized_type) {
-	}
+        unsigned char *s;
+        int len;
+        int cap;
+        rep_t()
+            : s(reinterpret_cast<unsigned char *>(const_cast<char *>(String_generic::empty_data))),
+              len(0), cap(0) {
+        }
+        explicit rep_t(uninitialized_type) {
+        }
     };
 
     rep_t r_;
@@ -231,7 +231,7 @@ inline StringAccum::StringAccum(String&& x) {
 /** @brief Destroy a StringAccum, freeing its memory. */
 inline StringAccum::~StringAccum() {
     if (r_.cap > 0)
-	delete[] reinterpret_cast<char*>(r_.s - memo_space);
+        delete[] reinterpret_cast<char*>(r_.s - memo_space);
 }
 
 inline StringAccum StringAccum::make_transfer(String& x) {
@@ -377,7 +377,7 @@ inline char &StringAccum::back() {
     StringAccum's out-of-memory status. */
 inline void StringAccum::clear() {
     if (r_.cap < 0)
-	r_.cap = 0;
+        r_.cap = 0;
     r_.len = 0;
 }
 
@@ -396,9 +396,9 @@ inline void StringAccum::clear() {
 inline char *StringAccum::reserve(int n) {
     assert(n >= 0);
     if (r_.len + n <= r_.cap)
-	return reinterpret_cast<char *>(r_.s + r_.len);
+        return reinterpret_cast<char *>(r_.s + r_.len);
     else
-	return grow(r_.len + n);
+        return grow(r_.len + n);
 }
 
 /** @brief Set the StringAccum's length to @a len.
@@ -446,11 +446,11 @@ inline char *StringAccum::extend(int nadjust, int nreserve) {
 #else
     assert(nadjust >= 0 && nreserve >= 0);
     if (r_.len + nadjust + nreserve <= r_.cap) {
-	char *x = reinterpret_cast<char *>(r_.s + r_.len);
-	r_.len += nadjust;
-	return x;
+        char *x = reinterpret_cast<char *>(r_.s + r_.len);
+        r_.len += nadjust;
+        return x;
     } else
-	return hard_extend(nadjust, nreserve);
+        return hard_extend(nadjust, nreserve);
 #endif
 }
 
@@ -468,7 +468,7 @@ inline void StringAccum::pop_back(int n) {
     @param c character to append */
 inline void StringAccum::append(char c) {
     if (r_.len < r_.cap || grow(r_.len))
-	r_.s[r_.len++] = c;
+        r_.s[r_.len++] = c;
 }
 
 /** @overload */
@@ -486,10 +486,10 @@ inline void StringAccum::append(const char *s, int len) {
 #else
     assert(len >= 0);
     if (r_.len + len <= r_.cap) {
-	memcpy(r_.s + r_.len, s, len);
-	r_.len += len;
+        memcpy(r_.s + r_.len, s, len);
+        r_.len += len;
     } else
-	hard_append(s, len);
+        hard_append(s, len);
 #endif
 }
 
@@ -502,9 +502,9 @@ inline void StringAccum::append(const unsigned char *s, int len) {
     @param s data to append */
 inline void StringAccum::append(const char *cstr) {
     if (LCDF_CONSTANT_CSTR(cstr))
-	append(cstr, strlen(cstr));
+        append(cstr, strlen(cstr));
     else
-	hard_append_cstr(cstr);
+        hard_append_cstr(cstr);
 }
 
 /** @brief Append the data from @a first to @a last to the end of this
@@ -513,13 +513,13 @@ inline void StringAccum::append(const char *cstr) {
     Does nothing if @a first >= @a last. */
 inline void StringAccum::append(const char *first, const char *last) {
     if (first < last)
-	append(first, last - first);
+        append(first, last - first);
 }
 
 /** @overload */
 inline void StringAccum::append(const unsigned char *first, const unsigned char *last) {
     if (first < last)
-	append(first, last - first);
+        append(first, last - first);
 }
 
 /** @brief Append Unicode character @a ch encoded in UTF-8.
@@ -528,91 +528,91 @@ inline void StringAccum::append(const unsigned char *first, const unsigned char 
     Appends nothing if @a ch is not a valid Unicode character. */
 inline bool StringAccum::append_utf8(int ch) {
     if (unlikely(ch <= 0))
-	return false;
+        return false;
     else if (likely(ch <= 0x7F)) {
-	append(static_cast<char>(ch));
-	return true;
+        append(static_cast<char>(ch));
+        return true;
     } else
-	return append_utf8_hard(ch);
+        return append_utf8_hard(ch);
 }
 
 template <typename T>
 void StringAccum::append_encoded(T &encoder,
-				 const unsigned char *first,
-				 const unsigned char *last)
+                                 const unsigned char *first,
+                                 const unsigned char *last)
 {
     unsigned char *kills = 0;
     if (first != last)
-	first = encoder.start(first, last);
+        first = encoder.start(first, last);
     while (1) {
-	encoder.set_output(r_.s + r_.len, r_.s + r_.cap, first);
-	if (encoder.buffer_empty())
-	    first = encoder.encode(first, last);
-	else
-	    first = encoder.flush(first, last);
-	if (first == last)
-	    break;
-	r_.len = encoder.output_begin() - r_.s;
-	if (!kills) {
-	    kills = r_.s;
-	    r_.s = 0;
-	    grow(r_.len + last - first);
-	    memcpy(r_.s, kills, r_.len);
-	} else
-	    grow(r_.len + last - first);
+        encoder.set_output(r_.s + r_.len, r_.s + r_.cap, first);
+        if (encoder.buffer_empty())
+            first = encoder.encode(first, last);
+        else
+            first = encoder.flush(first, last);
+        if (first == last)
+            break;
+        r_.len = encoder.output_begin() - r_.s;
+        if (!kills) {
+            kills = r_.s;
+            r_.s = 0;
+            grow(r_.len + last - first);
+            memcpy(r_.s, kills, r_.len);
+        } else
+            grow(r_.len + last - first);
     }
     if (kills)
-	delete[] reinterpret_cast<char*>(kills - memo_space);
+        delete[] reinterpret_cast<char*>(kills - memo_space);
 }
 
 template <typename T>
 inline void StringAccum::append_encoded(T &state,
-					const char *first,
-					const char *last) {
+                                        const char *first,
+                                        const char *last) {
     append_encoded(state,
-		   reinterpret_cast<const unsigned char *>(first),
-		   reinterpret_cast<const unsigned char *>(last));
+                   reinterpret_cast<const unsigned char *>(first),
+                   reinterpret_cast<const unsigned char *>(last));
 }
 
 template <typename T>
 inline void StringAccum::append_encoded(const char *first,
-					const char *last) {
+                                        const char *last) {
     append_encoded<T>(reinterpret_cast<const unsigned char *>(first),
-		      reinterpret_cast<const unsigned char *>(last));
+                      reinterpret_cast<const unsigned char *>(last));
 }
 
 template <typename T>
 void StringAccum::append_encoded(T &encoder)
 {
     while (!encoder.buffer_empty()) {
-	encoder.set_output(r_.s + r_.len, r_.s + r_.cap, 0);
-	if (encoder.flush_clear()) {
-	    r_.len = encoder.output_begin() - r_.s;
-	    break;
-	}
-	grow(r_.len + 10);
+        encoder.set_output(r_.s + r_.len, r_.s + r_.cap, 0);
+        if (encoder.flush_clear()) {
+            r_.len = encoder.output_begin() - r_.s;
+            break;
+        }
+        grow(r_.len + 10);
     }
 }
 
 template <typename T>
 inline void StringAccum::append_encoded(const unsigned char *first,
-					const unsigned char *last)
+                                        const unsigned char *last)
 {
     T encoder;
     append_encoded(encoder, first, last);
     if (!encoder.buffer_empty())
-	append_encoded(encoder);
+        append_encoded(encoder);
 }
 
 template <typename I>
 inline void StringAccum::append_join(const String &joiner, I first, I last) {
     bool later = false;
     while (first != last) {
-	if (later)
-	    *this << joiner;
-	later = true;
-	*this << *first;
-	++first;
+        if (later)
+            *this << joiner;
+        later = true;
+        *this << *first;
+        ++first;
     }
 }
 
@@ -624,10 +624,10 @@ inline void StringAccum::append_join(const String &joiner, const T &x) {
 /** @brief Assign this StringAccum to @a x. */
 inline StringAccum &StringAccum::operator=(const StringAccum &x) {
     if (&x != this) {
-	if (out_of_memory())
-	    r_.cap = 0;
-	r_.len = 0;
-	append(x.data(), x.length());
+        if (out_of_memory())
+            r_.cap = 0;
+        r_.len = 0;
+        append(x.data(), x.length());
     }
     return *this;
 }

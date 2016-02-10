@@ -69,7 +69,7 @@ void
 StringAccum::assign_out_of_memory()
 {
     if (r_.cap > 0)
-	delete[] reinterpret_cast<char*>(r_.s - memo_space);
+        delete[] reinterpret_cast<char*>(r_.s - memo_space);
     r_.s = reinterpret_cast<unsigned char*>(const_cast<char*>(String_generic::empty_data));
     r_.cap = -1;
     r_.len = 0;
@@ -78,8 +78,8 @@ StringAccum::assign_out_of_memory()
 char* StringAccum::grow(int ncap) {
     // can't append to out-of-memory strings
     if (r_.cap < 0) {
-	errno = ENOMEM;
-	return 0;
+        errno = ENOMEM;
+        return 0;
     }
 
     if (ncap < r_.cap)
@@ -93,15 +93,15 @@ char* StringAccum::grow(int ncap) {
 
     char* n = new char[ncap + memo_space];
     if (!n) {
-	assign_out_of_memory();
-	errno = ENOMEM;
-	return 0;
+        assign_out_of_memory();
+        errno = ENOMEM;
+        return 0;
     }
 
     n += memo_space;
     if (r_.cap > 0) {
-	memcpy(n, r_.s, r_.len);
-	delete[] reinterpret_cast<char*>(r_.s - memo_space);
+        memcpy(n, r_.s, r_.len);
+        delete[] reinterpret_cast<char*>(r_.s - memo_space);
     }
     r_.s = reinterpret_cast<unsigned char*>(n);
     r_.cap = ncap;
@@ -116,10 +116,10 @@ StringAccum::resize(int len)
 {
     assert(len >= 0);
     if (len > r_.cap && !grow(len))
-	return -ENOMEM;
+        return -ENOMEM;
     else {
-	r_.len = len;
-	return 0;
+        r_.len = len;
+        return 0;
     }
 }
 
@@ -128,11 +128,11 @@ StringAccum::hard_extend(int nadjust, int nreserve)
 {
     char *x;
     if (r_.len + nadjust + nreserve <= r_.cap)
-	x = reinterpret_cast<char*>(r_.s + r_.len);
+        x = reinterpret_cast<char*>(r_.s + r_.len);
     else
-	x = grow(r_.len + nadjust + nreserve);
+        x = grow(r_.len + nadjust + nreserve);
     if (x)
-	r_.len += nadjust;
+        r_.len += nadjust;
     return x;
 }
 
@@ -157,7 +157,7 @@ const char *
 StringAccum::c_str()
 {
     if (r_.len < r_.cap || grow(r_.len))
-	r_.s[r_.len] = '\0';
+        r_.s[r_.len] = '\0';
     return reinterpret_cast<char *>(r_.s);
 }
 
@@ -166,7 +166,7 @@ void
 StringAccum::append_fill(int c, int len)
 {
     if (char *s = extend(len))
-	memset(s, c, len);
+        memset(s, c, len);
 }
 
 void
@@ -178,19 +178,19 @@ StringAccum::hard_append(const char *s, int len)
 
     if (r_.len + len <= r_.cap) {
     success:
-	memcpy(r_.s + r_.len, s, len);
-	r_.len += len;
+        memcpy(r_.s + r_.len, s, len);
+        r_.len += len;
     } else if (likely(s < my_s || s >= my_s + r_.cap)) {
-	if (grow(r_.len + len))
-	    goto success;
+        if (grow(r_.len + len))
+            goto success;
     } else {
-	rep_t old_r = r_;
-	r_ = rep_t();
-	if (char *new_s = extend(old_r.len + len)) {
-	    memcpy(new_s, old_r.s, old_r.len);
-	    memcpy(new_s + old_r.len, s, len);
-	}
-	delete[] reinterpret_cast<char*>(old_r.s - memo_space);
+        rep_t old_r = r_;
+        r_ = rep_t();
+        if (char *new_s = extend(old_r.len + len)) {
+            memcpy(new_s, old_r.s, old_r.len);
+            memcpy(new_s + old_r.len, s, len);
+        }
+        delete[] reinterpret_cast<char*>(old_r.s - memo_space);
     }
 }
 
@@ -204,22 +204,22 @@ bool
 StringAccum::append_utf8_hard(int ch)
 {
     if (ch < 0x8000) {
-	append(static_cast<char>(0xC0 | (ch >> 6)));
-	goto char1;
+        append(static_cast<char>(0xC0 | (ch >> 6)));
+        goto char1;
     } else if (ch < 0x10000) {
-	if (unlikely((ch >= 0xD800 && ch < 0xE000) || ch > 0xFFFD))
-	    return false;
-	append(static_cast<char>(0xE0 | (ch >> 12)));
-	goto char2;
+        if (unlikely((ch >= 0xD800 && ch < 0xE000) || ch > 0xFFFD))
+            return false;
+        append(static_cast<char>(0xE0 | (ch >> 12)));
+        goto char2;
     } else if (ch < 0x110000) {
-	append(static_cast<char>(0xF0 | (ch >> 18)));
-	append(static_cast<char>(0x80 | ((ch >> 12) & 0x3F)));
+        append(static_cast<char>(0xF0 | (ch >> 18)));
+        append(static_cast<char>(0x80 | ((ch >> 12) & 0x3F)));
     char2:
-	append(static_cast<char>(0x80 | ((ch >> 6) & 0x3F)));
+        append(static_cast<char>(0x80 | ((ch >> 6) & 0x3F)));
     char1:
-	append(static_cast<char>(0x80 | (ch & 0x3F)));
+        append(static_cast<char>(0x80 | (ch & 0x3F)));
     } else
-	return false;
+        return false;
     return true;
 }
 
@@ -240,13 +240,13 @@ StringAccum::take_string()
         String::memo_type* memo =
             reinterpret_cast<String::memo_type*>(r_.s - memo_space);
         memo->initialize(cap, len);
-	r_ = rep_t();
-	return String(str, len, memo);
+        r_ = rep_t();
+        return String(str, len, memo);
     } else if (!out_of_memory())
-	return String();
+        return String();
     else {
-	clear();
-	return String::make_out_of_memory();
+        clear();
+        return String::make_out_of_memory();
     }
 }
 
@@ -266,8 +266,8 @@ StringAccum &
 operator<<(StringAccum &sa, long i)
 {
     if (char *x = sa.reserve(24)) {
-	int len = sprintf(x, "%ld", i);
-	sa.adjust_length(len);
+        int len = sprintf(x, "%ld", i);
+        sa.adjust_length(len);
     }
     return sa;
 }
@@ -279,8 +279,8 @@ StringAccum &
 operator<<(StringAccum &sa, unsigned long u)
 {
     if (char *x = sa.reserve(24)) {
-	int len = sprintf(x, "%lu", u);
-	sa.adjust_length(len);
+        int len = sprintf(x, "%lu", u);
+        sa.adjust_length(len);
     }
     return sa;
 }
@@ -292,8 +292,8 @@ StringAccum &
 operator<<(StringAccum &sa, long long i)
 {
     if (char *x = sa.reserve(24)) {
-	int len = sprintf(x, "%lld", i);
-	sa.adjust_length(len);
+        int len = sprintf(x, "%lld", i);
+        sa.adjust_length(len);
     }
     return sa;
 }
@@ -305,8 +305,8 @@ StringAccum &
 operator<<(StringAccum &sa, unsigned long long u)
 {
     if (char *x = sa.reserve(24)) {
-	int len = sprintf(x, "%llu", u);
-	sa.adjust_length(len);
+        int len = sprintf(x, "%llu", u);
+        sa.adjust_length(len);
     }
     return sa;
 }
@@ -315,8 +315,8 @@ StringAccum &
 operator<<(StringAccum &sa, double d)
 {
     if (char *x = sa.reserve(256)) {
-	int len = sprintf(x, "%.12g", d);
-	sa.adjust_length(len);
+        int len = sprintf(x, "%.12g", d);
+        sa.adjust_length(len);
     }
     return sa;
 }
@@ -332,12 +332,12 @@ StringAccum::vsnprintf(int n, const char *format, va_list val)
 {
     if (char *x = reserve(n + 1)) {
 #if HAVE_VSNPRINTF
-	int len = ::vsnprintf(x, n + 1, format, val);
+        int len = ::vsnprintf(x, n + 1, format, val);
 #else
-	int len = vsprintf(x, format, val);
-	assert(len <= n);
+        int len = vsprintf(x, format, val);
+        assert(len <= n);
 #endif
-	adjust_length(len);
+        adjust_length(len);
     }
     return *this;
 }
@@ -370,28 +370,28 @@ void
 StringAccum::append_break_lines(const String& text, int linelen, const String &leftmargin)
 {
     if (text.length() == 0)
-	return;
+        return;
     const char* line = text.begin();
     const char* ends = text.end();
     linelen -= leftmargin.length();
     for (const char* s = line; s < ends; s++) {
-	const char* start = s;
-	while (s < ends && isspace((unsigned char) *s))
-	    s++;
-	const char* word = s;
-	while (s < ends && !isspace((unsigned char) *s))
-	    s++;
-	if (s - line > linelen && start > line) {
-	    *this << leftmargin;
-	    append(line, start - line);
-	    *this << '\n';
-	    line = word;
-	}
+        const char* start = s;
+        while (s < ends && isspace((unsigned char) *s))
+            s++;
+        const char* word = s;
+        while (s < ends && !isspace((unsigned char) *s))
+            s++;
+        if (s - line > linelen && start > line) {
+            *this << leftmargin;
+            append(line, start - line);
+            *this << '\n';
+            line = word;
+        }
     }
     if (line < text.end()) {
-	*this << leftmargin;
-	append(line, text.end() - line);
-	*this << '\n';
+        *this << leftmargin;
+        append(line, text.end() - line);
+        *this << '\n';
     }
 }
 
