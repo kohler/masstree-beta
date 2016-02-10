@@ -598,6 +598,9 @@ int main(int argc, char** argv) {
         CHECK(a.unparse() == "[{\"a\":\"\\\"\\\\\\/\"}]");
     }
 
+    CHECK(String("\\").encode_json() == "\\\\");
+    CHECK(String("\011\002\xE2\x80\xA9\xE2\x80\xAA").encode_json() == "\\t\\u0002\\u2029\xE2\x80\xAA");
+
     std::cout << "All tests pass!\n";
     return 0;
 }
