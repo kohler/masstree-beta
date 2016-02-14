@@ -23,6 +23,7 @@
 #include <pthread.h>
 #include <sys/mman.h>
 #include <stdlib.h>
+#include <vector>
 
 class threadinfo;
 class loginfo;
@@ -186,13 +187,19 @@ struct rcu_callback {
     virtual void operator()(threadinfo& ti) = 0;
 };
 
+struct async_quiesce_info {
+  pthread_mutex_t lock_;
+  pthread_cond_t cond_;
+  std::vector<std::vector<void *> *> queue_;
+};
+
 class threadinfo {
   public:
     enum {
         TI_MAIN, TI_PROCESS, TI_LOG, TI_CHECKPOINT
     };
 
-    static threadinfo *make(int purpose, int index);
+    static threadinfo *make(int purpose, int index, bool async_quiesce);
     // XXX destructor
 
     // thread information
@@ -422,6 +429,9 @@ class threadinfo {
 
     void* (*thread_func_)(threadinfo*);
     void* thread_data_;
+
+    bool async_quiesce_;
+    struct async_quiesce_info async_quiesce_info_;
 
     void refill_pool(int nl);
     void refill_rcu();

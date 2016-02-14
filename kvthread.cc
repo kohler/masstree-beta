@@ -105,7 +105,7 @@ inline threadinfo::threadinfo(int purpose, int index) {
     ts_ = 2;
 }
 
-threadinfo *threadinfo::make(int purpose, int index) {
+threadinfo *threadinfo::make(int purpose, int index, bool async_quiesce) {
     static int threads_initialized;
 
     threadinfo* ti = new(malloc(8192)) threadinfo(purpose, index);
@@ -119,6 +119,8 @@ threadinfo *threadinfo::make(int purpose, int index) {
 #endif
         threads_initialized = 1;
     }
+
+    ti->async_quiesce_ = async_quiesce;
 
     return ti;
 }
@@ -151,9 +153,14 @@ void threadinfo::hard_rcu_quiesce()
     limbo_element *lb = &lg->e_[lg->head_];
     limbo_element *le = &lg->e_[lg->tail_];
 
+    std::vector<void *> *garbages = new std::vector<void *>;
+
     if (lb != le && (int64_t) (lb->epoch_ - min_epoch) < 0) {
         while (1) {
-            free_rcu(lb->ptr_, lb->freetype_);
+            if (async_quiesce_ && ((lb->freetype_ & 255) == 0))
+	      garbages->push_back(lb->ptr_);
+	    else
+	      free_rcu(lb->ptr_, lb->freetype_);
             mark(tc_gc);
 
             ++lb;
@@ -189,6 +196,14 @@ void threadinfo::hard_rcu_quiesce()
     }
 
     limbo_epoch_ = (lb == le ? 0 : lb->epoch_);
+
+    if (async_quiesce_) {
+      pthread_mutex_lock(&async_quiesce_info_.lock_);	// not lock free
+      async_quiesce_info_.queue_.push_back(garbages);
+      pthread_mutex_unlock(&async_quiesce_info_.lock_);
+
+      pthread_cond_signal(&async_quiesce_info_.cond_);
+    }
 }
 
 void threadinfo::report_rcu(void *ptr) const
@@ -299,8 +314,49 @@ void threadinfo::refill_pool(int nl) {
     pool_[nl - 1] = pool;
 }
 
+static void *async_quiesce_thread(void *arg) {
+  struct async_quiesce_info *info = static_cast<struct async_quiesce_info *>(arg);
+
+  while (true) {
+    pthread_mutex_lock(&info->lock_);
+
+  retry:
+    if (info->queue_.empty()) {
+      pthread_mutex_unlock(&info->lock_);
+      pthread_cond_wait(&info->cond_, &info->lock_);
+
+      goto retry;
+    }
+
+    std::vector<std::vector<void *> *> q = info->queue_;
+    info->queue_.clear();
+    pthread_mutex_unlock(&info->lock_);
+
+    for (auto addrs: q) {
+      for (unsigned int i = 0; i < (*addrs).size(); i++)
+	free((*addrs)[i]);
+
+      delete addrs;
+    }
+  }
+
+  return NULL;
+}
+
 void threadinfo::run() {
     threadid_ = pthread_self();
+
+    if (async_quiesce_) {
+      pthread_mutex_init(&async_quiesce_info_.lock_, NULL);
+      pthread_cond_init(&async_quiesce_info_.cond_, NULL);
+
+      pthread_t async_quiesce_tid;
+      int ret = pthread_create(&async_quiesce_tid, NULL, async_quiesce_thread, &async_quiesce_info_);
+      if (ret != 0) {
+	printf("failed to create a thread for async rcu quiesce: %m\n");
+	exit(1);
+      }
+    }
 }
 
 void* threadinfo::thread_trampoline(void* argument) {

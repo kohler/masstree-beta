@@ -209,7 +209,7 @@ void loginfo::initialize(const String& logfile) {
     f_.filename_ = logfile.internal_rep();
     f_.filename_.ref();
 
-    ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_);
+    ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_, false);
     int r = ti_->run(logger_trampoline, this);
     always_assert(r == 0);
 }
