@@ -170,8 +170,6 @@ inline int basic_table<P>::modify_insert(Str key, F& f, threadinfo& ti)
 {
     tcursor<P> lp(*this, key);
     bool found = lp.find_insert(ti);
-    if (!found)
-        ti.observe_phantoms(lp.node());
     int answer = f(key, found, lp, ti);
     lp.finish(answer, ti);
     return answer;
