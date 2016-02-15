@@ -96,7 +96,7 @@ class loginfo {
     loginfo(logset* ls, int logindex);
     ~loginfo();
     void* run();
-    static void* logger_trampoline(threadinfo* ti);
+    static void* trampoline(void*);
 
     friend class logset;
 };

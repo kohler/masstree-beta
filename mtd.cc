@@ -113,15 +113,15 @@ static pthread_mutex_t checkpoint_mu;
 
 static void prepare_thread(threadinfo *ti);
 static int* tcp_thread_pipes;
-static void* tcp_threadfunc(threadinfo* ti);
-static void* udp_threadfunc(threadinfo* ti);
+static void* tcp_threadfunc(void* ti);
+static void* udp_threadfunc(void* ti);
 
 static void log_init();
-static void recover(threadinfo *);
+static void recover(threadinfo*);
 static kvepoch_t read_checkpoint(threadinfo*, const char *path);
 
-static void* conc_checkpointer(threadinfo* ti);
-static void recovercheckpoint(threadinfo *ti);
+static void* conc_checkpointer(void* ti);
+static void recovercheckpoint(threadinfo* ti);
 
 static void *canceling(void *);
 static void catchint(int);
@@ -386,8 +386,9 @@ void kvtest_client::fail(const char *fmt, ...) {
     always_assert(0);
 }
 
-static void* testgo(threadinfo* ti) {
-    kvtest_client *kc = (kvtest_client*) ti->thread_data();
+static void* testgo(void* x) {
+    kvtest_client *kc = reinterpret_cast<kvtest_client*>(x);
+    kc->ti_->pthread() = pthread_self();
     prepare_thread(kc->ti_);
 
     if (strcmp(kc->testname_, "rw1") == 0)
@@ -444,11 +445,11 @@ void runtest(const char *testname, int nthreads) {
     if (duration[0])
         xalarm(duration[0]);
     for (int i = 0; i < nthreads; ++i) {
-        int r = clients[i].ti_->run(testgo, &clients[i]);
+        int r = pthread_create(&clients[i].ti_->pthread(), 0, testgo, &clients[i]);
         always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i)
-        pthread_join(clients[i].ti_->threadid(), 0);
+        pthread_join(clients[i].ti_->pthread(), 0);
 
     kvstats kvs[arraysize(kvstats_name)];
     for (int i = 0; i < nthreads; ++i)
@@ -737,7 +738,7 @@ main(int argc, char *argv[])
   always_assert(ret == 0);
 
   threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
-  main_ti->run();
+  main_ti->pthread() = pthread_self();
 
   initial_timestamp = timestamp();
   tree = new Masstree::default_table;
@@ -761,7 +762,7 @@ main(int argc, char *argv[])
       printf("%d udp threads (ports %d-%d)\n", udpthreads, port, port + udpthreads - 1);
   for(i = 0; i < udpthreads; i++){
     threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
-    ret = ti->run(udp_threadfunc);
+    ret = pthread_create(&ti->pthread(), 0, udp_threadfunc, ti);
     always_assert(ret == 0);
   }
 
@@ -807,15 +808,16 @@ main(int argc, char *argv[])
     threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
     ret = pipe(&tcp_thread_pipes[i * 2]);
     always_assert(ret == 0);
-    ret = ti->run(tcp_threadfunc);
+    ret = pthread_create(&ti->pthread(), 0, tcp_threadfunc, ti);
     always_assert(ret == 0);
     tcpti[i] = ti;
   }
   // Create a canceling thread.
   ret = pipe(quit_pipe);
-  assert(ret == 0);
-  pthread_t tid;
-  pthread_create(&tid, NULL, canceling, NULL);
+  always_assert(ret == 0);
+  pthread_t canceling_tid;
+  ret = pthread_create(&canceling_tid, NULL, canceling, NULL);
+  always_assert(ret == 0);
 
   static int next = 0;
   while(1){
@@ -902,25 +904,22 @@ canceling(void *)
     pthread_cond_signal(&checkpoint_cond);
     pthread_mutex_unlock(&checkpoint_mu);
 
-    pthread_t me = pthread_self();
     fprintf(stderr, "\n");
     // cancel outstanding threads. Checkpointing threads will exit safely
     // when the checkpointing thread 0 sees go_quit, and don't need cancel
     for (threadinfo *ti = threadinfo::allthreads; ti; ti = ti->next())
         if (ti->purpose() != threadinfo::TI_MAIN
-            && ti->purpose() != threadinfo::TI_CHECKPOINT
-            && !pthread_equal(me, ti->threadid())) {
-            int r = pthread_cancel(ti->threadid());
+            && ti->purpose() != threadinfo::TI_CHECKPOINT) {
+            int r = pthread_cancel(ti->pthread());
             always_assert(r == 0);
         }
 
     // join canceled threads
     for (threadinfo *ti = threadinfo::allthreads; ti; ti = ti->next())
-        if (ti->purpose() != threadinfo::TI_MAIN
-            && !pthread_equal(me, ti->threadid())) {
+        if (ti->purpose() != threadinfo::TI_MAIN) {
             fprintf(stderr, "joining thread %s:%d\n",
                     threadtype(ti->purpose()), ti->index());
-            int r = pthread_join(ti->threadid(), 0);
+            int r = pthread_join(ti->pthread(), 0);
             always_assert(r == 0);
         }
     tree->stats(stderr);
@@ -1107,7 +1106,9 @@ void prepare_thread(threadinfo *ti) {
         ti->set_logger(&logs->log(ti->index() % nlogger));
 }
 
-void* tcp_threadfunc(threadinfo* ti) {
+void* tcp_threadfunc(void* x) {
+    threadinfo* ti = reinterpret_cast<threadinfo*>(x);
+    ti->pthread() = pthread_self();
     prepare_thread(ti);
 
     int myfd = tcp_thread_pipes[2 * ti->index()];
@@ -1175,8 +1176,9 @@ void* tcp_threadfunc(threadinfo* ti) {
 }
 
 // serve a client udp socket, in a dedicated thread
-void* udp_threadfunc(threadinfo* ti) {
-  int ret;
+void* udp_threadfunc(void* x) {
+  threadinfo* ti = reinterpret_cast<threadinfo*>(x);
+  ti->pthread() = pthread_self();
   prepare_thread(ti);
 
   struct sockaddr_in sin;
@@ -1186,7 +1188,7 @@ void* udp_threadfunc(threadinfo* ti) {
 
   int s = socket(AF_INET, SOCK_DGRAM, 0);
   always_assert(s >= 0);
-  ret = bind(s, (struct sockaddr *) &sin, sizeof(sin));
+  int ret = bind(s, (struct sockaddr *) &sin, sizeof(sin));
   always_assert(ret == 0 && "bind failed");
   int sobuflen = 512*1024;
   setsockopt(s, SOL_SOCKET, SO_RCVBUF, &sobuflen, sizeof(sobuflen));
@@ -1257,7 +1259,7 @@ void log_init() {
     threadinfo *ti = threadinfo::make(threadinfo::TI_CHECKPOINT, i);
     cks[i].state = CKState_Uninit;
     cks[i].ti = ti;
-    ret = ti->run(conc_checkpointer);
+    ret = pthread_create(&ti->pthread(), 0, conc_checkpointer, ti);
     always_assert(ret == 0);
   }
 }
@@ -1598,7 +1600,9 @@ max_flushed_epoch()
 }
 
 // concurrent periodic checkpoint
-void* conc_checkpointer(threadinfo* ti) {
+void* conc_checkpointer(void* x) {
+  threadinfo* ti = reinterpret_cast<threadinfo*>(x);
+  ti->pthread() = pthread_self();
   recovercheckpoint(ti);
   ckstate *c = &cks[ti->index()];
   c->count = 0;

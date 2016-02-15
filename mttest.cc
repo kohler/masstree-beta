@@ -573,7 +573,9 @@ struct test_thread {
             table_->stats(test_output_file);
         }
     }
-    static void* go(threadinfo* ti) {
+    static void* go(void* x) {
+        threadinfo* ti = reinterpret_cast<threadinfo*>(x);
+        ti->pthread() = pthread_self();
         assert(table_);
 #if __linux__
         if (pinthreads) {
@@ -648,7 +650,7 @@ typedef test_thread<Masstree::default_table> masstree_test_thread;
 
 static struct {
     const char *treetype;
-    void* (*go_func)(threadinfo*);
+    void* (*go_func)(void*);
     void (*setup_func)(threadinfo*, int);
 } test_thread_map[] = {
     { "masstree", masstree_test_thread::go, masstree_test_thread::setup },
@@ -659,17 +661,17 @@ static struct {
 };
 
 
-void runtest(int nthreads, void* (*func)(threadinfo*)) {
-    std::vector<threadinfo *> tis;
+void runtest(int nthreads, void* (*func)(void*)) {
+    std::vector<threadinfo*> tis;
     for (int i = 0; i < nthreads; ++i)
         tis.push_back(threadinfo::make(threadinfo::TI_PROCESS, i));
     signal(SIGALRM, test_timeout);
     for (int i = 0; i < nthreads; ++i) {
-        int r = tis[i]->run(func);
+        int r = pthread_create(&tis[i]->pthread(), 0, func, tis[i]);
         always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i)
-        pthread_join(tis[i]->threadid(), 0);
+        pthread_join(tis[i]->pthread(), 0);
 }
 
 
@@ -1023,7 +1025,7 @@ Try 'mttest --help' for options.\n");
 
 static void run_one_test_body(int trial, const char *treetype, const char *test) {
     threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
-    main_ti->run();
+    main_ti->pthread() = pthread_self();
     globalepoch = timestamp() >> 16;
     for (int i = 0; i < (int) arraysize(test_thread_map); ++i)
         if (strcmp(test_thread_map[i].treetype, treetype) == 0) {

@@ -203,6 +203,12 @@ loginfo::~loginfo() {
     free(buf_);
 }
 
+void* loginfo::trampoline(void* x) {
+    loginfo* li = reinterpret_cast<loginfo*>(x);
+    li->ti_->pthread() = pthread_self();
+    return li->run();
+}
+
 void loginfo::initialize(const String& logfile) {
     assert(!ti_);
 
@@ -211,7 +217,7 @@ void loginfo::initialize(const String& logfile) {
     f_.filename_.ref();
 
     ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_);
-    int r = ti_->run(logger_trampoline, this);
+    int r = pthread_create(&ti_->pthread(), 0, trampoline, this);
     always_assert(r == 0);
 }
 
@@ -280,11 +286,6 @@ void* loginfo::run() {
     }
 
     return 0;
-}
-
-void* loginfo::logger_trampoline(threadinfo* ti) {
-    loginfo* li = static_cast<loginfo*>(ti->thread_data());
-    return li->run();
 }
 
 

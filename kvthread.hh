@@ -264,13 +264,11 @@ class threadinfo {
     }
 
     // thread management
-    void run();
-    int run(void* (*thread_func)(threadinfo*), void* thread_data = 0);
-    pthread_t threadid() const {
-        return threadid_;
+    pthread_t& pthread() {
+        return pthreadid_;
     }
-    void* thread_data() const {
-        return thread_data_;
+    pthread_t pthread() const {
+        return pthreadid_;
     }
 
     void report_rcu(void *ptr) const;
@@ -288,7 +286,7 @@ class threadinfo {
             int index_;         // the index of a udp, logging, tcp,
                                 // checkpoint or recover thread
 
-            pthread_t threadid_;
+            pthread_t pthreadid_;
         };
         char padding1[CACHE_LINE_SIZE];
     };
@@ -304,9 +302,6 @@ class threadinfo {
     //enum { ncounters = (int) tc_max };
     enum { ncounters = 0 };
     uint64_t counters_[ncounters];
-
-    void* (*thread_func_)(threadinfo*);
-    void* thread_data_;
 
     void refill_pool(int nl);
     void refill_rcu();
@@ -351,7 +346,6 @@ class threadinfo {
     threadinfo& operator=(const threadinfo&) = delete;
 
     void hard_rcu_quiesce();
-    static void* thread_trampoline(void*);
     friend class loginfo;
 };
 

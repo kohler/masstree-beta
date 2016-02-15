@@ -233,20 +233,3 @@ void threadinfo::refill_pool(int nl) {
     initialize_pool(pool, pool_size, nl * CACHE_LINE_SIZE);
     pool_[nl - 1] = pool;
 }
-
-void threadinfo::run() {
-    threadid_ = pthread_self();
-}
-
-void* threadinfo::thread_trampoline(void* argument) {
-    threadinfo* ti = static_cast<threadinfo*>(argument);
-    ti->run();
-    return ti->thread_func_(ti);
-}
-
-int threadinfo::run(void* (*thread_func)(threadinfo*), void* thread_data) {
-    assert(!thread_func_ && !threadid_);
-    thread_func_ = thread_func;
-    thread_data_ = thread_data;
-    return pthread_create(&threadid_, 0, thread_trampoline, this);
-}
