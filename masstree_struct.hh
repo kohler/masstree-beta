@@ -56,13 +56,6 @@ class node_base : public make_nodeversion<P>::type {
         : nodeversion_type(isleaf) {
     }
 
-    int size() const {
-        if (this->isleaf())
-            return static_cast<const leaf_type*>(this)->size();
-        else
-            return static_cast<const internode_type*>(this)->size();
-    }
-
     inline base_type* parent() const {
         // almost always an internode
         if (this->isleaf())

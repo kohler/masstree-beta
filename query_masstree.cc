@@ -39,13 +39,15 @@ template <typename P>
 static void treestats1(node_base<P>* n, unsigned height) {
     if (!n)
         return;
+    int sz;
     if (n->isleaf()) {
         assert(height < arraysize(heightcounts));
         if (n->deleted())
             return;
         leaf<P> *lf = (leaf<P> *)n;
         typename leaf<P>::permuter_type perm = lf->permutation_;
-        for (int idx = 0; idx < perm.size(); ++idx) {
+        sz = perm.size();
+        for (int idx = 0; idx < sz; ++idx) {
             int p = perm[idx];
             typename leaf<P>::leafvalue_type lv = lf->lv_[p];
             if (!lv || !lf->is_layer(p))
@@ -57,12 +59,13 @@ static void treestats1(node_base<P>* n, unsigned height) {
         }
     } else {
         internode<P> *in = (internode<P> *) n;
-        for (int i = 0; i <= n->size(); ++i)
+        sz = in->size();
+        for (int i = 0; i <= sz; ++i)
             if (in->child_[i])
                 treestats1(in->child_[i], height + 1);
     }
-    assert((size_t) n->size() < arraysize(fillcounts));
-    fillcounts[n->size()] += 1;
+    assert((size_t) sz < arraysize(fillcounts));
+    fillcounts[sz] += 1;
 }
 
 template <typename P>
@@ -143,7 +146,7 @@ static void json_stats1(node_base<P>* n, lcdf::Json& j, int layer, int depth,
         }
     } else {
         internode<P> *in = static_cast<internode<P> *>(n);
-        for (int i = 0; i <= n->size(); ++i)
+        for (int i = 0; i <= in->size(); ++i)
             if (in->child_[i])
                 json_stats1(in->child_[i], j, layer, depth + 1, ti);
         j[&"l1_node_by_depth"[!layer * 3]][depth] += 1;
@@ -193,7 +196,11 @@ static Str findpv(N *n, int pvi, int npv)
 
     while (1) {
         typename N::nodeversion_type v = n->stable();
-        int size = n->size() + !n->isleaf();
+        int size;
+        if (n->isleaf())
+            size = static_cast<leaf_type*>(n)->size();
+        else
+            size = static_cast<internode_type*>(n)->size() + 1;
         if (size == 0)
             return Str();
 
