@@ -93,14 +93,6 @@ class node_base : public make_nodeversion<P>::type {
             x = p;
         return x;
     }
-    inline leaf_type* leftmost() const {
-        base_type* x = unsplit_ancestor();
-        while (!x->isleaf()) {
-            internode_type* in = static_cast<internode_type*>(x);
-            x = in->child_[0];
-        }
-        return x;
-    }
 
     inline leaf_type* reach_leaf(const key_type& k, nodeversion_type& version,
                                  threadinfo& ti) const;
