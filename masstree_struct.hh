@@ -67,7 +67,7 @@ class node_base : public make_nodeversion<P>::type {
         (void) higher_layer;
         return 0;
     }
-    static inline bool parent_exists(base_type* p) {
+    inline bool parent_exists(base_type* p) const {
         return p != 0;
     }
     inline bool has_parent() const {
@@ -549,7 +549,7 @@ internode<P>* node_base<P>::locked_parent(threadinfo& ti) const
     masstree_precondition(!this->concurrent || this->locked());
     while (1) {
         p = this->parent();
-        if (!node_base<P>::parent_exists(p))
+        if (!this->parent_exists(p))
             break;
         nodeversion_type pv = p->lock(*p, ti.lock_fence(tc_internode_lock));
         if (p == this->parent()) {

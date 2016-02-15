@@ -195,7 +195,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
 
         internode_type *p = n->locked_parent(ti);
 
-        if (!node_type::parent_exists(p)) {
+        if (!n->parent_exists(p)) {
             internode_type *nn = internode_type::make(ti);
             nn->child_[0] = n;
             nn->assign(0, xikey[sense], child);

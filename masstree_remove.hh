@@ -245,7 +245,7 @@ void tcursor<P>::collapse(internode_type* p, ikey_type ikey,
 
     while (1) {
         internode_type *gp = p->locked_parent(ti);
-        if (!internode_type::parent_exists(gp)) {
+        if (!p->parent_exists(gp)) {
             if (!prefix.empty())
                 gc_layer_rcu_callback<P>::make(root, prefix, ti);
             p->unlock();
