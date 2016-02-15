@@ -273,6 +273,7 @@ class leaf : public node_base<P> {
     typedef typename P::threadinfo_type threadinfo;
     typedef stringbag<uint8_t> internal_ksuf_type;
     typedef stringbag<uint16_t> external_ksuf_type;
+    typedef typename P::phantom_epoch_type phantom_epoch_type;
     static constexpr int ksuf_keylenx = 64;
     static constexpr int layer_keylenx = 128;
 
@@ -293,31 +294,33 @@ class leaf : public node_base<P> {
     } next_;
     leaf<P>* prev_;
     node_base<P>* parent_;
-    kvtimestamp_t node_ts_;
+    phantom_epoch_type phantom_epoch_[P::need_phantom_epoch];
     kvtimestamp_t created_at_[P::debug_level > 0];
     internal_ksuf_type iksuf_[0];
 
-    leaf(size_t sz, kvtimestamp_t node_ts)
+    leaf(size_t sz, phantom_epoch_type phantom_epoch)
         : node_base<P>(true), modstate_(modstate_insert),
           permutation_(permuter_type::make_empty()),
-          ksuf_(), parent_(), node_ts_(node_ts), iksuf_{} {
+          ksuf_(), parent_(), iksuf_{} {
         masstree_precondition(sz % 64 == 0 && sz / 64 < 128);
         extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
         if (extrasize64_ > 0)
             new((void *)&iksuf_[0]) internal_ksuf_type(width, sz - sizeof(*this));
+        if (P::need_phantom_epoch)
+            phantom_epoch_[0] = phantom_epoch;
     }
 
-    static leaf<P>* make(int ksufsize, kvtimestamp_t node_ts, threadinfo& ti) {
+    static leaf<P>* make(int ksufsize, phantom_epoch_type phantom_epoch, threadinfo& ti) {
         size_t sz = iceil(sizeof(leaf<P>) + std::min(ksufsize, 128), 64);
         void* ptr = ti.pool_allocate(sz, memtag_masstree_leaf);
-        leaf<P>* n = new(ptr) leaf<P>(sz, node_ts);
+        leaf<P>* n = new(ptr) leaf<P>(sz, phantom_epoch);
         assert(n);
         if (P::debug_level > 0)
             n->created_at_[0] = ti.operation_timestamp();
         return n;
     }
     static leaf<P>* make_root(int ksufsize, leaf<P>* parent, threadinfo& ti) {
-        leaf<P>* n = make(ksufsize, parent ? parent->node_ts_ : 0, ti);
+        leaf<P>* n = make(ksufsize, parent ? parent->phantom_epoch() : phantom_epoch_type(), ti);
         n->next_.ptr = n->prev_ = 0;
         n->parent_ = node_base<P>::parent_for_layer_root(parent);
         n->mark_root();
@@ -331,6 +334,10 @@ class leaf : public node_base<P> {
         int es = (extrasize64_ >= 0 ? extrasize64_ : -extrasize64_ - 1);
         return (sizeof(*this) + es * 64 + 63) & ~size_t(63);
     }
+    phantom_epoch_type phantom_epoch() const {
+        return P::need_phantom_epoch ? phantom_epoch_[0] : phantom_epoch_type();
+    }
+
     int size() const {
         return permuter_type::size(permutation_);
     }

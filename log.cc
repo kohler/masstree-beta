@@ -501,7 +501,7 @@ void logrecord::run(T& table, std::vector<lcdf::Json>& jrepo, threadinfo& ti) {
     typename T::cursor_type lp(table, key);
     bool found = lp.find_insert(ti);
     if (!found)
-        ti.advance_timestamp(lp.node_timestamp());
+        ti.observe_phantoms(lp.node());
     apply(lp.value(), found, jrepo, ti);
     lp.finish(1, ti);
 }

@@ -135,12 +135,6 @@ class tcursor {
     inline leaf<P>* node() const {
         return n_;
     }
-    inline kvtimestamp_t node_timestamp() const {
-        return n_->node_ts_;
-    }
-    inline kvtimestamp_t &node_timestamp() {
-        return n_->node_ts_;
-    }
 
     inline leaf_type *original_node() const {
         return original_n_;

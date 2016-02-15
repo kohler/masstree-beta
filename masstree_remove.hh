@@ -91,8 +91,9 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
     masstree_invariant(!lf->prev_ && !lf->next_.ptr);
     masstree_invariant(!lf->deleted());
     masstree_invariant(!lf->deleted_layer());
-    if (circular_int<kvtimestamp_t>::less(n_->node_ts_, lf->node_ts_))
-        n_->node_ts_ = lf->node_ts_;
+    if (P::need_phantom_epoch
+        && circular_int<typename P::phantom_epoch_type>::less(n_->phantom_epoch_[0], lf->phantom_epoch_[0]))
+        n_->phantom_epoch_[0] = lf->phantom_epoch_[0];
     lf->mark_deleted_layer();   // NB DO NOT mark as deleted (see above)
     lf->unlock();
     lf->deallocate_rcu(ti);
@@ -171,14 +172,15 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
     leaf->mark_deleted();
     leaf->deallocate_rcu(ti);
 
-    // Ensure node that becomes responsible for our keys has its node_ts_ kept
-    // up to date
+    // Ensure node that becomes responsible for our keys has its phantom epoch
+    // kept up to date
     while (1) {
         leaf_type *prev = leaf->prev_;
-        kvtimestamp_t prev_ts = prev->node_ts_;
-        while (circular_int<kvtimestamp_t>::less(prev_ts, leaf->node_ts_)
-               && !bool_cmpxchg(&prev->node_ts_, prev_ts, leaf->node_ts_))
-            prev_ts = prev->node_ts_;
+        typename P::phantom_epoch_type prev_ts = prev->phantom_epoch();
+        while (P::need_phantom_epoch
+               && circular_int<typename P::phantom_epoch_type>::less(prev_ts, leaf->phantom_epoch())
+               && !bool_cmpxchg(&prev->phantom_epoch_[0], prev_ts, leaf->phantom_epoch()))
+            prev_ts = prev->phantom_epoch();
         fence();
         if (prev == leaf->prev_)
             break;

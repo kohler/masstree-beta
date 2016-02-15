@@ -48,7 +48,7 @@ void ckstate::insert(T& table, msgpack::parser& par, threadinfo& ti) {
     typename T::cursor_type lp(table, key);
     bool found = lp.find_insert(ti);
     masstree_invariant(!found); (void) found;
-    ti.advance_timestamp(lp.node_timestamp());
+    ti.observe_phantoms(lp.node());
     lp.value() = row;
     lp.finish(1, ti);
 }

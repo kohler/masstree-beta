@@ -114,9 +114,9 @@ class threadinfo {
             ts_ = (x | 1) + 1;
         return ts_;
     }
-    void advance_timestamp(kvtimestamp_t x) {
-        if (circular_int<kvtimestamp_t>::less(ts_, x))
-            ts_ = x;
+    template <typename N> void observe_phantoms(N* n) {
+        if (circular_int<kvtimestamp_t>::less(ts_, n->phantom_epoch_[0]))
+            ts_ = n->phantom_epoch_[0];
     }
 
     // event counters

@@ -158,7 +158,7 @@ inline int basic_table<P>::modify(Str key, F& f, threadinfo& ti)
     bool found = lp.find_locked(ti);
     int answer;
     if (found)
-        answer = f(key, true, lp.value(), ti, lp.node_timestamp());
+        answer = f(key, true, lp, ti);
     else
         answer = 0;
     lp.finish(answer, ti);
@@ -171,8 +171,8 @@ inline int basic_table<P>::modify_insert(Str key, F& f, threadinfo& ti)
     tcursor<P> lp(*this, key);
     bool found = lp.find_insert(ti);
     if (!found)
-        ti.advance_timestamp(lp.node_timestamp());
-    int answer = f(key, found, lp.value(), ti, lp.node_timestamp());
+        ti.observe_phantoms(lp.node());
+    int answer = f(key, found, lp, ti);
     lp.finish(answer, ti);
     return answer;
 }

@@ -166,7 +166,7 @@ result_t query<R>::run_put(T& table, Str key,
     typename T::cursor_type lp(table, key);
     bool found = lp.find_insert(ti);
     if (!found)
-        ti.advance_timestamp(lp.node_timestamp());
+        ti.observe_phantoms(lp.node());
     bool inserted = apply_put(lp.value(), found, firstreq, lastreq, ti);
     lp.finish(1, ti);
     return inserted ? Inserted : Updated;
@@ -207,7 +207,7 @@ result_t query<R>::run_replace(T& table, Str key, Str value, threadinfo& ti) {
     typename T::cursor_type lp(table, key);
     bool found = lp.find_insert(ti);
     if (!found)
-        ti.advance_timestamp(lp.node_timestamp());
+        ti.observe_phantoms(lp.node());
     bool inserted = apply_replace(lp.value(), found, value, ti);
     lp.finish(1, ti);
     return inserted ? Inserted : Updated;
@@ -238,7 +238,7 @@ bool query<R>::run_remove(T& table, Str key, threadinfo& ti) {
     typename T::cursor_type lp(table, key);
     bool found = lp.find_locked(ti);
     if (found)
-        apply_remove(lp.value(), lp.node_timestamp(), ti);
+        apply_remove(lp.value(), lp.node()->phantom_epoch_[0], ti);
     lp.finish(-1, ti);
     return found;
 }
