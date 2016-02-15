@@ -19,7 +19,16 @@
 #include <stddef.h>
 
 struct memdebug {
+    static inline void* make(void* ptr, size_t sz, int freetype);
+    static inline void set_landmark(void* ptr, const char* file, int line);
+    static inline void* check_free(void* ptr, size_t sz, int freetype);
+    static inline void check_rcu(void* ptr, size_t sz, int freetype);
+    static inline void* check_free_after_rcu(void* ptr, int freetype);
+    static inline bool check_use(const void* ptr, memtag allowed);
+    static inline void assert_use(const void* ptr, memtag allowed);
+
 #if HAVE_MEMDEBUG
+private:
     enum {
         magic_value = 389612313 /* = 0x17390319 */,
         magic_free_value = 2015593488 /* = 0x78238410 */
@@ -31,61 +40,6 @@ struct memdebug {
     int line;
     const char* file;
 
-    static void* make(void* p, size_t size, int freetype) {
-        if (p) {
-            memdebug* m = reinterpret_cast<memdebug*>(p);
-            m->magic = magic_value;
-            m->freetype = freetype;
-            m->size = size;
-            m->after_rcu = 0;
-            m->line = 0;
-            m->file = 0;
-            return m + 1;
-        } else
-            return p;
-    }
-    static void set_landmark(void* p, const char* file, int line) {
-        if (p) {
-            memdebug* m = reinterpret_cast<memdebug*>(p) - 1;
-            m->file = file;
-            m->line = line;
-        }
-    }
-    static void* check_free(void* p, size_t size, int freetype) {
-        memdebug* m = reinterpret_cast<memdebug*>(p) - 1;
-        free_checks(m, size, freetype, false, "deallocate");
-        m->magic = magic_free_value;
-        return m;
-    }
-    static void check_rcu(void* p, size_t size, int freetype) {
-        memdebug* m = reinterpret_cast<memdebug*>(p) - 1;
-        free_checks(m, size, freetype, false, "deallocate_rcu");
-        m->after_rcu = 1;
-    }
-    static void *check_free_after_rcu(void* p, int freetype) {
-        memdebug* m = reinterpret_cast<memdebug*>(p) - 1;
-        free_checks(m, 0, freetype, true, "free_after_rcu");
-        m->magic = magic_free_value;
-        return m;
-    }
-    static bool check_use(const void* p, int type) {
-        const memdebug* m = reinterpret_cast<const memdebug*>(p) - 1;
-        return m->magic == magic_value && (type == 0 || (m->freetype >> 8) == type);
-    }
-    static bool check_use(const void* p, int type1, int type2) {
-        const memdebug* m = reinterpret_cast<const memdebug*>(p) - 1;
-        return m->magic == magic_value
-            && ((m->freetype >> 8) == type1 || (m->freetype >> 8) == type2);
-    }
-    static void assert_use(const void* p, memtag tag) {
-        if (!check_use(p, tag))
-            hard_assert_use(p, tag, (memtag) -1);
-    }
-    static void assert_use(const void *p, memtag tag1, memtag tag2) {
-        if (!check_use(p, tag1, tag2))
-            hard_assert_use(p, tag1, tag2);
-    }
-  private:
     static void free_checks(const memdebug *m, size_t size, int freetype,
                             int after_rcu, const char *op) {
         if (m->magic != magic_value
@@ -97,31 +51,7 @@ struct memdebug {
     void landmark(char* buf, size_t size) const;
     static void hard_free_checks(const memdebug* m, size_t size, int freetype,
                                  int after_rcu, const char* op);
-    static void hard_assert_use(const void* ptr, memtag tag1, memtag tag2);
-#else
-    static void* make(void* p, size_t, int) {
-        return p;
-    }
-    static void set_landmark(void*, const char*, int) {
-    }
-    static void* check_free(void* p, size_t, int) {
-        return p;
-    }
-    static void check_rcu(void*, size_t, int) {
-    }
-    static void *check_free_after_rcu(void* p, int) {
-        return p;
-    }
-    static bool check_use(void*, memtag) {
-        return true;
-    }
-    static bool check_use(void*, memtag, memtag) {
-        return true;
-    }
-    static void assert_use(void*, memtag) {
-    }
-    static void assert_use(void*, memtag, memtag) {
-    }
+    static void hard_assert_use(const void* ptr, memtag allowed);
 #endif
 };
 
@@ -132,5 +62,89 @@ enum {
     memdebug_size = 0
 #endif
 };
+
+inline void* memdebug::make(void* ptr, size_t sz, int freetype) {
+#if HAVE_MEMDEBUG
+    if (ptr) {
+        memdebug* m = reinterpret_cast<memdebug*>(ptr);
+        m->magic = magic_value;
+        m->freetype = freetype;
+        m->size = sz;
+        m->after_rcu = 0;
+        m->line = 0;
+        m->file = 0;
+        return m + 1;
+    } else
+        return ptr;
+#else
+    (void) sz, (void) freetype;
+    return ptr;
+#endif
+}
+
+inline void memdebug::set_landmark(void* ptr, const char* file, int line) {
+#if HAVE_MEMDEBUG
+    if (ptr) {
+        memdebug* m = reinterpret_cast<memdebug*>(ptr) - 1;
+        m->file = file;
+        m->line = line;
+    }
+#else
+    (void) ptr, (void) file, (void) line;
+#endif
+}
+
+inline void* memdebug::check_free(void* ptr, size_t sz, int freetype) {
+#if HAVE_MEMDEBUG
+    memdebug* m = reinterpret_cast<memdebug*>(ptr) - 1;
+    free_checks(m, sz, freetype, false, "deallocate");
+    m->magic = magic_free_value;
+    return m;
+#else
+    (void) sz, (void) freetype;
+    return ptr;
+#endif
+}
+
+inline void memdebug::check_rcu(void* ptr, size_t sz, int freetype) {
+#if HAVE_MEMDEBUG
+    memdebug* m = reinterpret_cast<memdebug*>(ptr) - 1;
+    free_checks(m, sz, freetype, false, "deallocate_rcu");
+    m->after_rcu = 1;
+#else
+    (void) ptr, (void) sz, (void) freetype;
+#endif
+}
+
+inline void* memdebug::check_free_after_rcu(void* ptr, int freetype) {
+#if HAVE_MEMDEBUG
+    memdebug* m = reinterpret_cast<memdebug*>(ptr) - 1;
+    free_checks(m, 0, freetype, true, "free_after_rcu");
+    m->magic = magic_free_value;
+    return m;
+#else
+    (void) freetype;
+    return ptr;
+#endif
+}
+
+inline bool memdebug::check_use(const void* ptr, memtag allowed) {
+#if HAVE_MEMDEBUG
+    const memdebug* m = reinterpret_cast<const memdebug*>(ptr) - 1;
+    return m->magic == magic_value && (allowed == 0 || (m->freetype >> 8) == allowed);
+#else
+    (void) ptr, (void) allowed;
+    return true;
+#endif
+}
+
+inline void memdebug::assert_use(const void* ptr, memtag allowed) {
+#if HAVE_MEMDEBUG
+    if (!check_use(ptr, allowed))
+        hard_assert_use(ptr, allowed);
+#else
+    (void) ptr, (void) allowed;
+#endif
+}
 
 #endif

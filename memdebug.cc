@@ -59,25 +59,21 @@ memdebug::hard_free_checks(const memdebug *m, size_t size, int freetype,
 }
 
 void
-memdebug::hard_assert_use(const void *ptr, memtag tag1, memtag tag2) {
-    const memdebug *m = reinterpret_cast<const memdebug *>(ptr) - 1;
-    char tagbuf[40], buf[256];
+memdebug::hard_assert_use(const void* ptr, memtag allowed) {
+    const memdebug* m = reinterpret_cast<const memdebug*>(ptr) - 1;
+    char buf[256];
     m->landmark(buf, sizeof(buf));
-    if (tag2 == (memtag) -1)
-        sprintf(buf, "%x", tag1);
-    else
-        sprintf(buf, "%x/%x", tag1, tag2);
     if (m->magic == magic_free_value)
-        fprintf(stderr, "%p: use tag %s after free, allocated %s\n",
-                m + 1, tagbuf, buf);
+        fprintf(stderr, "%p: use tag %x after free, allocated %s\n",
+                m + 1, allowed, buf);
     else if (m->magic != magic_value)
-        fprintf(stderr, "%p: pointer is unallocated, not tag %s\n",
-                m + 1, tagbuf);
+        fprintf(stderr, "%p: pointer is unallocated, not tag %x\n",
+                m + 1, allowed);
     assert(m->magic == magic_value);
-    if (tag1 != 0 && (m->freetype >> 8) != tag1 && (m->freetype >> 8) != tag2)
-        fprintf(stderr, "%p: expected tag %s, got tag %x, allocated %s\n",
-                m + 1, tagbuf, m->freetype >> 8, buf);
-    if (tag1 != 0)
-        assert((m->freetype >> 8) == tag1 || (m->freetype >> 8) == tag2);
+    if (allowed != 0 && (m->freetype >> 8) != allowed)
+        fprintf(stderr, "%p: expected tag %x, got tag %x, allocated %s\n",
+                m + 1, allowed, m->freetype >> 8, buf);
+    if (allowed != 0)
+        assert((m->freetype >> 8) == allowed);
 }
 #endif
