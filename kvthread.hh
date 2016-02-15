@@ -303,7 +303,7 @@ class threadinfo {
         if ((tag & memtag_pool_mask) == 0) {
             p = memdebug::check_free_after_rcu(p, tag);
             ::free(p);
-        } else if (tag == -1)
+        } else if (tag == memtag(-1))
             (*static_cast<mrcu_callback*>(p))(*this);
         else {
             p = memdebug::check_free_after_rcu(p, tag);
