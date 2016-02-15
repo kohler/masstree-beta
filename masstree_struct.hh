@@ -63,10 +63,6 @@ class node_base : public make_nodeversion<P>::type {
         else
             return static_cast<const internode_type*>(this)->parent_;
     }
-    static inline base_type* parent_for_layer_root(base_type* higher_layer) {
-        (void) higher_layer;
-        return 0;
-    }
     inline bool parent_exists(base_type* p) const {
         return p != 0;
     }
@@ -80,11 +76,13 @@ class node_base : public make_nodeversion<P>::type {
         else
             static_cast<internode_type*>(this)->parent_ = p;
     }
-    inline base_type* unsplit_ancestor() const {
-        base_type* x = const_cast<base_type*>(this), *p;
-        while (x->has_split() && (p = x->parent()))
-            x = p;
-        return x;
+    inline void set_layer_root(base_type* higher_layer) {
+        (void) higher_layer;
+        set_parent(nullptr);
+    }
+    inline base_type* maybe_parent() const {
+        base_type* x = parent();
+        return parent_exists(x) ? x : const_cast<base_type*>(this);
     }
 
     inline leaf_type* reach_leaf(const key_type& k, nodeversion_type& version,
@@ -307,7 +305,7 @@ class leaf : public node_base<P> {
     static leaf<P>* make_root(int ksufsize, leaf<P>* parent, threadinfo& ti) {
         leaf<P>* n = make(ksufsize, parent ? parent->phantom_epoch() : phantom_epoch_type(), ti);
         n->next_.ptr = n->prev_ = 0;
-        n->parent_ = node_base<P>::parent_for_layer_root(parent);
+        n->set_layer_root(parent);
         n->mark_root();
         return n;
     }
@@ -618,7 +616,7 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
         if (!v[sense].has_split())
             break;
         ti.mark(tc_root_retry);
-        n[sense] = n[sense]->unsplit_ancestor();
+        n[sense] = n[sense]->maybe_parent();
     }
 
     // Loop over internal nodes.
@@ -757,7 +755,7 @@ inline node_base<P>* basic_table<P>::fix_root() {
     node_base<P>* root = root_;
     if (unlikely(root->has_split())) {
         node_base<P>* old_root = root;
-        root = root->unsplit_ancestor();
+        root = root->maybe_parent();
         (void) cmpxchg(&root_, old_root, root);
     }
     return root;

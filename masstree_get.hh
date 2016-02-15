@@ -105,7 +105,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
         goto forward;
     } else if (unlikely(state_ < 0)) {
         ka_.shift_by(-state_);
-        n_->lv_[kx_.p] = root = n_->lv_[kx_.p].layer()->unsplit_ancestor();
+        n_->lv_[kx_.p] = root = n_->lv_[kx_.p].layer()->maybe_parent();
         n_->unlock();
         goto retry;
     } else if (unlikely(n_->deleted_layer())) {

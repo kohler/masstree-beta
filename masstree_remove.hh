@@ -49,8 +49,10 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
     node_type *layer;
     while (1) {
         layer = n_->lv_[kx_.p].layer();
-        if (layer->has_split())
-            n_->lv_[kx_.p] = layer = layer->unsplit_ancestor();
+        if (layer->has_split()) {
+            n_->lv_[kx_.p] = layer->maybe_parent();
+            continue;
+        }
         if (layer->isleaf())
             break;
 
@@ -66,11 +68,12 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
         }
 
         node_type *child = in->child_[0];
-        child->set_parent(node_type::parent_for_layer_root(n_));
+        child->set_layer_root(n_);
+        child->mark_root();
         n_->lv_[kx_.p] = child;
         in->mark_split();
         in->set_parent(child);  // ensure concurrent reader finds true root
-                                // NB: now p->parent() might weirdly be a LEAF!
+                                // NB: now in->parent() might weirdly be a LEAF!
         in->unlock();
         in->deallocate_rcu(ti);
     }
@@ -120,7 +123,8 @@ struct gc_layer_rcu_callback : public P::threadinfo_type::mrcu_callback {
 template <typename P>
 void gc_layer_rcu_callback<P>::operator()(threadinfo& ti)
 {
-    root_ = root_->unsplit_ancestor();
+    while (root_->has_split())
+        root_ = root_->maybe_parent();
     if (!root_->deleted()) {    // if not destroying tree...
         tcursor<P> lp(root_, s_, len_);
         bool do_remove = lp.gc_layer(ti);
@@ -304,7 +308,8 @@ inline void destroy_rcu_callback<P>::enqueue(node_base<P>* n,
 template <typename P>
 void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
     if (++count_ == 1) {
-        root_ = root_->unsplit_ancestor();
+        while (root_->has_split())
+            root_ = root_->maybe_parent();
         root_->lock();
         root_->mark_deleted_tree(); // i.e., deleted but not splitting
         root_->unlock();
