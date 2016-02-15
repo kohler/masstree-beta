@@ -19,11 +19,11 @@
 #include <stddef.h>
 
 struct memdebug {
-    static inline void* make(void* ptr, size_t sz, int freetype);
+    static inline void* make(void* ptr, size_t sz, memtag tag);
     static inline void set_landmark(void* ptr, const char* file, int line);
-    static inline void* check_free(void* ptr, size_t sz, int freetype);
-    static inline void check_rcu(void* ptr, size_t sz, int freetype);
-    static inline void* check_free_after_rcu(void* ptr, int freetype);
+    static inline void* check_free(void* ptr, size_t sz, memtag tag);
+    static inline void check_rcu(void* ptr, size_t sz, memtag tag);
+    static inline void* check_free_after_rcu(void* ptr, memtag tag);
     static inline bool check_use(const void* ptr, memtag allowed);
     static inline void assert_use(const void* ptr, memtag allowed);
 
@@ -34,22 +34,22 @@ private:
         magic_free_value = 2015593488 /* = 0x78238410 */
     };
     int magic;
-    int freetype;
+    memtag tag;
     size_t size;
     int after_rcu;
     int line;
     const char* file;
 
-    static void free_checks(const memdebug *m, size_t size, int freetype,
-                            int after_rcu, const char *op) {
+    static void free_checks(const memdebug* m, size_t size, memtag tag,
+                            int after_rcu, const char* op) {
         if (m->magic != magic_value
-            || m->freetype != freetype
+            || m->tag != tag
             || (!after_rcu && m->size != size)
             || m->after_rcu != after_rcu)
-            hard_free_checks(m, freetype, size, after_rcu, op);
+            hard_free_checks(m, size, tag, after_rcu, op);
     }
     void landmark(char* buf, size_t size) const;
-    static void hard_free_checks(const memdebug* m, size_t size, int freetype,
+    static void hard_free_checks(const memdebug* m, size_t size, memtag tag,
                                  int after_rcu, const char* op);
     static void hard_assert_use(const void* ptr, memtag allowed);
 #endif
@@ -63,12 +63,12 @@ enum {
 #endif
 };
 
-inline void* memdebug::make(void* ptr, size_t sz, int freetype) {
+inline void* memdebug::make(void* ptr, size_t sz, memtag tag) {
 #if HAVE_MEMDEBUG
     if (ptr) {
         memdebug* m = reinterpret_cast<memdebug*>(ptr);
         m->magic = magic_value;
-        m->freetype = freetype;
+        m->tag = tag;
         m->size = sz;
         m->after_rcu = 0;
         m->line = 0;
@@ -77,7 +77,7 @@ inline void* memdebug::make(void* ptr, size_t sz, int freetype) {
     } else
         return ptr;
 #else
-    (void) sz, (void) freetype;
+    (void) sz, (void) tag;
     return ptr;
 #endif
 }
@@ -94,36 +94,36 @@ inline void memdebug::set_landmark(void* ptr, const char* file, int line) {
 #endif
 }
 
-inline void* memdebug::check_free(void* ptr, size_t sz, int freetype) {
+inline void* memdebug::check_free(void* ptr, size_t sz, memtag tag) {
 #if HAVE_MEMDEBUG
     memdebug* m = reinterpret_cast<memdebug*>(ptr) - 1;
-    free_checks(m, sz, freetype, false, "deallocate");
+    free_checks(m, sz, tag, false, "deallocate");
     m->magic = magic_free_value;
     return m;
 #else
-    (void) sz, (void) freetype;
+    (void) sz, (void) tag;
     return ptr;
 #endif
 }
 
-inline void memdebug::check_rcu(void* ptr, size_t sz, int freetype) {
+inline void memdebug::check_rcu(void* ptr, size_t sz, memtag tag) {
 #if HAVE_MEMDEBUG
     memdebug* m = reinterpret_cast<memdebug*>(ptr) - 1;
-    free_checks(m, sz, freetype, false, "deallocate_rcu");
+    free_checks(m, sz, tag, false, "deallocate_rcu");
     m->after_rcu = 1;
 #else
-    (void) ptr, (void) sz, (void) freetype;
+    (void) ptr, (void) sz, (void) tag;
 #endif
 }
 
-inline void* memdebug::check_free_after_rcu(void* ptr, int freetype) {
+inline void* memdebug::check_free_after_rcu(void* ptr, memtag tag) {
 #if HAVE_MEMDEBUG
     memdebug* m = reinterpret_cast<memdebug*>(ptr) - 1;
-    free_checks(m, 0, freetype, true, "free_after_rcu");
+    free_checks(m, 0, tag, true, "free_after_rcu");
     m->magic = magic_free_value;
     return m;
 #else
-    (void) freetype;
+    (void) tag;
     return ptr;
 #endif
 }
@@ -131,7 +131,7 @@ inline void* memdebug::check_free_after_rcu(void* ptr, int freetype) {
 inline bool memdebug::check_use(const void* ptr, memtag allowed) {
 #if HAVE_MEMDEBUG
     const memdebug* m = reinterpret_cast<const memdebug*>(ptr) - 1;
-    return m->magic == magic_value && (allowed == 0 || (m->freetype >> 8) == allowed);
+    return m->magic == magic_value && (allowed == 0 || (m->tag ^ allowed) <= memtag_pool_mask);
 #else
     (void) ptr, (void) allowed;
     return true;

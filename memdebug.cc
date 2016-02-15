@@ -18,19 +18,19 @@
 #include <assert.h>
 
 #if HAVE_MEMDEBUG
-void memdebug::landmark(char* buf, size_t size) const {
+void memdebug::landmark(char* buf, size_t bufsz) const {
     if (this->magic != magic_value && this->magic != magic_free_value)
-        snprintf(buf, size, "???");
+        snprintf(buf, bufsz, "???");
     else if (this->file)
-        snprintf(buf, size, "%s:%d", this->file, this->line);
+        snprintf(buf, bufsz, "%s:%d", this->file, this->line);
     else if (this->line)
-        snprintf(buf, size, "%d", this->line);
+        snprintf(buf, bufsz, "%d", this->line);
     else
-        snprintf(buf, size, "0");
+        snprintf(buf, bufsz, "0");
 }
 
 void
-memdebug::hard_free_checks(const memdebug *m, size_t size, int freetype,
+memdebug::hard_free_checks(const memdebug *m, size_t sz, memtag tag,
                            int after_rcu, const char *op) {
     char buf[256];
     m->landmark(buf, sizeof(buf));
@@ -41,20 +41,20 @@ memdebug::hard_free_checks(const memdebug *m, size_t size, int freetype,
         fprintf(stderr, "%s(%p): freeing unallocated pointer (%x)\n",
                 op, m + 1, m->magic);
     assert(m->magic == magic_value);
-    if (freetype && m->freetype != freetype)
+    if (tag && m->tag != tag)
         fprintf(stderr, "%s(%p): expected type %x, saw %x, "
-                "allocated %s\n", op, m + 1, freetype, m->freetype, buf);
-    if (!after_rcu && m->size != size)
+                "allocated %s\n", op, m + 1, tag, m->tag, buf);
+    if (!after_rcu && m->size != sz)
         fprintf(stderr, "%s(%p): expected size %lu, saw %lu, "
                 "allocated %s\n", op, m + 1,
-                (unsigned long) size, (unsigned long) m->size, buf);
+                (unsigned long) sz, (unsigned long) m->size, buf);
     if (m->after_rcu != after_rcu)
         fprintf(stderr, "%s(%p): double free after rcu, allocated @%s\n",
                 op, m + 1, buf);
-    if (freetype)
-        assert(m->freetype == freetype);
+    if (tag)
+        assert(m->tag == tag);
     if (!after_rcu)
-        assert(m->size == size);
+        assert(m->size == sz);
     assert(m->after_rcu == after_rcu);
 }
 
@@ -70,10 +70,10 @@ memdebug::hard_assert_use(const void* ptr, memtag allowed) {
         fprintf(stderr, "%p: pointer is unallocated, not tag %x\n",
                 m + 1, allowed);
     assert(m->magic == magic_value);
-    if (allowed != 0 && (m->freetype >> 8) != allowed)
+    if (allowed != 0 && (m->tag ^ allowed) > memtag_pool_mask)
         fprintf(stderr, "%p: expected tag %x, got tag %x, allocated %s\n",
-                m + 1, allowed, m->freetype >> 8, buf);
+                m + 1, allowed, m->tag, buf);
     if (allowed != 0)
-        assert((m->freetype >> 8) == allowed);
+        assert((m->tag ^ allowed) <= memtag_pool_mask);
 }
 #endif

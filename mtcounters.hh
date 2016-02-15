@@ -17,13 +17,17 @@
 #define MTCOUNTERS_HH 1
 
 enum memtag {
-    memtag_none = 0x0,
-    memtag_value = 0x1,
-    memtag_limbo = 0x5,
-    memtag_masstree_leaf = 0x10,
-    memtag_masstree_internode = 0x11,
-    memtag_masstree_ksuffixes = 0x12,
-    memtag_masstree_gc = 0x13
+    // memtags are divided into a *type* and a *pool*.
+    // The type is purely for debugging. The pool indicates the pool from
+    // which an allocation was taken.
+    memtag_none = 0x000,
+    memtag_value = 0x100,
+    memtag_limbo = 0x500,
+    memtag_masstree_leaf = 0x1000,
+    memtag_masstree_internode = 0x1100,
+    memtag_masstree_ksuffixes = 0x1200,
+    memtag_masstree_gc = 0x1300,
+    memtag_pool_mask = 0xFF
 };
 
 enum threadcounter {

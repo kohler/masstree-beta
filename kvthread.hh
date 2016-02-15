@@ -33,7 +33,7 @@ extern volatile bool recovering;
 
 struct limbo_element {
     void *ptr_;
-    int freetype_;
+    memtag tag_;
     uint64_t epoch_;
 };
 
@@ -46,10 +46,10 @@ struct limbo_group {
     limbo_group()
         : head_(0), tail_(0), next_() {
     }
-    void push_back(void *ptr, int freetype, uint64_t epoch) {
+    void push_back(void *ptr, memtag tag, uint64_t epoch) {
         assert(tail_ < capacity);
         e_[tail_].ptr_ = ptr;
-        e_[tail_].freetype_ = freetype;
+        e_[tail_].tag_ = tag;
         e_[tail_].epoch_ = epoch;
         ++tail_;
     }
@@ -190,7 +190,7 @@ class threadinfo {
     // memory allocation
     void* allocate(size_t sz, memtag tag) {
         void *p = malloc(sz + memdebug_size);
-        p = memdebug::make(p, sz, tag << 8);
+        p = memdebug::make(p, sz, tag);
         if (p)
             mark(threadcounter(tc_alloc + (tag > memtag_value)), sz);
         return p;
@@ -198,14 +198,14 @@ class threadinfo {
     void deallocate(void* p, size_t sz, memtag tag) {
         // in C++ allocators, 'p' must be nonnull
         assert(p);
-        p = memdebug::check_free(p, sz, tag << 8);
+        p = memdebug::check_free(p, sz, tag);
         free(p);
         mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
     }
     void deallocate_rcu(void *p, size_t sz, memtag tag) {
         assert(p);
-        memdebug::check_rcu(p, sz, tag << 8);
-        record_rcu(p, tag << 8);
+        memdebug::check_rcu(p, sz, tag);
+        record_rcu(p, tag);
         mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
     }
 
@@ -217,7 +217,7 @@ class threadinfo {
         void *p = pool_[nl - 1];
         if (p) {
             pool_[nl - 1] = *reinterpret_cast<void **>(p);
-            p = memdebug::make(p, sz, (tag << 8) + nl);
+            p = memdebug::make(p, sz, memtag(tag + nl));
             mark(threadcounter(tc_alloc + (tag > memtag_value)),
                  nl * CACHE_LINE_SIZE);
         }
@@ -226,7 +226,7 @@ class threadinfo {
     void pool_deallocate(void* p, size_t sz, memtag tag) {
         int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
         assert(p && nl <= pool_max_nlines);
-        p = memdebug::check_free(p, sz, (tag << 8) + nl);
+        p = memdebug::check_free(p, sz, memtag(tag + nl));
         if (use_pool()) {
             *reinterpret_cast<void **>(p) = pool_[nl - 1];
             pool_[nl - 1] = p;
@@ -238,8 +238,8 @@ class threadinfo {
     void pool_deallocate_rcu(void* p, size_t sz, memtag tag) {
         int nl = (sz + memdebug_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE;
         assert(p && nl <= pool_max_nlines);
-        memdebug::check_rcu(p, sz, (tag << 8) + nl);
-        record_rcu(p, (tag << 8) + nl);
+        memdebug::check_rcu(p, sz, memtag(tag + nl));
+        record_rcu(p, memtag(tag + nl));
         mark(threadcounter(tc_alloc + (tag > memtag_value)),
              -nl * CACHE_LINE_SIZE);
     }
@@ -261,7 +261,7 @@ class threadinfo {
     }
     typedef ::rcu_callback rcu_callback;
     void rcu_register(rcu_callback* cb) {
-        record_rcu(cb, -1);
+        record_rcu(cb, memtag(-1));
     }
 
     // thread management
@@ -312,29 +312,29 @@ class threadinfo {
     void refill_pool(int nl);
     void refill_rcu();
 
-    void free_rcu(void *p, int freetype) {
-        if ((freetype & 255) == 0) {
-            p = memdebug::check_free_after_rcu(p, freetype);
+    void free_rcu(void *p, memtag tag) {
+        if ((tag & memtag_pool_mask) == 0) {
+            p = memdebug::check_free_after_rcu(p, tag);
             ::free(p);
-        } else if (freetype == -1)
-            (*static_cast<rcu_callback *>(p))(*this);
+        } else if (tag == -1)
+            (*static_cast<rcu_callback*>(p))(*this);
         else {
-            p = memdebug::check_free_after_rcu(p, freetype);
-            int nl = freetype & 255;
+            p = memdebug::check_free_after_rcu(p, tag);
+            int nl = tag & memtag_pool_mask;
             *reinterpret_cast<void **>(p) = pool_[nl - 1];
             pool_[nl - 1] = p;
         }
     }
 
-    void record_rcu(void* ptr, int freetype) {
-        if (recovering && freetype == (memtag_value << 8)) {
-            free_rcu(ptr, freetype);
+    void record_rcu(void* ptr, memtag tag) {
+        if (recovering && tag == memtag_value) {
+            free_rcu(ptr, tag);
             return;
         }
         if (limbo_tail_->tail_ == limbo_tail_->capacity)
             refill_rcu();
         uint64_t epoch = globalepoch;
-        limbo_tail_->push_back(ptr, freetype, epoch);
+        limbo_tail_->push_back(ptr, tag, epoch);
         if (!limbo_epoch_)
             limbo_epoch_ = epoch;
     }

@@ -88,7 +88,7 @@ void threadinfo::hard_rcu_quiesce()
 
     if (lb != le && (int64_t) (lb->epoch_ - min_epoch) < 0) {
         while (1) {
-            free_rcu(lb->ptr_, lb->freetype_);
+            free_rcu(lb->ptr_, lb->tag_);
             mark(tc_gc);
 
             ++lb;
@@ -138,7 +138,7 @@ void threadinfo::report_rcu(void *ptr) const
             if (lg->e_[i].ptr_ == ptr)
                 fprintf(stderr, "thread %d: rcu %p@%d: %s as %x @%" PRIu64 "\n",
                         index_, lg, i, status ? "waiting" : "freed",
-                        lg->e_[i].freetype_, lg->e_[i].epoch_);
+                        lg->e_[i].tag_, lg->e_[i].epoch_);
         }
     }
 }
