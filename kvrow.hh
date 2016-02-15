@@ -176,13 +176,13 @@ template <typename R>
 inline bool query<R>::apply_put(R*& value, bool found, const Json* firstreq,
                                 const Json* lastreq, threadinfo& ti) {
     if (loginfo* log = ti.logger()) {
-	log->acquire();
-	qtimes_.epoch = global_log_epoch;
+        log->acquire();
+        qtimes_.epoch = global_log_epoch;
     }
 
     if (!found) {
     insert:
-	assign_timestamp(ti);
+        assign_timestamp(ti);
         value = R::create(firstreq, lastreq, qtimes_.ts, ti);
         return true;
     }
@@ -190,14 +190,14 @@ inline bool query<R>::apply_put(R*& value, bool found, const Json* firstreq,
     R* old_value = value;
     assign_timestamp(ti, old_value->timestamp());
     if (row_is_marker(old_value)) {
-	old_value->deallocate_rcu(ti);
-	goto insert;
+        old_value->deallocate_rcu(ti);
+        goto insert;
     }
 
     R* updated = old_value->update(firstreq, lastreq, qtimes_.ts, ti);
     if (updated != old_value) {
-	value = updated;
-	old_value->deallocate_rcu_after_update(firstreq, lastreq, ti);
+        value = updated;
+        old_value->deallocate_rcu_after_update(firstreq, lastreq, ti);
     }
     return false;
 }
@@ -217,13 +217,13 @@ template <typename R>
 inline bool query<R>::apply_replace(R*& value, bool found, Str new_value,
                                     threadinfo& ti) {
     if (loginfo* log = ti.logger()) {
-	log->acquire();
-	qtimes_.epoch = global_log_epoch;
+        log->acquire();
+        qtimes_.epoch = global_log_epoch;
     }
 
     bool inserted = !found || row_is_marker(value);
     if (!found)
-	assign_timestamp(ti);
+        assign_timestamp(ti);
     else {
         assign_timestamp(ti, value->timestamp());
         value->deallocate_rcu(ti);
@@ -247,14 +247,14 @@ template <typename R>
 inline void query<R>::apply_remove(R*& value, kvtimestamp_t& node_ts,
                                    threadinfo& ti) {
     if (loginfo* log = ti.logger()) {
-	log->acquire();
-	qtimes_.epoch = global_log_epoch;
+        log->acquire();
+        qtimes_.epoch = global_log_epoch;
     }
 
     R* old_value = value;
     assign_timestamp(ti, old_value->timestamp());
     if (circular_int<kvtimestamp_t>::less_equal(node_ts, qtimes_.ts))
-	node_ts = qtimes_.ts + 2;
+        node_ts = qtimes_.ts + 2;
     old_value->deallocate_rcu(ti);
 }
 
@@ -263,7 +263,7 @@ template <typename R>
 class query_json_scanner {
   public:
     query_json_scanner(query<R> &q, lcdf::Json& request)
-	: q_(q), nleft_(request[3].as_i()), request_(request) {
+        : q_(q), nleft_(request[3].as_i()), request_(request) {
         std::swap(request[2].value().as_s(), firstkey_);
         request_.resize(2);
         q_.scankeypos_ = 0;
