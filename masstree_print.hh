@@ -65,10 +65,10 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 
     static const char* modstates[] = {"", "-", "D"};
     char keybuf[MASSTREE_MAXKEYLEN];
-    fprintf(f, "%s%*sleaf %p: %d %s, version %x%s, permutation %s, ",
+    fprintf(f, "%s%*sleaf %p: %d %s, version %" PRIx64 "%s, permutation %s, ",
             prefix, indent, "", this,
             perm.size(), perm.size() == 1 ? "key" : "keys",
-            v.version_value(),
+            (uint64_t) v.version_value(),
             modstate_ <= 2 ? modstates[modstate_] : "??",
             perm.unparse().c_str());
     fprintf(f, "parent %p, prev %p, next %p ", parent_, prev_, next_.ptr);
@@ -125,9 +125,9 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
         memcpy(&copy, this, sizeof(copy));
 
     char keybuf[MASSTREE_MAXKEYLEN];
-    fprintf(f, "%s%*sinternode %p%s: %d keys, version %x, parent %p",
+    fprintf(f, "%s%*sinternode %p%s: %d keys, version %" PRIx64 ", parent %p",
             prefix, indent, "", this, this->deleted() ? " [DELETED]" : "",
-            copy.size(), copy.version_value(), copy.parent_);
+            copy.size(), (uint64_t) copy.version_value(), copy.parent_);
     if (P::debug_level > 0) {
         kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
         fprintf(f, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
