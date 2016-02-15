@@ -58,8 +58,7 @@ threadinfo *threadinfo::make(int purpose, int index) {
     return ti;
 }
 
-void threadinfo::refill_rcu()
-{
+void threadinfo::refill_rcu() {
     if (limbo_head_ == limbo_tail_ && !limbo_tail_->next_
         && limbo_tail_->head_ == limbo_tail_->tail_)
         limbo_tail_->head_ = limbo_tail_->tail_ = 0;
@@ -72,13 +71,12 @@ void threadinfo::refill_rcu()
         limbo_tail_ = limbo_tail_->next_;
 }
 
-void threadinfo::hard_rcu_quiesce()
-{
-    uint64_t min_epoch = gc_epoch_;
+void threadinfo::hard_rcu_quiesce() {
+    mrcu_epoch_type min_epoch = gc_epoch_;
     for (threadinfo *ti = allthreads; ti; ti = ti->next()) {
         prefetch((const void *) ti->next());
-        uint64_t epoch = ti->gc_epoch_;
-        if (epoch && (int64_t) (epoch - min_epoch) < 0)
+        mrcu_epoch_type epoch = ti->gc_epoch_;
+        if (epoch && mrcu_signed_epoch_type(epoch - min_epoch) < 0)
             min_epoch = epoch;
     }
 

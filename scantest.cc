@@ -3,7 +3,7 @@
 using namespace Masstree;
 
 kvepoch_t global_log_epoch = 0;
-volatile uint64_t globalepoch = 1;     // global epoch, updated by main thread regularly
+volatile mrcu_epoch_type globalepoch = 1; // global epoch, updated by main thread regularly
 volatile bool recovering = false; // so don't add log entries, and free old value immediately
 kvtimestamp_t initial_timestamp;
 

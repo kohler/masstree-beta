@@ -90,7 +90,7 @@ static int tcpthreads = 0;
 static bool tree_stats = false;
 static bool json_stats = false;
 static bool pinthreads = false;
-volatile uint64_t globalepoch = 1;     // global epoch, updated by main thread regularly
+volatile mrcu_epoch_type globalepoch = 1;     // global epoch, updated by main thread regularly
 kvepoch_t global_log_epoch = 0;
 static int port = 2117;
 static int rscale_ncores = 0;
@@ -274,7 +274,7 @@ struct kvtest_client {
     void wait_all() {
     }
     void rcu_quiesce() {
-        uint64_t e = timestamp() >> 16;
+        mrcu_epoch_type e = timestamp() >> 16;
         if (e != globalepoch)
             globalepoch = e;
         ti_->rcu_quiesce();

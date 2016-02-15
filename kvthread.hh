@@ -28,12 +28,15 @@
 class threadinfo;
 class loginfo;
 
-extern volatile uint64_t globalepoch;    // global epoch, updated regularly
+typedef uint64_t mrcu_epoch_type;
+typedef int64_t mrcu_signed_epoch_type;
+
+extern volatile mrcu_epoch_type globalepoch;  // global epoch, updated regularly
 
 struct limbo_element {
     void* ptr_;
     memtag tag_;
-    uint64_t epoch_;
+    mrcu_epoch_type epoch_;
 };
 
 struct limbo_group {
@@ -45,7 +48,7 @@ struct limbo_group {
     limbo_group()
         : head_(0), tail_(0), next_() {
     }
-    void push_back(void* ptr, memtag tag, uint64_t epoch) {
+    void push_back(void* ptr, memtag tag, mrcu_epoch_type epoch) {
         assert(tail_ < capacity);
         e_[tail_].ptr_ = ptr;
         e_[tail_].tag_ = tag;
@@ -65,8 +68,8 @@ template <> struct has_threadcounter<0> {
     }
 };
 
-struct rcu_callback {
-    virtual ~rcu_callback() {
+struct mrcu_callback {
+    virtual ~mrcu_callback() {
     }
     virtual void operator()(threadinfo& ti) = 0;
 };
@@ -249,8 +252,8 @@ class threadinfo {
         if (limbo_epoch_ && (gc_epoch_ - limbo_epoch_) > 2)
             hard_rcu_quiesce();
     }
-    typedef ::rcu_callback rcu_callback;
-    void rcu_register(rcu_callback* cb) {
+    typedef ::mrcu_callback mrcu_callback;
+    void rcu_register(mrcu_callback* cb) {
         record_rcu(cb, memtag(-1));
     }
 
@@ -268,8 +271,8 @@ class threadinfo {
   private:
     union {
         struct {
-            uint64_t gc_epoch_;
-            uint64_t limbo_epoch_;
+            mrcu_epoch_type gc_epoch_;
+            mrcu_epoch_type limbo_epoch_;
             loginfo *logger_;
 
             threadinfo *next_;
@@ -301,7 +304,7 @@ class threadinfo {
             p = memdebug::check_free_after_rcu(p, tag);
             ::free(p);
         } else if (tag == -1)
-            (*static_cast<rcu_callback*>(p))(*this);
+            (*static_cast<mrcu_callback*>(p))(*this);
         else {
             p = memdebug::check_free_after_rcu(p, tag);
             int nl = tag & memtag_pool_mask;

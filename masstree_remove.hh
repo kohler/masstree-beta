@@ -101,7 +101,7 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
 }
 
 template <typename P>
-struct gc_layer_rcu_callback : public P::threadinfo_type::rcu_callback {
+struct gc_layer_rcu_callback : public P::threadinfo_type::mrcu_callback {
     typedef typename P::threadinfo_type threadinfo;
     node_base<P>* root_;
     int len_;
@@ -270,7 +270,7 @@ void tcursor<P>::collapse(internode_type* p, ikey_type ikey,
 }
 
 template <typename P>
-struct destroy_rcu_callback : public P::threadinfo_type::rcu_callback {
+struct destroy_rcu_callback : public P::threadinfo_type::mrcu_callback {
     typedef typename P::threadinfo_type threadinfo;
     typedef typename node_base<P>::leaf_type leaf_type;
     typedef typename node_base<P>::internode_type internode_type;
