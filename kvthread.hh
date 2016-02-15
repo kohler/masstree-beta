@@ -114,17 +114,6 @@ class threadinfo {
             ts_ = (x | 1) + 1;
         return ts_;
     }
-    kvtimestamp_t update_timestamp(kvtimestamp_t x, kvtimestamp_t y) const {
-        if (circular_int<kvtimestamp_t>::less(x, y))
-            x = y;
-        if (circular_int<kvtimestamp_t>::less_equal(ts_, x))
-            // x might be a marker timestamp; ensure result is not
-            ts_ = (x | 1) + 1;
-        return ts_;
-    }
-    void increment_timestamp() {
-        ts_ += 2;
-    }
     void advance_timestamp(kvtimestamp_t x) {
         if (circular_int<kvtimestamp_t>::less(ts_, x))
             ts_ = x;
