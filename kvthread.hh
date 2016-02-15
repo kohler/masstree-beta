@@ -29,7 +29,6 @@ class threadinfo;
 class loginfo;
 
 extern volatile uint64_t globalepoch;    // global epoch, updated regularly
-extern volatile bool recovering;
 
 struct limbo_element {
     void *ptr_;
@@ -327,10 +326,6 @@ class threadinfo {
     }
 
     void record_rcu(void* ptr, memtag tag) {
-        if (recovering && tag == memtag_value) {
-            free_rcu(ptr, tag);
-            return;
-        }
         if (limbo_tail_->tail_ == limbo_tail_->capacity)
             refill_rcu();
         uint64_t epoch = globalepoch;

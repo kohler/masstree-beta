@@ -35,6 +35,7 @@ kvepoch_t global_wake_epoch;
 struct timeval log_epoch_interval;
 static struct timeval log_epoch_time;
 extern Masstree::default_table* tree;
+extern volatile bool recovering;
 
 kvepoch_t rec_ckp_min_epoch;
 kvepoch_t rec_ckp_max_epoch;
@@ -736,6 +737,7 @@ logreplay::replayandclean1(kvepoch_t min_epoch, kvepoch_t max_epoch,
                         "replay %s: %" PRIu64 " entries replayed\n",
                         filename_.c_str(), nr);
         }
+        // XXX RCU
         pos = nextpos;
     }
 
