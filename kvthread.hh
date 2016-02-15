@@ -347,7 +347,6 @@ class threadinfo {
     threadinfo& operator=(const threadinfo&) = delete;
 
     void hard_rcu_quiesce();
-    friend class loginfo;
 };
 
 #endif
