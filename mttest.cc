@@ -89,6 +89,7 @@ static int tcpthreads = 0;
 
 static bool tree_stats = false;
 static bool json_stats = false;
+static String gnuplot_yrange;
 static bool pinthreads = false;
 volatile mrcu_epoch_type globalepoch = 1;     // global epoch, updated by main thread regularly
 kvepoch_t global_log_epoch = 0;
@@ -707,7 +708,7 @@ enum { opt_pin = 1, opt_port, opt_duration,
        opt_test, opt_test_name, opt_threads, opt_trials, opt_quiet, opt_print,
        opt_normalize, opt_limit, opt_notebook, opt_compare, opt_no_run,
        opt_lazy_timer, opt_gid, opt_tree_stats, opt_rscale_ncores, opt_cores,
-       opt_stats, opt_help };
+       opt_stats, opt_help, opt_yrange };
 static const Clp_Option options[] = {
     { "pin", 'p', opt_pin, 0, Clp_Negate },
     { "port", 0, opt_port, Clp_ValInt, 0 },
@@ -732,6 +733,7 @@ static const Clp_Option options[] = {
     { "stats", 0, opt_stats, 0, 0 },
     { "compare", 'c', opt_compare, Clp_ValString, 0 },
     { "cores", 0, opt_cores, Clp_ValString, 0 },
+    { "yrange", 0, opt_yrange, Clp_ValString, 0 },
     { "no-run", 'n', opt_no_run, 0, 0 },
     { "help", 0, opt_help, 0, 0 }
 };
@@ -753,6 +755,7 @@ Options:\n\
 \n\
   -n, --no-run             Do not run new tests.\n\
   -c, --compare=EXPERIMENT Generated plot compares to EXPERIMENT.\n\
+      --yrange=YRANGE      Set Y range for plot.\n\
 \n\
 Known TESTs:\n",
            (int) sysconf(_SC_NPROCESSORS_ONLN));
@@ -865,6 +868,9 @@ main(int argc, char *argv[])
             break;
         case opt_stats:
             json_stats = true;
+            break;
+        case opt_yrange:
+            gnuplot_yrange = clp->vstr;
             break;
         case opt_notebook:
             if (clp->negated)
@@ -1181,6 +1187,8 @@ void gnuplot_info::print(FILE *f, const char * const *types_begin) {
             udpthreads);
     fprintf(f, "set terminal png\n");
     fprintf(f, "set xrange [%g:%g]\n", 1 - treetypedelta, pos + treetypedelta);
+    if (gnuplot_yrange)
+        fprintf(f, "set yrange [%s]\n", gnuplot_yrange.c_str());
     fprintf(f, "set xtics rotate by 45 right (%s) font \"Verdana,9\"\n", xtics.c_str());
     fprintf(f, "set key top left Left reverse\n");
     if (normalizetype == normtype_none)
