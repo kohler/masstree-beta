@@ -31,7 +31,7 @@ class loginfo;
 extern volatile uint64_t globalepoch;    // global epoch, updated regularly
 
 struct limbo_element {
-    void *ptr_;
+    void* ptr_;
     memtag tag_;
     uint64_t epoch_;
 };
@@ -45,7 +45,7 @@ struct limbo_group {
     limbo_group()
         : head_(0), tail_(0), next_() {
     }
-    void push_back(void *ptr, memtag tag, uint64_t epoch) {
+    void push_back(void* ptr, memtag tag, uint64_t epoch) {
         assert(tail_ < capacity);
         e_[tail_].ptr_ = ptr;
         e_[tail_].tag_ = tag;
@@ -77,7 +77,13 @@ class threadinfo {
         TI_MAIN, TI_PROCESS, TI_LOG, TI_CHECKPOINT
     };
 
-    static threadinfo *make(int purpose, int index);
+    static threadinfo* allthreads;
+
+    threadinfo* next() const {
+        return next_;
+    }
+
+    static threadinfo* make(int purpose, int index);
     // XXX destructor
 
     // thread information
@@ -93,10 +99,6 @@ class threadinfo {
     void set_logger(loginfo* logger) {
         assert(!logger_ && logger);
         logger_ = logger;
-    }
-    static threadinfo *allthreads;
-    threadinfo* next() const {
-        return next_;
     }
 
     // timestamps
@@ -145,9 +147,9 @@ class threadinfo {
     }
 
     struct accounting_relax_fence_function {
-        threadinfo *ti_;
+        threadinfo* ti_;
         threadcounter ci_;
-        accounting_relax_fence_function(threadinfo *ti, threadcounter ci)
+        accounting_relax_fence_function(threadinfo* ti, threadcounter ci)
             : ti_(ti), ci_(ci) {
         }
         void operator()() {
@@ -164,8 +166,8 @@ class threadinfo {
     }
 
     struct stable_accounting_relax_fence_function {
-        threadinfo *ti_;
-        stable_accounting_relax_fence_function(threadinfo *ti)
+        threadinfo* ti_;
+        stable_accounting_relax_fence_function(threadinfo* ti)
             : ti_(ti) {
         }
         template <typename V>
@@ -188,7 +190,7 @@ class threadinfo {
 
     // memory allocation
     void* allocate(size_t sz, memtag tag) {
-        void *p = malloc(sz + memdebug_size);
+        void* p = malloc(sz + memdebug_size);
         p = memdebug::make(p, sz, tag);
         if (p)
             mark(threadcounter(tc_alloc + (tag > memtag_value)), sz);
@@ -201,7 +203,7 @@ class threadinfo {
         free(p);
         mark(threadcounter(tc_alloc + (tag > memtag_value)), -sz);
     }
-    void deallocate_rcu(void *p, size_t sz, memtag tag) {
+    void deallocate_rcu(void* p, size_t sz, memtag tag) {
         assert(p);
         memdebug::check_rcu(p, sz, tag);
         record_rcu(p, tag);
@@ -213,7 +215,7 @@ class threadinfo {
         assert(nl <= pool_max_nlines);
         if (unlikely(!pool_[nl - 1]))
             refill_pool(nl);
-        void *p = pool_[nl - 1];
+        void* p = pool_[nl - 1];
         if (p) {
             pool_[nl - 1] = *reinterpret_cast<void **>(p);
             p = memdebug::make(p, sz, memtag(tag + nl));
@@ -271,8 +273,8 @@ class threadinfo {
         return pthreadid_;
     }
 
-    void report_rcu(void *ptr) const;
-    static void report_rcu_all(void *ptr);
+    void report_rcu(void* ptr) const;
+    static void report_rcu_all(void* ptr);
 
   private:
     union {
@@ -291,12 +293,11 @@ class threadinfo {
         char padding1[CACHE_LINE_SIZE];
     };
 
-  private:
     enum { pool_max_nlines = 20 };
-    void *pool_[pool_max_nlines];
+    void* pool_[pool_max_nlines];
 
-    limbo_group *limbo_head_;
-    limbo_group *limbo_tail_;
+    limbo_group* limbo_head_;
+    limbo_group* limbo_tail_;
     mutable kvtimestamp_t ts_;
 
     //enum { ncounters = (int) tc_max };
@@ -315,7 +316,7 @@ class threadinfo {
         else {
             p = memdebug::check_free_after_rcu(p, tag);
             int nl = tag & memtag_pool_mask;
-            *reinterpret_cast<void **>(p) = pool_[nl - 1];
+            *reinterpret_cast<void**>(p) = pool_[nl - 1];
             pool_[nl - 1] = p;
         }
     }
