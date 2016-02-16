@@ -613,7 +613,7 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
     n[sense] = this;
     while (1) {
         v[sense] = n[sense]->stable_annotated(ti.stable_fence());
-        if (!v[sense].has_split())
+        if (v[sense].is_root())
             break;
         ti.mark(tc_root_retry);
         n[sense] = n[sense]->maybe_parent();
@@ -753,7 +753,7 @@ inline node_base<P>* basic_table<P>::root() const {
 template <typename P>
 inline node_base<P>* basic_table<P>::fix_root() {
     node_base<P>* root = root_;
-    if (unlikely(root->has_split())) {
+    if (unlikely(!root->is_root())) {
         node_base<P>* old_root = root;
         root = root->maybe_parent();
         (void) cmpxchg(&root_, old_root, root);

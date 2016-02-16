@@ -49,7 +49,7 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
     node_type *layer;
     while (1) {
         layer = n_->lv_[kx_.p].layer();
-        if (layer->has_split()) {
+        if (!layer->is_root()) {
             n_->lv_[kx_.p] = layer->maybe_parent();
             continue;
         }
@@ -57,12 +57,12 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
             break;
 
         internode_type *in = static_cast<internode_type *>(layer);
-        if (in->size() > 0 && !in->has_split())
+        if (in->size() > 0 && in->is_root())
             return false;
         in->lock(*in, ti.lock_fence(tc_internode_lock));
-        if (in->has_split() && !in->has_parent())
+        if (!in->is_root() && !in->has_parent())
             in->mark_root();
-        if (in->size() > 0 || in->has_split()) {
+        if (in->size() > 0 || !in->is_root()) {
             in->unlock();
             return false;
         }
@@ -80,12 +80,12 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
 
     // we are left with a leaf child
     leaf_type *lf = static_cast<leaf_type *>(layer);
-    if (lf->size() > 0 && !lf->has_split())
+    if (lf->size() > 0 && lf->is_root())
         return false;
     lf->lock(*lf, ti.lock_fence(tc_leaf_lock));
-    if (lf->has_split() && !lf->has_parent())
+    if (!lf->is_root() && !lf->has_parent())
         lf->mark_root();
-    if (lf->size() > 0 || lf->has_split()) {
+    if (lf->size() > 0 || !lf->is_root()) {
         lf->unlock();
         return false;
     }
@@ -123,7 +123,7 @@ struct gc_layer_rcu_callback : public P::threadinfo_type::mrcu_callback {
 template <typename P>
 void gc_layer_rcu_callback<P>::operator()(threadinfo& ti)
 {
-    while (root_->has_split())
+    while (!root_->is_root())
         root_ = root_->maybe_parent();
     if (!root_->deleted()) {    // if not destroying tree...
         tcursor<P> lp(root_, s_, len_);
@@ -317,7 +317,7 @@ inline void destroy_rcu_callback<P>::enqueue(node_base<P>* n,
 template <typename P>
 void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
     if (++count_ == 1) {
-        while (root_->has_split())
+        while (!root_->is_root())
             root_ = root_->maybe_parent();
         root_->lock();
         root_->mark_deleted_tree(); // i.e., deleted but not splitting

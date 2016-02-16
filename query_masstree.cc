@@ -54,7 +54,7 @@ static void treestats1(node_base<P>* n, unsigned height) {
                 heightcounts[height] ++;
             else {
                 node_base<P>* layer = lv.layer();
-                while (layer->has_split())
+                while (!layer->is_root())
                     layer = layer->maybe_parent();
                 treestats1(layer, height + 1);
             }
@@ -194,7 +194,7 @@ static Str findpv(N *n, int pvi, int npv)
     typedef typename N::internode_type internode_type;
     typedef typename N::leaf_type leaf_type;
 
-    while (n->has_split())
+    while (!n->is_root())
         n = n->maybe_parent();
 
     while (1) {

@@ -73,8 +73,8 @@ class nodeversion {
         fence();
         return (x.v_ ^ v_) > P::lock_bit;
     }
-    bool has_split() const {
-        return !(v_ & P::root_bit);
+    bool is_root() const {
+        return v_ & P::root_bit;
     }
     bool has_split(nodeversion<P> x) const {
         fence();
@@ -150,7 +150,7 @@ class nodeversion {
         return *this;
     }
     void mark_deleted_tree() {
-        masstree_invariant(locked() && !has_split());
+        masstree_invariant(locked() && is_root());
         v_ |= P::deleted_bit;
         acquire_fence();
     }
@@ -226,8 +226,8 @@ class singlethreaded_nodeversion {
     bool has_changed(singlethreaded_nodeversion<P>) const {
         return false;
     }
-    bool has_split() const {
-        return !(v_ & P::root_bit);
+    bool is_root() const {
+        return v_ & P::root_bit;
     }
     bool has_split(singlethreaded_nodeversion<P>) const {
         return false;
