@@ -1,7 +1,7 @@
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
- * Copyright (c) 2012-2014 President and Fellows of Harvard College
- * Copyright (c) 2012-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2012-2016 President and Fellows of Harvard College
+ * Copyright (c) 2012-2016 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -178,11 +178,10 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
 
     // Ensure node that becomes responsible for our keys has its phantom epoch
     // kept up to date
-    while (1) {
+    while (P::need_phantom_epoch) {
         leaf_type *prev = leaf->prev_;
         typename P::phantom_epoch_type prev_ts = prev->phantom_epoch();
-        while (P::need_phantom_epoch
-               && circular_int<typename P::phantom_epoch_type>::less(prev_ts, leaf->phantom_epoch())
+        while (circular_int<typename P::phantom_epoch_type>::less(prev_ts, leaf->phantom_epoch())
                && !bool_cmpxchg(&prev->phantom_epoch_[0], prev_ts, leaf->phantom_epoch()))
             prev_ts = prev->phantom_epoch();
         fence();
@@ -197,8 +196,7 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
     // child of its parent, in which case we need to traverse up until we find
     // its key.
     node_type *n = leaf;
-    ikey_type ikey = leaf->ikey_bound(), reshape_ikey = 0;
-    bool reshaping = false;
+    ikey_type ikey = leaf->ikey_bound();
 
     while (1) {
         internode_type *p = n->locked_parent(ti);
@@ -210,67 +208,78 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
 
         if (kp > 0) {
             p->mark_insert();
-            if (!reshaping) {
-                p->shift_down(kp - 1, kp, p->nkeys_ - kp);
-                --p->nkeys_;
-            } else
-                p->ikey0_[kp - 1] = reshape_ikey;
-            if (kp > 1 || p->child_[0]) {
-                if (p->size() == 0)
-                    collapse(p, ikey, root, prefix, ti);
-                else
-                    p->unlock();
-                break;
-            }
+            p->shift_down(kp - 1, kp, p->nkeys_ - kp);
+            --p->nkeys_;
+            if (kp > 1 || p->child_[0])
+                return collapse(p, ikey, root, prefix, ti);
         }
 
-        if (!reshaping) {
-            if (p->size() == 0) {
-                p->mark_deleted();
-                p->deallocate_rcu(ti);
-            } else {
-                reshaping = true;
-                reshape_ikey = p->ikey0_[0];
-                p->child_[0] = 0;
-            }
+        if (p->size() == 0) {
+            p->mark_deleted();
+            p->deallocate_rcu(ti);
+        } else
+            return reshape(p, ikey, root, prefix, ti);
+
+        n = p;
+    }
+}
+
+template <typename P>
+bool tcursor<P>::reshape(internode_type* n, ikey_type ikey,
+                         node_type* root, Str prefix, threadinfo& ti)
+{
+    masstree_precondition(n && n->locked());
+
+    n->child_[0] = 0;
+    ikey_type patchkey = n->ikey0_[0];
+
+    while (1) {
+        internode_type *p = n->locked_parent(ti);
+        masstree_invariant(p);
+        n->unlock();
+
+        int kp = internode_type::bound_type::upper(ikey, *p);
+        masstree_invariant(kp == 0 || p->compare_key(ikey, kp - 1) == 0);
+
+        if (kp > 0) {
+            p->mark_insert();
+            p->ikey0_[kp - 1] = patchkey;
+            if (kp > 1 || p->child_[0])
+                return collapse(p, ikey, root, prefix, ti);
         }
 
         n = p;
     }
-
-    return true;
 }
 
 template <typename P>
-void tcursor<P>::collapse(internode_type* p, ikey_type ikey,
+bool tcursor<P>::collapse(internode_type* n, ikey_type ikey,
                           node_type* root, Str prefix, threadinfo& ti)
 {
-    masstree_precondition(p && p->locked());
+    masstree_precondition(n && n->locked());
 
-    while (1) {
-        internode_type *gp = p->locked_parent(ti);
-        if (!p->parent_exists(gp)) {
+    while (n->size() == 0) {
+        internode_type *p = n->locked_parent(ti);
+        if (!n->parent_exists(p)) {
             if (!prefix.empty())
                 gc_layer_rcu_callback<P>::make(root, prefix, ti);
-            p->unlock();
             break;
         }
 
-        int kp = key_upper_bound(ikey, *gp);
-        masstree_invariant(gp->child_[kp] == p);
-        gp->child_[kp] = p->child_[0];
-        p->child_[0]->set_parent(gp);
+        int kp = key_upper_bound(ikey, *p);
+        masstree_invariant(p->child_[kp] == n);
+        p->child_[kp] = n->child_[0];
+        n->child_[0]->set_parent(p);
 
-        p->mark_deleted();
-        p->unlock();
-        p->deallocate_rcu(ti);
+        n->mark_deleted();
+        n->unlock();
+        n->deallocate_rcu(ti);
 
-        p = gp;
-        if (p->size() != 0) {
-            p->unlock();
-            break;
-        }
+        n = p;
     }
+
+    n->unlock();
+    return true;
 }
 
 template <typename P>
