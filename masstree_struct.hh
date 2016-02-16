@@ -76,9 +76,9 @@ class node_base : public make_nodeversion<P>::type {
         else
             static_cast<internode_type*>(this)->parent_ = p;
     }
-    inline void set_layer_root(base_type* higher_layer) {
-        (void) higher_layer;
+    inline void make_layer_root() {
         set_parent(nullptr);
+        this->mark_root();
     }
     inline base_type* maybe_parent() const {
         base_type* x = parent();
@@ -305,8 +305,7 @@ class leaf : public node_base<P> {
     static leaf<P>* make_root(int ksufsize, leaf<P>* parent, threadinfo& ti) {
         leaf<P>* n = make(ksufsize, parent ? parent->phantom_epoch() : phantom_epoch_type(), ti);
         n->next_.ptr = n->prev_ = 0;
-        n->set_layer_root(parent);
-        n->mark_root();
+        n->make_layer_root();
         return n;
     }
 

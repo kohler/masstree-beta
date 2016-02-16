@@ -1348,20 +1348,20 @@ retry:~
 \> \(\V{layer} \gets n.\V{value}[\pi]\) \\
 \> if \(!\V{layer}.\V{isroot}\): \\
 \>\> \(\V{layer} \gets n.\V{value}[\pi] \gets \N{true\_root}(\V{layer})\) \\
-\> if \(\V{layer}.\V{size} > 0\) and \(\V{layer}.\V{isroot}\): \\
+\> if \(\V{layer}.\V{size} > 0\): \\
 \>\> \(\N{unlock}(n)\);~ return \\
 \> \(\N{lock}(\V{layer})\) \\
-\> if \(!\V{layer}.\V{isroot}\) and \(\V{layer}.\V{parent} = \NIL\): \\
-\>\> \(\V{layer}.\V{isroot} \gets 1\) \\
 \> if \(\V{layer}.\V{size} > 0\) or \(!\V{layer}.\V{isroot}\): \\
 \>\> \(\N{unlock}(\V{layer})\);~ \(\N{unlock}(\V{n})\);~ return \\
 \> if \(\V{layer}.\V{isleaf}\): \\
 \>\> \(\V{layer}.\V{deletedlayer} \gets 1\) \\
 \>\> \(\N{unlock}(\V{layer})\) \\
 \>\> \(\N{remove\_item}(n, i, \pi, \V{layerkey}, \V{toproot})\) \\
+\>\> fork \(\N{free\_node}(\V{layer})\) \\
 \>\> return \\
 \> else: \\
 \>\> \(\V{child} \gets \V{layer}.\V{child}[0]\) \\
+\>\> \(\V{child}.\V{isroot} \gets 1\) \\
 \>\> \(\V{child}.\V{parent} \gets \NIL\) \\
 \>\> \(n.\V{value}[\pi] \gets \V{child}\) \\
 \>\> \(\V{layer}.\V{isroot} \gets 0\) \\

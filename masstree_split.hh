@@ -200,8 +200,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
             nn->child_[0] = n;
             nn->assign(0, xikey[sense], child);
             nn->nkeys_ = 1;
-            nn->parent_ = p;
-            nn->mark_root();
+            nn->make_layer_root();
             fence();
             n->set_parent(nn);
         } else {

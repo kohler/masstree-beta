@@ -53,54 +53,51 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
             n_->lv_[kx_.p] = layer->maybe_parent();
             continue;
         }
+
         if (layer->isleaf())
             break;
 
         internode_type *in = static_cast<internode_type *>(layer);
-        if (in->size() > 0 && in->is_root())
+        if (in->size() > 0)
             return false;
-        in->lock(*in, ti.lock_fence(tc_internode_lock));
-        if (!in->is_root() && !in->has_parent())
-            in->mark_root();
-        if (in->size() > 0 || !in->is_root()) {
-            in->unlock();
-            return false;
-        }
+        in->lock(*layer, ti.lock_fence(tc_internode_lock));
+        if (!in->is_root() || in->size() > 0)
+            goto unlock_layer;
 
         node_type *child = in->child_[0];
-        child->set_layer_root(n_);
-        child->mark_root();
+        child->make_layer_root();
         n_->lv_[kx_.p] = child;
         in->mark_split();
         in->set_parent(child);  // ensure concurrent reader finds true root
-                                // NB: now in->parent() might weirdly be a LEAF!
+        // NB: now in->parent() might weirdly be a LEAF!
         in->unlock();
         in->deallocate_rcu(ti);
     }
 
-    // we are left with a leaf child
-    leaf_type *lf = static_cast<leaf_type *>(layer);
-    if (lf->size() > 0 && lf->is_root())
-        return false;
-    lf->lock(*lf, ti.lock_fence(tc_leaf_lock));
-    if (!lf->is_root() && !lf->has_parent())
-        lf->mark_root();
-    if (lf->size() > 0 || !lf->is_root()) {
+    {
+        leaf_type* lf = static_cast<leaf_type*>(layer);
+        if (lf->size() > 0)
+            return false;
+        lf->lock(*lf, ti.lock_fence(tc_leaf_lock));
+        if (!lf->is_root() || lf->size() > 0)
+            goto unlock_layer;
+
+        // child is an empty leaf: kill it
+        masstree_invariant(!lf->prev_ && !lf->next_.ptr);
+        masstree_invariant(!lf->deleted());
+        masstree_invariant(!lf->deleted_layer());
+        if (P::need_phantom_epoch
+            && circular_int<typename P::phantom_epoch_type>::less(n_->phantom_epoch_[0], lf->phantom_epoch_[0]))
+            n_->phantom_epoch_[0] = lf->phantom_epoch_[0];
+        lf->mark_deleted_layer();   // NB DO NOT mark as deleted (see above)
         lf->unlock();
-        return false;
+        lf->deallocate_rcu(ti);
+        return true;
     }
 
-    // child is an empty leaf: kill it
-    masstree_invariant(!lf->prev_ && !lf->next_.ptr);
-    masstree_invariant(!lf->deleted());
-    masstree_invariant(!lf->deleted_layer());
-    if (P::need_phantom_epoch
-        && circular_int<typename P::phantom_epoch_type>::less(n_->phantom_epoch_[0], lf->phantom_epoch_[0]))
-        n_->phantom_epoch_[0] = lf->phantom_epoch_[0];
-    lf->mark_deleted_layer();   // NB DO NOT mark as deleted (see above)
-    lf->unlock();
-    lf->deallocate_rcu(ti);
-    return true;
+ unlock_layer:
+    layer->unlock();
+    return false;
 }
 
 template <typename P>
