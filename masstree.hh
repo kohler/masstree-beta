@@ -78,11 +78,6 @@ class basic_table {
     template <typename F>
     int rscan(Str firstkey, bool matchfirst, F& scanner, threadinfo& ti) const;
 
-    template <typename F>
-    inline int modify(Str key, F& f, threadinfo& ti);
-    template <typename F>
-    inline int modify_insert(Str key, F& f, threadinfo& ti);
-
     inline void print(FILE* f = 0, int indent = 0) const;
 
   private:
