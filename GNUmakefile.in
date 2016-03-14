@@ -88,7 +88,7 @@ stamp-h: config.h.in config.status
 	echo > stamp-h
 
 clean:
-	rm -f mtd mtclient mttest test_string test_atomics *.o libjson.a
+	rm -f mtd mtclient mttest scantest test_string test_atomics *.o libjson.a
 	rm -rf .deps
 
 DEPFILES := $(wildcard $(DEPSDIR)/*.d)

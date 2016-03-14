@@ -19,6 +19,7 @@
 #include "masstree_tcursor.hh"
 #include "masstree_get.hh"
 #include "masstree_insert.hh"
+#include "masstree_iterator.hh"
 #include "masstree_split.hh"
 #include "masstree_remove.hh"
 #include "masstree_scan.hh"
@@ -421,6 +422,47 @@ void query_table<P>::test(threadinfo& ti) {
     }
 
     // XXX destroy tree
+}
+
+template <typename P>
+void query_table<P>::iterator_test(threadinfo& ti) {
+    typedef typename basic_table<P>::iterator iterator;
+
+    query_table<P> t;
+    t.initialize(ti);
+    query<row_type> q;
+
+    const char * const values[] = {
+        "", "0", "1", "10", "100000000",                        // 0-4
+        "1000000001", "1000000002", "2", "20", "200000000",     // 5-9
+        "aaaaaaaaaaaaaaaaaaaaaaaaaa",                           // 10
+        "aaaaaaaaaaaaaaabbbb", "aaaaaaaaaaaaaaabbbc", "aaaaaaaaaxaaaaabbbc", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+        "kkkkkkkk\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF" "a",
+        "kkkkkkkk\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF" "b",
+        "llllllll",
+        "lllllllln",
+        "llllllllo",
+        "xxxxxxxxy"
+    };
+    const char *values_copy[arraysize(values)];
+    memcpy(values_copy, values, sizeof(values));
+
+    for (int i = arraysize(values); i > 0; --i) {
+        int x = rand() % i;
+        q.run_replace(t.table(), Str(values_copy[x]), Str(values_copy[x]), ti);
+        values_copy[x] = values_copy[i - 1];
+    }
+
+    const char * const * pos = values;
+    for (iterator it = t.table_.begin(ti); it != t.table_.end(ti); it++) {
+        Str key = it->first;
+        if ((int) strlen(*pos) != key.len || memcmp(*pos, key.s, key.len) != 0) {
+            fprintf(stderr, "scan encountered \"%.*s\", expected \"%s\"\n", key.len, key.s, *pos);
+            assert((int) strlen(*pos) == key.len && memcmp(*pos, key.s, key.len) == 0);
+        }
+        fprintf(stderr, "scan %.*s\n", key.len, key.s);
+        pos++;
+    }
 }
 
 template <typename P>
