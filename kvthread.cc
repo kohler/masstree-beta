@@ -59,76 +59,69 @@ threadinfo *threadinfo::make(int purpose, int index) {
 }
 
 void threadinfo::refill_rcu() {
-    if (limbo_head_ == limbo_tail_ && !limbo_tail_->next_
-        && limbo_tail_->head_ == limbo_tail_->tail_)
-        limbo_tail_->head_ = limbo_tail_->tail_ = 0;
-    else if (!limbo_tail_->next_) {
+    if (!limbo_tail_->next_) {
         void *limbo_space = allocate(sizeof(limbo_group), memtag_limbo);
         mark(tc_limbo_slots, limbo_group::capacity);
         limbo_tail_->next_ = new(limbo_space) limbo_group;
-        limbo_tail_ = limbo_tail_->next_;
+    }
+    limbo_tail_ = limbo_tail_->next_;
+    assert(limbo_tail_->head_ == 0 && limbo_tail_->tail_ == 0);
+}
+
+inline bool limbo_group::clean_until(threadinfo& ti, mrcu_epoch_type max_epoch) {
+    while (head_ != tail_ && mrcu_signed_epoch_type(max_epoch - e_[head_].epoch_) > 0) {
+        ti.free_rcu(e_[head_].ptr_, e_[head_].tag_);
+        ti.mark(tc_gc);
+        ++head_;
+    }
+    if (head_ == tail_) {
+        head_ = tail_ = 0;
+        return true;
     } else
-        limbo_tail_ = limbo_tail_->next_;
+        return false;
 }
 
 void threadinfo::hard_rcu_quiesce() {
-    mrcu_epoch_type min_epoch = gc_epoch_;
+    mrcu_epoch_type max_epoch = gc_epoch_;
     for (threadinfo *ti = allthreads; ti; ti = ti->next()) {
         prefetch((const void *) ti->next());
         mrcu_epoch_type epoch = ti->gc_epoch_;
-        if (epoch && mrcu_signed_epoch_type(epoch - min_epoch) < 0)
-            min_epoch = epoch;
+        if (epoch && mrcu_signed_epoch_type(epoch - max_epoch) < 0)
+            max_epoch = epoch;
     }
 
-    limbo_group *lg = limbo_head_;
-    limbo_element *lb = &lg->e_[lg->head_];
-    limbo_element *le = &lg->e_[lg->tail_];
+    limbo_group* empty_head = nullptr;
+    limbo_group* empty_tail = nullptr;
 
-    if (lb != le && (int64_t) (lb->epoch_ - min_epoch) < 0) {
-        while (1) {
-            free_rcu(lb->ptr_, lb->tag_);
-            mark(tc_gc);
-
-            ++lb;
-
-            if (lb == le && lg == limbo_tail_) {
-                lg->head_ = lg->tail_;
-                break;
-            } else if (lb == le) {
-                assert(lg->tail_ == lg->capacity && lg->next_);
-                lg->head_ = lg->tail_ = 0;
-                lg = lg->next_;
-                lb = &lg->e_[lg->head_];
-                le = &lg->e_[lg->tail_];
-            } else if (lb->epoch_ < min_epoch) {
-                lg->head_ = lb - lg->e_;
-                break;
-            }
+    // clean [limbo_head_, limbo_tail_]
+    while (limbo_head_->clean_until(*this, max_epoch)) {
+        if (!empty_head)
+            empty_head = limbo_head_;
+        empty_tail = limbo_head_;
+        if (limbo_head_ == limbo_tail_) {
+            limbo_head_ = limbo_tail_ = empty_head;
+            goto done;
         }
-
-        if (lg != limbo_head_) {
-            // shift nodes in [limbo_head_, limbo_tail_) to be after
-            // limbo_tail_
-            limbo_group *old_head = limbo_head_;
-            limbo_head_ = lg;
-            limbo_group **last = &limbo_tail_->next_;
-            while (*last)
-                last = &(*last)->next_;
-            *last = old_head;
-            while (*last != lg)
-                last = &(*last)->next_;
-            *last = 0;
-        }
+        limbo_head_ = limbo_head_->next_;
+    }
+    // hook empties after limbo_tail_
+    if (empty_head) {
+        empty_tail->next_ = limbo_tail_;
+        limbo_tail_->next_ = empty_head;
     }
 
-    limbo_epoch_ = (lb == le ? 0 : lb->epoch_);
+done:
+    if (limbo_head_->head_ != limbo_head_->tail_)
+        limbo_epoch_ = limbo_head_->e_[limbo_head_->head_].epoch_;
+    else
+        limbo_epoch_ = 0;
 }
 
 void threadinfo::report_rcu(void *ptr) const
 {
     for (limbo_group *lg = limbo_head_; lg; lg = lg->next_) {
         int status = 0;
-        for (int i = 0; i < lg->capacity; ++i) {
+        for (unsigned i = 0; i < lg->capacity; ++i) {
             if (i == lg->head_)
                 status = 1;
             if (i == lg->tail_)

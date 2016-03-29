@@ -41,8 +41,8 @@ struct limbo_element {
 
 struct limbo_group {
     enum { capacity = (4076 - sizeof(limbo_group *)) / sizeof(limbo_element) };
-    int head_;
-    int tail_;
+    unsigned head_;
+    unsigned tail_;
     limbo_element e_[capacity];
     limbo_group *next_;
     limbo_group()
@@ -55,6 +55,7 @@ struct limbo_group {
         e_[tail_].epoch_ = epoch;
         ++tail_;
     }
+    inline bool clean_until(threadinfo& ti, mrcu_epoch_type max_epoch);
 };
 
 template <int N> struct has_threadcounter {
@@ -339,6 +340,8 @@ class threadinfo {
     threadinfo& operator=(const threadinfo&) = delete;
 
     void hard_rcu_quiesce();
+
+    friend struct limbo_group;
 };
 
 #endif
