@@ -106,7 +106,7 @@ void threadinfo::hard_rcu_quiesce() {
     }
     // hook empties after limbo_tail_
     if (empty_head) {
-        empty_tail->next_ = limbo_tail_;
+        empty_tail->next_ = limbo_tail_->next_;
         limbo_tail_->next_ = empty_head;
     }
 
