@@ -32,6 +32,7 @@ typedef uint64_t mrcu_epoch_type;
 typedef int64_t mrcu_signed_epoch_type;
 
 extern volatile mrcu_epoch_type globalepoch;  // global epoch, updated regularly
+extern volatile mrcu_epoch_type active_epoch;
 
 struct limbo_group {
     typedef mrcu_epoch_type epoch_type;
@@ -279,6 +280,7 @@ class threadinfo {
 
     void report_rcu(void* ptr) const;
     static void report_rcu_all(void* ptr);
+    static inline mrcu_epoch_type min_active_epoch();
 
   private:
     union {
@@ -336,14 +338,14 @@ class threadinfo {
 
 #if ENABLE_ASSERTIONS
     static int no_pool_value;
-    static bool use_pool() {
-        return !no_pool_value;
-    }
-#else
-    static bool use_pool() {
-        return true;
-    }
 #endif
+    static bool use_pool() {
+#if ENABLE_ASSERTIONS
+        return !no_pool_value;
+#else
+        return true;
+#endif
+    }
 
     inline threadinfo(int purpose, int index);
     threadinfo(const threadinfo&) = delete;
@@ -354,5 +356,16 @@ class threadinfo {
 
     friend struct limbo_group;
 };
+
+inline mrcu_epoch_type threadinfo::min_active_epoch() {
+    mrcu_epoch_type ae = globalepoch;
+    for (threadinfo* ti = allthreads; ti; ti = ti->next()) {
+        prefetch((const void*) ti->next());
+        mrcu_epoch_type te = ti->gc_epoch_;
+        if (te && mrcu_signed_epoch_type(te - ae) < 0)
+            ae = te;
+    }
+    return ae;
+}
 
 #endif

@@ -85,13 +85,7 @@ inline bool limbo_group::clean_until(threadinfo& ti, mrcu_epoch_type max_epoch) 
 }
 
 void threadinfo::hard_rcu_quiesce() {
-    mrcu_epoch_type max_epoch = gc_epoch_;
-    for (threadinfo *ti = allthreads; ti; ti = ti->next()) {
-        prefetch((const void *) ti->next());
-        mrcu_epoch_type epoch = ti->gc_epoch_;
-        if (epoch && mrcu_signed_epoch_type(epoch - max_epoch) < 0)
-            max_epoch = epoch;
-    }
+    mrcu_epoch_type max_epoch = active_epoch;
 
     limbo_group* empty_head = nullptr;
     limbo_group* empty_tail = nullptr;

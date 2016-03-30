@@ -84,6 +84,7 @@ static bool logging = true;
 static bool pinthreads = false;
 static bool recovery_only = false;
 volatile uint64_t globalepoch = 1;     // global epoch, updated by main thread regularly
+volatile uint64_t active_epoch = 1;
 static int port = 2117;
 static uint64_t test_limit = ~uint64_t(0);
 static int doprint = 0;
@@ -930,6 +931,7 @@ void
 epochinc(int)
 {
     globalepoch += 2;
+    active_epoch = threadinfo::min_active_epoch();
 }
 
 // Return 1 if success, -1 if I/O error or protocol unmatch
