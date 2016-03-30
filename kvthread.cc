@@ -69,10 +69,13 @@ void threadinfo::refill_rcu() {
 }
 
 inline bool limbo_group::clean_until(threadinfo& ti, mrcu_epoch_type max_epoch) {
-    while (head_ != tail_ && mrcu_signed_epoch_type(max_epoch - e_[head_].epoch_) > 0) {
-        ti.free_rcu(e_[head_].ptr_, e_[head_].tag_);
-        ti.mark(tc_gc);
+    while (head_ != tail_ && mrcu_signed_epoch_type(max_epoch - e_[head_].u_.epoch) > 0) {
         ++head_;
+        while (head_ != tail_ && e_[head_].ptr_) {
+            ti.free_rcu(e_[head_].ptr_, e_[head_].u_.tag);
+            ti.mark(tc_gc);
+            ++head_;
+        }
     }
     if (head_ == tail_) {
         head_ = tail_ = 0;
@@ -112,7 +115,7 @@ void threadinfo::hard_rcu_quiesce() {
 
 done:
     if (limbo_head_->head_ != limbo_head_->tail_)
-        limbo_epoch_ = limbo_head_->e_[limbo_head_->head_].epoch_;
+        limbo_epoch_ = limbo_head_->e_[limbo_head_->head_].u_.epoch;
     else
         limbo_epoch_ = 0;
 }
@@ -121,15 +124,20 @@ void threadinfo::report_rcu(void *ptr) const
 {
     for (limbo_group *lg = limbo_head_; lg; lg = lg->next_) {
         int status = 0;
+        limbo_group::epoch_type e = 0;
         for (unsigned i = 0; i < lg->capacity; ++i) {
             if (i == lg->head_)
                 status = 1;
-            if (i == lg->tail_)
+            if (i == lg->tail_) {
                 status = 0;
+                e = 0;
+            }
             if (lg->e_[i].ptr_ == ptr)
                 fprintf(stderr, "thread %d: rcu %p@%d: %s as %x @%" PRIu64 "\n",
                         index_, lg, i, status ? "waiting" : "freed",
-                        lg->e_[i].tag_, lg->e_[i].epoch_);
+                        lg->e_[i].u_.tag, e);
+            else if (!lg->e_[i].ptr_)
+                e = lg->e_[i].u_.epoch;
         }
     }
 }

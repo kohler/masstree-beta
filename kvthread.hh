@@ -33,26 +33,37 @@ typedef int64_t mrcu_signed_epoch_type;
 
 extern volatile mrcu_epoch_type globalepoch;  // global epoch, updated regularly
 
-struct limbo_element {
-    void* ptr_;
-    memtag tag_;
-    mrcu_epoch_type epoch_;
-};
-
 struct limbo_group {
-    enum { capacity = (4076 - sizeof(limbo_group *)) / sizeof(limbo_element) };
+    typedef mrcu_epoch_type epoch_type;
+    typedef mrcu_signed_epoch_type signed_epoch_type;
+
+    struct limbo_element {
+        void* ptr_;
+        union {
+            memtag tag;
+            epoch_type epoch;
+        } u_;
+    };
+
+    enum { capacity = (4076 - sizeof(epoch_type) - sizeof(limbo_group*)) / sizeof(limbo_element) };
     unsigned head_;
     unsigned tail_;
+    epoch_type epoch_;
+    limbo_group* next_;
     limbo_element e_[capacity];
-    limbo_group *next_;
     limbo_group()
         : head_(0), tail_(0), next_() {
     }
     void push_back(void* ptr, memtag tag, mrcu_epoch_type epoch) {
-        assert(tail_ < capacity);
+        assert(tail_ + 2 <= capacity);
+        if (head_ == tail_ || epoch_ != epoch) {
+            e_[tail_].ptr_ = nullptr;
+            e_[tail_].u_.epoch = epoch;
+            epoch_ = epoch;
+            ++tail_;
+        }
         e_[tail_].ptr_ = ptr;
-        e_[tail_].tag_ = tag;
-        e_[tail_].epoch_ = epoch;
+        e_[tail_].u_.tag = tag;
         ++tail_;
     }
     inline bool clean_until(threadinfo& ti, mrcu_epoch_type max_epoch);
@@ -315,7 +326,7 @@ class threadinfo {
     }
 
     void record_rcu(void* ptr, memtag tag) {
-        if (limbo_tail_->tail_ == limbo_tail_->capacity)
+        if (limbo_tail_->tail_ + 2 > limbo_tail_->capacity)
             refill_rcu();
         uint64_t epoch = globalepoch;
         limbo_tail_->push_back(ptr, tag, epoch);
