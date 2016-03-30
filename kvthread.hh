@@ -132,6 +132,10 @@ class threadinfo {
         if (has_threadcounter<int(ncounters)>::test(ci))
             counters_[ci] += delta;
     }
+    void unmark(threadcounter ci, int64_t delta) {
+        if (has_threadcounter<int(ncounters)>::test(ci))
+            counters_[ci] -= delta;
+    }
     bool has_counter(threadcounter ci) const {
         return has_threadcounter<int(ncounters)>::test(ci);
     }

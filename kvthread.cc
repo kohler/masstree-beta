@@ -74,11 +74,7 @@ inline bool limbo_group::clean_until(threadinfo& ti, mrcu_epoch_type max_epoch) 
         ti.mark(tc_gc);
         ++head_;
     }
-    if (head_ == tail_) {
-        head_ = tail_ = 0;
-        return true;
-    } else
-        return false;
+    return head_ == tail_;
 }
 
 void threadinfo::hard_rcu_quiesce() {
@@ -90,27 +86,23 @@ void threadinfo::hard_rcu_quiesce() {
             max_epoch = epoch;
     }
 
-    limbo_group* empty_head = nullptr;
-    limbo_group* empty_tail = nullptr;
-
     // clean [limbo_head_, limbo_tail_]
     while (limbo_head_->clean_until(*this, max_epoch)) {
-        if (!empty_head)
-            empty_head = limbo_head_;
-        empty_tail = limbo_head_;
-        if (limbo_head_ == limbo_tail_) {
-            limbo_head_ = limbo_tail_ = empty_head;
-            goto done;
-        }
-        limbo_head_ = limbo_head_->next_;
-    }
-    // hook empties after limbo_tail_
-    if (empty_head) {
-        empty_tail->next_ = limbo_tail_;
-        limbo_tail_->next_ = empty_head;
+      limbo_group* old_head = limbo_head_;
+      limbo_head_ = limbo_head_->next_;
+      deallocate(old_head, sizeof(limbo_group), memtag_limbo);
+      unmark(tc_limbo_slots, limbo_group::capacity);
+
+      if (limbo_head_ == nullptr) {
+	// entire limbo list is empty, allocate a new head
+        void *limbo_space = allocate(sizeof(limbo_group), memtag_limbo);
+        mark(tc_limbo_slots, limbo_group::capacity);
+	limbo_head_ = limbo_tail_ = new(limbo_space) limbo_group;
+	return;
+      }
     }
 
-done:
+    assert(limbo_head_);
     if (limbo_head_->head_ != limbo_head_->tail_)
         limbo_epoch_ = limbo_head_->e_[limbo_head_->head_].epoch_;
     else
