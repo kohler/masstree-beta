@@ -632,7 +632,7 @@ void kvtest_wd1(unsigned initial_pos, int incr, C &client)
             ++n;
             if (client.remove_sync(pos))
                 pos += incr;
-            if ((n % (1 << 16)) == 0)
+            if ((n % (1 << 6)) == 0)
                 client.rcu_quiesce();
         }
         result.set("removepos", pos);
@@ -641,7 +641,7 @@ void kvtest_wd1(unsigned initial_pos, int incr, C &client)
             ++n;
             client.put(pos, pos + 1);
             pos += incr;
-            if ((n % (1 << 16)) == 0)
+            if ((n % (1 << 6)) == 0)
                 client.rcu_quiesce();
         }
         result.set("putpos", pos);

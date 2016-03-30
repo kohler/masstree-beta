@@ -68,30 +68,46 @@ void threadinfo::refill_rcu() {
     assert(limbo_tail_->head_ == 0 && limbo_tail_->tail_ == 0);
 }
 
-inline bool limbo_group::clean_until(threadinfo& ti, mrcu_epoch_type max_epoch) {
-    while (head_ != tail_ && mrcu_signed_epoch_type(max_epoch - e_[head_].u_.epoch) > 0) {
-        ++head_;
-        while (head_ != tail_ && e_[head_].ptr_) {
+inline unsigned limbo_group::clean_until(threadinfo& ti, mrcu_epoch_type epoch_bound,
+                                         unsigned count) {
+    epoch_type epoch = 0;
+    while (head_ != tail_) {
+        if (e_[head_].ptr_) {
             ti.free_rcu(e_[head_].ptr_, e_[head_].u_.tag);
             ti.mark(tc_gc);
-            ++head_;
+            --count;
+            if (!count) {
+                e_[head_].ptr_ = nullptr;
+                e_[head_].u_.epoch = epoch;
+                break;
+            }
+        } else {
+            epoch = e_[head_].u_.epoch;
+            if (signed_epoch_type(epoch_bound - epoch) < 0)
+                break;
         }
+        ++head_;
     }
-    if (head_ == tail_) {
+    if (head_ == tail_)
         head_ = tail_ = 0;
-        return true;
-    } else
-        return false;
+    return count;
 }
 
 void threadinfo::hard_rcu_quiesce() {
-    mrcu_epoch_type max_epoch = active_epoch;
-
     limbo_group* empty_head = nullptr;
     limbo_group* empty_tail = nullptr;
+    unsigned count = rcu_free_count;
+
+    mrcu_epoch_type epoch_bound = active_epoch - 1;
+    if (limbo_head_->head_ == limbo_head_->tail_
+        || mrcu_signed_epoch_type(epoch_bound - limbo_head_->first_epoch()) < 0)
+        goto done;
 
     // clean [limbo_head_, limbo_tail_]
-    while (limbo_head_->clean_until(*this, max_epoch)) {
+    while (count) {
+        count = limbo_head_->clean_until(*this, epoch_bound, count);
+        if (limbo_head_->head_ != limbo_head_->tail_)
+            break;
         if (!empty_head)
             empty_head = limbo_head_;
         empty_tail = limbo_head_;
@@ -108,10 +124,10 @@ void threadinfo::hard_rcu_quiesce() {
     }
 
 done:
-    if (limbo_head_->head_ != limbo_head_->tail_)
-        limbo_epoch_ = limbo_head_->e_[limbo_head_->head_].u_.epoch;
+    if (!count)
+        perform_gc_epoch_ = epoch_bound; // do GC again immediately
     else
-        limbo_epoch_ = 0;
+        perform_gc_epoch_ = epoch_bound + 1;
 }
 
 void threadinfo::report_rcu(void *ptr) const
