@@ -709,8 +709,8 @@ and finally a new root.
 
 \noindent%
 But the higher layer connects to the \emph{old} root, not the new root.
-Correcting this would more work: modifications to the higher layer
-require locking the higher-layer node. We choose to delay that work.
+Correcting this requires more work, since a modification to the higher layer
+requires locking the higher-layer node. We choose to delay that work.
 There's no \emph{correctness} problem with leaving the tree this
 way---thanks to the root reachability invariant, the new root will be
 found by traversing parent pointers from the old. So we leave the tree
