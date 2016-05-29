@@ -29,6 +29,8 @@ threadinfo *threadinfo::allthreads;
 int threadinfo::no_pool_value;
 #endif
 
+int rcu_free_count = -1; // max # of entries to free per rcu_quiesce() call, -1 means no limit
+
 inline threadinfo::threadinfo(int purpose, int index) {
     memset(this, 0, sizeof(*this));
     purpose_ = purpose;
@@ -69,18 +71,20 @@ void threadinfo::refill_rcu() {
 }
 
 inline unsigned limbo_group::clean_until(threadinfo& ti, mrcu_epoch_type epoch_bound,
-                                         unsigned count) {
+                                         int count) {
     epoch_type epoch = 0;
     while (head_ != tail_) {
         if (e_[head_].ptr_) {
             ti.free_rcu(e_[head_].ptr_, e_[head_].u_.tag);
             ti.mark(tc_gc);
-            --count;
-            if (!count) {
+	    if (0 <= count) {
+	      --count;
+	      if (!count) {
                 e_[head_].ptr_ = nullptr;
                 e_[head_].u_.epoch = epoch;
                 break;
-            }
+	      }
+	    }
         } else {
             epoch = e_[head_].u_.epoch;
             if (signed_epoch_type(epoch_bound - epoch) < 0)

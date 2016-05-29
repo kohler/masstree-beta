@@ -63,6 +63,7 @@
 #include "msgpack.hh"
 #include <algorithm>
 #include <deque>
+#include <sys/timerfd.h>
 using lcdf::StringAccum;
 
 enum { CKState_Quit, CKState_Uninit, CKState_Ready, CKState_Go };
@@ -111,6 +112,10 @@ kvtimestamp_t initial_timestamp;
 
 static pthread_cond_t checkpoint_cond;
 static pthread_mutex_t checkpoint_mu;
+
+extern int rcu_free_count;
+
+static int periodic_quiesce_ms;
 
 static void prepare_thread(threadinfo *ti);
 static int* tcp_thread_pipes;
@@ -562,7 +567,8 @@ struct conninfo {
 enum { clp_val_suffixdouble = Clp_ValFirstUser };
 enum { opt_nolog = 1, opt_pin, opt_logdir, opt_port, opt_ckpdir, opt_duration,
        opt_test, opt_test_name, opt_threads, opt_cores,
-       opt_print, opt_norun, opt_checkpoint, opt_limit, opt_epoch_interval };
+       opt_print, opt_norun, opt_checkpoint, opt_limit, opt_epoch_interval,
+       opt_rcu_free_count, opt_periodic_quiesce_ms };
 static const Clp_Option options[] = {
     { "no-log", 0, opt_nolog, 0, 0 },
     { 0, 'n', opt_nolog, 0, 0 },
@@ -591,7 +597,9 @@ static const Clp_Option options[] = {
     { "threads", 'j', opt_threads, Clp_ValInt, 0 },
     { "cores", 0, opt_cores, Clp_ValString, 0 },
     { "print", 0, opt_print, 0, Clp_Negate },
-    { "epoch-interval", 0, opt_epoch_interval, Clp_ValDouble, 0 }
+    { "epoch-interval", 0, opt_epoch_interval, Clp_ValDouble, 0 },
+    { "rcu-free-count", 0, opt_rcu_free_count, Clp_ValInt, 0 },
+    { "periodic-quiesce", 0, opt_periodic_quiesce_ms, Clp_ValDouble, 0 }
 };
 
 int
@@ -605,6 +613,7 @@ main(int argc, char *argv[])
   Clp_AddType(clp, clp_val_suffixdouble, Clp_DisallowOptions, clp_parse_suffixdouble, 0);
   int opt;
   double epoch_interval_ms = 1000;
+
   while ((opt = Clp_Next(clp)) >= 0) {
       switch (opt) {
       case opt_nolog:
@@ -685,6 +694,12 @@ main(int argc, char *argv[])
           break;
       case opt_epoch_interval:
 	epoch_interval_ms = clp->val.d;
+	break;
+      case opt_rcu_free_count:
+	rcu_free_count = clp->val.i;
+	break;
+      case opt_periodic_quiesce_ms:
+	periodic_quiesce_ms = clp->val.d;
 	break;
       default:
           fprintf(stderr, "Usage: mtd [-np] [--ld dir1[,dir2,...]] [--cd dir1[,dir2,...]]\n");
@@ -1007,7 +1022,7 @@ int onego(query<row_type>& q, Json& request, Str request_str, threadinfo& ti) {
 
 #if HAVE_SYS_EPOLL_H
 struct tcpfds {
-    int epollfd;
+    int epollfd, timerfd;
 
     tcpfds(int pipefd) {
         epollfd = epoll_create(10);
@@ -1043,6 +1058,35 @@ struct tcpfds {
     void remove(int fd) {
         int r = epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
         always_assert(r == 0);
+    }
+
+    void add_timer() {
+        if (!periodic_quiesce_ms)
+          return;
+
+	timerfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+	always_assert(0 <= timerfd);
+
+	struct itimerspec it;
+	memset(&it, 0, sizeof(it));
+	it.it_value.tv_sec = periodic_quiesce_ms / 1000;
+	it.it_value.tv_nsec = fmod(periodic_quiesce_ms, 1000) * 1000000;
+	int r = timerfd_settime(timerfd, 0, &it, NULL);
+	always_assert(0 <= r);
+
+	struct epoll_event tev;
+	tev.events = EPOLLIN;
+	tev.data.ptr = nullptr;
+	r = epoll_ctl(epollfd, EPOLL_CTL_ADD, timerfd, &tev);
+    }
+
+    void do_timer() {
+	uint64_t val;
+	int ret = read(timerfd, &val, sizeof(val));
+	always_assert(ret == sizeof(val));
+	close(timerfd);
+
+	add_timer();
     }
 };
 #else
@@ -1119,11 +1163,29 @@ void* tcp_threadfunc(void* x) {
     std::deque<conn*> ready;
     query<row_type> q;
 
+    sloop.add_timer();
+
     while (1) {
         int nev = sloop.wait(events);
-        for (int i = 0; i < nev; i++)
+	bool timer_happened = false;
+
+        for (int i = 0; i < nev; i++) {
             if (conn *c = sloop.event_conn(events, i))
                 ready.push_back(c);
+	    else
+		// Assuming ev.data.ptr == nullptr, then the even comes from timer.
+		// Is this always correct?
+		timer_happened = true;
+	}
+
+	if (ready.empty() && timer_happened) {
+	    // Advance my epoch even if there's no requests for fine grained quiesce
+	    sloop.do_timer();
+	    ti->rcu_start();
+	    ti->rcu_stop();
+
+	    continue;
+	}
 
         while (!ready.empty()) {
             conn* c = ready.front();
