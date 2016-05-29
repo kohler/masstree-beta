@@ -1156,8 +1156,8 @@ void* tcp_threadfunc(void* x) {
                     goto closed;
                 ti->rcu_start();
                 ret = onego(q, request, c->recent_string(xposition), *ti);
-                ti->rcu_stop();
                 msgpack::unparse(*c->kvout, request);
+                ti->rcu_stop();
                 request.clear();
                 if (likely(ret >= 0)) {
                     if (c->check(0))
