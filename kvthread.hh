@@ -34,6 +34,8 @@ typedef int64_t mrcu_signed_epoch_type;
 extern volatile mrcu_epoch_type globalepoch;  // global epoch, updated regularly
 extern volatile mrcu_epoch_type active_epoch;
 
+extern int rcu_free_count;
+
 struct limbo_group {
     typedef mrcu_epoch_type epoch_type;
     typedef mrcu_signed_epoch_type signed_epoch_type;
@@ -71,7 +73,7 @@ struct limbo_group {
         e_[tail_].u_.tag = tag;
         ++tail_;
     }
-    inline unsigned clean_until(threadinfo& ti, mrcu_epoch_type epoch_bound, unsigned count);
+    inline unsigned clean_until(threadinfo& ti, mrcu_epoch_type epoch_bound, int count);
 };
 
 template <int N> struct has_threadcounter {
@@ -259,7 +261,6 @@ class threadinfo {
     }
 
     // RCU
-    enum { rcu_free_count = 128 }; // max # of entries to free per rcu_quiesce() call
     void rcu_start() {
         if (gc_epoch_ != globalepoch)
             gc_epoch_ = globalepoch;

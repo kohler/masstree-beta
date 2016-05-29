@@ -112,6 +112,8 @@ kvtimestamp_t initial_timestamp;
 static pthread_cond_t checkpoint_cond;
 static pthread_mutex_t checkpoint_mu;
 
+extern int rcu_free_count;
+
 static void prepare_thread(threadinfo *ti);
 static int* tcp_thread_pipes;
 static void* tcp_threadfunc(void* ti);
@@ -562,7 +564,8 @@ struct conninfo {
 enum { clp_val_suffixdouble = Clp_ValFirstUser };
 enum { opt_nolog = 1, opt_pin, opt_logdir, opt_port, opt_ckpdir, opt_duration,
        opt_test, opt_test_name, opt_threads, opt_cores,
-       opt_print, opt_norun, opt_checkpoint, opt_limit, opt_epoch_interval };
+       opt_print, opt_norun, opt_checkpoint, opt_limit, opt_epoch_interval,
+       opt_rcu_free_count };
 static const Clp_Option options[] = {
     { "no-log", 0, opt_nolog, 0, 0 },
     { 0, 'n', opt_nolog, 0, 0 },
@@ -591,7 +594,8 @@ static const Clp_Option options[] = {
     { "threads", 'j', opt_threads, Clp_ValInt, 0 },
     { "cores", 0, opt_cores, Clp_ValString, 0 },
     { "print", 0, opt_print, 0, Clp_Negate },
-    { "epoch-interval", 0, opt_epoch_interval, Clp_ValDouble, 0 }
+    { "epoch-interval", 0, opt_epoch_interval, Clp_ValDouble, 0 },
+    { "rcu-free-count", 0, opt_rcu_free_count, Clp_ValInt, 0 }
 };
 
 int
@@ -685,6 +689,9 @@ main(int argc, char *argv[])
           break;
       case opt_epoch_interval:
 	epoch_interval_ms = clp->val.d;
+	break;
+      case opt_rcu_free_count:
+	rcu_free_count = clp->val.i;
 	break;
       default:
           fprintf(stderr, "Usage: mtd [-np] [--ld dir1[,dir2,...]] [--cd dir1[,dir2,...]]\n");
