@@ -127,8 +127,8 @@ if test "$ac_cv_cxx_auto" != yes; then
     AC_MSG_ERROR([
 
 The C++ compiler does not appear to understand C++11.
-To fix this problem, try supplying a "CXX" argument to ./configure,
-such as "./configure CXX='c++ -std=gnu++0x'".
+Try supplying a CXXFLAGS argument to ./configure,
+such as "./configure CXXFLAGS='-std=gnu++0x'".
 
 ========================================================])
 fi
