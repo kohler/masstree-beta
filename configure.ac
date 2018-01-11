@@ -50,6 +50,9 @@ KVDB_CHECK_BUILTIN([__builtin_ctzl],
 KVDB_CHECK_BUILTIN([__builtin_ctzll],
     [[unsigned long long f(unsigned long long x) { return __builtin_ctzll(x); }]])
 
+KVDB_CHECK_BUILTIN([__builtin_bswap64],
+    [[unsigned long long f(unsigned long long x) { return __builtin_bswap64(x); }]])
+
 KVDB_CHECK_BUILTIN([__sync_synchronize], [[long x = 11;
     void f(long i) { long* y = &x; __sync_synchronize(); *y = i; }]])
 
