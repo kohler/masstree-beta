@@ -131,7 +131,7 @@ void tcursor<P>::finish_insert()
     permuter_type perm(n_->permutation_);
     masstree_invariant(perm.back() == kx_.p);
     perm.insert_from_back(kx_.i);
-    fence();
+    release_fence();
     n_->permutation_ = perm.value();
 }
 
