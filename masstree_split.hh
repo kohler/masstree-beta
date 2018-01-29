@@ -39,9 +39,9 @@ leaf<P>::ikey_after_insert(const permuter_type& perm, int i,
     @post split_ikey is the first key in *@a nr
     @return split type
 
-    If @a p == this->size() and *this is the rightmost node in the layer,
-    then this code assumes we're inserting nodes in sequential order, and
-    the split does not move any keys.
+    If @a p == this->size() and the permutation indicates that nodes are
+    being inserted in sequential order, then the split doesn't move any
+    keys. This reduces memory usage but can lead to unbalanced trees.
 
     The split type is 0 if @a ka went into *this, 1 if the @a ka went into
     *@a nr, and 2 for the sequential-order optimization (@a ka went into *@a
@@ -62,15 +62,15 @@ int leaf<P>::split_into(leaf<P>* nr, int p, const key_type& ka,
     masstree_precondition(!this->concurrent || (this->locked() && nr->locked()));
     masstree_precondition(this->size() >= this->width - 1);
 
-    int width = this->size();   // == this->width or this->width - 1
+    permuter_type perml(this->permutation_);
+    int width = perml.size();   // == this->width or this->width - 1
     int mid = this->width / 2 + 1;
     if (p == 0 && !this->prev_)
         mid = 1;
-    else if (p == width && !this->next_.ptr)
+    else if (p == width && perml == perml.make_sorted(width))
         mid = width;
 
     // Never separate keys with the same ikey0.
-    permuter_type perml(this->permutation_);
     ikey_type mid_ikey = ikey_after_insert(perml, mid, ka, p);
     if (mid_ikey == ikey_after_insert(perml, mid - 1, ka, p)) {
         int midl = mid - 2, midr = mid + 1;
