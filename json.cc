@@ -574,7 +574,7 @@ bool Json::unparse_is_complex() const {
         }
     } else if (is_array()) {
         if (ArrayJson *aj = ajson()) {
-            if (aj->size > 128)
+            if (aj->size > 1024)
                 return true;
             for (Json* it = aj->a; it != aj->a + aj->size; ++it)
                 if (!it->empty()

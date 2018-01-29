@@ -176,7 +176,8 @@ void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth)
         else
             fprintf(f, "%s%*s[]\n", prefix, indent, "");
         int l = P::key_unparse_type::unparse_key(copy.get_key(p), keybuf, sizeof(keybuf));
-        fprintf(f, "%s%*s%.*s\n", prefix, indent, "", l, keybuf);
+        fprintf(f, "%s%*s%p[%d.%d] %.*s\n",
+                prefix, indent, "", this, depth, p, l, keybuf);
     }
     if (copy.child_[copy.size()])
         copy.child_[copy.size()]->print(f, prefix, depth + 1, kdepth);

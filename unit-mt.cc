@@ -43,6 +43,7 @@ public:
     typedef Masstree::unlocked_tcursor<table_params> unlocked_cursor_type;
     typedef Masstree::tcursor<table_params> cursor_type;
     typedef Masstree::leaf<table_params> leaf_type;
+    typedef Masstree::internode<table_params> internode_type;
 
     typedef typename table_type::node_type node_type;
     typedef typename unlocked_cursor_type::nodeversion_value_type nodeversion_value_type;

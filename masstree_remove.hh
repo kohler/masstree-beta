@@ -143,8 +143,7 @@ void gc_layer_rcu_callback<P>::make(node_base<P>* root, Str prefix,
 }
 
 template <typename P>
-bool tcursor<P>::finish_remove(threadinfo& ti)
-{
+bool tcursor<P>::finish_remove(threadinfo& ti) {
     if (n_->modstate_ == leaf<P>::modstate_insert) {
         n_->mark_insert();
         n_->modstate_ = leaf<P>::modstate_remove;
