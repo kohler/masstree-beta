@@ -93,7 +93,7 @@ class node_base : public make_nodeversion<P>::type {
             ::prefetch((const char *) this + i);
     }
 
-    void print(FILE* f, const char* prefix, int indent, int kdepth);
+    void print(FILE* f, const char* prefix, int depth, int kdepth);
 };
 
 template <typename P>
@@ -150,7 +150,7 @@ class internode : public node_base<P> {
             ::prefetch((const char *) this + i);
     }
 
-    void print(FILE* f, const char* prefix, int indent, int kdepth);
+    void print(FILE* f, const char* prefix, int depth, int kdepth);
 
     void deallocate(threadinfo& ti) {
         ti.pool_deallocate(this, sizeof(*this), memtag_masstree_internode);
@@ -460,7 +460,7 @@ class leaf : public node_base<P> {
         }
     }
 
-    void print(FILE* f, const char* prefix, int indent, int kdepth);
+    void print(FILE* f, const char* prefix, int depth, int kdepth);
 
     leaf<P>* safe_next() const {
         return reinterpret_cast<leaf<P>*>(next_.x & ~(uintptr_t) 1);

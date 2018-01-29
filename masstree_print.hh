@@ -64,16 +64,16 @@ class value_print<uint64_t> {
 };
 
 template <typename P>
-void node_base<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
+void node_base<P>::print(FILE* f, const char* prefix, int depth, int kdepth)
 {
     if (this->isleaf())
-        ((leaf<P> *) this)->print(f, prefix, indent, kdepth);
+        ((leaf<P> *) this)->print(f, prefix, depth, kdepth);
     else
-        ((internode<P> *) this)->print(f, prefix, indent, kdepth);
+        ((internode<P> *) this)->print(f, prefix, depth, kdepth);
 }
 
 template <typename P>
-void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
+void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth)
 {
     f = f ? f : stderr;
     prefix = prefix ? prefix : "";
@@ -84,6 +84,9 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
         fence();
         perm = permutation_;
     } while (this->has_changed(v));
+    int indent = 4 * depth;
+    if (depth > P::print_max_indent_depth && P::print_max_indent_depth > 0)
+        indent = 4 * P::print_max_indent_depth;
 
     {
         char buf[1024];
@@ -99,8 +102,8 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
             l += snprintf(&buf[l], sizeof(buf) - l, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
         }
         static const char* const modstates[] = {"", "-", "D"};
-        fprintf(f, "%s%*sleaf %p: %d %s, version %" PRIx64 "%s, permutation %s, parent %p, prev %p, next %p%.*s\n",
-                prefix, indent, "", this,
+        fprintf(f, "%s%*sleaf %p[%d]: %d %s, version %" PRIx64 "%s, permutation %s, parent %p, prev %p, next %p%.*s\n",
+                prefix, indent, "", this, depth,
                 perm.size(), perm.size() == 1 ? "key" : "keys",
                 (uint64_t) v.version_value(),
                 modstate_ <= 2 ? modstates[modstate_] : "??",
@@ -129,7 +132,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
             node_base<P> *n = lv.layer();
             while (!n->is_root())
                 n = n->maybe_parent();
-            n->print(f, prefix, indent + 4, kdepth + key_type::ikey_size);
+            n->print(f, prefix, depth + 1, kdepth + key_type::ikey_size);
         } else {
             typename P::value_type tvx = lv.value();
             P::value_print_type::print(tvx, f, prefix, indent + 2, Str(keybuf, l), initial_timestamp, xbuf);
@@ -141,13 +144,16 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 }
 
 template <typename P>
-void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
+void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth)
 {
     f = f ? f : stderr;
     prefix = prefix ? prefix : "";
     internode<P> copy(*this);
     for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i)
         memcpy(&copy, this, sizeof(copy));
+    int indent = 4 * depth;
+    if (depth > P::print_max_indent_depth && P::print_max_indent_depth > 0)
+        indent = 4 * P::print_max_indent_depth;
 
     {
         char buf[1024];
@@ -156,8 +162,8 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
             kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
             l = snprintf(buf, sizeof(buf), " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
         }
-        fprintf(f, "%s%*sinternode %p%s: %d keys, version %" PRIx64 ", parent %p%.*s\n",
-                prefix, indent, "", this, this->deleted() ? " [DELETED]" : "",
+        fprintf(f, "%s%*sinternode %p[%d]%s: %d keys, version %" PRIx64 ", parent %p%.*s\n",
+                prefix, indent, "", this, depth, this->deleted() ? " [DELETED]" : "",
                 copy.size(), (uint64_t) copy.version_value(), copy.parent_,
                 l, buf);
     }
@@ -165,14 +171,14 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
     char keybuf[MASSTREE_MAXKEYLEN];
     for (int p = 0; p < copy.size(); ++p) {
         if (copy.child_[p])
-            copy.child_[p]->print(f, prefix, indent + 4, kdepth);
+            copy.child_[p]->print(f, prefix, depth + 1, kdepth);
         else
             fprintf(f, "%s%*s[]\n", prefix, indent + 4, "");
         int l = P::key_unparse_type::unparse_key(copy.get_key(p), keybuf, sizeof(keybuf));
         fprintf(f, "%s%*s%.*s\n", prefix, indent + 2, "", l, keybuf);
     }
     if (copy.child_[copy.size()])
-        copy.child_[copy.size()]->print(f, prefix, indent + 4, kdepth);
+        copy.child_[copy.size()]->print(f, prefix, depth + 1, kdepth);
     else
         fprintf(f, "%s%*s[]\n", prefix, indent + 4, "");
 }
