@@ -85,30 +85,34 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
         perm = permutation_;
     } while (this->has_changed(v));
 
-    static const char* modstates[] = {"", "-", "D"};
-    char keybuf[MASSTREE_MAXKEYLEN];
-    fprintf(f, "%s%*sleaf %p: %d %s, version %" PRIx64 "%s, permutation %s, ",
-            prefix, indent, "", this,
-            perm.size(), perm.size() == 1 ? "key" : "keys",
-            (uint64_t) v.version_value(),
-            modstate_ <= 2 ? modstates[modstate_] : "??",
-            perm.unparse().c_str());
-    fprintf(f, "parent %p, prev %p, next %p ", parent_, prev_, next_.ptr);
-    if (ksuf_ && extrasize64_ < -1)
-        fprintf(f, "[ksuf i%dx%d] ", -extrasize64_ - 1, (int) ksuf_->capacity() / 64);
-    else if (ksuf_)
-        fprintf(f, "[ksuf x%d] ", (int) ksuf_->capacity() / 64);
-    else if (extrasize64_)
-        fprintf(f, "[ksuf i%d] ", extrasize64_);
-    if (P::debug_level > 0) {
-        kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
-        fprintf(f, "@" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
+    {
+        char buf[1024];
+        int l = 0;
+        if (ksuf_ && extrasize64_ < -1)
+            l = snprintf(buf, sizeof(buf), " [ksuf i%dx%d]", -extrasize64_ - 1, (int) ksuf_->capacity() / 64);
+        else if (ksuf_)
+            l = snprintf(buf, sizeof(buf), " [ksuf x%d]", (int) ksuf_->capacity() / 64);
+        else if (extrasize64_)
+            l = snprintf(buf, sizeof(buf), " [ksuf i%d]", extrasize64_);
+        if (P::debug_level > 0) {
+            kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
+            l += snprintf(&buf[l], sizeof(buf) - l, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
+        }
+        static const char* const modstates[] = {"", "-", "D"};
+        fprintf(f, "%s%*sleaf %p: %d %s, version %" PRIx64 "%s, permutation %s, parent %p, prev %p, next %p%.*s\n",
+                prefix, indent, "", this,
+                perm.size(), perm.size() == 1 ? "key" : "keys",
+                (uint64_t) v.version_value(),
+                modstate_ <= 2 ? modstates[modstate_] : "??",
+                perm.unparse().c_str(),
+                parent_, prev_, next_.ptr,
+                l, buf);
     }
-    fputc('\n', f);
 
     if (v.deleted() || (perm[0] != 0 && prev_))
         fprintf(f, "%s%*s%s = [] #0\n", prefix, indent + 2, "", key_type(ikey_bound()).unparse().c_str());
 
+    char keybuf[MASSTREE_MAXKEYLEN];
     char xbuf[15];
     for (int idx = 0; idx < perm.size(); ++idx) {
         int p = perm[idx];
@@ -145,15 +149,20 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
     for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i)
         memcpy(&copy, this, sizeof(copy));
 
-    char keybuf[MASSTREE_MAXKEYLEN];
-    fprintf(f, "%s%*sinternode %p%s: %d keys, version %" PRIx64 ", parent %p",
-            prefix, indent, "", this, this->deleted() ? " [DELETED]" : "",
-            copy.size(), (uint64_t) copy.version_value(), copy.parent_);
-    if (P::debug_level > 0) {
-        kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
-        fprintf(f, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
+    {
+        char buf[1024];
+        int l = 0;
+        if (P::debug_level > 0) {
+            kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
+            l = snprintf(buf, sizeof(buf), " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
+        }
+        fprintf(f, "%s%*sinternode %p%s: %d keys, version %" PRIx64 ", parent %p%.*s\n",
+                prefix, indent, "", this, this->deleted() ? " [DELETED]" : "",
+                copy.size(), (uint64_t) copy.version_value(), copy.parent_,
+                l, buf);
     }
-    fputc('\n', f);
+
+    char keybuf[MASSTREE_MAXKEYLEN];
     for (int p = 0; p < copy.size(); ++p) {
         if (copy.child_[p])
             copy.child_[p]->print(f, prefix, indent + 4, kdepth);

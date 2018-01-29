@@ -19,11 +19,10 @@
 
 #define NUM_THREADS 64
 
-class key_unparse_swapped_unsigned {
+class key_unparse_unsigned {
 public:
     static int unparse_key(Masstree::key<uint64_t> key, char* buf, int buflen) {
-        uint64_t val = __builtin_bswap64(key.ikey());
-        return snprintf(buf, buflen, "%llu", val);
+        return snprintf(buf, buflen, "%llu", key.ikey());
     }
 };
 
@@ -34,7 +33,7 @@ public:
         typedef uint64_t value_type;
         typedef Masstree::value_print<value_type> value_print_type;
         typedef threadinfo threadinfo_type;
-        typedef key_unparse_swapped_unsigned key_unparse_type;
+        typedef key_unparse_unsigned key_unparse_type;
     };
 
     typedef Masstree::Str Str;
