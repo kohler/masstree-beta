@@ -14,7 +14,7 @@
  * is legally binding.
  */
 #ifndef MASSTREE_SPLIT_HH
-#define MASSTREE_SPLIT_HH 1
+#define MASSTREE_SPLIT_HH
 #include "masstree_tcursor.hh"
 #include "btree_leaflink.hh"
 namespace Masstree {

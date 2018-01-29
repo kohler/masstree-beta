@@ -86,6 +86,7 @@ void node_json_stats(node_base<P>* n, lcdf::Json& j, int layer, int depth,
             if (in->child_[i])
                 node_json_stats(in->child_[i], j, layer, depth + 1, ti);
         j[&"l1_node_by_depth"[!layer * 3]][depth] += 1;
+        j[&"l1_internode_by_size"[!layer * 3]][in->size()] += 1;
     }
 }
 
@@ -97,8 +98,8 @@ void json_stats(lcdf::Json& j, basic_table<P>& table, TI& ti)
     j["l1_count"] = 0;
     j["l1_size"] = 0;
     const char* const jarrays[] = {
-        "node_by_depth", "leaf_by_depth", "leaf_by_size",
-        "l1_node_by_depth", "l1_leaf_by_depth", "l1_leaf_by_size",
+        "node_by_depth", "internode_by_size", "leaf_by_depth", "leaf_by_size",
+        "l1_node_by_depth", "l1_internode_by_size", "l1_leaf_by_depth", "l1_leaf_by_size",
         "key_by_layer", "key_by_length",
         "ksuf_by_layer", "unused_ksuf_by_layer", "used_ksuf_by_layer"
     };
