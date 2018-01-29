@@ -67,6 +67,9 @@ msgpacktest: msgpacktest.o string.o straccum.o json.o compiler.o msgpack.o
 scantest: scantest.o compiler.o misc.o $(KVTREES) libjson.a
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
+unit-mt: unit-mt.o compiler.o misc.o libjson.a
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+
 config.h: stamp-h
 
 GNUmakefile: GNUmakefile.in config.status
