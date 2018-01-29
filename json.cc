@@ -574,10 +574,12 @@ bool Json::unparse_is_complex() const {
         }
     } else if (is_array()) {
         if (ArrayJson *aj = ajson()) {
-            if (aj->size > 8)
+            if (aj->size > 128)
                 return true;
             for (Json* it = aj->a; it != aj->a + aj->size; ++it)
-                if (!it->empty() && !it->is_primitive())
+                if (!it->empty()
+                    && (!it->is_primitive()
+                        || (it->is_string() && it - aj->a >= 4 && it->as_s().length() > 40)))
                     return true;
         }
     }
