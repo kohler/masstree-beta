@@ -20,6 +20,17 @@
 
 namespace Masstree {
 
+class key_unparse_printable_string {
+public:
+    template <typename K>
+    static int unparse_key(key<K> key, char* buf, int buflen) {
+        String s = key.unparse().printable();
+        int cplen = std::min(s.length(), buflen);
+        memcpy(buf, s.data(), cplen);
+        return cplen;
+    }
+};
+
 template <typename T>
 class value_print {
   public:
@@ -37,6 +48,17 @@ class value_print<unsigned char*> {
                       int indent, Str key, kvtimestamp_t,
                       char* suffix) {
         fprintf(f, "%s%*s%.*s = %p%s\n",
+                prefix, indent, "", key.len, key.s, value, suffix);
+    }
+};
+
+template <>
+class value_print<uint64_t> {
+  public:
+    static void print(uint64_t value, FILE* f, const char* prefix,
+                      int indent, Str key, kvtimestamp_t,
+                      char* suffix) {
+        fprintf(f, "%s%*s%.*s = %llu%s\n",
                 prefix, indent, "", key.len, key.s, value, suffix);
     }
 };
@@ -89,11 +111,8 @@ void leaf<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 
     char xbuf[15];
     for (int idx = 0; idx < perm.size(); ++idx) {
-        int p = perm[idx], l;
-        if (P::printable_keys)
-            l = this->get_key(p).unparse_printable(keybuf, sizeof(keybuf));
-        else
-            l = this->get_key(p).unparse(keybuf, sizeof(keybuf));
+        int p = perm[idx];
+        int l = P::key_unparse_type::unparse_key(this->get_key(p), keybuf, sizeof(keybuf));
         sprintf(xbuf, " #%x/%d", p, keylenx_[p]);
         leafvalue_type lv = lv_[p];
         if (this->has_changed(v)) {
@@ -140,11 +159,7 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
             copy.child_[p]->print(f, prefix, indent + 4, kdepth);
         else
             fprintf(f, "%s%*s[]\n", prefix, indent + 4, "");
-        int l;
-        if (P::printable_keys)
-            l = copy.get_key(p).unparse_printable(keybuf, sizeof(keybuf));
-        else
-            l = copy.get_key(p).unparse(keybuf, sizeof(keybuf));
+        int l = P::key_unparse_type::unparse_key(copy.get_key(p), keybuf, sizeof(keybuf));
         fprintf(f, "%s%*s%.*s\n", prefix, indent + 2, "", l, keybuf);
     }
     if (copy.child_[copy.size()])

@@ -23,6 +23,7 @@ namespace Masstree {
 using lcdf::Str;
 using lcdf::String;
 
+class key_unparse_printable_string;
 template <typename T> class value_print;
 
 template <int LW = 15, int IW = LW> struct nodeparams {
@@ -32,11 +33,11 @@ template <int LW = 15, int IW = LW> struct nodeparams {
     static constexpr bool prefetch = true;
     static constexpr int bound_method = bound_method_binary;
     static constexpr int debug_level = 0;
-    static constexpr bool printable_keys = true;
     typedef uint64_t ikey_type;
     typedef uint32_t nodeversion_value_type;
     static constexpr bool need_phantom_epoch = true;
     typedef uint64_t phantom_epoch_type;
+    typedef key_unparse_printable_string key_unparse_type;
 };
 
 template <int LW, int IW> constexpr int nodeparams<LW, IW>::leaf_width;
