@@ -188,94 +188,68 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
     // Unlink leaf from doubly-linked leaf list
     btree_leaflink<leaf_type>::unlink(leaf);
 
-    // Remove leaf from tree. This is simple unless the leaf is the first
-    // child of its parent, in which case we need to traverse up until we find
-    // its key.
-    node_type *n = leaf;
+    // Remove leaf from tree, collapse trivial chains, and rewrite
+    // ikey bounds.
     ikey_type ikey = leaf->ikey_bound();
+    node_type* n = leaf;
+    node_type* replacement = nullptr;
 
     while (1) {
         internode_type *p = n->locked_parent(ti);
-        masstree_invariant(p);
-        n->unlock();
+        p->mark_insert();
+        masstree_invariant(!p->deleted());
 
         int kp = internode_type::bound_type::upper(ikey, *p);
-        masstree_invariant(kp == 0 || p->compare_key(ikey, kp - 1) == 0);
+        masstree_invariant(kp == 0 || p->ikey0_[kp - 1] <= ikey); // NB ikey might not equal!
+        masstree_invariant(p->child_[kp] == n);
 
-        if (kp > 0) {
-            p->mark_insert();
+        p->child_[kp] = replacement;
+
+        if (replacement) {
+            replacement->set_parent(p);
+        } else if (kp > 0) {
             p->shift_down(kp - 1, kp, p->nkeys_ - kp);
             --p->nkeys_;
-            if (kp > 1 || p->child_[0])
-                return collapse(p, ikey, root, prefix, ti);
         }
 
-        if (p->size() == 0) {
-            p->mark_deleted();
-            p->deallocate_rcu(ti);
-        } else
-            return reshape(p, ikey, root, prefix, ti);
+        if (kp <= 1 && p->nkeys_ > 0 && !p->child_[0]) {
+            redirect(p, ikey, p->ikey0_[0], ti);
+            ikey = p->ikey0_[0];
+        }
 
+        n->unlock();
+
+        if (p->nkeys_ > (p->child_[0] == nullptr)
+            || p->is_root()) {
+            p->unlock();
+            return true;
+        }
+
+        p->mark_deleted();
+        p->deallocate_rcu(ti);
         n = p;
+        replacement = p->child_[p->nkeys_];
+        p->child_[p->nkeys_] = nullptr;
     }
 }
 
 template <typename P>
-bool tcursor<P>::reshape(internode_type* n, ikey_type ikey,
-                         node_type* root, Str prefix, threadinfo& ti)
+void tcursor<P>::redirect(internode_type* n, ikey_type ikey,
+                          ikey_type replacement_ikey, threadinfo& ti)
 {
-    masstree_precondition(n && n->locked());
-
-    n->child_[0] = 0;
-    ikey_type patchkey = n->ikey0_[0];
-
-    while (1) {
-        internode_type *p = n->locked_parent(ti);
-        masstree_invariant(p);
-        n->unlock();
-
-        int kp = internode_type::bound_type::upper(ikey, *p);
-        masstree_invariant(kp == 0 || p->compare_key(ikey, kp - 1) == 0);
-
+    int kp = -1;
+    do {
+        internode_type* p = n->locked_parent(ti);
+        if (kp >= 0)
+            n->unlock();
+        n = p;
+        kp = internode_type::bound_type::upper(ikey, *n);
         if (kp > 0) {
-            p->mark_insert();
-            p->ikey0_[kp - 1] = patchkey;
-            if (kp > 1 || p->child_[0])
-                return collapse(p, ikey, root, prefix, ti);
+            // NB n->ikey0_[kp - 1] might not equal ikey
+            n->ikey0_[kp - 1] = replacement_ikey;
         }
-
-        n = p;
-    }
-}
-
-template <typename P>
-bool tcursor<P>::collapse(internode_type* n, ikey_type ikey,
-                          node_type* root, Str prefix, threadinfo& ti)
-{
-    masstree_precondition(n && n->locked());
-
-    while (n->size() == 0) {
-        internode_type *p = n->locked_parent(ti);
-        if (!n->parent_exists(p)) {
-            if (!prefix.empty())
-                gc_layer_rcu_callback<P>::make(root, prefix, ti);
-            break;
-        }
-
-        int kp = key_upper_bound(ikey, *p);
-        masstree_invariant(p->child_[kp] == n);
-        p->child_[kp] = n->child_[0];
-        n->child_[0]->set_parent(p);
-
-        n->mark_deleted();
-        n->unlock();
-        n->deallocate_rcu(ti);
-
-        n = p;
-    }
-
+    } while (kp == 0 || (kp == 1 && !n->child_[0]));
     n->unlock();
-    return true;
 }
 
 template <typename P>

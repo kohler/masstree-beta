@@ -182,10 +182,8 @@ class tcursor {
     inline void finish_insert();
     inline bool finish_remove(threadinfo& ti);
 
-    static bool reshape(internode_type* n, ikey_type ikey,
-                        node_type* root, Str prefix, threadinfo& ti);
-    static bool collapse(internode_type* n, ikey_type ikey,
-                         node_type* root, Str prefix, threadinfo& ti);
+    static void redirect(internode_type* n, ikey_type ikey,
+                         ikey_type replacement, threadinfo& ti);
     /** Remove @a leaf from the Masstree rooted at @a rootp.
      * @param prefix String defining the path to the tree containing this leaf.
      *   If removing a leaf in layer 0, @a prefix is empty.

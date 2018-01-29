@@ -14,7 +14,7 @@
  * is legally binding.
  */
 #ifndef MASSTREE_GET_HH
-#define MASSTREE_GET_HH 1
+#define MASSTREE_GET_HH
 #include "masstree_tcursor.hh"
 #include "masstree_key.hh"
 namespace Masstree {

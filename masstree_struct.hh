@@ -630,7 +630,7 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
 
     // Loop over internal nodes.
     while (!v[sense].isleaf()) {
-        const internode<P> *in = static_cast<const internode<P> *>(n[sense]);
+        const internode<P> *in = static_cast<const internode<P>*>(n[sense]);
         in->prefetch();
         int kp = internode<P>::bound_type::upper(ka, *in);
         n[!sense] = in->child_[kp];
