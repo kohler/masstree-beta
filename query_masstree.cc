@@ -332,8 +332,8 @@ void query_table<P>::test(threadinfo& ti) {
 }
 
 template <typename P>
-void query_table<P>::print(FILE *f, int indent) const {
-    table_.print(f, indent);
+void query_table<P>::print(FILE* f) const {
+    table_.print(f);
 }
 
 template class basic_table<default_table::parameters_type>;

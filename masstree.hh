@@ -79,7 +79,7 @@ class basic_table {
     template <typename F>
     int rscan(Str firstkey, bool matchfirst, F& scanner, threadinfo& ti) const;
 
-    inline void print(FILE* f = 0, int indent = 0) const;
+    inline void print(FILE* f = 0) const;
 
   private:
     node_type* root_;

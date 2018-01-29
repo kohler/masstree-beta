@@ -324,11 +324,11 @@ struct kvtest_client {
 
 static volatile int kvtest_printing;
 
-template <typename T> inline void kvtest_print(const T &table, FILE *f, int indent, threadinfo *ti) {
+template <typename T> inline void kvtest_print(const T &table, FILE* f, threadinfo *ti) {
     // only print out the tree from the first failure
     while (!bool_cmpxchg((int *) &kvtest_printing, 0, ti->index() + 1))
         /* spin */;
-    table.print(f, indent);
+    table.print(f);
 }
 
 template <typename T> inline void kvtest_json_stats(T& table, Json& j, threadinfo& ti) {
@@ -501,7 +501,7 @@ void kvtest_client<T>::fail(const char *fmt, ...) {
 
     failing_lock.lock();
     fprintf(stdout, "%d: %s", ti_->index(), m.c_str());
-    kvtest_print(*table_, stdout, 0, ti_);
+    kvtest_print(*table_, stdout, ti_);
 
     always_assert(0);
 }
@@ -633,7 +633,7 @@ struct test_thread {
         }
         int at = fetch_and_add(&active_threads_, -1);
         if (at == 1 && print_table)
-            kvtest_print(*table_, stdout, 0, tt.client_.ti_);
+            kvtest_print(*table_, stdout, tt.client_.ti_);
         if (at == 1 && json_stats) {
             Json j;
             kvtest_json_stats(*table_, j, *tt.client_.ti_);

@@ -178,8 +178,8 @@ void internode<P>::print(FILE *f, const char *prefix, int indent, int kdepth)
 }
 
 template <typename P>
-void basic_table<P>::print(FILE *f, int indent) const {
-    root_->print(f ? f : stdout, "", indent, 0);
+void basic_table<P>::print(FILE* f) const {
+    root_->print(f ? f : stdout, "", 0, 0);
 }
 
 } // namespace Masstree

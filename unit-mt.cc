@@ -138,7 +138,7 @@ public:
         }
         printf("stopped at key %llu\n", int_key);
         if (need_print && fetch_and_add(&printing, 1) == 0) {
-            table_.print(stdout, 1);
+            table_.print(stdout);
             fflush(stdout);
         }
     }

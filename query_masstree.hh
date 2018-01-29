@@ -58,7 +58,7 @@ class query_table {
         return j;
     }
 
-    void print(FILE* f, int indent) const;
+    void print(FILE* f) const;
 
     static void test(threadinfo& ti);
 
