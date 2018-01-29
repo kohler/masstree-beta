@@ -15,6 +15,7 @@
 #include "masstree_print.hh"
 #include "masstree_remove.hh"
 #include "masstree_scan.hh"
+#include "masstree_stats.hh"
 #include "string.hh"
 
 #define NUM_THREADS 64
@@ -28,12 +29,13 @@ public:
 
 class MasstreeWrapper {
 public:
-    static constexpr uint64_t insert_bound = 0xffffff;
+    static constexpr uint64_t insert_bound = 0xfffff; //0xffffff;
     struct table_params : public Masstree::nodeparams<15,15> {
         typedef uint64_t value_type;
         typedef Masstree::value_print<value_type> value_print_type;
         typedef threadinfo threadinfo_type;
         typedef key_unparse_unsigned key_unparse_type;
+        static constexpr ssize_t print_max_indent_depth = 12;
     };
 
     typedef Masstree::Str Str;
@@ -105,7 +107,7 @@ public:
         std::mt19937 gen(thread_id);
         std::uniform_int_distribution<int> dist(1, 6);
         uint64_t int_key = 0;
-        bool need_print = false;
+        bool need_print = true;
         while (!stopping) {
             int_key = fetch_and_add(&key_gen_, 1);
             uint64_t key_buf;
@@ -123,7 +125,7 @@ public:
 
             if (dist(gen) <= 2) {
                 cursor_type lp1(table_, key);
-                bool found1 = lp1.find_insert(*ti);
+                bool found1 = lp1.find_locked(*ti);
                 if (!found1) {
                     stopping = true;
                     lp1.finish(0, *ti);
@@ -140,6 +142,8 @@ public:
         if (need_print && fetch_and_add(&printing, 1) == 0) {
             table_.print(stdout);
             fflush(stdout);
+            fprintf(stdout, "Stats: %s\n",
+                    Masstree::json_stats(table_, ti).unparse(lcdf::Json::indent_depth(1000)).c_str());
         }
     }
 
