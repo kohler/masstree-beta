@@ -17,6 +17,7 @@
 #define MASSTREE_PRINT_HH
 #include "masstree_struct.hh"
 #include <stdio.h>
+#include <inttypes.h>
 
 namespace Masstree {
 
@@ -58,7 +59,7 @@ class value_print<uint64_t> {
     static void print(uint64_t value, FILE* f, const char* prefix,
                       int indent, Str key, kvtimestamp_t,
                       char* suffix) {
-        fprintf(f, "%s%*s%.*s = %llu%s\n",
+        fprintf(f, "%s%*s%.*s = %" PRIu64 "%s\n",
                 prefix, indent, "", key.len, key.s, value, suffix);
     }
 };

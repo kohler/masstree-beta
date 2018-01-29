@@ -23,7 +23,7 @@
 class key_unparse_unsigned {
 public:
     static int unparse_key(Masstree::key<uint64_t> key, char* buf, int buflen) {
-        return snprintf(buf, buflen, "%llu", key.ikey());
+        return snprintf(buf, buflen, "%" PRIu64, key.ikey());
     }
 };
 
@@ -129,7 +129,7 @@ public:
                 if (!found1) {
                     stopping = true;
                     lp1.finish(0, *ti);
-                    printf("failed at key %llu, lp1 got %p\n", int_key, lp1.node());
+                    printf("failed at key %" PRIu64 ", lp1 got %p\n", int_key, lp1.node());
                     need_print = true;
                     break;
                     always_assert(found1, "this is my key!");
@@ -138,7 +138,7 @@ public:
                 }
             }
         }
-        printf("stopped at key %llu\n", int_key);
+        printf("stopped at key %" PRIu64 "\n", int_key);
         if (need_print && fetch_and_add(&printing, 1) == 0) {
             table_.print(stdout);
             fflush(stdout);
