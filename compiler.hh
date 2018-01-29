@@ -494,24 +494,38 @@ inline T* fetch_and_add(T** object, int addend) {
     return (T*) sco_t::fetch_and_add((type*) object, (type) (addend * sizeof(T)));
 }
 
-inline int8_t fetch_and_add(int8_t* object, int addend) {
-    return fetch_and_add(object, int8_t(addend));
+inline char fetch_and_add(char* object, int addend) {
+    return fetch_and_add(object, (char) addend);
 }
-inline uint8_t fetch_and_add(uint8_t* object, int addend) {
-    return fetch_and_add(object, uint8_t(addend));
+inline signed char fetch_and_add(signed char* object, int addend) {
+    return fetch_and_add(object, (signed char) addend);
 }
-inline int16_t fetch_and_add(int16_t* object, int addend) {
-    return fetch_and_add(object, int16_t(addend));
+inline unsigned char fetch_and_add(unsigned char* object, int addend) {
+    return fetch_and_add(object, (unsigned char) addend);
 }
-inline uint16_t fetch_and_add(uint16_t* object, int addend) {
-    return fetch_and_add(object, uint16_t(addend));
+inline short fetch_and_add(short* object, int addend) {
+    return fetch_and_add(object, (short) addend);
+}
+inline unsigned short fetch_and_add(unsigned short* object, int addend) {
+    return fetch_and_add(object, (unsigned short) addend);
 }
 inline unsigned fetch_and_add(unsigned* object, int addend) {
-    return fetch_and_add(object, unsigned(addend));
+    return fetch_and_add(object, (unsigned) addend);
+}
+inline long fetch_and_add(long* object, int addend) {
+    return fetch_and_add(object, (long) addend);
 }
 inline unsigned long fetch_and_add(unsigned long* object, int addend) {
-    return fetch_and_add(object, (unsigned long)(addend));
+    return fetch_and_add(object, (unsigned long) addend);
 }
+#if SIZEOF_LONG_LONG <= 8
+inline long long fetch_and_add(long long* object, int addend) {
+    return fetch_and_add(object, (long long) addend);
+}
+inline unsigned long long fetch_and_add(unsigned long long* object, int addend) {
+    return fetch_and_add(object, (unsigned long long) addend);
+}
+#endif
 
 
 /** @brief Test-and-set lock acquire. */
