@@ -94,8 +94,8 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
             l += snprintf(&buf[l], sizeof(buf) - l, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
         }
         static const char* const modstates[] = {"", "-", "D"};
-        fprintf(f, "%s%*sleaf %p[%d]: %d %s, version %" PRIx64 "%s, permutation %s, parent %p, prev %p, next %p%.*s\n",
-                prefix, indent, "", this, depth,
+        fprintf(f, "%s%*sleaf %p: %d %s, version %" PRIx64 "%s, permutation %s, parent %p, prev %p, next %p%.*s\n",
+                prefix, indent, "", this,
                 perm.size(), perm.size() == 1 ? "key" : "keys",
                 (uint64_t) v.version_value(),
                 modstate_ <= 2 ? modstates[modstate_] : "??",
@@ -154,8 +154,9 @@ void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth) con
             kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
             l = snprintf(buf, sizeof(buf), " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
         }
-        fprintf(f, "%s%*sinternode %p[%d]%s: %d keys, version %" PRIx64 ", parent %p%.*s\n",
-                prefix, indent, "", this, depth, this->deleted() ? " [DELETED]" : "",
+        fprintf(f, "%s%*sinternode %p[%u]%s: %d keys, version %" PRIx64 ", parent %p%.*s\n",
+                prefix, indent, "", this,
+                height_, this->deleted() ? " [DELETED]" : "",
                 copy.size(), (uint64_t) copy.version_value(), copy.parent_,
                 l, buf);
     }
@@ -167,8 +168,8 @@ void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth) con
         else
             fprintf(f, "%s%*s[]\n", prefix, indent, "");
         int l = P::key_unparse_type::unparse_key(copy.get_key(p), keybuf, sizeof(keybuf));
-        fprintf(f, "%s%*s%p[%d.%d] %.*s\n",
-                prefix, indent, "", this, depth, p, l, keybuf);
+        fprintf(f, "%s%*s%p[%u.%d] %.*s\n",
+                prefix, indent, "", this, height_, p, l, keybuf);
     }
     if (copy.child_[copy.size()])
         copy.child_[copy.size()]->print(f, prefix, depth + 1, kdepth);

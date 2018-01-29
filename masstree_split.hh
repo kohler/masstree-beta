@@ -184,10 +184,11 @@ bool tcursor<P>::make_split(threadinfo& ti)
     node_type* child = leaf_type::make(n_->ksuf_used_capacity(), n_->phantom_epoch(), ti);
     child->assign_version(*n_);
     ikey_type xikey[2];
-    int split_type = n_->split_into(static_cast<leaf_type *>(child),
+    int split_type = n_->split_into(static_cast<leaf_type*>(child),
                                     kx_.i, ka_, xikey[0], ti);
     bool sense = false;
     node_type* n = n_;
+    uint32_t height = 0;
 
     while (1) {
         masstree_invariant(!n->concurrent || (n->locked() && child->locked() && (n->isleaf() || n->splitting())));
@@ -195,27 +196,33 @@ bool tcursor<P>::make_split(threadinfo& ti)
 
         internode_type *p = n->locked_parent(ti);
 
-        if (!n->parent_exists(p)) {
-            internode_type *nn = internode_type::make(ti);
+        int kp = -1;
+        if (n->parent_exists(p)) {
+            kp = internode_type::bound_type::upper(xikey[sense], *p);
+            p->mark_insert();
+        }
+
+        if (kp < 0 || p->height_ > height + 1) {
+            internode_type *nn = internode_type::make(height + 1, ti);
             nn->child_[0] = n;
             nn->assign(0, xikey[sense], child);
             nn->nkeys_ = 1;
-            nn->make_layer_root();
+            if (kp < 0) {
+                nn->make_layer_root();
+            } else {
+                nn->set_parent(p);
+                p->child_[kp] = nn;
+            }
             fence();
             n->set_parent(nn);
         } else {
-            int kp = internode_type::bound_type::upper(xikey[sense], *p);
-
-            if (p->size() < p->width)
-                p->mark_insert();
-            else {
-                next_child = internode_type::make(ti);
+            if (p->size() >= p->width) {
+                next_child = internode_type::make(height + 1, ti);
                 next_child->assign_version(*p);
                 next_child->mark_nonroot();
                 kp = p->split_into(next_child, kp, xikey[sense],
                                    child, xikey[!sense], split_type);
             }
-
             if (kp >= 0) {
                 p->shift_up(kp + 1, kp, p->size() - kp);
                 p->assign(kp, xikey[sense], child);
@@ -259,6 +266,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
             n = p;
             child = next_child;
             sense = !sense;
+            ++height;
         } else if (p) {
             p->unlock();
             break;

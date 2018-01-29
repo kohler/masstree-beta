@@ -64,7 +64,7 @@ class node_base : public make_nodeversion<P>::type {
             return static_cast<const internode_type*>(this)->parent_;
     }
     inline bool parent_exists(base_type* p) const {
-        return p != 0;
+        return p != nullptr;
     }
     inline bool has_parent() const {
         return parent_exists(parent());
@@ -107,19 +107,20 @@ class internode : public node_base<P> {
     typedef typename P::threadinfo_type threadinfo;
 
     uint8_t nkeys_;
+    uint32_t height_;
     ikey_type ikey0_[width];
     node_base<P>* child_[width + 1];
     node_base<P>* parent_;
     kvtimestamp_t created_at_[P::debug_level > 0];
 
-    internode()
-        : node_base<P>(false), nkeys_(0), parent_() {
+    internode(uint32_t height)
+        : node_base<P>(false), nkeys_(0), height_(height), parent_() {
     }
 
-    static internode<P>* make(threadinfo& ti) {
+    static internode<P>* make(uint32_t height, threadinfo& ti) {
         void* ptr = ti.pool_allocate(sizeof(internode<P>),
                                      memtag_masstree_internode);
-        internode<P>* n = new(ptr) internode<P>;
+        internode<P>* n = new(ptr) internode<P>(height);
         assert(n);
         if (P::debug_level > 0)
             n->created_at_[0] = ti.operation_timestamp();
