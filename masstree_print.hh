@@ -85,9 +85,9 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth)
         fence();
         perm = permutation_;
     } while (this->has_changed(v));
-    int indent = 4 * depth;
+    int indent = 2 * depth;
     if (depth > P::print_max_indent_depth && P::print_max_indent_depth > 0)
-        indent = 4 * P::print_max_indent_depth;
+        indent = 2 * P::print_max_indent_depth;
 
     {
         char buf[1024];
@@ -152,9 +152,9 @@ void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth)
     internode<P> copy(*this);
     for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i)
         memcpy(&copy, this, sizeof(copy));
-    int indent = 4 * depth;
+    int indent = 2 * depth;
     if (depth > P::print_max_indent_depth && P::print_max_indent_depth > 0)
-        indent = 4 * P::print_max_indent_depth;
+        indent = 2 * P::print_max_indent_depth;
 
     {
         char buf[1024];
@@ -174,14 +174,14 @@ void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth)
         if (copy.child_[p])
             copy.child_[p]->print(f, prefix, depth + 1, kdepth);
         else
-            fprintf(f, "%s%*s[]\n", prefix, indent + 4, "");
+            fprintf(f, "%s%*s[]\n", prefix, indent, "");
         int l = P::key_unparse_type::unparse_key(copy.get_key(p), keybuf, sizeof(keybuf));
-        fprintf(f, "%s%*s%.*s\n", prefix, indent + 2, "", l, keybuf);
+        fprintf(f, "%s%*s%.*s\n", prefix, indent, "", l, keybuf);
     }
     if (copy.child_[copy.size()])
         copy.child_[copy.size()]->print(f, prefix, depth + 1, kdepth);
     else
-        fprintf(f, "%s%*s[]\n", prefix, indent + 4, "");
+        fprintf(f, "%s%*s[]\n", prefix, indent, "");
 }
 
 template <typename P>
