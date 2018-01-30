@@ -65,16 +65,7 @@ class value_print<uint64_t> {
 };
 
 template <typename P>
-void node_base<P>::print(FILE* f, const char* prefix, int depth, int kdepth)
-{
-    if (this->isleaf())
-        ((leaf<P> *) this)->print(f, prefix, depth, kdepth);
-    else
-        ((internode<P> *) this)->print(f, prefix, depth, kdepth);
-}
-
-template <typename P>
-void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth)
+void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
 {
     f = f ? f : stderr;
     prefix = prefix ? prefix : "";
@@ -145,7 +136,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth)
 }
 
 template <typename P>
-void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth)
+void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth) const
 {
     f = f ? f : stderr;
     prefix = prefix ? prefix : "";
