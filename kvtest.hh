@@ -628,7 +628,7 @@ void kvtest_wd1(unsigned initial_pos, int incr, C &client)
     if (client.id() % 2) {
         while (!client.get_sync(pos + 16 * incr))
             /* spin */;
-        while (!client.timeout(0)) {
+        while (!client.timeout(0) && n <= client.limit()) {
             ++n;
             if (client.remove_sync(pos))
                 pos += incr;
@@ -637,7 +637,7 @@ void kvtest_wd1(unsigned initial_pos, int incr, C &client)
         }
         result.set("removepos", pos);
     } else {
-        while (!client.timeout(0)) {
+        while (!client.timeout(0) && n <= client.limit()) {
             ++n;
             client.put(pos, pos + 1);
             pos += incr;
