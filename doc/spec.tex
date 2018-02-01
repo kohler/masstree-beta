@@ -845,19 +845,23 @@ n.\V{value}[\pi]\) \\
 \> assign \(n.\V{permutation}\) to contain only those keys not copied to
 \(n'\) \\
 \> insert \(k\) and \V{value} into \(n\) or \(n'\) as appropriate \\
+\> \(\V{height} \gets 1\) \\
 ascend:~
 \> $p \gets \text{locked\_parent}(n)$ \C{hand-over-hand locking} \\
-\> if $p = \NIL$: \C{$n$ was old root} \\
-\>\> \(p \gets \text{new interior node}\) \\
-\>\> insert \(n\), \(n'\) into \(p\) \\
-\>\> \(p.\V{isroot} \gets 1\);~ \(p.\V{parent} \gets \NIL\) \\
-\>\> \(n'.\V{parent} \gets p\) \\
-\>\> \fence \\
-\>\> \(n.\V{parent} \gets p\) \\
-\>\> unlock($n$);~ unlock($n'$);~ return \\
-\> else if $p$ is not full: \\
+\> if $p \neq \NIL$: \\
 \>\> $p.\V{version}.\V{inserting} \gets 1$ \\
 \>\> \fence \\
+\> if $p = \NIL$ or $p.\V{height} > \V{height}$: \C{add new root or rectify imbalance} \\
+\>\> \(p' \gets \text{new interior node}\) \\
+\>\> \(p'.\V{height} \gets \V{height}\);~ if $p = \NIL$ then $p'.\V{isroot} \gets 1$ \\
+\>\> insert \(n\), \(n'\) into \(p'\) \\
+\>\> if $p \neq \NIL$: \\
+\>\>\> replace \(n\) with \(p'\) as child of \(p\); \(p'.\V{parent} \gets p\) \\
+\>\> \(n'.\V{parent} \gets p'\) \\
+\>\> \fence \\
+\>\> \(n.\V{parent} \gets p'\) \\
+\>\> unlock($n$);~ unlock($n'$);~ return \\
+\> else if $p$ is not full: \\
 \>\> \(\N{unlock}(n)\) \\
 \>\> shift $p$ keys and children to include $n'$ \\
 \>\> \(n'.\V{parent} \gets p\) \\
@@ -869,7 +873,7 @@ ascend:~
 \>\> \fence \\
 \>\> \(\N{unlock}(n)\) \\
 \>\> \(p' \gets \text{new interior node}\) \\
-\>\> \(p'.\V{version} \gets p.\V{version}\) \\
+\>\> \(p'.\V{version} \gets p.\V{version}\);~ \(p'.\V{height} \gets \V{height}\) \\
 \>\> \fence \\
 \>\> move larger keys from \(p\) into \(p'\), inserting \(n'\) where it belongs  (and setting \(n'.\V{parent}\)) \\
 \>\> for all \(c \in \text{children of \(p'\)}\): \\
