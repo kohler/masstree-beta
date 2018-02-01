@@ -411,9 +411,9 @@ contain fences.
 \textbf{unlock}(node $n$): \C{precondition: \(n\) is locked} \\
 \> $v \gets n.\V{version}$ \\
 \> if $v.\V{inserting}$: \\
-\>\> $++v.\V{vinsert}$ \C{may overflow into \V{vsplit}} \\
+\>\> $v.\V{vinsert} \gets v.\V{vinsert} + 1$ \C{may overflow into \V{vsplit}} \\
 \> else if $v.\V{splitting}$: \\
-\>\> $++v.\V{vsplit}$;~ $v.\V{isroot} \gets 0$ \C{the true root has never split} \\
+\>\> $v.\V{vsplit} \gets v.\V{vsplit} + 1$;~ $v.\V{isroot} \gets 0$ \C{the true root has never split} \\
 \> $v.\{\V{locked},\V{inserting},\V{splitting}\} \gets 0$ \\
 \> \releasefence \\
 \> $n.\V{version} \gets v$
@@ -619,7 +619,7 @@ if $v.\V{isleaf}$: \\
 \>\> $\pi \gets \V{perm}.\V{pos}[i]$ \\
 \>\> if $n.\V{kslice}[\pi] < k.\V{slice}$ or ($n.\V{kslice}[\pi] =
 k.\V{slice}$ and $n.\V{klength}[\pi] < \V{klength}$): \\
-\>\>\> $++i$ \\
+\>\>\> $i \gets i + 1$ \\
 \>\> else if $n.\V{kslice}[\pi] = k.\V{slice}$ and $n.\V{klength}[\pi] =
 \V{klength}$: \\
 \>\>\> return $\langle i, \pi \rangle$ \\
@@ -715,12 +715,15 @@ There's no \emph{correctness} problem with leaving the tree this
 way---thanks to the root reachability invariant, the new root will be
 found by traversing parent pointers from the old. So we leave the tree
 this way until the next put or remove, which will retarget the higher
-layer's pointer.
+layer's pointer:
 
 \begin{figure}[H]
 \includegraphics[scale=.8]{insert1_5}
 \end{figure}
 
+A Masstree layer can contain leaf nodes at different heights. Each interior
+node tracks its height, however, and the split procedure inserts missing
+interior nodes as required to maintain overall balance.
 
 \begin{figure}[H]
 \begin{programtabbing}
@@ -852,33 +855,36 @@ ascend:~
 \>\> $p.\V{version}.\V{inserting} \gets 1$ \\
 \>\> \fence \\
 \> if $p = \NIL$ or $p.\V{height} > \V{height}$: \C{add new root or rectify imbalance} \\
-\>\> \(p' \gets \text{new interior node}\) \\
-\>\> \(p'.\V{height} \gets \V{height}\);~ if $p = \NIL$ then $p'.\V{isroot} \gets 1$ \\
+\>\> \(p' \gets \text{new interior node}\);~
+\(p'.\V{height} \gets \V{height}\);~ $p'.\V{isroot} \gets (p = \NIL)$ \\
 \>\> insert \(n\), \(n'\) into \(p'\) \\
 \>\> if $p \neq \NIL$: \\
-\>\>\> replace \(n\) with \(p'\) as child of \(p\); \(p'.\V{parent} \gets p\) \\
+\>\>\> \(i \gets \text{index of $n$ in children of $p$}\) \\
+\>\>\> \(p.\V{child}[i] \gets p'\);~ \(p'.\V{parent} \gets p\) \\
 \>\> \(n'.\V{parent} \gets p'\) \\
 \>\> \fence \\
 \>\> \(n.\V{parent} \gets p'\) \\
-\>\> unlock($n$);~ unlock($n'$);~ return \\
+\>\> unlock($n$);~ unlock($n'$);~ if $p\neq\NIL$ then unlock($p$);~ return \\
 \> else if $p$ is not full: \\
 \>\> \(\N{unlock}(n)\) \\
 \>\> shift $p$ keys and children to include $n'$ \\
 \>\> \(n'.\V{parent} \gets p\) \\
 \>\> \fence \\
-\>\> \(++p.\V{size}\) \\
+\>\> \(p.\V{size} \gets p.\V{size} + 1\) \\
 \>\> unlock($n$);~ unlock($n'$);~ unlock($p$);~ return \\
 \> else: \\
 \>\> \(p.\V{version}.\V{splitting} \gets 1\) \\
 \>\> \fence \\
 \>\> \(\N{unlock}(n)\) \\
-\>\> \(p' \gets \text{new interior node}\) \\
-\>\> \(p'.\V{version} \gets p.\V{version}\);~ \(p'.\V{height} \gets \V{height}\) \\
+\>\> \(p' \gets \text{new interior node}\);~
+\(p'.\V{version} \gets p.\V{version}\);~ \(p'.\V{height} \gets \V{height}\) \\
 \>\> \fence \\
 \>\> move larger keys from \(p\) into \(p'\), inserting \(n'\) where it belongs  (and setting \(n'.\V{parent}\)) \\
 \>\> for all \(c \in \text{children of \(p'\)}\): \\
 \>\>\> \(c.\V{parent} \gets p'\) \\
-\>\> unlock($n'$);~ $n \gets p$;~ $n' \gets p'$;~ goto ascend
+\>\> unlock($n'$);~ $n \gets p$;~ $n' \gets p'$;~
+\(\V{height} \gets \V{height} + 1\) \\
+\>\>  goto ascend
 \end{programtabbing}
 \caption{Split a leaf and insert a key.}
 \label{fig:nsplit}
@@ -1101,13 +1107,12 @@ reach leaf \ITEM{ghi}, which has inherited responsibility for
 the \ITEM{jkl} range. But the \Bplus\ tree structure will direct the
 \N{put} to leaf \ITEM{mno}!
 
-Although such mistakes might be detectable at the leaves
-using \N{lowkey} comparisons, we prefer to avoid the problem
-in a different way. When
-a subtree's leftmost leaf is deleted, Masstree detects the issue and
-switches to a special \N{reshape} procedure. This procedure first sets
-the subtree's leftmost child pointer to \(\NIL\), causing concurrent
-gets and puts that would hit that node to retry from the root.
+This mistake could be avoided if all leaf accesses examined the \N{lowkey}, but
+we fix the misdirection. When a subtree's leftmost
+leaf is deleted, Masstree detects the issue and executes a
+\N{redirect} procedure. This procedure first sets the subtree's leftmost child
+pointer to \(\NIL\), causing concurrent gets and puts that would hit that node
+to retry from the root.
 
 \begin{figure}[H]
 \includegraphics[scale=.8]{remove2_3}
@@ -1122,10 +1127,11 @@ more complicated trees might require multiple replacements.
 \includegraphics[scale=.8]{remove2_4}
 \end{figure}
 
-This tree is valid and sends no puts down the wrong path. Although an
-interior node has a redundant key---the right-hand interior node
-contains key \ITEM{m}, although it is responsible for no keys less
-than \ITEM{m}---we don't bother to clean it up yet.
+This tree is valid and sends no puts down the wrong path. Although an interior
+node has a redundant key---the right-hand interior node contains key \ITEM{m},
+although it is responsible for no keys less than \ITEM{m}---we don't bother to
+clean it up. (We could clean it up by marked all interior nodes as
+\V{vsplitting} in the redirect procedure.)
 
 \subsection{Root trimming}
 
@@ -1264,22 +1270,24 @@ a deleted layer, writers retry from the layer-0 root.
 \>\> return \\
 \> \(n.\V{version}.\V{deleted} \gets 1\);~ fork \(\N{free\_node}(n)\) \\
 \> \(\N{unlink\_leaf}(n)\) \\
-\> \(k \gets \N{lowkey}(n)\) \\
+\> \(k \gets \N{lowkey}(n)\);~ \(r \gets \NIL\) \\
 ascend:~
-\> \(p \gets \N{locked\_parent}(n)\);~ \(\N{unlock}(n)\) \\
+\> \(p \gets \N{locked\_parent}(n)\);~ \(p.\V{version}.\V{inserting} \gets 1\) \\
+\> \fence \\
 \> \(i \gets \text{position of \V{k} in \V{p}}\) \\
-\> if \(i \neq 0\): \\
-\>\> \(p.\V{version}.\V{inserting} \gets 1\) \\
-\>\> \fence \\
+\> \(p.\V{child}[i] \gets r\) \\
+\> if \(r \neq \NIL\): \\
+\>\> \(r.\V{parent} \gets p\) \\
+\> else if \(i > 0\): \\
 \>\> remove the element at index \(i - 1\), shifting others down \\
-\>\> if \(i \neq 1\) or \(p.\V{child}[0] \neq \NIL\): \\
-\>\>\> \(\N{collapse}(p, k, \V{toproot}, \V{layerkey})\) \\
-\>\>\> return \\
-\> if \(p.\V{size} = 0\): \\
-\>\> \(p.\V{version}.\V{deleted} \gets 1\);~ fork \(\N{free\_node}(p)\) \\
-\> else: \\
-\>\> \(\N{reshape}(p, k, \V{toproot}, \V{layerkey})\) \\
-\>\> return \\
+\> if \(i \leq 1\) and \(p.\V{nkeys} > 0\) and \(p.\V{child}[0] = \NIL\): \\
+\>\> \(\N{redirect}(p, \V{k}, p.\V{kslice}[0])\) \\
+\>\> \(\V{k} \gets p.\V{kslice}[0]\)\\
+\> \(\N{unlock}(n)\) \\
+\> if \(p.\V{isroot}\) or \(p.\V{size} > 1\) or (\(p.\V{size} = 1\) and \(p.\V{child}[0] \neq \NIL\)): \\
+\>\> \(\N{unlock}(p)\);~ return \\
+\> \(p.\V{version}.\V{deleted} \gets 1\);~ fork \(\N{free\_node}(p)\) \\
+\> \(r \gets p.\V{child}[p.\V{size}]\);~ \(p.\V{child}[p.\V{size}] \gets \NIL\) \\
 \> \(n \gets p\);~ goto ascend
 \end{programtabbing}
 \caption{Remove a node.}
@@ -1304,40 +1312,19 @@ ascend:~
 
 \begin{figure}[H]
 \begin{programtabbing}
-\textbf{reshape}(interiornode \(n\), key \V{k}, node \V{toproot}, key \V{layerkey}): \\
-\> \(n.\V{child}[0] \gets \NIL\) \\
-\> \(\V{patchkey} \gets n.\V{kslice}[0]\) \\
- ascend:~
-\> \(p \gets \N{locked\_parent}(n)\);~ \(\N{unlock}(n)\) \\
-\> \(i \gets \text{position of \V{k} in \V{p}}\) \\
-\> if \(i \neq 0\): \\
-\>\> \(p.\V{version}.\V{inserting} \gets 1\) \\
-\>\> \fence \\
-\>\> \(p.\V{kslice}[i - 1] \gets \V{patchkey}\) \\
-\>\> if \(i \neq 1\) or \(p.\V{child}[0] \neq \NIL\): \\
-\>\>\> \(\N{collapse}(p, k, \V{toproot}, \V{layerkey})\) \\
-\>\>\> return \\
-\> \(n \gets p\);~ goto ascend
-\end{programtabbing}
-\end{figure}
-
-\begin{figure}[H]
-\begin{programtabbing}
-\textbf{collapse}(interiornode \(n\), key \(k\), node \V{toproot},
-key \V{layerkey}): \\
+\textbf{redirect}(interiornode \(n\), key \V{k}, key \(k'\)): \\
+\> \(p \gets n\) \\
 ascend:~
-\> if \(n.\V{size} \neq 0\): \\
-\>\> \(\N{unlock}(n)\);~ return \\
-\> \(p \gets \N{locked\_parent}(n)\) \\
-\> if \(p = \NIL\): \\
-\>\> if \V{layerkey} is not empty: \\
-\>\>\> fork gclayer(\V{toproot}, \V{layerkey}) \\
-\>\> \(\N{unlock}(n)\);~ return \\
-\> \(i \gets \text{position of \(k\) in \(p\)}\) \\
-\> \(p.\V{child}[i] \gets n.\V{child}[0]\) \\
-\> \(n.\V{child}[0].\V{parent} \gets p\) \\
-\> \(n.\V{version}.\V{deleted} \gets 1\);~ fork \(\N{free\_node}(n)\) \\
-\> \(\N{unlock}(n)\);~ \(n \gets p\);~ goto ascend
+\> \(p' \gets \N{locked\_parent}(p)\) \\
+\> if \(p \neq n\): \\
+\>\> \(\N{unlock}(p)\) \\
+\> \(p \gets p'\) \\
+\> \(i \gets \text{position of \V{k} in \V{p}}\) \\
+\> if \(i > 0\): \\
+\>\> \(p.\V{kslice}[i - 1] \gets k'\) \\
+\> if \(i > 1\) or (\(i = 1\) and \(p.\V{child}[0] \neq \NIL\)): \\
+\>\> \(\N{unlock}(p)\);~ return \\
+\> goto ascend
 \end{programtabbing}
 \end{figure}
 
