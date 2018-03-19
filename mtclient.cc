@@ -19,6 +19,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <limits.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
