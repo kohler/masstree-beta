@@ -363,8 +363,6 @@ class leaf : public node_base<P> {
     int compare_key(const key_type& a, int bp) const {
         return a.compare(ikey(bp), keylenx_[bp]);
     }
-    inline int stable_last_key_compare(const key_type& k, nodeversion_type v,
-                                       threadinfo& ti) const;
 
     inline leaf<P>* advance_to_key(const key_type& k, nodeversion_type& version,
                                    threadinfo& ti) const;
@@ -587,21 +585,6 @@ internode<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
     }
 }
 
-template <typename P>
-inline int
-leaf<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
-                                 threadinfo& ti) const
-{
-    while (1) {
-        typename leaf<P>::permuter_type perm(permutation_);
-        int p = perm[perm.size() - 1];
-        int cmp = compare_key(k, p);
-        if (likely(!this->has_changed(v)))
-            return cmp;
-        v = this->stable_annotated(ti.stable_fence());
-    }
-}
-
 
 /** @brief Return the leaf in this tree layer responsible for @a ka.
 
@@ -671,8 +654,7 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     const leaf<P>* n = this;
     nodeversion_type oldv = v;
     v = n->stable_annotated(ti.stable_fence());
-    if (v.has_split(oldv)
-        && n->stable_last_key_compare(ka, v, ti) > 0) {
+    if (v.has_split(oldv)) {
         leaf<P> *next;
         ti.mark(tc_leaf_walk);
         while (likely(!v.deleted())
