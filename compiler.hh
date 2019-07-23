@@ -28,14 +28,6 @@
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
-#if !HAVE_CXX_STATIC_ASSERT
-#define static_assert(x, msg) switch (x) case 0: case !!(x):
-#endif
-
-#if !HAVE_CXX_CONSTEXPR
-#define constexpr const
-#endif
-
 #if HAVE_OFF_T_IS_LONG_LONG
 #define PRIdOFF_T "lld"
 #else
@@ -1063,9 +1055,7 @@ template <typename T> using is_reference = std::is_reference<T>;
 #else
 template <typename T> struct is_reference_helper : public false_type {};
 template <typename T> struct is_reference_helper<T&> : public true_type {};
-#if HAVE_CXX_RVALUE_REFERENCES
 template <typename T> struct is_reference_helper<T&&> : public true_type {};
-#endif
 template <typename T> struct is_reference
     : public integral_constant<bool, is_reference_helper<typename remove_cv<T>::type>::value> {};
 #endif
@@ -1157,9 +1147,7 @@ struct fast_argument;
 template <typename T> struct fast_argument<T, true> {
     static constexpr bool is_reference = true;
     typedef const T& type;
-#if HAVE_CXX_RVALUE_REFERENCES
     typedef void enable_rvalue_reference;
-#endif
 };
 template <typename T> struct fast_argument<T, false> {
     static constexpr bool is_reference = false;
