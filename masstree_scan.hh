@@ -120,7 +120,6 @@ struct reverse_scan_helper {
     // Also, a node's size might change DURING a lower_bound operation.
     // The "backwards" ki must be calculated using the size taken by the
     // lower_bound, NOT some later size() (which might be bigger or smaller).
-    // The helper type reverse_scan_node allows this.
     reverse_scan_helper()
         : upper_bound_(false) {
     }
@@ -293,8 +292,10 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 
     if (!n_->has_changed(v_)) {
         n_ = helper.advance(n_, ka);
-        if (!n_)
+        if (!n_) {
+            helper.found();
             return scan_up;
+        }
         n_->prefetch();
     }
 
