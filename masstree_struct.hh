@@ -613,13 +613,13 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
 {
     const node_base<P> *n[2];
     typename node_base<P>::nodeversion_type v[2];
-    bool sense;
+    unsigned sense;
 
     // Get a non-stale root.
     // Detect staleness by checking whether n has ever split.
     // The true root has never split.
  retry:
-    sense = false;
+    sense = 0;
     n[sense] = this;
     while (1) {
         v[sense] = n[sense]->stable_annotated(ti.stable_fence());
@@ -634,13 +634,13 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
         const internode<P> *in = static_cast<const internode<P>*>(n[sense]);
         in->prefetch();
         int kp = internode<P>::bound_type::upper(ka, *in);
-        n[!sense] = in->child_[kp];
-        if (!n[!sense])
+        n[sense ^ 1] = in->child_[kp];
+        if (!n[sense ^ 1])
             goto retry;
-        v[!sense] = n[!sense]->stable_annotated(ti.stable_fence());
+        v[sense ^ 1] = n[sense ^ 1]->stable_annotated(ti.stable_fence());
 
         if (likely(!in->has_changed(v[sense]))) {
-            sense = !sense;
+            sense ^= 1;
             continue;
         }
 
