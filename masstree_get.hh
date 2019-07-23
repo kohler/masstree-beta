@@ -111,6 +111,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
     } else if (unlikely(n_->deleted_layer())) {
         ka_.unshift_all();
         root = const_cast<node_base<P>*>(root_);
+        n_->unlock();
         goto retry;
     }
     return state_;
