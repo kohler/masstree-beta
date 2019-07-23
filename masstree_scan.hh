@@ -94,7 +94,7 @@ struct forward_scan_helper {
     key_indexed_position lower_with_position(const K &k, const N *n) const {
         return N::bound_type::lower_by(k, *n, *n);
     }
-    void found() const {
+    void mark_key_complete() const {
     }
     int next(int ki) const {
         return ki + 1;
@@ -146,7 +146,7 @@ struct reverse_scan_helper {
     int next(int ki) const {
         return ki - 1;
     }
-    void found() const {
+    void mark_key_complete() const {
         upper_bound_ = false;
     }
     template <typename N, typename K>
@@ -278,7 +278,7 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 
         // We know we can emit the data collected above.
         ka.assign_store_ikey(ikey);
-        helper.found();
+        helper.mark_key_complete();
         if (n_->keylenx_is_layer(keylenx)) {
             node_stack_.push_back(root_);
             node_stack_.push_back(n_);
@@ -293,7 +293,7 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
     if (!n_->has_changed(v_)) {
         n_ = helper.advance(n_, ka);
         if (!n_) {
-            helper.found();
+            helper.mark_key_complete();
             return scan_up;
         }
         n_->prefetch();
