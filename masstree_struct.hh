@@ -675,7 +675,8 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
         && n->stable_last_key_compare(ka, v, ti) > 0) {
         leaf<P> *next;
         ti.mark(tc_leaf_walk);
-        while (likely(!v.deleted()) && (next = n->safe_next())
+        while (likely(!v.deleted())
+               && (next = n->safe_next())
                && compare(ka.ikey(), next->ikey_bound()) >= 0) {
             n = next;
             v = n->stable_annotated(ti.stable_fence());
