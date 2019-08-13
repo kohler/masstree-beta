@@ -65,7 +65,14 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
             goto unlock_layer;
 
         node_type *child = in->child_[0];
+        if (child->isleaf()) {
+            child->lock(*child, ti.lock_fence(tc_leaf_lock));
+        } else {
+            child->lock(*child, ti.lock_fence(tc_internode_lock));
+        }
         child->make_layer_root();
+        child->unlock();
+
         n_->lv_[kx_.p] = child;
         in->mark_split();
         in->set_parent(child);  // ensure concurrent reader finds true root
