@@ -30,14 +30,24 @@ int threadinfo::no_pool_value;
 #endif
 
 inline threadinfo::threadinfo(int purpose, int index) {
-    memset(this, 0, sizeof(*this));
+    gc_epoch_ = perform_gc_epoch_ = 0;
+    logger_ = nullptr;
+    next_ = nullptr;
     purpose_ = purpose;
     index_ = index;
+
+    for (size_t i = 0; i != sizeof(pool_) / sizeof(pool_[0]); ++i) {
+        pool_[i] = nullptr;
+    }
 
     void *limbo_space = allocate(sizeof(limbo_group), memtag_limbo);
     mark(tc_limbo_slots, limbo_group::capacity);
     limbo_head_ = limbo_tail_ = new(limbo_space) limbo_group;
     ts_ = 2;
+
+    for (size_t i = 0; i != sizeof(counters_) / sizeof(counters_[0]); ++i) {
+        counters_[i] = 0;
+    }
 }
 
 threadinfo *threadinfo::make(int purpose, int index) {

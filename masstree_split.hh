@@ -186,7 +186,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
     ikey_type xikey[2];
     int split_type = n_->split_into(static_cast<leaf_type*>(child),
                                     kx_.i, ka_, xikey[0], ti);
-    bool sense = false;
+    unsigned sense = 0;
     node_type* n = n_;
     uint32_t height = 0;
 
@@ -221,7 +221,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
                 next_child->assign_version(*p);
                 next_child->mark_nonroot();
                 kp = p->split_into(next_child, kp, xikey[sense],
-                                   child, xikey[!sense], split_type);
+                                   child, xikey[sense ^ 1], split_type);
             }
             if (kp >= 0) {
                 p->shift_up(kp + 1, kp, p->size() - kp);
@@ -265,7 +265,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
         if (next_child) {
             n = p;
             child = next_child;
-            sense = !sense;
+            sense ^= 1;
             ++height;
         } else if (p) {
             p->unlock();

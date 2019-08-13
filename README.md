@@ -1,15 +1,16 @@
-# Masstree #
+Masstree
+========
 
 This is the source release for Masstree, a fast, multi-core key-value
 store. This document describes how to run Masstree and interpret its
 results.
 
-## Contents ##
+## Contents
 
-* `MTDIR`                     This directory
-* `MTDIR/doc`               Masstree algorithm specification
+* `MTDIR`: this directory
+* `MTDIR/doc`: Masstree algorithm specification
 
-## Installation ##
+## Installation
 
 Masstree is tested on Debian, Ubuntu and Mac OS X. To build from
 source:
@@ -35,12 +36,12 @@ and may be open-sourced in future.
 
 See `./configure --help` for more configure options.
 
-## Testing ##
+## Testing
 
 The simplest way to try out Masstree is the `./mttest` program.
 This test doesn’t involve disk or network overhead.
 
-<pre>
+```
 $ ./mttest
 1/1 rw1/m
 0: now getting
@@ -48,7 +49,7 @@ $ ./mttest
 0: {"table":"mb","test":"rw1","trial":0,"thread":0,"puts":13243551,"puts_per_sec":1324492.05531,"gets":13243551,"gets_per_sec":1497267.13928,"ops":26487102,"ops_per_sec":1405590.1258}
 1: {"table":"mb","test":"rw1","trial":0,"thread":1,"puts":13242601,"puts_per_sec":1324397.45602,"gets":13242601,"gets_per_sec":1481151.35726,"ops":26485202,"ops_per_sec":1398395.26601}
 EXPERIMENT x0
-</pre>
+```
 
 The test starts a process which hosts a Masstree, and generates and
 executes queries over the tree. It uses all available cores (two in
@@ -73,7 +74,7 @@ among all threads.
 `mttest` also writes the output as JSON into file for further analysis. For
 example, after `./mttest`, `notebook-mttest.json` will contain:
 
-<pre>
+```
 {
   "experiments":{
     "x0":{
@@ -113,18 +114,18 @@ example, after `./mttest`, `notebook-mttest.json` will contain:
     ]
   }
 }
-</pre>
+```
 
 Run `./mttest --help` for a list of tests and options.
 
-## Network testing ##
+## Network testing
 
 `mtclient` supports almost the same set of workloads that `mttest` does, but it
 sends queries to a Masstree server over the network.
 
 To start the Masstree server, run:
 
-<pre>
+```
 $ ./mtd --logdir=[LOG_DIRS] --ckdir=[CHECKPOINT_DIRS]
 mb, Bag, pin-threads disabled, logging enabled
 no ./kvd-ckp-gen
@@ -132,7 +133,7 @@ no ./kvd-ckp-0-0
 no ./kvd-ckp-0-1
 2 udp threads
 2 tcp threads
-</pre>
+```
 
 `LOG_DIRS` is a comma-separated list of directories storing Masstree
 logs, and `CHECKPOINT_DIRS` is a comma-separated list of directories
@@ -145,7 +146,7 @@ there are several log and checkpoint files.) Alternatively, run `./mtd
 To run the `rw1` workload with `mtclient` on the same machine as
 `mtd`, run:
 
-<pre>
+```
 $ ./mtclient -s 127.0.0.1 rw1
 tcp, w 500, test rw1, children 2
 0 now getting
@@ -159,4 +160,4 @@ puts: n 2, total 15244502, average 7622251, min 7612501, max 7632001, stddev 137
 gets: n 2, total 15244502, average 7622251, min 7612501, max 7632001, stddev 13789
 puts/s: n 2, total 1524707, average 762354, min 761423, max 763284, stddev 1316
 gets/s: n 2, total 2523396, average 1261698, min 1259847, max 1263548, stddev 2617
-</pre>
+```

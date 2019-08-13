@@ -94,7 +94,7 @@ struct forward_scan_helper {
     key_indexed_position lower_with_position(const K &k, const N *n) const {
         return N::bound_type::lower_by(k, *n, *n);
     }
-    void found() const {
+    void mark_key_complete() const {
     }
     int next(int ki) const {
         return ki + 1;
@@ -120,7 +120,6 @@ struct reverse_scan_helper {
     // Also, a node's size might change DURING a lower_bound operation.
     // The "backwards" ki must be calculated using the size taken by the
     // lower_bound, NOT some later size() (which might be bigger or smaller).
-    // The helper type reverse_scan_node allows this.
     reverse_scan_helper()
         : upper_bound_(false) {
     }
@@ -147,7 +146,7 @@ struct reverse_scan_helper {
     int next(int ki) const {
         return ki - 1;
     }
-    void found() const {
+    void mark_key_complete() const {
         upper_bound_ = false;
     }
     template <typename N, typename K>
@@ -279,7 +278,7 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 
         // We know we can emit the data collected above.
         ka.assign_store_ikey(ikey);
-        helper.found();
+        helper.mark_key_complete();
         if (n_->keylenx_is_layer(keylenx)) {
             node_stack_.push_back(root_);
             node_stack_.push_back(n_);
@@ -293,8 +292,10 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
 
     if (!n_->has_changed(v_)) {
         n_ = helper.advance(n_, ka);
-        if (!n_)
+        if (!n_) {
+            helper.mark_key_complete();
             return scan_up;
+        }
         n_->prefetch();
     }
 
