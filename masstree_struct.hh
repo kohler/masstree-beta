@@ -522,8 +522,8 @@ class leaf : public node_base<P> {
     void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
 
     inline ikey_type ikey_after_insert(const permuter_type& perm, int i,
-                                       const key_type& ka, int ka_i) const;
-    int split_into(leaf<P>* nr, int p, const key_type& ka, ikey_type& split_ikey,
+                                       const tcursor<P>* cursor) const;
+    int split_into(leaf<P>* nr, tcursor<P>* tcursor, ikey_type& split_ikey,
                    threadinfo& ti);
 
     template <typename PP> friend class tcursor;

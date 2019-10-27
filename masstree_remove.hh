@@ -194,7 +194,7 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
     node_type* n = leaf;
     node_type* replacement = nullptr;
 
-    while (1) {
+    while (true) {
         internode_type *p = n->locked_parent(ti);
         p->mark_insert();
         masstree_invariant(!p->deleted());

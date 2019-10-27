@@ -124,7 +124,7 @@ class tcursor {
     inline bool has_value() const {
         return kx_.p >= 0;
     }
-    inline value_type &value() const {
+    inline value_type& value() const {
         return n_->lv_[kx_.p].value();
     }
 
@@ -136,7 +136,7 @@ class tcursor {
         return n_;
     }
 
-    inline leaf_type *original_node() const {
+    inline leaf_type* original_node() const {
         return original_n_;
     }
 
@@ -161,13 +161,13 @@ class tcursor {
     inline nodeversion_value_type next_full_version_value(int state) const;
 
   private:
-    leaf_type *n_;
+    leaf_type* n_;
     key_type ka_;
     key_indexed_position kx_;
     node_base<P>* root_;
     int state_;
 
-    leaf_type *original_n_;
+    leaf_type* original_n_;
     nodeversion_value_type original_v_;
     nodeversion_value_type updated_v_;
     new_nodes_type new_nodes_;
@@ -179,6 +179,7 @@ class tcursor {
 
     bool make_new_layer(threadinfo& ti);
     bool make_split(threadinfo& ti);
+    friend class leaf<P>;
     inline void finish_insert();
     inline bool finish_remove(threadinfo& ti);
 
