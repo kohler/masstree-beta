@@ -178,9 +178,9 @@ template <int width> class kpermuter {
         </ul> */
     void remove(int i) {
         (void) width;
-        if (int(x_ & 15) == i + 1)
+        if (int(x_ & 15) == i + 1) {
             --x_;
-        else {
+        } else {
             int rot_amount = ((x_ & 15) - i - 1) << 2;
             value_type rot_mask =
                 (((value_type) 16 << rot_amount) - 1) << ((i + 1) << 2);
@@ -283,14 +283,17 @@ lcdf::String kpermuter<width>::unparse() const
     int n = p & 15;
     p >>= 4;
     for (int i = 0; true; ++i) {
-        if (i == n)
+        if (i == n) {
             *s++ = ':';
-        if (i == width)
+        }
+        if (i == width) {
             break;
-        if ((p & 15) < 10)
+        }
+        if ((p & 15) < 10) {
             *s++ = '0' + (p & 15);
-        else
+        } else {
             *s++ = 'a' + (p & 15) - 10;
+        }
         seen |= 1 << (p & 15);
         p >>= 4;
     }

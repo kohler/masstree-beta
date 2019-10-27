@@ -288,10 +288,12 @@ class leaf : public node_base<P> {
           ksuf_(), parent_(), iksuf_{} {
         masstree_precondition(sz % 64 == 0 && sz / 64 < 128);
         extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
-        if (extrasize64_ > 0)
+        if (extrasize64_ > 0) {
             new((void *)&iksuf_[0]) internal_ksuf_type(width, sz - sizeof(*this));
-        if (P::need_phantom_epoch)
+        }
+        if (P::need_phantom_epoch) {
             phantom_epoch_[0] = phantom_epoch;
+        }
     }
 
     static leaf<P>* make(int ksufsize, phantom_epoch_type phantom_epoch, threadinfo& ti) {
@@ -299,8 +301,9 @@ class leaf : public node_base<P> {
         void* ptr = ti.pool_allocate(sz, memtag_masstree_leaf);
         leaf<P>* n = new(ptr) leaf<P>(sz, phantom_epoch);
         assert(n);
-        if (P::debug_level > 0)
+        if (P::debug_level > 0) {
             n->created_at_[0] = ti.operation_timestamp();
+        }
         return n;
     }
     static leaf<P>* make_root(int ksufsize, leaf<P>* parent, threadinfo& ti) {
@@ -490,9 +493,9 @@ class leaf : public node_base<P> {
     inline void assign(int p, const key_type& ka, threadinfo& ti) {
         lv_[p] = leafvalue_type::make_empty();
         ikey0_[p] = ka.ikey();
-        if (!ka.has_suffix())
+        if (!ka.has_suffix()) {
             keylenx_[p] = ka.length();
-        else {
+        } else {
             keylenx_[p] = ksuf_keylenx;
             assign_ksuf(p, ka.suffix(), false, ti);
         }
@@ -500,9 +503,9 @@ class leaf : public node_base<P> {
     inline void assign_initialize(int p, const key_type& ka, threadinfo& ti) {
         lv_[p] = leafvalue_type::make_empty();
         ikey0_[p] = ka.ikey();
-        if (!ka.has_suffix())
+        if (!ka.has_suffix()) {
             keylenx_[p] = ka.length();
-        else {
+        } else {
             keylenx_[p] = ksuf_keylenx;
             assign_ksuf(p, ka.suffix(), true, ti);
         }
@@ -511,8 +514,9 @@ class leaf : public node_base<P> {
         lv_[p] = x->lv_[xp];
         ikey0_[p] = x->ikey0_[xp];
         keylenx_[p] = x->keylenx_[xp];
-        if (x->has_ksuf(xp))
+        if (x->has_ksuf(xp)) {
             assign_ksuf(p, x->ksuf(xp), true, ti);
+        }
     }
     inline void assign_initialize_for_layer(int p, const key_type& ka) {
         assert(ka.has_suffix());
@@ -545,10 +549,11 @@ internode<P>* node_base<P>::locked_parent(threadinfo& ti) const
 {
     node_base<P>* p;
     masstree_precondition(!this->concurrent || this->locked());
-    while (1) {
+    while (true) {
         p = this->parent();
-        if (!this->parent_exists(p))
+        if (!this->parent_exists(p)) {
             break;
+        }
         nodeversion_type pv = p->lock(*p, ti.lock_fence(tc_internode_lock));
         if (p == this->parent()) {
             masstree_invariant(!p->isleaf());
@@ -579,10 +584,11 @@ inline int
 internode<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
                                       threadinfo& ti) const
 {
-    while (1) {
+    while (true) {
         int cmp = compare_key(k, size() - 1);
-        if (likely(!this->has_changed(v)))
+        if (likely(!this->has_changed(v))) {
             return cmp;
+        }
         v = this->stable_annotated(ti.stable_fence());
     }
 }
@@ -592,12 +598,13 @@ inline int
 leaf<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
                                  threadinfo& ti) const
 {
-    while (1) {
+    while (true) {
         typename leaf<P>::permuter_type perm(permutation_);
         int p = perm[perm.size() - 1];
         int cmp = compare_key(k, p);
-        if (likely(!this->has_changed(v)))
+        if (likely(!this->has_changed(v))) {
             return cmp;
+        }
         v = this->stable_annotated(ti.stable_fence());
     }
 }
@@ -621,10 +628,11 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
  retry:
     sense = 0;
     n[sense] = this;
-    while (1) {
+    while (true) {
         v[sense] = n[sense]->stable_annotated(ti.stable_fence());
-        if (v[sense].is_root())
+        if (v[sense].is_root()) {
             break;
+        }
         ti.mark(tc_root_retry);
         n[sense] = n[sense]->maybe_parent();
     }
@@ -635,8 +643,9 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
         in->prefetch();
         int kp = internode<P>::bound_type::upper(ka, *in);
         n[sense ^ 1] = in->child_[kp];
-        if (!n[sense ^ 1])
+        if (!n[sense ^ 1]) {
             goto retry;
+        }
         v[sense ^ 1] = n[sense ^ 1]->stable_annotated(ti.stable_fence());
 
         if (likely(!in->has_changed(v[sense]))) {
@@ -650,8 +659,9 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
             && in->stable_last_key_compare(ka, v[sense], ti) > 0) {
             ti.mark(tc_root_retry);
             goto retry;
-        } else
+        } else {
             ti.mark(tc_internode_retry);
+        }
     }
 
     version = v[sense];

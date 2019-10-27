@@ -47,7 +47,7 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
 
     // remove redundant internode layers
     node_type *layer;
-    while (1) {
+    while (true) {
         layer = n_->lv_[kx_.p].layer();
         if (!layer->is_root()) {
             n_->lv_[kx_.p] = layer->maybe_parent();
