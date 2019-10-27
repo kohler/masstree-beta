@@ -220,15 +220,14 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
         n->unlock();
         n = p;
 
-        if (p->nkeys_ > (p->child_[0] == nullptr)
-            || p->is_root()) {
+        if (p->nkeys_ || p->is_root()) {
             break;
         }
 
         p->mark_deleted();
         p->deallocate_rcu(ti);
-        replacement = p->child_[p->nkeys_];
-        p->child_[p->nkeys_] = nullptr;
+        replacement = p->child_[0];
+        p->child_[0] = nullptr;
     }
 
     n->unlock();
