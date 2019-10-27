@@ -309,6 +309,7 @@ class leaf : public node_base<P> {
     static leaf<P>* make_root(int ksufsize, leaf<P>* parent, threadinfo& ti) {
         leaf<P>* n = make(ksufsize, parent ? parent->phantom_epoch() : phantom_epoch_type(), ti);
         n->next_.ptr = n->prev_ = 0;
+        n->ikey0_[0] = 0; // to avoid undefined behavior
         n->make_layer_root();
         return n;
     }
@@ -585,7 +586,8 @@ internode<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
                                       threadinfo& ti) const
 {
     while (true) {
-        int cmp = compare_key(k, size() - 1);
+        int n = this->size();
+        int cmp = n ? compare_key(k, n - 1) : 1;
         if (likely(!this->has_changed(v))) {
             return cmp;
         }
@@ -600,7 +602,18 @@ leaf<P>::stable_last_key_compare(const key_type& k, nodeversion_type v,
 {
     while (true) {
         typename leaf<P>::permuter_type perm(permutation_);
-        int p = perm[perm.size() - 1];
+        int n = perm.size();
+        // If `n == 0`, then this node is empty: it was deleted without ever
+        // splitting, or it split and then was emptied.
+        // - It is always safe to return 1, because then the caller will
+        //   check more precisely whether `k` belongs in `this`.
+        // - It is safe to return anything if `this->deleted()`, because
+        //   viewing the deleted node will always cause a retry.
+        // - Thus it is safe to return a comparison with the key stored in slot
+        //   `perm[0]`. If the node ever had keys in it, then kpermuter ensures
+        //   that slot holds the most recently deleted key, which would belong
+        //   in this leaf. Otherwise, `perm[0]` is 0.
+        int p = perm[n ? n - 1 : 0];
         int cmp = compare_key(k, p);
         if (likely(!this->has_changed(v))) {
             return cmp;
@@ -655,7 +668,7 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
 
         typename node_base<P>::nodeversion_type oldv = v[sense];
         v[sense] = in->stable_annotated(ti.stable_fence());
-        if (oldv.has_split(v[sense])
+        if (unlikely(oldv.has_split(v[sense]))
             && in->stable_last_key_compare(ka, v[sense], ti) > 0) {
             ti.mark(tc_root_retry);
             goto retry;
@@ -681,7 +694,7 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     const leaf<P>* n = this;
     nodeversion_type oldv = v;
     v = n->stable_annotated(ti.stable_fence());
-    if (v.has_split(oldv)
+    if (unlikely(v.has_split(oldv))
         && n->stable_last_key_compare(ka, v, ti) > 0) {
         leaf<P> *next;
         ti.mark(tc_leaf_walk);
