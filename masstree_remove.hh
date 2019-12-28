@@ -49,7 +49,7 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
     }
 
     // remove redundant internode layers
-    node_type *layer;
+    node_type* layer;
     while (true) {
         layer = n_->lv_[kx_.p].layer();
         if (!layer->is_root()) {
@@ -71,8 +71,13 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
         }
 
         node_type *child = in->child_[0];
+        if (!child->try_lock(ti.lock_fence(tc_internode_lock))) {
+            in->unlock();
+            continue;
+        }
         child->make_layer_root();
         n_->lv_[kx_.p] = child;
+        child->unlock();
         in->mark_split();
         in->set_parent(child);  // ensure concurrent reader finds true root
         // NB: now in->parent() might weirdly be a LEAF!
