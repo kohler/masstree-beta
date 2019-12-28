@@ -1,6 +1,6 @@
 % -*- tex-command: "pdflatex" -*-
 \documentclass[11pt]{article}
-\usepackage{times,mathptmx,amsmath,amssymb,graphicx,float}
+\usepackage{times,mathptmx,amsmath,amssymb,graphicx,float,titling}
 \usepackage[tmargin=1in,hmargin=.75in,height=9in,columnsep=2pc,letterpaper]{geometry}
 \usepackage[T1]{fontenc}
 \makeatletter
@@ -63,7 +63,18 @@
 \gdef\_{\char`\_}
 \frenchspacing
 \makeatother
+\pretitle{\begin{raggedleft}\LARGE\fontseries{bx}\selectfont}
+\posttitle{\end{raggedleft}}
+\title{Masstree specification}
+\date{}
 \begin{document}
+
+\maketitle
+
+\section*{Note}
+
+As of 2019, this specification is not fully up to date relative to the
+Masstree code, particularly around remove. The code is more correct.
 
 \section{Definitions}
 
@@ -1284,7 +1295,7 @@ ascend:~
 \>\> \(\N{redirect}(p, \V{k}, p.\V{kslice}[0])\) \\
 \>\> \(\V{k} \gets p.\V{kslice}[0]\)\\
 \> \(\N{unlock}(n)\) \\
-\> if \(p.\V{isroot}\) or \(p.\V{size} > 1\) or (\(p.\V{size} = 1\) and \(p.\V{child}[0] \neq \NIL\)): \\
+\> if \(p.\V{isroot}\) or \(p.\V{size} > 0\): \\
 \>\> \(\N{unlock}(p)\);~ return \\
 \> \(p.\V{version}.\V{deleted} \gets 1\);~ fork \(\N{free\_node}(p)\) \\
 \> \(r \gets p.\V{child}[p.\V{size}]\);~ \(p.\V{child}[p.\V{size}] \gets \NIL\) \\
