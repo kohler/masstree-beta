@@ -73,8 +73,6 @@
 static std::vector<int> cores;
 volatile bool timeout[2] = {false, false};
 double duration[2] = {10, 0};
-// Do not start timer until asked
-static bool lazy_timer = false;
 int kvtest_first_seed = 31949;
 uint64_t test_limit = ~uint64_t(0);
 static Json test_param;
@@ -156,11 +154,6 @@ struct kvtest_client {
         report_ = Json().set("table", T().name())
             .set("test", test).set("trial", trial)
             .set("thread", ti_->index());
-    }
-    static void start_timer() {
-        always_assert(lazy_timer && "Cannot start timer without lazy_timer option");
-        always_assert(duration[0] && "Must specify timeout[0]");
-        xalarm(duration[0]);
     }
 
     bool timeout(int which) const {
@@ -676,7 +669,7 @@ struct test_thread {
     void ready_timeouts() {
         for (size_t i = 0; i < arraysize(timeout); ++i)
             timeout[i] = false;
-        if (!lazy_timer && duration[0])
+        if (duration[0])
             xalarm(duration[0]);
     }
     static T *table_;
@@ -746,13 +739,12 @@ enum { clp_val_normalize = Clp_ValFirstUser, clp_val_suffixdouble };
 enum { opt_pin = 1, opt_port, opt_duration,
        opt_test, opt_test_name, opt_threads, opt_trials, opt_quiet, opt_print,
        opt_normalize, opt_limit, opt_notebook, opt_compare, opt_no_run,
-       opt_lazy_timer, opt_gid, opt_tree_stats, opt_rscale_ncores, opt_cores,
+       opt_gid, opt_tree_stats, opt_rscale_ncores, opt_cores,
        opt_stats, opt_help, opt_yrange };
 static const Clp_Option options[] = {
     { "pin", 'p', opt_pin, 0, Clp_Negate },
     { "port", 0, opt_port, Clp_ValInt, 0 },
     { "duration", 'd', opt_duration, Clp_ValDouble, 0 },
-    { "lazy-timer", 0, opt_lazy_timer, 0, 0 },
     { "limit", 'l', opt_limit, clp_val_suffixdouble, 0 },
     { "normalize", 0, opt_normalize, clp_val_normalize, Clp_Negate },
     { "test", 0, opt_test, Clp_ValString, 0 },
@@ -883,9 +875,6 @@ main(int argc, char *argv[])
             break;
         case opt_duration:
             duration[0] = clp->val.d;
-            break;
-        case opt_lazy_timer:
-            lazy_timer = true;
             break;
         case opt_limit:
             test_limit = uint64_t(clp->val.d);
