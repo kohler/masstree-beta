@@ -225,6 +225,7 @@ struct kvtest_client {
         quick_istr key(ikey, 10), value(ivalue);
         get_col_check(key.string(), col, value.string());
     }
+    void get_check_absent(Str key);
     //void many_get_check(int nk, long ikey[], long iexpected[]);
 
     void scan_sync(Str firstkey, int n,
@@ -261,6 +262,7 @@ struct kvtest_client {
         quick_istr key(ikey, 10), value(ivalue);
         put_col(key.string(), col, value.string());
     }
+    void insert_check(Str key, Str value);
 
     void remove(Str key);
     void remove(long ikey) {
@@ -280,6 +282,7 @@ struct kvtest_client {
         quick_istr key(ikey);
         return remove_sync(key.string());
     }
+    void remove_check(Str key);
 
     void puts_done() {
     }
@@ -380,6 +383,14 @@ void kvtest_client<T>::get_col_check(Str key, int col,
     }
 }
 
+template <typename T>
+void kvtest_client<T>::get_check_absent(Str key) {
+    Str val;
+    if (q_[0].run_get1(table_->table(), key, 0, val, *ti_)) {
+        fail("get(%.*s) failed (expected absent key)\n", key.len, key.s);
+    }
+}
+
 /*template <typename T>
 void kvtest_client<T>::many_get_check(int nk, long ikey[], long iexpected[]) {
     std::vector<quick_istr> ka(2*nk, quick_istr());
@@ -434,6 +445,13 @@ void kvtest_client<T>::put(Str key, Str value) {
 }
 
 template <typename T>
+void kvtest_client<T>::insert_check(Str key, Str value) {
+    if (q_[0].run_replace(table_->table(), key, value, *ti_) != Inserted) {
+        fail("insert(%.*s) did not insert\n", key.len, key.s);
+    }
+}
+
+template <typename T>
 void kvtest_client<T>::put_col(Str key, int col, Str value) {
 #if !MASSTREE_ROW_TYPE_STR
     if (!kvo_) {
@@ -459,6 +477,13 @@ void kvtest_client<T>::remove(Str key) {
 template <typename T>
 bool kvtest_client<T>::remove_sync(Str key) {
     return kvtest_remove(*this, key);
+}
+
+template <typename T>
+void kvtest_client<T>::remove_check(Str key) {
+    if (!kvtest_remove(*this, key)) {
+        fail("remove(%.*s) did not remove\n", key.len, key.s);
+    }
 }
 
 template <typename T>

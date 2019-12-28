@@ -78,11 +78,20 @@ struct quick_istr {
         return bbuf_;
     }
     bool operator==(lcdf::Str s) const {
-	return s.len == (buf_ + sizeof(buf_) - 1) - bbuf_
-	    && memcmp(s.s, bbuf_, s.len) == 0;
+        return s.len == int(length()) && memcmp(s.s, data(), s.len) == 0;
     }
     bool operator!=(lcdf::Str s) const {
-	return !(*this == s);
+        return !(*this == s);
+    }
+    static void increment_from_end(char* ends) {
+        while (true) {
+            --ends;
+            ++*ends;
+            if (*ends <= '9') {
+                return;
+            }
+            *ends = '0';
+        }
     }
 };
 
