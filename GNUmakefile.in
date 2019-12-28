@@ -3,6 +3,7 @@ CC = @CC@
 CXX = @CXX@
 CPPFLAGS = @CPPFLAGS@
 CXXFLAGS = @CXXFLAGS@
+RANLIB = @RANLIB@
 DEPSDIR := .deps
 DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
 ifeq ($(strip $(MEMMGR)), )
@@ -34,7 +35,8 @@ all: test_atomics mtd mtclient mttest
 libjson.a: json.o string.o straccum.o str.o msgpack.o \
 	clp.o kvrandom.o compiler.o memdebug.o kvthread.o
 	@rm -f $@
-	$(AR) cru $@ $^
+	$(AR) cr $@ $^
+	$(RANLIB) $@
 
 KVTREES = query_masstree.o \
 	value_string.o value_array.o value_versioned_array.o \

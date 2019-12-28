@@ -12,6 +12,7 @@ if test "${CXXFLAGS+y}" != y; then CXXFLAGS="-g -W -Wall -O3"; fi
 AC_PROG_CC
 AC_PROG_CXX
 AC_LANG_CPLUSPLUS
+AC_PROG_RANLIB
 
 AC_DEFINE([WORDS_BIGENDIAN_SET], [1], [Define if WORDS_BIGENDIAN has been set.])
 AC_C_BIGENDIAN()
