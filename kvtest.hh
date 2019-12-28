@@ -808,6 +808,64 @@ void kvtest_wd2_check(C &client)
     client.report(result);
 }
 
+template <typename C>
+void kvtest_wd3(C& client, uint64_t nk_total)
+{
+    if (client.has_param("rangesize")) {
+        nk_total = client.param("rangesize").to_u64() * client.nthreads();
+    } else if (client.has_param("nkeys")) {
+        nk_total = client.param("nkeys").to_u64();
+    }
+    uint64_t nk = (nk_total + client.nthreads() - 1) / client.nthreads();
+    quick_istr k0(nk * client.id(), 8);
+
+    String prefix = client.param("prefix").to_s();
+    size_t plen = prefix.length();
+    char buf[128];
+    always_assert(plen + k0.length() < sizeof(buf));
+    memcpy(buf, prefix.data(), plen);
+    char* ebuf = buf + plen + k0.length();
+
+    double t0 = client.now();
+    unsigned long nrounds = 0;
+    while (!client.timeout(0)) {
+        ++nrounds;
+        memcpy(ebuf - k0.length(), k0.data(), k0.length());
+        for (uint64_t i = nk; i != 0; --i) {
+            client.insert_check(Str(buf, ebuf), Str(ebuf - 8, ebuf));
+            quick_istr::increment_from_end(ebuf);
+        }
+
+        memcpy(ebuf - k0.length(), k0.data(), k0.length());
+        for (uint64_t i = nk; i != 0; --i) {
+            client.get_check(Str(buf, ebuf), Str(ebuf - 8, ebuf));
+            quick_istr::increment_from_end(ebuf);
+        }
+
+        memcpy(ebuf - k0.length(), k0.data(), k0.length());
+        for (uint64_t i = nk; i != 0; --i) {
+            client.remove_check(Str(buf, ebuf));
+            quick_istr::increment_from_end(ebuf);
+        }
+
+        memcpy(ebuf - k0.length(), k0.data(), k0.length());
+        for (uint64_t i = nk; i != 0; --i) {
+            client.get_check_absent(Str(buf, ebuf));
+            quick_istr::increment_from_end(ebuf);
+        }
+    }
+    client.wait_all();
+    double t1 = client.now();
+
+    Json result;
+    result.set("rangesize", nk);
+    memcpy(ebuf - k0.length(), k0.data(), k0.length());
+    result.set("first", Str(buf, ebuf));
+    kvtest_set_time(result, "rounds", nrounds, t1 - t0);
+    kvtest_set_time(result, "ops", nrounds * nk * 4, t1 - t0);
+    client.report(result);
+}
+
 // Create a range of keys [initial_pos, initial_pos + n)
 // where key k == initial_pos + i has value (n - 1 - i).
 // Many overwrites.

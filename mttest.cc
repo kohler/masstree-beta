@@ -162,8 +162,11 @@ struct kvtest_client {
     uint64_t limit() const {
         return limit_;
     }
-    Json param(const String& name) const {
-        return test_param[name];
+    bool has_param(const String& name) const {
+        return test_param.count(name);
+    }
+    Json param(const String& name, Json default_value = Json()) const {
+        return test_param.count(name) ? test_param.at(name) : default_value;
     }
 
     int ncores() const {
@@ -555,6 +558,7 @@ MAKE_TESTRUNNER(rw4fixed, kvtest_rw4fixed(client));
 MAKE_TESTRUNNER(wd1, kvtest_wd1(10000000, 1, client));
 MAKE_TESTRUNNER(wd1m1, kvtest_wd1(100000000, 1, client));
 MAKE_TESTRUNNER(wd1m2, kvtest_wd1(1000000000, 4, client));
+MAKE_TESTRUNNER(wd3, kvtest_wd3(client, 70 * client.nthreads()));
 MAKE_TESTRUNNER(same, kvtest_same(client));
 MAKE_TESTRUNNER(rwsmall24, kvtest_rwsmall24(client));
 MAKE_TESTRUNNER(rwsep24, kvtest_rwsep24(client));
@@ -948,17 +952,19 @@ main(int argc, char *argv[])
             if (const char* eqchr = strchr(clp->vstr, '=')) {
                 Json& param = test_param[String(clp->vstr, eqchr)];
                 const char* end_vstr = clp->vstr + strlen(clp->vstr);
-                if (param.assign_parse(eqchr + 1, end_vstr))
-                    /* OK, param was valid JSON */;
-                else if (eqchr[1] != 0)
+                if (param.assign_parse(eqchr + 1, end_vstr)) {
+                    // OK, param was valid JSON
+                } else if (eqchr[1] != 0) {
                     param = String(eqchr + 1, end_vstr);
-                else
+                } else {
                     param = Json();
+                }
             } else {
                 // otherwise, tree or test
                 bool is_treetype = false;
-                for (int i = 0; i < (int) arraysize(test_thread_map) && !is_treetype; ++i)
+                for (int i = 0; i < (int) arraysize(test_thread_map) && !is_treetype; ++i) {
                     is_treetype = (strcmp(test_thread_map[i].treetype, clp->vstr) == 0);
+                }
                 (is_treetype ? treetypes.push_back(clp->vstr) : tests.push_back(clp->vstr));
             }
             break;
