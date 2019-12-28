@@ -356,26 +356,28 @@ bool kvtest_client<T>::get_sync(const Str &key, Str &value) {
 template <typename T>
 void kvtest_client<T>::get_check(const Str &key, const Str &expected) {
     Str val;
-    if (!q_[0].run_get1(table_->table(), key, 0, val, *ti_))
+    if (!q_[0].run_get1(table_->table(), key, 0, val, *ti_)) {
         fail("get(%.*s) failed (expected %.*s)\n", key.len, key.s,
              expected.len, expected.s);
-    else if (expected != val)
+    } else if (expected != val) {
         fail("get(%.*s) returned unexpected value %.*s (expected %.*s)\n",
              key.len, key.s, std::min(val.len, 40), val.s,
              expected.len, expected.s);
+    }
 }
 
 template <typename T>
 void kvtest_client<T>::get_col_check(const Str &key, int col,
                                      const Str &expected) {
     Str val;
-    if (!q_[0].run_get1(table_->table(), key, col, val, *ti_))
+    if (!q_[0].run_get1(table_->table(), key, col, val, *ti_)) {
         fail("get.%d(%.*s) failed (expected %.*s)\n",
              col, key.len, key.s, expected.len, expected.s);
-    else if (expected != val)
+    } else if (expected != val) {
         fail("get.%d(%.*s) returned unexpected value %.*s (expected %.*s)\n",
              col, key.len, key.s, std::min(val.len, 40), val.s,
              expected.len, expected.s);
+    }
 }
 
 /*template <typename T>
@@ -434,8 +436,9 @@ void kvtest_client<T>::put(const Str &key, const Str &value) {
 template <typename T>
 void kvtest_client<T>::put_col(const Str &key, int col, const Str &value) {
 #if !MASSTREE_ROW_TYPE_STR
-    if (!kvo_)
+    if (!kvo_) {
         kvo_ = new_kvout(-1, 2048);
+    }
     Json x[2] = {Json(col), Json(String::make_stable(value))};
     q_[0].run_put(table_->table(), key, &x[0], &x[2], *ti_);
 #else
