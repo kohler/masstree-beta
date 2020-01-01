@@ -132,6 +132,8 @@ void set_global_epoch(mrcu_epoch_type e) {
 
 template <typename T>
 struct kvtest_client {
+    using table_type = T;
+
     kvtest_client()
         : limit_(test_limit), ncores_(udpthreads), kvo_() {
     }
@@ -146,7 +148,7 @@ struct kvtest_client {
     int id() const {
         return ti_->index();
     }
-    void set_table(T *table, threadinfo *ti) {
+    void set_table(T* table, threadinfo *ti) {
         table_ = table;
         ti_ = ti;
     }
@@ -408,8 +410,8 @@ void kvtest_client<T>::many_get_check(int nk, long ikey[], long iexpected[]) {
 
 template <typename T>
 void kvtest_client<T>::scan_sync(Str firstkey, int n,
-                                 std::vector<Str> &keys,
-                                 std::vector<Str> &values) {
+                                 std::vector<Str>& keys,
+                                 std::vector<Str>& values) {
     req_ = Json::array(0, 0, firstkey, n);
     q_[0].run_scan(table_->table(), req_, *ti_);
     output_scan(req_, keys, values);
@@ -417,8 +419,8 @@ void kvtest_client<T>::scan_sync(Str firstkey, int n,
 
 template <typename T>
 void kvtest_client<T>::rscan_sync(Str firstkey, int n,
-                                  std::vector<Str> &keys,
-                                  std::vector<Str> &values) {
+                                  std::vector<Str>& keys,
+                                  std::vector<Str>& values) {
     req_ = Json::array(0, 0, firstkey, n);
     q_[0].run_rscan(table_->table(), req_, *ti_);
     output_scan(req_, keys, values);
@@ -787,6 +789,7 @@ Options:\n\
   -d, --duration=TIME      Limit relevant tests to TIME seconds.\n\
   -b, --notebook=FILE      Record JSON results in FILE (notebook-mttest.json).\n\
       --no-notebook        Do not record JSON results.\n\
+      --print              Print table after test.\n\
 \n\
   -n, --no-run             Do not run new tests.\n\
   -c, --compare=EXPERIMENT Generated plot compares to EXPERIMENT.\n\

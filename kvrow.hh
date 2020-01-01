@@ -297,7 +297,7 @@ class query_json_scanner {
         return nleft_ != 0;
     }
   private:
-    query<R> &q_;
+    query<R>& q_;
     int nleft_;
     lcdf::Json& request_;
     lcdf::String firstkey_;
