@@ -93,6 +93,15 @@ struct quick_istr {
             *ends = '0';
         }
     }
+    static void binary_increment_from_end(char* ends) {
+        while (true) {
+            --ends;
+            *ends = (char) ((unsigned char) *ends + 1);
+            if (*ends != 0) {
+                return;
+            }
+        }
+    }
 };
 
 struct Clp_Parser;

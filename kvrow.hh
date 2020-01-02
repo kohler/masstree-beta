@@ -65,6 +65,8 @@ class query {
     template <typename T>
     void run_scan(T& table, Json& request, threadinfo& ti);
     template <typename T>
+    void run_scan_versions(T& table, Json& request, std::vector<uint64_t>& scan_versions, threadinfo& ti);
+    template <typename T>
     void run_rscan(T& table, Json& request, threadinfo& ti);
 
     const loginfo::query_times& query_times() const {
@@ -266,8 +268,9 @@ inline void query<R>::apply_remove(R*& value, kvtimestamp_t& node_ts,
 template <typename R>
 class query_json_scanner {
   public:
-    query_json_scanner(query<R> &q, lcdf::Json& request)
-        : q_(q), nleft_(request[3].as_i()), request_(request) {
+    query_json_scanner(query<R>& q, lcdf::Json& request, std::vector<uint64_t>* scan_versions)
+        : q_(q), nleft_(request[3].as_i()), request_(request),
+          scan_versions_(scan_versions) {
         std::swap(request[2].value().as_s(), firstkey_);
         request_.resize(2);
         q_.scankeypos_ = 0;
@@ -276,7 +279,11 @@ class query_json_scanner {
         return firstkey_;
     }
     template <typename SS, typename K>
-    void visit_leaf(const SS&, const K&, threadinfo&) {
+    void visit_leaf(const SS& scanstack, const K&, threadinfo&) {
+        if (scan_versions_) {
+            scan_versions_->push_back(reinterpret_cast<uint64_t>(scanstack.node()));
+            scan_versions_->push_back(scanstack.full_version_value());
+        }
     }
     bool visit_value(Str key, R* value, threadinfo& ti) {
         if (row_is_marker(value)) {
@@ -301,15 +308,30 @@ class query_json_scanner {
     int nleft_;
     lcdf::Json& request_;
     lcdf::String firstkey_;
+    std::vector<uint64_t>* scan_versions_;
 };
 
 template <typename R> template <typename T>
 void query<R>::run_scan(T& table, Json& request, threadinfo& ti) {
     assert(request[3].as_i() > 0);
     f_.clear();
-    for (int i = 4; i != request.size(); ++i)
+    for (int i = 4; i != request.size(); ++i) {
         f_.push_back(request[i].as_i());
-    query_json_scanner<R> scanf(*this, request);
+    }
+    query_json_scanner<R> scanf(*this, request, nullptr);
+    table.scan(scanf.firstkey(), true, scanf, ti);
+}
+
+template <typename R> template <typename T>
+void query<R>::run_scan_versions(T& table, Json& request,
+                                 std::vector<uint64_t>& scan_versions,
+                                 threadinfo& ti) {
+    assert(request[3].as_i() > 0);
+    f_.clear();
+    for (int i = 4; i != request.size(); ++i) {
+        f_.push_back(request[i].as_i());
+    }
+    query_json_scanner<R> scanf(*this, request, &scan_versions);
     table.scan(scanf.firstkey(), true, scanf, ti);
 }
 
@@ -317,9 +339,10 @@ template <typename R> template <typename T>
 void query<R>::run_rscan(T& table, Json& request, threadinfo& ti) {
     assert(request[3].as_i() > 0);
     f_.clear();
-    for (int i = 4; i != request.size(); ++i)
+    for (int i = 4; i != request.size(); ++i) {
         f_.push_back(request[i].as_i());
-    query_json_scanner<R> scanf(*this, request);
+    }
+    query_json_scanner<R> scanf(*this, request, nullptr);
     table.rscan(scanf.firstkey(), true, scanf, ti);
 }
 

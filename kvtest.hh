@@ -906,6 +906,96 @@ void kvtest_wd3(C& client, uint64_t nk_total)
     client.report(result);
 }
 
+template <typename C>
+void kvtest_conflictscan1(C& client)
+{
+    unsigned prefixlen = client.param("prefixlen", 4).to_u64();
+    unsigned rangelen = client.param("rangelen", 4).to_u64();
+    unsigned keylen = prefixlen + rangelen;
+    unsigned rangesize = client.param("rangesize", 100).to_u64();
+    unsigned scansize = client.param("scansize", 20).to_u64();
+    assert(rangelen > 0 && rangelen <= 8);
+    assert(prefixlen > 0 && prefixlen <= 8);
+    assert(rangelen == 8 || rangesize < (1UL << (rangelen * 8)));
+    assert(scansize < rangesize);
+    using leaf_type = typename C::table_type::leaf_type;
+
+    union {
+        uint64_t u;
+        char c[8];
+    } x;
+
+    if (client.id() == 0) {
+        // scan worker
+        char hbuf[16];
+        uint64_t nscans = 0, naborts = 0;
+        kvrandom_uniform_int_distribution<uint64_t> ntd(1, client.nthreads() - 1);
+        std::vector<Str> keys, values;
+        client.wait_all();
+
+        while (!client.timeout(0)) {
+            ++nscans;
+            memset(hbuf, 0, 16);
+            x.u = host_to_net_order(ntd(client.rand));
+            memcpy(hbuf, x.c + (8 - prefixlen), prefixlen);
+            while (!client.timeout(0)) {
+                client.scan_versions_sync(Str(hbuf, keylen), scansize, keys, values);
+                for (size_t i = 0; i != client.scan_versions().size(); i += 2) {
+                    leaf_type* l = reinterpret_cast<leaf_type*>(client.scan_versions()[i]);
+                    uint64_t uv = l->full_unlocked_version_value();
+                    if (uv != client.scan_versions()[i + 1]) {
+                        goto abort;
+                    }
+                }
+                break;
+            abort:
+                ++naborts;
+            }
+        }
+        Json result;
+        result.set("keylen", keylen).set("prefixlen", prefixlen).set("scansize", scansize).set("scans", nscans).set("aborts", naborts);
+        client.report(result);
+
+    } else {
+        // insert/delete worker
+        char hbuf[16], tbuf[16];
+        x.u = host_to_net_order(uint64_t(client.id()));
+        memcpy(hbuf, x.c + (8 - prefixlen), prefixlen);
+        memset(hbuf + prefixlen, 0, rangelen);
+        memcpy(tbuf, hbuf, 16);
+        char lastp = tbuf[prefixlen - 1];
+
+        // set initial values
+        for (unsigned i = 0; i != rangesize; ++i) {
+            client.insert_check(Str(tbuf, keylen), Str(tbuf, 8));
+            quick_istr::binary_increment_from_end(tbuf + keylen);
+        }
+        client.wait_all();
+
+        // insert/delete
+        uint64_t ninsert = 0, nremove = 0, cursize = rangesize;
+        while (cursize && !client.timeout(0)) {
+            if (tbuf[prefixlen - 1] == lastp
+                && cursize < rangesize * 2
+                && (cursize == scansize
+                    || client.rand() % 65536 < 32768)) {
+                client.insert_check(Str(tbuf, keylen), Str(tbuf + keylen - 8, 8));
+                quick_istr::binary_increment_from_end(tbuf + keylen);
+                ++ninsert;
+                ++cursize;
+            } else {
+                client.remove_check(Str(hbuf, keylen));
+                quick_istr::binary_increment_from_end(hbuf + keylen);
+                ++nremove;
+                --cursize;
+            }
+        }
+        Json result;
+        result.set("rangesize", rangesize).set("inserts", ninsert).set("removes", nremove);
+        client.report(result);
+    }
+}
+
 // Create a range of keys [initial_pos, initial_pos + n)
 // where key k == initial_pos + i has value (n - 1 - i).
 // Many overwrites.

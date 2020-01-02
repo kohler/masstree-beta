@@ -230,6 +230,11 @@ struct kvtest_client {
                    std::vector<Str>& keys, std::vector<Str>& values);
     void rscan_sync(Str firstkey, int n,
                     std::vector<Str>& keys, std::vector<Str>& values);
+    void scan_versions_sync(Str firstkey, int n,
+                            std::vector<Str>& keys, std::vector<Str>& values);
+    const std::vector<uint64_t>& scan_versions() const {
+        return scan_versions_;
+    }
 
     void put(Str key, Str value);
     void put(const char *key, const char *value) {
@@ -316,6 +321,7 @@ struct kvtest_client {
     uint64_t limit_;
     Json report_;
     Json req_;
+    std::vector<uint64_t> scan_versions_;
     int ncores_;
     kvout *kvo_;
 
@@ -423,6 +429,16 @@ void kvtest_client<T>::rscan_sync(Str firstkey, int n,
                                   std::vector<Str>& values) {
     req_ = Json::array(0, 0, firstkey, n);
     q_[0].run_rscan(table_->table(), req_, *ti_);
+    output_scan(req_, keys, values);
+}
+
+template <typename T>
+void kvtest_client<T>::scan_versions_sync(Str firstkey, int n,
+                                          std::vector<Str>& keys,
+                                          std::vector<Str>& values) {
+    req_ = Json::array(0, 0, firstkey, n);
+    scan_versions_.clear();
+    q_[0].run_scan_versions(table_->table(), req_, scan_versions_, *ti_);
     output_scan(req_, keys, values);
 }
 
@@ -581,6 +597,7 @@ MAKE_TESTRUNNER(rscan1, kvtest_rscan1(client, 0));
 MAKE_TESTRUNNER(rscan1q80, kvtest_rscan1(client, 0.8));
 MAKE_TESTRUNNER(splitremove1, kvtest_splitremove1(client));
 MAKE_TESTRUNNER(url, kvtest_url(client));
+MAKE_TESTRUNNER(conflictscan1, kvtest_conflictscan1(client));
 
 
 enum {
@@ -659,8 +676,9 @@ struct test_thread {
             ++subtestno;
         }
         int at = fetch_and_add(&active_threads_, -1);
-        if (at == 1 && print_table)
+        if (at == 1 && print_table) {
             kvtest_print(*table_, stdout, tt.client_.ti_);
+        }
         if (at == 1 && json_stats) {
             Json j;
             kvtest_json_stats(*table_, j, *tt.client_.ti_);
@@ -673,16 +691,18 @@ struct test_thread {
         return 0;
     }
     void ready_timeouts() {
-        for (size_t i = 0; i < arraysize(timeout); ++i)
+        for (size_t i = 0; i < arraysize(timeout); ++i) {
             timeout[i] = false;
-        if (duration[0])
+        }
+        if (duration[0]) {
             xalarm(duration[0]);
+        }
     }
-    static T *table_;
+    static T* table_;
     static unsigned active_threads_;
     kvtest_client<T> client_;
 };
-template <typename T> T *test_thread<T>::table_;
+template <typename T> T* test_thread<T>::table_;
 template <typename T> unsigned test_thread<T>::active_threads_;
 
 typedef test_thread<Masstree::default_table> masstree_test_thread;
