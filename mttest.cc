@@ -287,6 +287,9 @@ struct kvtest_client {
     }
     void remove_check(Str key);
 
+    void print() {
+        table_->print(stderr);
+    }
     void puts_done() {
     }
     void wait_all() {
@@ -305,13 +308,16 @@ struct kvtest_client {
     }
     void finish() {
         Json counters;
-        for (int i = 0; i < tc_max; ++i)
+        for (int i = 0; i < tc_max; ++i) {
             if (uint64_t c = ti_->counter(threadcounter(i)))
                 counters.set(threadcounter_names[i], c);
-        if (counters)
+        }
+        if (counters) {
             report_.set("counters", counters);
-        if (!quiet)
+        }
+        if (!quiet) {
             fprintf(stderr, "%d: %s\n", ti_->index(), report_.unparse().c_str());
+        }
     }
 
     T *table_;
@@ -333,8 +339,8 @@ static volatile int kvtest_printing;
 
 template <typename T> inline void kvtest_print(const T &table, FILE* f, threadinfo *ti) {
     // only print out the tree from the first failure
-    while (!bool_cmpxchg((int *) &kvtest_printing, 0, ti->index() + 1))
-        /* spin */;
+    while (!bool_cmpxchg((int *) &kvtest_printing, 0, ti->index() + 1)) {
+    }
     table.print(f);
 }
 
@@ -363,13 +369,14 @@ bool kvtest_client<T>::get_sync(Str key, Str& value) {
 template <typename T>
 void kvtest_client<T>::get_check(Str key, Str expected) {
     Str val;
-    if (!q_[0].run_get1(table_->table(), key, 0, val, *ti_)) {
-        fail("get(%.*s) failed (expected %.*s)\n", key.len, key.s,
-             expected.len, expected.s);
-    } else if (expected != val) {
-        fail("get(%.*s) returned unexpected value %.*s (expected %.*s)\n",
-             key.len, key.s, std::min(val.len, 40), val.s,
-             expected.len, expected.s);
+    if (unlikely(!q_[0].run_get1(table_->table(), key, 0, val, *ti_))) {
+        fail("get(%s) failed (expected %s)\n", String(key).printable().c_str(),
+             String(expected).printable().c_str());
+    } else if (unlikely(expected != val)) {
+        fail("get(%s) returned unexpected value %s (expected %s)\n",
+             String(key).printable().c_str(),
+             String(val).substr(0, 40).printable().c_str(),
+             String(expected).substr(0, 40).printable().c_str());
     }
 }
 
@@ -377,10 +384,10 @@ template <typename T>
 void kvtest_client<T>::get_col_check(Str key, int col,
                                      Str expected) {
     Str val;
-    if (!q_[0].run_get1(table_->table(), key, col, val, *ti_)) {
+    if (unlikely(!q_[0].run_get1(table_->table(), key, col, val, *ti_))) {
         fail("get.%d(%.*s) failed (expected %.*s)\n",
              col, key.len, key.s, expected.len, expected.s);
-    } else if (expected != val) {
+    } else if (unlikely(expected != val)) {
         fail("get.%d(%.*s) returned unexpected value %.*s (expected %.*s)\n",
              col, key.len, key.s, std::min(val.len, 40), val.s,
              expected.len, expected.s);
@@ -390,8 +397,8 @@ void kvtest_client<T>::get_col_check(Str key, int col,
 template <typename T>
 void kvtest_client<T>::get_check_absent(Str key) {
     Str val;
-    if (q_[0].run_get1(table_->table(), key, 0, val, *ti_)) {
-        fail("get(%.*s) failed (expected absent key)\n", key.len, key.s);
+    if (unlikely(q_[0].run_get1(table_->table(), key, 0, val, *ti_))) {
+        fail("get(%s) failed (expected absent key)\n", String(key).printable().c_str());
     }
 }
 
@@ -460,8 +467,8 @@ void kvtest_client<T>::put(Str key, Str value) {
 
 template <typename T>
 void kvtest_client<T>::insert_check(Str key, Str value) {
-    if (q_[0].run_replace(table_->table(), key, value, *ti_) != Inserted) {
-        fail("insert(%.*s) did not insert\n", key.len, key.s);
+    if (unlikely(q_[0].run_replace(table_->table(), key, value, *ti_) != Inserted)) {
+        fail("insert(%s) did not insert\n", String(key).printable().c_str());
     }
 }
 
@@ -495,8 +502,8 @@ bool kvtest_client<T>::remove_sync(Str key) {
 
 template <typename T>
 void kvtest_client<T>::remove_check(Str key) {
-    if (!kvtest_remove(*this, key)) {
-        fail("remove(%.*s) did not remove\n", key.len, key.s);
+    if (unlikely(!kvtest_remove(*this, key))) {
+        fail("remove(%s) did not remove\n", String(key).printable().c_str());
     }
 }
 

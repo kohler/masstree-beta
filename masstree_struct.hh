@@ -289,7 +289,7 @@ class leaf : public node_base<P> {
         masstree_precondition(sz % 64 == 0 && sz / 64 < 128);
         extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
         if (extrasize64_ > 0) {
-            new((void *)&iksuf_[0]) internal_ksuf_type(width, sz - sizeof(*this));
+            new((void*) &iksuf_[0]) internal_ksuf_type(width, sz - sizeof(*this));
         }
         if (P::need_phantom_epoch) {
             phantom_epoch_[0] = phantom_epoch;
