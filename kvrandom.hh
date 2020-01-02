@@ -17,6 +17,7 @@
 #define KVRANDOM_HH 1
 #include <inttypes.h>
 #include <stdlib.h>
+#include <random>
 
 // A simple LCG with parameters from Numerical Recipes.
 class kvrandom_lcg_nr_simple {
@@ -123,5 +124,27 @@ public:
         return random();
     }
 };
+
+// a modulus-based, i.e. incorrect, version of uniform_int_distribution
+// that is faster than the standard
+template <typename T = int>
+class kvrandom_uniform_int_distribution {
+public:
+    using result_type = T;
+
+    kvrandom_uniform_int_distribution(T a, T b)
+        : a_(a), n_(b - a + 1) {
+    }
+    template <typename G>
+    result_type operator()(G& g) const {
+        return a_ + g() % n_;
+    }
+private:
+    result_type a_;
+    result_type n_;
+};
+
+// the std::bernoulli_distribution is fast enough
+using kvrandom_bernoulli_distribution = std::bernoulli_distribution;
 
 #endif

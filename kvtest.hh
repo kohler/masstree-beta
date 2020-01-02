@@ -18,8 +18,10 @@
 #include "json.hh"
 #include "misc.hh"
 #include "kvproto.hh"
+#include "kvrandom.hh"
 #include <vector>
 #include <fstream>
+#include <random>
 
 using lcdf::Str;
 using lcdf::String;
@@ -65,8 +67,9 @@ void kvtest_sync_rw1_seed(C &client, int seed)
     for (unsigned i = 0; i < n; ++i) {
         a[i] = (int32_t) client.rand();
     }
+    kvrandom_uniform_int_distribution<unsigned> swapd(0, n - 1);
     for (unsigned i = 0; i < n; ++i) {
-        std::swap(a[i], a[client.rand() % n]);
+        std::swap(a[i], a[swapd(client.rand)]);
     }
 
     double tg0 = client.now();
@@ -123,8 +126,9 @@ void kvtest_rw1_seed(C &client, int seed)
     for (unsigned i = 0; i < n; ++i) {
         a[i] = (int32_t) client.rand();
     }
+    kvrandom_uniform_int_distribution<unsigned> swapd(0, n - 1);
     for (unsigned i = 0; i < n; ++i) {
-        std::swap(a[i], a[client.rand() % n]);
+        std::swap(a[i], a[swapd(client.rand)]);
     }
 
     double tg0 = client.now();
@@ -181,10 +185,10 @@ void kvtest_rw1long_seed(C &client, int seed)
     client.rand.seed(seed);
     double tp0 = client.now();
     unsigned n;
+    kvrandom_uniform_int_distribution<unsigned> fmtd(0, 3);
     for (n = 0; !client.timeout(0) && n <= client.limit(); ++n) {
-        unsigned fmt = client.rand();
         int32_t x = (int32_t) client.rand();
-        client.put(Str::snprintf(buf, sizeof(buf), formats[fmt % 4], x), x + 1);
+        client.put(Str::snprintf(buf, sizeof(buf), formats[fmtd(client.rand)], x), x + 1);
     }
     client.wait_all();
     double tp1 = client.now();
@@ -197,8 +201,9 @@ void kvtest_rw1long_seed(C &client, int seed)
     for (unsigned i = 0; i < n * 2; ++i) {
         a[i] = (int32_t) client.rand();
     }
+    kvrandom_uniform_int_distribution<unsigned> swapd(0, n - 1);
     for (unsigned i = 0; i < n; ++i) {
-        unsigned x = client.rand() % n;
+        unsigned x = swapd(client.rand);
         std::swap(a[2 * i], a[2 * x]);
         std::swap(a[2 * i + 1], a[2 * x + 1]);
     }
@@ -237,9 +242,9 @@ void kvtest_rw2_seed(C &client, int seed, double getfrac)
 
     double t0 = client.now();
     uint64_t puts = 0, gets = 0;
-    int getfrac65536 = (int) (getfrac * 65536 + 0.5);
+    kvrandom_bernoulli_distribution getd(getfrac);
     while (!client.timeout(0) && (puts + gets) <= client.limit()) {
-        if (puts == 0 || (client.rand() % 65536) >= getfrac65536) {
+        if (puts == 0 || !getd(client.rand)) {
             // insert
             unsigned x = (offset + puts) * c;
             client.put(x, x + 1);
@@ -287,9 +292,9 @@ void kvtest_rw2fixed_seed(C &client, int seed, double getfrac)
 
     double t0 = client.now();
     uint64_t puts = 0, gets = 0;
-    int getfrac65536 = (int) (getfrac * 65536 + 0.5);
+    kvrandom_bernoulli_distribution getd(getfrac);
     while (!client.timeout(0) && (puts + gets) <= client.limit()) {
-        if (puts == 0 || (client.rand() % 65536) >= getfrac65536) {
+        if (puts == 0 || !getd(client.rand)) {
             // insert
             unsigned x = (offset + puts) * c;
             x %= 100000000;
@@ -435,8 +440,9 @@ void kvtest_same_seed(C &client, int seed)
 
     double t0 = client.now();
     unsigned n;
+    kvrandom_uniform_int_distribution<unsigned> uid(0, 9);
     for (n = 0; !client.timeout(0) && n <= client.limit(); ++n) {
-        unsigned x = client.rand() % 10;
+        unsigned x = uid(client.rand);
         client.put(x, x + 1);
     }
     client.wait_all();
@@ -461,8 +467,9 @@ void kvtest_rwsmall_seed(C &client, int nkeys, int seed)
 
     double t0 = client.now();
     unsigned n;
+    kvrandom_uniform_int_distribution<unsigned> uid(0, (nkeys << 3) - 1);
     for (n = 0; !client.timeout(0) && n <= client.limit(); ++n) {
-        unsigned x = client.rand() % (8 * nkeys);
+        unsigned x = uid(client.rand);
         if (x & 7) {
             client.get(x >> 3);
         } else {
@@ -496,8 +503,9 @@ void kvtest_rwsep_seed(C &client, int nkeys, int clientid, int seed)
 
     double t0 = client.now();
     unsigned n;
+    kvrandom_uniform_int_distribution<unsigned> uid(0, (nkeys << 3) - 1);
     for (n = 0; !client.timeout(0) && n <= client.limit(); ++n) {
-        unsigned x = client.rand() % (8 * nkeys);
+        unsigned x = uid(client.rand);
         if (x & 7) {
             client.get(1000000 + clientid * (32 + nkeys) + (x >> 3));
         } else {
@@ -525,9 +533,9 @@ void kvtest_rw1fixed_seed(C &client, int seed)
     client.rand.seed(seed);
     double tp0 = client.now();
     unsigned n;
+    kvrandom_uniform_int_distribution<unsigned> uid(0, 99999999);
     for (n = 0; !client.timeout(0) && n <= client.limit(); ++n) {
-        int32_t x = (int32_t) client.rand();
-        x %= 100000000;
+        int32_t x = uid(client.rand);
         client.put(x, x + 1);
     }
     client.wait_all();
@@ -539,11 +547,11 @@ void kvtest_rw1fixed_seed(C &client, int seed)
     assert(a);
     client.rand.seed(seed);
     for (unsigned i = 0; i < n; ++i) {
-        a[i] = (int32_t) client.rand();
-        a[i] %= 100000000;
+        a[i] = uid(client.rand);
     }
+    kvrandom_uniform_int_distribution<unsigned> swapd(0, n - 1);
     for (unsigned i = 0; i < n; ++i) {
-        std::swap(a[i], a[client.rand() % n]);
+        std::swap(a[i], a[swapd(client.rand)]);
     }
 
     double tg0 = client.now();
@@ -606,8 +614,9 @@ void kvtest_rw16_seed(C &client, int seed)
     for (int i = 0; i < n; ++i) {
         a[i] = (int32_t) client.rand();
     }
+    kvrandom_uniform_int_distribution<unsigned> swapd(0, n - 1);
     for (int i = 0; i < n; ++i) {
-        std::swap(a[i], a[client.rand() % n]);
+        std::swap(a[i], a[swapd(client.rand)]);
     }
 
     double tg0 = client.now();
