@@ -70,8 +70,10 @@ int leaf<P>::split_into(leaf<P>* nr, tcursor<P>* cursor,
     int mid = this->width / 2 + 1;
     int p = cursor->kx_.i;
     if (p == 0 && !this->prev_) {
+        // reverse-sequential optimization
         mid = 1;
     } else if (p == width && !this->next_.ptr) {
+        // sequential optimization
         mid = width;
     }
 
@@ -119,8 +121,8 @@ int leaf<P>::split_into(leaf<P>* nr, tcursor<P>* cursor,
 }
 
 template <typename P>
-int internode<P>::split_into(internode<P> *nr, int p, ikey_type ka,
-                             node_base<P> *value, ikey_type& split_ikey,
+int internode<P>::split_into(internode<P>* nr, int p, ikey_type ka,
+                             node_base<P>* value, ikey_type& split_ikey,
                              int split_type)
 {
     // B+tree internal node insertion.

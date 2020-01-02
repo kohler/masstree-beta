@@ -871,25 +871,25 @@ void kvtest_wd3(C& client, uint64_t nk_total)
     while (!client.timeout(0)) {
         ++nrounds;
         memcpy(ebuf - k0.length(), k0.data(), k0.length());
-        for (uint64_t i = nk; i != 0; --i) {
+        for (uint64_t i = nk; i != 0 && !client.timeout(0); --i) {
             client.insert_check(Str(buf, ebuf), Str(ebuf - 8, ebuf));
             quick_istr::increment_from_end(ebuf);
         }
 
         memcpy(ebuf - k0.length(), k0.data(), k0.length());
-        for (uint64_t i = nk; i != 0; --i) {
+        for (uint64_t i = nk; i != 0 && !client.timeout(0); --i) {
             client.get_check(Str(buf, ebuf), Str(ebuf - 8, ebuf));
             quick_istr::increment_from_end(ebuf);
         }
 
         memcpy(ebuf - k0.length(), k0.data(), k0.length());
-        for (uint64_t i = nk; i != 0; --i) {
+        for (uint64_t i = nk; i != 0 && !client.timeout(0); --i) {
             client.remove_check(Str(buf, ebuf));
             quick_istr::increment_from_end(ebuf);
         }
 
         memcpy(ebuf - k0.length(), k0.data(), k0.length());
-        for (uint64_t i = nk; i != 0; --i) {
+        for (uint64_t i = nk; i != 0 && !client.timeout(0); --i) {
             client.get_check_absent(Str(buf, ebuf));
             quick_istr::increment_from_end(ebuf);
         }
