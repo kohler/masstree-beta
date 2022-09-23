@@ -1,0 +1,144 @@
+FROM ubuntu:jammy
+
+# set environment variables for tzdata
+ARG TZ=America/New_York
+ENV TZ=${TZ}
+
+# include manual pages and documentation
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update &&\
+ yes | unminimize
+
+# copy new sources.list
+COPY --chown=root:root sources.list /etc/apt/sources.list
+
+# include multiarch support
+RUN apt-get -y install binfmt-support &&\
+ dpkg --add-architecture amd64 &&\
+ apt-get update &&\
+ apt-get upgrade
+
+# install GCC-related packages
+RUN apt-get -y install\
+ binutils-doc\
+ cpp-doc\
+ gcc-doc\
+ g++\
+ gdb\
+ gdb-doc\
+ glibc-doc\
+ libblas-dev\
+ liblapack-dev\
+ liblapack-doc\
+ libstdc++-12-doc\
+ make\
+ make-doc
+
+# install clang-related packages
+RUN apt-get -y install\
+ clang\
+ clang-14-doc\
+ lldb
+
+# install qemu for WeensyOS (sadly, this pulls in a lot of crap)
+RUN apt-get -y install\
+ qemu-system-x86
+
+# install programs used for system exploration
+RUN apt-get -y install\
+ blktrace\
+ linux-tools-generic\
+ strace\
+ tcpdump
+
+# install interactive programs (emacs, vim, nano, man, sudo, etc.)
+RUN apt-get -y install\
+ bc\
+ curl\
+ dc\
+ emacs-nox\
+ git\
+ git-doc\
+ man\
+ micro\
+ nano\
+ psmisc\
+ sudo\
+ vim\
+ wget
+
+# set up libraries
+RUN apt-get -y install\
+ libreadline-dev\
+ locales\
+ wamerican
+
+# install programs used for networking
+RUN apt-get -y install\
+ dnsutils\
+ inetutils-ping\
+ iproute2\
+ net-tools\
+ netcat\
+ telnet\
+ time\
+ traceroute
+
+# install GCC-related packages for amd64
+RUN apt-get -y install\
+ g++-11-x86-64-linux-gnu\
+ gdb-multiarch\
+ libc6:amd64\
+ libstdc++6:amd64\
+ libasan5:amd64\
+ libtsan0:amd64\
+ libubsan1:amd64\
+ libreadline-dev:amd64\
+ libblas-dev:amd64\
+ liblapack-dev:amd64\
+ qemu-user
+
+# link x86-64 versions of common tools into /usr/x86_64-linux-gnu/bin
+RUN for i in addr2line c++filt cpp-11 g++-11 gcc-11 gcov-11 gcov-dump-11 gcov-tool-11 size strings; do \
+        ln -s /usr/bin/x86_64-linux-gnu-$i /usr/x86_64-linux-gnu/bin/$i; done && \
+ ln -s /usr/bin/x86_64-linux-gnu-cpp-11 /usr/x86_64-linux-gnu/bin/cpp && \
+ ln -s /usr/bin/x86_64-linux-gnu-g++-11 /usr/x86_64-linux-gnu/bin/c++ && \
+ ln -s /usr/bin/x86_64-linux-gnu-g++-11 /usr/x86_64-linux-gnu/bin/g++ && \
+ ln -s /usr/bin/x86_64-linux-gnu-gcc-11 /usr/x86_64-linux-gnu/bin/gcc && \
+ ln -s /usr/bin/x86_64-linux-gnu-gcc-11 /usr/x86_64-linux-gnu/bin/cc && \
+ ln -s /usr/bin/gdb-multiarch /usr/x86_64-linux-gnu/bin/gdb
+
+# set up default locale
+RUN locale-gen en_US.UTF-8
+ENV LANG en_US.UTF-8
+
+# remove unneeded .deb files
+RUN rm -r /var/lib/apt/lists/*
+
+# set up passwordless sudo for user masstree-dev
+RUN useradd -m -s /bin/bash masstree-dev && \
+ echo "masstree-dev ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/masstree-init
+
+# create binary reporting version of dockerfile
+RUN (echo '#\!/bin/sh'; echo 'if test "x$1" = x-n; then echo 13; else echo 13.arm64; fi') > /usr/bin/masstree-docker-version; chmod ugo+rx,u+w,go-w /usr/bin/masstree-docker-version
+
+# git build arguments
+ARG USER=Masstree\ Dev
+ARG EMAIL=nobody@example.com
+
+# configure your environment
+USER masstree-dev
+RUN git config --global user.name "${USER}" && \
+ git config --global user.email "${EMAIL}" && \
+ (echo "(custom-set-variables"; echo " '(c-basic-offset 4)"; echo " '(indent-tabs-mode nil))") > ~/.emacs && \
+ (echo "set expandtab"; echo "set shiftwidth=4"; echo "set softtabstop=4") > ~/.vimrc && \
+ (echo "if test -f /run/host-services/ssh-auth.sock; then"; echo "  sudo chown masstree-dev:masstree-dev /run/host-services/ssh-auth.sock"; echo "fi") > ~/.bash_profile && \
+ echo ". ~/.bashrc" >> ~/.bash_profile && \
+ echo "export PATH=/usr/x86_64-linux-gnu/bin:\$PATH" >> ~/.bashrc && \
+ rm -f ~/.bash_logout && \
+ echo "add-auto-load-safe-path ~" > ~/.gdbinit
+
+WORKDIR /home/masstree-dev
+CMD ["/bin/bash", "-l"]
+
+# Initial version of this Dockerfile based off of the one used for CS 61 and CS 161 at Harvard
