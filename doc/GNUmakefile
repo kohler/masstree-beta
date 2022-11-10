@@ -19,15 +19,13 @@ PS2PDF := ps2pdf
 PS2PDF_LETTER := GS_OPTIONS=-sPAPERSIZE=letter $(PS2PDF) -sPAPERSIZE=letter
 PDF2PS := $(shell (which acroread >/dev/null 2>&1 && echo acroread -toPostScript) || echo pdf2ps)
 
-MPFIGBASE = examples_1 \
-	remove1_1 remove1_2 remove1_3 remove1_31 remove1_4 remove1_5 \
-	remove1_6 remove1_7 remove1_8 remove1_9 \
-	remove2_1 remove2_2 remove2_3 remove2_4 remove2_5 \
-	remove2_6 remove2_7 remove2_8 remove2_9 \
-	remove2_11 remove2_12 remove2_15 remove2_16 \
-	insert1_1 insert1_2 insert1_3 insert1_4 insert1_5
-PDFFIGS += $(addsuffix .pdf,$(MPFIGBASE))
-EPSFIGS += $(addsuffix .eps,$(MPFIGBASE))
+PDFFIGS += examples-1.pdf \
+	remove1-1.pdf remove1-2.pdf remove1-3.pdf remove1-31.pdf remove1-4.pdf remove1-5.pdf \
+	remove1-6.pdf remove1-7.pdf remove1-8.pdf remove1-9.pdf \
+	remove2-1.pdf remove2-2.pdf remove2-3.pdf remove2-4.pdf remove2-5.pdf \
+	remove2-6.pdf remove2-7.pdf remove2-8.pdf remove2-9.pdf \
+	remove2-11.pdf remove2-12.pdf remove2-15.pdf remove2-16.pdf \
+	insert1-1.pdf insert1-2.pdf insert1-3.pdf insert1-4.pdf insert1-5.pdf
 
 RERUN = egrep -q '(^LaTeX Warning:|\(natbib\)).* Rerun'
 UNDEFINED = egrep -q '^(LaTeX|Package natbib) Warning:.* undefined'
@@ -58,30 +56,25 @@ endif
 
 all: $(BASE).pdf
 
-$(BASE).dvi $(BASE).pdf: $(TEXFILES) $(STYFILES) $(BIBFILES) $(PDFFIGS) $(EPSFIGS)
+$(BASE).dvi $(BASE).pdf: $(TEXFILES) $(STYFILES) $(BIBFILES) $(PDFFIGS)
 
 bib:
 	$(LATEX) $(MAIN)
 	rm -f $(BASE).dvi
 	$(MAKE) $(BASE).dvi
 
-# after making the figure, run perl to fix Computer Modern font names to
-# uppercase
-%_1.eps %_2.eps %_3.eps %_4.eps %_5.eps %_6.eps %_7.eps %_8.eps %_9.eps \
-%_10.eps %_11.eps %_12.eps %_13.eps %_14.eps %_15.eps %_16.eps %_17.eps %_18.eps %_19.eps \
-%_20.eps %_21.eps %_22.eps %_23.eps %_24.eps %_25.eps %_26.eps %_27.eps %_28.eps %_29.eps \
-%_30.eps %_31.eps %_32.eps %_33.eps %_34.eps %_35.eps %_36.eps %_37.eps %_38.eps %_39.eps: \
-		%.mp elements.mp elemfig.sty patches.mp masstree.mp
+%-1.pdf %-2.pdf %-3.pdf %-4.pdf %-5.pdf %-6.pdf %-7.pdf %-8.pdf %-9.pdf \
+%-10.pdf %-11.pdf %-12.pdf %-13.pdf %-14.pdf %-15.pdf %-16.pdf %-17.pdf %-18.pdf %-19.pdf \
+%-20.pdf %-21.pdf %-22.pdf %-23.pdf %-24.pdf %-25.pdf %-26.pdf %-27.pdf %-28.pdf %-29.pdf \
+%-30.pdf %-31.pdf %-32.pdf %-33.pdf %-34.pdf %-35.pdf %-36.pdf %-37.pdf %-38.pdf %-39.pdf \
+: %.mp elements.mp elemfig.sty patches.mp masstree.mp
+	rm -f $*.[0-9] $*.[0-9][0-9] $*.[0-9][0-9][0-9]
 	TEX=$(LATEX) $(METAPOST) $<
-	perl -pi -e 'next if $$x; $$x = 1 if /%%EndProlog/; s=/([a-z][a-z0-9]+) def=/\U$$1\E def= if !/^%%/; s=\b([a-z][a-z0-9]+)\b=\U$$1\E=g if /^%%DocumentFonts/ || /^%%\+/;' $(subst .mp,,$<).[0-9]*
-	for i in $(subst .mp,,$<).[0-9]*; do mv $$i `echo "$$i" | sed 's/\.\([0-9]*\)$$/_\1.eps/'`; done
-
-%.pdf: %.eps
-	epstopdf --outfile=$@ $<
+	mptopdf `ls $*.* | grep -e '\.[0-9][0-9]*$$'`
 
 clean:
 	rm -f $(EPSFIGS) $(PDFFIGS) $(EPSGRAPHS) $(PDFGRAPHS)
 	rm -f *.ps $(BASE).pdf *.aux
-	rm -f *.dvi *.aux *.log *.bbl *.blg *.lof *.lot *.toc *.bak *~
+	rm -f *.dvi *.aux *.log *.bbl *.blg *.lof *.lot *.toc *.bak *.[1-9] *.[1-3][0-9] *.mpout *~
 
 .PHONY: clean bib all

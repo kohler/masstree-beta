@@ -172,7 +172,7 @@ satisfied.
 Here's a picture of a Masstree layer.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{examples_1}
+\includegraphics[scale=.8]{examples-1}
 \caption{Example Masstree layer.}
 \end{figure}
 
@@ -693,7 +693,7 @@ full lower-layer tree (linked from a higher layer, which we display
 above the dashed line):
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{insert1_1}
+\includegraphics[scale=.8]{insert1-1}
 \end{figure}
 
 \noindent%
@@ -701,21 +701,21 @@ Inserting a new item into this lower layer will cause a split. A new
 leaf node is created,
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{insert1_2}
+\includegraphics[scale=.8]{insert1-2}
 \end{figure}
 
 \noindent%
 then a new internal node
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{insert1_3}
+\includegraphics[scale=.8]{insert1-3}
 \end{figure}
 
 \noindent%
 and finally a new root.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{insert1_4}
+\includegraphics[scale=.8]{insert1-4}
 \end{figure}
 
 \noindent%
@@ -729,7 +729,7 @@ this way until the next put or remove, which will retarget the higher
 layer's pointer:
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{insert1_5}
+\includegraphics[scale=.8]{insert1-5}
 \end{figure}
 
 A Masstree layer can contain leaf nodes at different heights. Each interior
@@ -928,7 +928,7 @@ the wide range of tree changes it can cause.
 We start with a simple example tree.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_1}
+\includegraphics[scale=.8]{remove1-1}
 \end{figure}
 
 Removing a single item---say, \ITEM{e}---is relatively simple: all code
@@ -937,7 +937,7 @@ is in two short functions, \N{remove} and \N{remove\_item}. We first use
 the item out of the relevant leaf's permutation.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_2}
+\includegraphics[scale=.8]{remove1-2}
 \end{figure}
 
 \noindent
@@ -1012,7 +1012,7 @@ below. This lock protects both \(\ITEM{def}.\V{next}\) and
 list until \ITEM{def} is unlinked.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_3}
+\includegraphics[scale=.8]{remove1-3}
 \end{figure}
 
 \noindent%
@@ -1022,7 +1022,7 @@ modification requires a retry loop, in case \ITEM{abc} splits or is
 removed during the operation.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_31}
+\includegraphics[scale=.8]{remove1-31}
 \end{figure}
 
 \noindent%
@@ -1030,7 +1030,7 @@ With \(\ITEM{def}.\V{prev}.\V{next}\) and \(\ITEM{def}.\V{next}\) both
 locked, the unlink is easy. First, \(\ITEM{ghi}.\V{prev}\) is modified,
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_4}
+\includegraphics[scale=.8]{remove1-4}
 \end{figure}
 
 \noindent%
@@ -1038,7 +1038,7 @@ and then, after a fence, \(\ITEM{abc}.\V{next}\). A single assignment
 both unlocks and changes the pointer.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_5}
+\includegraphics[scale=.8]{remove1-5}
 \end{figure}
 
 \noindent%
@@ -1055,7 +1055,7 @@ leaf's \N{lowkey} (here, \(\N{lowkey}(\ITEM{def}) = \ITEM{d}\)), and removes
 the corresponding key and child pointer, creating this state.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_6}
+\includegraphics[scale=.8]{remove1-6}
 \end{figure}
 
 And this completes the removal of \ITEM{def}.
@@ -1065,7 +1065,7 @@ And this completes the removal of \ITEM{def}.
 Now say \ITEM{ghi} is deleted. This process starts out as before.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_7}
+\includegraphics[scale=.8]{remove1-7}
 \end{figure}
 
 \noindent%
@@ -1075,7 +1075,7 @@ no keys and only one child. Trivial interior nodes are redundant,
 wasting space and traversal time.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_8}
+\includegraphics[scale=.8]{remove1-8}
 \end{figure}
 
 Masstree detects trivial nodes and deletes them in the \N{collapse}
@@ -1085,7 +1085,7 @@ hand-over-hand locking, and adjusts parent nodes' pointers to hop over
 the deleted trivial node.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove1_9}
+\includegraphics[scale=.8]{remove1-9}
 \end{figure}
 
 \noindent%
@@ -1101,7 +1101,7 @@ root requires more work to fix, as we'll see.
 We return to the original example and, this time, remove leaf \ITEM{jkl}.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_1}
+\includegraphics[scale=.8]{remove2-1}
 \end{figure}
 
 Now, \ITEM{jkl} is the \emph{first} child of its parent. This requires
@@ -1109,7 +1109,7 @@ special handling. To see why, note that
 the usual removal procedure would create this state:
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_2}
+\includegraphics[scale=.8]{remove2-2}
 \end{figure}
 
 \noindent%
@@ -1126,7 +1126,7 @@ pointer to \(\NIL\), causing concurrent gets and puts that would hit that node
 to retry from the root.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_3}
+\includegraphics[scale=.8]{remove2-3}
 \end{figure}
 
 The procedure then works up the tree using hand-over-hand locking. At
@@ -1135,7 +1135,7 @@ logical successor, here \ITEM{m}. In this tree, that takes one step, but
 more complicated trees might require multiple replacements.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_4}
+\includegraphics[scale=.8]{remove2-4}
 \end{figure}
 
 This tree is valid and sends no puts down the wrong path. Although an interior
@@ -1150,7 +1150,7 @@ When the \ITEM{mno} leaf is deleted,
 the entire right-hand subtree becomes redundant.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_5}
+\includegraphics[scale=.8]{remove2-5}
 \end{figure}
 
 After removing the \ITEM{mno} reference, \N{remove\_leaf} can tell that
@@ -1158,7 +1158,7 @@ the right-hand interior node is redundant: its single child pointer is
 \NIL. The interior node can therefore be deleted
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_6}
+\includegraphics[scale=.8]{remove2-6}
 \end{figure}
 
 \noindent%
@@ -1166,7 +1166,7 @@ and this continues
 up the tree.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_7}
+\includegraphics[scale=.8]{remove2-7}
 \end{figure}
 
 \noindent%
@@ -1175,7 +1175,7 @@ can we fix this? The root node may be referenced by
 a leaf node in a higher \emph{tree layer}, as shown here:
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_8}
+\includegraphics[scale=.8]{remove2-8}
 \end{figure}
 
 \noindent%
@@ -1189,14 +1189,14 @@ called \N{gclayer}. This function locks the
 relevant leaf in the higher layer
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_9}
+\includegraphics[scale=.8]{remove2-9}
 \end{figure}
 
 \noindent%
 locks the lower layer's root
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_11}
+\includegraphics[scale=.8]{remove2-11}
 \end{figure}
 
 \noindent%
@@ -1204,7 +1204,7 @@ and then marks its single child as the new root, switching the higher
 layer's value pointer to it.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_12}
+\includegraphics[scale=.8]{remove2-12}
 \end{figure}
 
 The original root is now garbage and can be reclaimed.
@@ -1222,14 +1222,14 @@ entire layer. This starts out like any gclayer call: the relevant leaf
 in the higher layer is locked
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_15}
+\includegraphics[scale=.8]{remove2-15}
 \end{figure}
 
 \noindent
 and so is the empty root in the lower layer.
 
 \begin{figure}[H]
-\includegraphics[scale=.8]{remove2_16}
+\includegraphics[scale=.8]{remove2-16}
 \end{figure}
 
 \noindent%
