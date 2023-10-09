@@ -23,6 +23,7 @@ stamp-h
 /test_atomics
 /test_binsearch
 /test_string
+/dev_binarytree
 bench/GNUmakefile
 bench/client
 bench/load/YCSB
