@@ -49,6 +49,9 @@ class stringbag {
     struct info_type {
         offset_type pos;
         offset_type len;
+        info_type()
+            : pos(0), len(0) {
+        }
         info_type(unsigned p, unsigned l)
             : pos(p), len(l) {
         }
@@ -59,11 +62,15 @@ class stringbag {
     static constexpr unsigned max_size() {
         return ((unsigned) (offset_type) -1) + 1;
     }
+    /** @brief Return the base size of a stringbag. */
+    static constexpr size_t empty_size() {
+        return sizeof(offset_type) * 2;
+    }
     /** @brief Return the overhead for a stringbag of width @a width.
 
         This is the number of bytes allocated for overhead. */
-    static constexpr size_t overhead(int width) {
-        return sizeof(stringbag<T>) + width * sizeof(info_type);
+    static constexpr size_t overhead(size_t width) {
+        return empty_size() + width * sizeof(info_type);
     }
     /** @brief Return a capacity that can definitely contain a stringbag.
         @param width number of strings in bag
@@ -87,7 +94,9 @@ class stringbag {
         assert(capacity >= firstpos && capacity <= max_size());
         size_ = firstpos;
         capacity_ = capacity - 1;
-        memset(info_, 0, sizeof(info_type) * width);
+        for (int i = 0; i != width; ++i) {
+            info_[i] = info_type();
+        }
     }
 
     /** @brief Return the capacity used to construct this bag. */
@@ -153,9 +162,9 @@ class stringbag {
         struct {
             offset_type size_;
             offset_type capacity_;
-            info_type info_[0];
+            info_type info_[1];
         };
-        char s_[0];
+        char s_[1];
     };
 };
 
