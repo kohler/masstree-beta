@@ -31,8 +31,8 @@ class loginfo;
 typedef uint64_t mrcu_epoch_type;
 typedef int64_t mrcu_signed_epoch_type;
 
-extern volatile mrcu_epoch_type globalepoch;  // global epoch, updated regularly
-extern volatile mrcu_epoch_type active_epoch;
+extern relaxed_atomic<mrcu_epoch_type> globalepoch;  // global epoch, updated regularly
+extern relaxed_atomic<mrcu_epoch_type> active_epoch;
 
 struct limbo_group {
     typedef mrcu_epoch_type epoch_type;
@@ -261,17 +261,18 @@ class threadinfo {
     // RCU
     enum { rcu_free_count = 128 }; // max # of entries to free per rcu_quiesce() call
     void rcu_start() {
-        if (gc_epoch_ != globalepoch)
-            gc_epoch_ = globalepoch;
+        auto ge = globalepoch.load();
+        if (gc_epoch_ != ge)
+            gc_epoch_ = ge;
     }
     void rcu_stop() {
-        if (perform_gc_epoch_ != active_epoch)
+        if (perform_gc_epoch_ != active_epoch.load())
             hard_rcu_quiesce();
         gc_epoch_ = 0;
     }
     void rcu_quiesce() {
         rcu_start();
-        if (perform_gc_epoch_ != active_epoch)
+        if (perform_gc_epoch_ != active_epoch.load())
             hard_rcu_quiesce();
     }
     typedef ::mrcu_callback mrcu_callback;
@@ -339,7 +340,7 @@ class threadinfo {
     void record_rcu(void* ptr, memtag tag) {
         if (limbo_tail_->tail_ + 2 > limbo_tail_->capacity)
             refill_rcu();
-        uint64_t epoch = globalepoch;
+        auto epoch = globalepoch.load();
         limbo_tail_->push_back(ptr, tag, epoch);
     }
 
@@ -365,7 +366,7 @@ class threadinfo {
 };
 
 inline mrcu_epoch_type threadinfo::min_active_epoch() {
-    mrcu_epoch_type ae = globalepoch;
+    auto ae = globalepoch.load();
     for (threadinfo* ti = allthreads; ti; ti = ti->next()) {
         prefetch((const void*) ti->next());
         mrcu_epoch_type te = ti->gc_epoch_;

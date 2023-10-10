@@ -483,7 +483,7 @@ bool String_generic::glob_match(const char* sbegin, int slen,
 /** @cond never */
 #if HAVE_STRING_PROFILING
 void String::memo_type::account_new() {
-    int bucket = profile_memo_size_bucket(this->dirty, this->capacity);
+    int bucket = profile_memo_size_bucket(this->dirty.load(), this->capacity);
     ++memo_sizes[bucket];
     ++live_memo_sizes[bucket];
     live_memo_bytes[bucket] += this->capacity;
@@ -497,7 +497,7 @@ void String::memo_type::account_new() {
 }
 
 void String::memo_type::account_destroy() {
-    int bucket = profile_memo_size_bucket(this->dirty, this->capacity);
+    int bucket = profile_memo_size_bucket(this->dirty.load(), this->capacity);
     --live_memo_sizes[bucket];
     live_memo_bytes[bucket] -= this->capacity;
     --live_memo_count;
@@ -521,7 +521,7 @@ void
 String::delete_memo(memo_type *memo)
 {
     assert(memo->capacity > 0);
-    assert(memo->capacity >= memo->dirty);
+    assert(memo->capacity >= memo->dirty.load());
     memo->account_destroy();
     delete[] reinterpret_cast<char*>(memo);
 }
@@ -548,8 +548,8 @@ String::one_profile_report(StringAccum &sa, int i, int examples)
     if (examples) {
 # if HAVE_STRING_PROFILING > 1
         for (memo_type *m = live_memos[i]; m; m = m->next) {
-            sa << "    [" << m->dirty << "] ";
-            uint32_t dirty = m->dirty;
+            auto dirty = m->dirty.load();
+            sa << "    [" << dirty << "] ";
             if (dirty > 0 && m->real_data[dirty - 1] == '\0')
                 --dirty;
             sa.append(m->real_data, dirty > 128 ? 128 : dirty);
@@ -736,18 +736,20 @@ String::append_uninitialized(int len)
     // If we can, append into unused space. First, we check that there's
     // enough unused space for 'len' characters to fit; then, we check
     // that the unused space immediately follows the data in '*this'.
-    uint32_t dirty;
     memo_type* m = _r.memo();
-    if (m && ((dirty = m->dirty), m->capacity > dirty + len)) {
-        char *real_dirty = m->real_data + dirty;
-        if (real_dirty == _r.data + _r.length) {
-            m->dirty = dirty + len;
-            _r.length += len;
-            assert(m->dirty < m->capacity);
+    if (m) {
+        auto dirty = m->dirty.load();
+        if (m->capacity > dirty + len) {
+            char *real_dirty = m->real_data + dirty;
+            if (real_dirty == _r.data + _r.length) {
+                assert(dirty + len < m->capacity);
+                m->dirty.store(dirty + len);
+                _r.length += len;
 #if HAVE_STRING_PROFILING
-            profile_update_memo_dirty(m, dirty, dirty + len, m->capacity);
+                profile_update_memo_dirty(m, dirty, dirty + len, m->capacity);
 #endif
-            return real_dirty;
+                return real_dirty;
+            }
         }
     }
 
@@ -846,7 +848,7 @@ String::hard_c_str() const
     // exists. Otherwise must check that _data[_length] exists.
     const char *end_data = _r.data + _r.length;
     memo_type* m = _r.memo();
-    if ((m && end_data >= m->real_data + m->dirty)
+    if ((m && end_data >= m->real_data + m->dirty.load())
         || *end_data != '\0') {
         if (char *x = const_cast<String *>(this)->append_uninitialized(1)) {
             *x = '\0';

@@ -108,7 +108,7 @@ void threadinfo::hard_rcu_quiesce() {
     limbo_group* empty_tail = nullptr;
     unsigned count = rcu_free_count;
 
-    mrcu_epoch_type epoch_bound = active_epoch - 1;
+    mrcu_epoch_type epoch_bound = active_epoch.load() - 1;
     if (limbo_head_->head_ == limbo_head_->tail_
         || mrcu_signed_epoch_type(epoch_bound - limbo_head_->first_epoch()) < 0)
         goto done;

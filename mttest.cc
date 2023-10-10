@@ -90,8 +90,8 @@ static bool json_stats = false;
 static String gnuplot_yrange;
 static bool pinthreads = false;
 static nodeversion32 global_epoch_lock(false);
-volatile mrcu_epoch_type globalepoch = 1;     // global epoch, updated by main thread regularly
-volatile mrcu_epoch_type active_epoch = 1;
+relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
+relaxed_atomic<mrcu_epoch_type> active_epoch(1);
 kvepoch_t global_log_epoch = 0;
 static int port = 2117;
 static int rscale_ncores = 0;
@@ -123,9 +123,9 @@ void test_timeout(int) {
 
 void set_global_epoch(mrcu_epoch_type e) {
     global_epoch_lock.lock();
-    if (mrcu_signed_epoch_type(e - globalepoch) > 0) {
-        globalepoch = e;
-        active_epoch = threadinfo::min_active_epoch();
+    if (mrcu_signed_epoch_type(e - globalepoch.load()) > 0) {
+        globalepoch.store(e);
+        active_epoch.store(threadinfo::min_active_epoch());
     }
     global_epoch_lock.unlock();
 }
@@ -296,7 +296,7 @@ struct kvtest_client {
     }
     void rcu_quiesce() {
         mrcu_epoch_type e = timestamp() >> 16;
-        if (e != globalepoch)
+        if (e != globalepoch.load())
             set_global_epoch(e);
         ti_->rcu_quiesce();
     }
@@ -1096,7 +1096,9 @@ Try 'mttest --help' for options.\n");
 static void run_one_test_body(int trial, const char *treetype, const char *test) {
     threadinfo *main_ti = threadinfo::make(threadinfo::TI_MAIN, -1);
     main_ti->pthread() = pthread_self();
-    globalepoch = active_epoch = timestamp() >> 16;
+    auto e = timestamp() >> 16;
+    globalepoch.store(e);
+    active_epoch.store(e);
     for (int i = 0; i < (int) arraysize(test_thread_map); ++i)
         if (strcmp(test_thread_map[i].treetype, treetype) == 0) {
             current_test_name = test;

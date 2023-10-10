@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([masstree-beta], [0.1])
-AC_PREREQ(2.60)
+AC_INIT([masstree-beta],[0.1])
+AC_PREREQ([2.71])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([GNUmakefile])
 AC_SUBST(ac_configure_args)
@@ -11,7 +11,7 @@ if test "${CXXFLAGS+y}" != y; then CXXFLAGS="-g -W -Wall -O3"; fi
 
 AC_PROG_CC
 AC_PROG_CXX
-AC_LANG_CPLUSPLUS
+AC_LANG([C++])
 AC_PROG_RANLIB
 
 AC_DEFINE([WORDS_BIGENDIAN_SET], [1], [Define if WORDS_BIGENDIAN has been set.])
