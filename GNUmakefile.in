@@ -2,7 +2,7 @@ AR = ar
 CC = @CC@
 CXX = @CXX@
 CPPFLAGS = @CPPFLAGS@
-CXXFLAGS = @CXXFLAGS@
+CXXFLAGS = @CXXFLAGS@ -pthread
 RANLIB = @RANLIB@
 DEPSDIR := .deps
 DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
@@ -18,7 +18,7 @@ endif
 ifneq ($(strip $(NOSUPERPAGE)), )
   CPPFLAGS += -DNOSUPERPAGE
 endif
-LIBS = @LIBS@ -lpthread -lm
+LIBS = @LIBS@ -lm
 LDFLAGS = @LDFLAGS@
 
 all: test_atomics mtd mtclient mttest
