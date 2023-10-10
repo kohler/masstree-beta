@@ -52,6 +52,8 @@ public:
 
   inline node_type *root() const { return root_; }
 
+  static const char *name() { return "binarytree"; }
+
 private:
   node_type *root_;
 };
@@ -157,5 +159,8 @@ public:
     }
   }
 };
+
+using default_table = binary_tree<tree_params<16>>;
+static_assert(sizeof(default_table::node_type) == 40, "binary tree node size is not 40 bytes");
 } // namespace binarytree
 #endif

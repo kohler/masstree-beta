@@ -1,0 +1,20 @@
+# TODO
+
+
+- [ ] unbalanced binary tree based on CAS
+  - [x] Put
+  - [ ] Get (Not working properly for concurrency)
+
+- [ ] OLFIT tree
+  - [x] Structure
+  - [x] Get
+  - [ ] Put
+  - [ ] Test
+
+# DONE
+
+- [x] fixed sized key representation
+
+- [x] better test suite
+
+- [x] fix test suite: remove name concatenation hack

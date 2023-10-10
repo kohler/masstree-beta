@@ -75,6 +75,9 @@ unit-mt: unit-mt.o compiler.o misc.o libjson.a
 dev_binarytree: dev_binarytree.o compiler.o kvthread.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
+simpletest: testsuites/simpletest_runner.o testsuites/simpletest.o misc.o $(KVTREES) kvio.o libjson.a
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+
 config.h: stamp-h
 
 GNUmakefile: GNUmakefile.in config.status
@@ -96,7 +99,7 @@ stamp-h: config.h.in config.status
 	echo > stamp-h
 
 clean:
-	rm -f mtd mtclient mttest test_string test_atomics dev_binarytree *.o libjson.a
+	rm -f mtd mtclient mttest test_string test_atomics dev_binarytree simpletest *.o testsuites/*.o libjson.a
 	rm -rf .deps
 
 DEPFILES := $(wildcard $(DEPSDIR)/*.d)

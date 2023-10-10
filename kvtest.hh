@@ -47,6 +47,23 @@ inline Json kvtest_set_time(const Json& result, const lcdf::String& base, N n, d
 }
 
 template <typename C>
+void kvtest_simple(C& client) {
+    client.notice("start simple\n");
+    client.rand.seed(kvtest_first_seed + client.id() % 48);
+    double tp0 = client.now();
+    unsigned n;
+    for (n = 0; n < 1000; ++n) {
+        long x = client.rand();
+        client.put(x, x + 1);
+    }
+    client.wait_all();
+    double tp1 = client.now();
+    client.puts_done();
+
+    client.report(kvtest_set_time(Json(), "puts", n, tp1 - tp0));
+}
+
+template <typename C>
 void kvtest_sync_rw1_seed(C &client, int seed)
 {
     client.rand.seed(seed);
