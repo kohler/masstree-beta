@@ -212,6 +212,7 @@ fi
 
 dnl Memory allocator
 
+AC_CHECK_LIB([mimalloc], [mi_malloc], [have_mimalloc=true], [have_mimalloc=])
 AC_CHECK_LIB([flow], [malloc], [have_flow=true], [have_flow=])
 AC_CHECK_LIB([jemalloc], [mallctl], [have_jemalloc=true], [have_jemalloc=])
 AC_CHECK_LIB([tcmalloc_minimal], [tc_malloc], [have_tcmalloc_minimal=true], [have_tcmalloc_minimal=])
@@ -224,15 +225,17 @@ AC_ARG_WITH([malloc],
 
 if test \( "$ac_mtd_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
 	-o \( "$ac_mtd_malloc" = jemalloc -a -z "$have_jemalloc" \) \
+	-o \( "$ac_mtd_malloc" = mimalloc -a -z "$have_mimalloc" \) \
 	-o \( "$ac_mtd_malloc" = flow -a -z "$have_flow" \) \
         -o \( "$ac_mtd_malloc" = hoard -a -z "$have_hoard" \) ; then
     AC_MSG_ERROR([$ac_mtd_malloc not found])
-elif test "$ac_mtd_malloc" = tcmalloc -o "$ac_mtd_malloc" = jemalloc -o "$ac_mtd_malloc" = flow -o "$ac_mtd_malloc" = hoard; then
+elif test "$ac_mtd_malloc" = mimalloc -o "$ac_mtd_malloc" = tcmalloc -o "$ac_mtd_malloc" = jemalloc -o "$ac_mtd_malloc" = flow -o "$ac_mtd_malloc" = hoard; then
     :
 elif test "$ac_mtd_malloc" = yes -o "$ac_mtd_malloc" = default; then
     AC_MSG_CHECKING([for malloc library])
     if test -n "$have_flow"; then ac_mtd_malloc=flow;
     elif test -n "$have_jemalloc"; then ac_mtd_malloc=jemalloc;
+    elif test -n "$have_mimalloc"; then ac_mtd_malloc=mimalloc;
     elif test -n "$have_tcmalloc_minimal"; then ac_mtd_malloc=tcmalloc;
     else ac_mtd_malloc=malloc; fi
     AC_MSG_RESULT([$ac_mtd_malloc])
@@ -251,6 +254,10 @@ elif test "$ac_mtd_malloc" = jemalloc; then
     MALLOC_LIBS="-ljemalloc"
     AC_DEFINE([HAVE_JEMALLOC], [1], [Define if you are using libjemalloc for malloc.])
     AC_MSG_RESULT([-ljemalloc])
+elif test "$ac_mtd_malloc" = mimalloc; then
+    MALLOC_LIBS="-lmimalloc"
+    AC_DEFINE([HAVE_MIMALLOC], [1], [Define if you are using libmimalloc for malloc.])
+    AC_MSG_RESULT([-lmimalloc])
 elif test "$ac_mtd_malloc" = flow; then
     MALLOC_LIBS="-lflow"
     AC_DEFINE([HAVE_FLOW_MALLOC], [1], [Define if you are using libflow for malloc.])
