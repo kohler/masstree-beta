@@ -180,7 +180,7 @@ struct kvtest_client {
     uint64_t limit() const {
         return ::limit;
     }
-    int getratio() const {
+    unsigned getratio() const {
         assert(::getratio >= 0);
         return ::getratio;
     }
