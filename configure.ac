@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([masstree-beta],[0.1])
-AC_PREREQ([2.71])
+AC_PREREQ([2.69])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([GNUmakefile])
 AC_SUBST(ac_configure_args)
