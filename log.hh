@@ -57,10 +57,6 @@ class loginfo {
         lcdf::String::rep_type filename_;
         logset* logset_;
     };
-    struct logset_info {
-        int32_t size_;
-        int allocation_offset_;
-    };
 
     front f_;
     char padding1_[CACHE_LINE_SIZE - sizeof(front)];
@@ -70,28 +66,20 @@ class loginfo {
     kvepoch_t wake_epoch_;      // epoch for which we recorded a wake command
     kvepoch_t flushed_epoch_;   // epoch fsync()ed to disk
 
-    union {
-        struct {
-            char *buf_;
-            uint32_t pos_;
-            uint32_t len_;
+    char *buf_;
+    uint32_t pos_;
+    uint32_t len_;
 
-            // We have logged all writes up to, but not including,
-            // flushed_epoch_.
-            // Log is quiesced to disk if quiescent_epoch_ != 0
-            // and quiescent_epoch_ == flushed_epoch_.
-            // When a log wakes up from quiescence, it sets global_wake_epoch;
-            // other threads must record a logcmd_wake in their logs.
-            // Invariant: log_epoch_ != quiescent_epoch_ (unless both are 0).
+    // We have logged all writes up to, but not including,
+    // flushed_epoch_.
+    // Log is quiesced to disk if quiescent_epoch_ != 0
+    // and quiescent_epoch_ == flushed_epoch_.
+    // When a log wakes up from quiescence, it sets global_wake_epoch;
+    // other threads must record a logcmd_wake in their logs.
+    // Invariant: log_epoch_ != quiescent_epoch_ (unless both are 0).
 
-            threadinfo *ti_;
-            int logindex_;
-        };
-        struct {
-            char cache_line_2_[CACHE_LINE_SIZE - 4 * sizeof(kvepoch_t) - sizeof(logset_info)];
-            logset_info lsi_;
-        };
-    };
+    threadinfo *ti_;
+    int logindex_;
 
     loginfo(logset* ls, int logindex);
     ~loginfo();
@@ -102,7 +90,18 @@ class loginfo {
 };
 
 class logset {
-  public:
+    struct logset_meta {
+        int allocation_offset_;
+        int32_t size_;
+    };
+    inline const logset_meta& lsm() const {
+        return *reinterpret_cast<const logset_meta*>(reinterpret_cast<const char*>(this) - sizeof(logset_meta));
+    }
+    inline logset_meta& lsm() {
+        return *reinterpret_cast<logset_meta*>(reinterpret_cast<char*>(this) - sizeof(logset_meta));
+    }
+
+public:
     static logset* make(int size);
     static void free(logset* ls);
 
@@ -110,7 +109,7 @@ class logset {
     inline loginfo& log(int i);
     inline const loginfo& log(int i) const;
 
-  private:
+private:
     loginfo li_[0];
 };
 
@@ -191,7 +190,7 @@ inline bool loginfo::quiescent() const {
 }
 
 inline int logset::size() const {
-    return li_[-1].lsi_.size_;
+    return lsm().size_;
 }
 
 inline loginfo& logset::log(int i) {

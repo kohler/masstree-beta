@@ -155,15 +155,15 @@ struct logrec_kvdelta {
 
 logset* logset::make(int size) {
     static_assert(sizeof(loginfo) == 2 * CACHE_LINE_SIZE, "unexpected sizeof(loginfo)");
+    static_assert(sizeof(logset_meta) < CACHE_LINE_SIZE, "unexpected sizeof(logset_meta)");
     assert(size > 0 && size <= 64);
-    char* x = new char[sizeof(loginfo) * size + sizeof(loginfo::logset_info) + CACHE_LINE_SIZE];
-    char* ls_pos = x + sizeof(loginfo::logset_info);
-    uintptr_t left = reinterpret_cast<uintptr_t>(ls_pos) % CACHE_LINE_SIZE;
-    if (left)
-        ls_pos += CACHE_LINE_SIZE - left;
+    char* x = new char[sizeof(loginfo) * size + CACHE_LINE_SIZE];
+    char* ls_pos = x + CACHE_LINE_SIZE - (reinterpret_cast<uintptr_t>(x) % CACHE_LINE_SIZE);
+    assert(reinterpret_cast<uintptr_t>(ls_pos) % CACHE_LINE_SIZE == 0);
+    assert(size_t(ls_pos - x) >= sizeof(logset_meta));
     logset* ls = reinterpret_cast<logset*>(ls_pos);
-    ls->li_[-1].lsi_.size_ = size;
-    ls->li_[-1].lsi_.allocation_offset_ = (int) (x - ls_pos);
+    ls->lsm().size_ = size;
+    ls->lsm().allocation_offset_ = (int) (ls_pos - x);
     for (int i = 0; i != size; ++i)
         new((void*) &ls->li_[i]) loginfo(ls, i);
     return ls;
@@ -172,7 +172,7 @@ logset* logset::make(int size) {
 void logset::free(logset* ls) {
     for (int i = 0; i != ls->size(); ++i)
         ls->li_[i].~loginfo();
-    delete[] (reinterpret_cast<char*>(ls) + ls->li_[-1].lsi_.allocation_offset_);
+    delete[] (reinterpret_cast<char*>(ls) - ls->lsm().allocation_offset_);
 }
 
 
