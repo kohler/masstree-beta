@@ -16,6 +16,7 @@
 #ifndef MASSTREE_COMPILER_HH
 #define MASSTREE_COMPILER_HH 1
 #include <stdint.h>
+#include <string.h>
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include <arpa/inet.h>
@@ -84,24 +85,40 @@ inline void fence() {
 
 /** @brief Acquire fence. */
 inline void acquire_fence() {
+#if defined(__x86__)
     asm volatile("" : : : "memory");
+#else
+    __sync_synchronize();
+#endif
 }
 
 /** @brief Release fence. */
 inline void release_fence() {
+#if defined(__x86__)
     asm volatile("" : : : "memory");
+#else
+    __sync_synchronize();
+#endif
 }
 
 /** @brief Compiler fence that relaxes the processor.
 
     Use this in spinloops, for example. */
 inline void relax_fence() {
+#if defined(__x86__)
     asm volatile("pause" : : : "memory"); // equivalent to "rep; nop"
+#else
+    asm volatile("" : : : "memory"); // equivalent to "rep; nop"
+#endif
 }
 
 /** @brief Full memory fence. */
 inline void memory_fence() {
+#if defined(__x86__)
     asm volatile("mfence" : : : "memory");
+#else
+    __sync_synchronize();
+#endif
 }
 
 /** @brief Do-nothing function object. */
@@ -150,10 +167,14 @@ template <int SIZE, typename BARRIER> struct sized_compiler_operations;
 template <typename B> struct sized_compiler_operations<1, B> {
     typedef char type;
     static inline type xchg(type* object, type new_value) {
+#if __x86__
         asm volatile("xchgb %0,%1"
                      : "+q" (new_value), "+m" (*object));
         B()();
         return new_value;
+#else
+	return __sync_lock_test_and_set(object, new_value);
+#endif
     }
     static inline type val_cmpxchg(type* object, type expected, type desired) {
 #if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
@@ -206,10 +227,14 @@ template <typename B> struct sized_compiler_operations<2, B> {
     typedef int16_t type;
 #endif
     static inline type xchg(type* object, type new_value) {
+#if __x86__
         asm volatile("xchgw %0,%1"
                      : "+r" (new_value), "+m" (*object));
         B()();
         return new_value;
+#else
+	return __sync_lock_test_and_set(object, new_value);
+#endif
     }
     static inline type val_cmpxchg(type* object, type expected, type desired) {
 #if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
@@ -262,10 +287,14 @@ template <typename B> struct sized_compiler_operations<4, B> {
     typedef int32_t type;
 #endif
     static inline type xchg(type* object, type new_value) {
+#if __x86__
         asm volatile("xchgl %0,%1"
                      : "+r" (new_value), "+m" (*object));
         B()();
         return new_value;
+#else
+	return __sync_lock_test_and_set(object, new_value);
+#endif
     }
     static inline type val_cmpxchg(type* object, type expected, type desired) {
 #if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
@@ -319,14 +348,16 @@ template <typename B> struct sized_compiler_operations<8, B> {
 #else
     typedef int64_t type;
 #endif
-#if __x86_64__
     static inline type xchg(type* object, type new_value) {
+#if __x86_64__
         asm volatile("xchgq %0,%1"
                      : "+r" (new_value), "+m" (*object));
         B()();
         return new_value;
-    }
+#else
+	return __sync_lock_test_and_set(object, new_value);
 #endif
+    }
     static inline type val_cmpxchg(type* object, type expected, type desired) {
 #if __x86_64__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP_8)
         asm volatile("lock; cmpxchgq %2,%1"
@@ -575,8 +606,12 @@ inline void prefetch(const void *ptr) {
 #ifdef NOPREFETCH
     (void) ptr;
 #else
+#if defined(__x86__)
     typedef struct { char x[CACHE_LINE_SIZE]; } cacheline_t;
     asm volatile("prefetcht0 %0" : : "m" (*(const cacheline_t *)ptr));
+#else
+    __builtin_prefetch(ptr);
+#endif
 #endif
 }
 #endif
@@ -585,8 +620,12 @@ inline void prefetchnta(const void *ptr) {
 #ifdef NOPREFETCH
     (void) ptr;
 #else
+#if defined(__x86__)
     typedef struct { char x[CACHE_LINE_SIZE]; } cacheline_t;
     asm volatile("prefetchnta %0" : : "m" (*(const cacheline_t *)ptr));
+#else
+    __builtin_prefetch(ptr,0,0);
+#endif
 #endif
 }
 
@@ -619,9 +658,11 @@ inline uint64_t ntohq(uint64_t val) {
     asm("bswapl %0; bswapl %1; xchgl %0,%1"
         : "+r" (v.s.a), "+r" (v.s.b));
     return v.u;
-#else /* __i386__ */
+#elif x86_64
     asm("bswapq %0" : "+r" (val));
     return val;
+#else
+    return __builtin_bswap64(val);
 #endif
 }
 
