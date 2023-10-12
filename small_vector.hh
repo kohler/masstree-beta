@@ -68,7 +68,7 @@ class small_vector {
         T* first_;
         T* last_;
         T* capacity_;
-        char lv_[sizeof(T) * N]; // XXX does not obey alignof(T)
+        alignas(T) char lv_[sizeof(T) * N];
 
         inline rep(const A& a);
     };

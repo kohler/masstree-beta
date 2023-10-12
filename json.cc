@@ -247,7 +247,9 @@ void Json::hard_uniqueify_array(bool convert, int ncap_in) {
 
     if (old_u.x.type == j_array && old_u.a.x && old_u.a.x->refcount == 1) {
         u_.a.x->size = old_u.a.x->size;
-        memcpy(u_.a.x->a, old_u.a.x->a, sizeof(Json) * u_.a.x->size);
+        char* new_data = reinterpret_cast<char*>(u_.a.x->a);
+        char* old_data = reinterpret_cast<char*>(old_u.a.x->a);
+        memcpy(new_data, old_data, sizeof(Json) * u_.a.x->size);
         delete[] reinterpret_cast<char*>(old_u.a.x);
     } else if (old_u.x.type == j_array && old_u.a.x) {
         u_.a.x->size = old_u.a.x->size;
