@@ -168,6 +168,13 @@ void simple_kvtest_client<T, C>::notice(const char *fmt, ...) {
     fprintf(stderr, "%d: %s", ti_->index(), m.c_str());
 }
 
+template <typename T> inline void kvtest_print(const T &table, FILE* f, threadinfo *ti) {
+    // only print out the tree from the first failure
+    while (!bool_cmpxchg((int *) &kvtest_printing, 0, ti->index() + 1)) {
+    }
+    table.print(f);
+}
+
 template <typename T, typename C>
 void simple_kvtest_client<T, C>::fail(const char *fmt, ...) {
   static nodeversion32 failing_lock(false);
@@ -190,7 +197,7 @@ void simple_kvtest_client<T, C>::fail(const char *fmt, ...) {
 
   failing_lock.lock();
   fprintf(stdout, "%d: %s", ti_->index(), m.c_str());
-  // kvtest_print(*table_, stdout, ti_);
+  kvtest_print(*table_, stdout, ti_);
 
   always_assert(0);
 }

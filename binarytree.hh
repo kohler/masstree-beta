@@ -8,6 +8,7 @@
 #include "str.hh"
 #include "string.hh"
 #include <mutex>
+#include <stdio.h>
 
 namespace binarytree {
 using lcdf::Str;
@@ -54,8 +55,31 @@ public:
 
   static const char *name() { return "binarytree"; }
 
+  void print(FILE* f) const {
+    print(f, root_);
+  }
+
 private:
   node_type *root_;
+
+  void print(FILE* f, node_type *node) const {
+    print(f, "", node, false);
+  }
+
+  void print(FILE* f,const std::string& prefix, const node_type* node, bool isLeft) const {
+      if (node != nullptr) {
+        fprintf(f, "%s", prefix.c_str());
+
+        fprintf(f, "%s", (isLeft ? "├──" : "└──"));
+
+        // print the value of the node
+        fprintf(f, "%s:%s\n", node->key_.unparse_printable().c_str(), (node->pValue_ ? node->pValue_->data() : "null"));
+
+        // enter the next tree level - left and right branch
+        print(f, prefix + (isLeft ? "│   " : "    "), node->pLeft_, true);
+        print(f, prefix + (isLeft ? "│   " : "    "), node->pRight_, false);
+      }
+    }
 };
 
 template <typename P> class alignas(CACHE_LINE_SIZE) node {
@@ -83,7 +107,7 @@ public:
   }
 
   static node_type *make(Str key, threadinfo &ti) {
-    void *data = ti.pool_allocate(sizeof(node_type), memtag_masstree_internode);
+    node_type* data = (node_type*) ti.pool_allocate(sizeof(node_type), memtag_masstree_internode);
     new (data) node_type(key);
     return data;
   }
@@ -101,10 +125,10 @@ public:
   using threadinfo = typename P::threadinfo_type;
 
   cursor(const binary_tree<P> &tree, Str key)
-      : node_(nullptr), k_(key), pv_(nullptr), root_(tree.root()) {}
+      : parent_(nullptr), node_(nullptr), k_(key), pv_(nullptr), root_(tree.root()) {}
 
   cursor(const binary_tree<P> &tree, const char *key)
-      : node_(nullptr), k_(key_type(key)), pv_(nullptr), root_(tree.root()) {}
+      : parent_(nullptr), node_(nullptr), k_(key_type(key)), pv_(nullptr), root_(tree.root()) {}
 
   bool find() {
     node_ = const_cast<node_type *>(root_);
@@ -117,6 +141,7 @@ public:
       } else {
         parent_ = node_;
         node_ = node_->child(cmp);
+        assert(parent_);
       }
     } while (node_);
     return false;
@@ -160,6 +185,7 @@ public:
       release_fence();
       while (true) {
         if (bool_cmpxchg<value_type *>(&c.node_->pValue_, c.pv_, newValue)) {
+          std::cout << "old: " << reinterpret_cast<void*>(c.pv_) << "; new: " <<reinterpret_cast<void*>(newValue) << std::endl;
           break;
         }
         c.pv_ = c.node_->pValue_;
@@ -176,6 +202,7 @@ public:
       if (bool_cmpxchg<node_type *>(dir > 0 ? &c.parent_->pRight_
                                             : &c.parent_->pLeft_,
                                     nullptr, newNode)) {
+        std::cout << "parent: " << reinterpret_cast<void*>(c.parent_) << "; old: " << reinterpret_cast<void*>(dir > 0 ? &c.parent_->pRight_ : &c.parent_->pLeft_) << "; new: " <<reinterpret_cast<void*>(newValue) << std::endl;
         c.node_ = newNode;
       } else {
         goto retry;
