@@ -1,9 +1,6 @@
 # TODO
 
-
-- [ ] unbalanced binary tree based on CAS
-  - [x] Put
-  - [ ] Get (Not working properly for concurrency)
+- [ ] binary tree: use value_bag or value_string instead of std::string as the value type
 
 - [ ] OLFIT tree
   - [x] Structure
@@ -18,3 +15,5 @@
 - [x] better test suite
 
 - [x] fix test suite: remove name concatenation hack
+
+- [x] unbalanced binary tree based on CAS

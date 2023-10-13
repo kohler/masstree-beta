@@ -9,6 +9,7 @@
 #include "string.hh"
 #include <mutex>
 #include <stdio.h>
+#include <string>
 
 namespace binarytree {
 using lcdf::Str;
@@ -16,7 +17,8 @@ using lcdf::String;
 
 template <size_t KeySize> struct tree_params {
   static constexpr int ikey_size = KeySize;
-  using value_type = Str;
+  // using value_type = Str;
+  using value_type = std::string;
   using threadinfo_type = ::threadinfo;
 };
 
@@ -168,8 +170,8 @@ public:
     }
   }
 
-  template <typename T, typename V>
-  void put(T &tree, Str key, V value, threadinfo &ti) {
+  template <typename T>
+  void put(T &tree, Str key, typename T::value_type value, threadinfo &ti) {
     using value_type = typename T::value_type;
     using node_type = typename T::node_type;
 
@@ -185,30 +187,28 @@ public:
       release_fence();
       while (true) {
         if (bool_cmpxchg<value_type *>(&c.node_->pValue_, c.pv_, newValue)) {
-          std::cout << "old: " << reinterpret_cast<void*>(c.pv_) << "; new: " <<reinterpret_cast<void*>(newValue) << std::endl;
           break;
         }
         c.pv_ = c.node_->pValue_;
         relax_fence();
       }
+      ti.pool_deallocate(c.pv_, sizeof(value_type), memtag_value);
     } else {
       // perform insert
       if (!newNode) {
         newNode = node_type::make(key, ti);
         newNode->pValue_ = newValue;
       }
-      int dir = c.k_.compare(c.parent_->key_);
       release_fence();
+      int dir = c.k_.compare(c.parent_->key_);
       if (bool_cmpxchg<node_type *>(dir > 0 ? &c.parent_->pRight_
                                             : &c.parent_->pLeft_,
                                     nullptr, newNode)) {
-        std::cout << "parent: " << reinterpret_cast<void*>(c.parent_) << "; old: " << reinterpret_cast<void*>(dir > 0 ? &c.parent_->pRight_ : &c.parent_->pLeft_) << "; new: " <<reinterpret_cast<void*>(newValue) << std::endl;
         c.node_ = newNode;
       } else {
         goto retry;
       }
     }
-    free(c.pv_);
   }
 };
 
