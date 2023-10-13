@@ -58,7 +58,7 @@ private:
   node_type *root_;
 };
 
-template <typename P> class node {
+template <typename P> class alignas(CACHE_LINE_SIZE) node {
   using key_type = fix_sized_key<P::ikey_size>;
   using value_type = typename P::value_type;
   using threadinfo = typename P::threadinfo_type;
@@ -84,7 +84,8 @@ public:
 
   static node_type *make(Str key, threadinfo &ti) {
     void *data = ti.pool_allocate(sizeof(node_type), memtag_masstree_internode);
-    return new (data) node_type(key);
+    new (data) node_type(key);
+    return data;
   }
 };
 
@@ -107,7 +108,8 @@ public:
 
   bool find() {
     node_ = const_cast<node_type *>(root_);
-    while (node_) {
+    do {
+      acquire_fence();
       int cmp = k_.compare(node_->key_);
       if (cmp == 0) {
         pv_ = node_->pValue_;
@@ -116,7 +118,7 @@ public:
         parent_ = node_;
         node_ = node_->child(cmp);
       }
-    }
+    } while (node_);
     return false;
   }
 
@@ -145,22 +147,46 @@ public:
   void put(T &tree, Str key, V value, threadinfo &ti) {
     using value_type = typename T::value_type;
     using node_type = typename T::node_type;
-    typename T::cursor_type c(tree, key);
-    value_type *newValue = (value_type *)ti.allocate(sizeof(value_type), memtag_value);
+
+    // allocate new value ptr
+    value_type *newValue = (value_type *)ti.pool_allocate(sizeof(value_type), memtag_value);
     new (newValue) value_type(value);
+
+    retry:
+    typename T::cursor_type c(tree, key);
+    node_type *newNode = nullptr;
     if (c.find()) {
-      cmpxchg<value_type *>(&c.node_->pValue_, c.pv_, newValue);
+      // perform update
+      release_fence();
+      while (true) {
+        if (bool_cmpxchg<value_type *>(&c.node_->pValue_, c.pv_, newValue)) {
+          break;
+        }
+        c.pv_ = c.node_->pValue_;
+        relax_fence();
+      }
     } else {
-      node_type *node = node_type::make(key, ti);
-      node->pValue_ = newValue;
+      // perform insert
+      if (!newNode) {
+        newNode = node_type::make(key, ti);
+        newNode->pValue_ = newValue;
+      }
       int dir = c.k_.compare(c.parent_->key_);
-      cmpxchg<node_type *>(dir > 0 ? &c.parent_->pRight_ : &c.parent_->pLeft_, nullptr, node);
-      c.node_ = node;
+      release_fence();
+      if (bool_cmpxchg<node_type *>(dir > 0 ? &c.parent_->pRight_
+                                            : &c.parent_->pLeft_,
+                                    nullptr, newNode)) {
+        c.node_ = newNode;
+      } else {
+        goto retry;
+      }
     }
+    free(c.pv_);
   }
 };
 
 using default_table = binary_tree<tree_params<16>>;
-static_assert(sizeof(default_table::node_type) == 40, "binary tree node size is not 40 bytes");
+// static_assert(sizeof(default_table::node_type) == 40,
+//               "binary tree node size is not 40 bytes");
 } // namespace binarytree
 #endif

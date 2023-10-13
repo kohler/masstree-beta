@@ -17,7 +17,7 @@
 #ifndef OLFIT_GET_HH
 #define OLFIT_GET_HH
 #include "OLFIT_tcursor.hh"
-#include "OLFIT_key.hh"
+#include "../fixsizedkey.hh"
 namespace OLFIT {
 
 template <typename P>
@@ -86,7 +86,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
     } else
         state_ = 0;
 
-    _->lock(v, ti.lock_fence(tc_leaf_lock));
+    n_->lock(v, ti.lock_fence(tc_leaf_lock));
     if (n_->has_changed(v) || n_->permutation() != perm) {
         ti.mark(threadcounter(tc_stable_leaf_insert + n_->simple_has_split(v)));
         n_->unlock();

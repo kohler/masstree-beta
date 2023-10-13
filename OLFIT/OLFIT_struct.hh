@@ -97,7 +97,7 @@ class internode : public node_base<P> {
   public:
     static constexpr int width = P::fanout;
     using nodeversion_type = typename node_base<P>::nodeversion_type;
-    using ikey_type = typename P::ikey_type;
+    using ikey_type = fix_sized_key<P::ikey_size>;
     using bound_type = typename key_bound<width, P::bound_method>::type;
     using threadinfo = typename P::threadinfo_type;
 

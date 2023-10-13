@@ -52,7 +52,7 @@ void kvtest_simple(C& client) {
     client.rand.seed(kvtest_first_seed + client.id() % 48);
     double tp0 = client.now();
     unsigned n;
-    for (n = 0; n < 1000; ++n) {
+    for (n = 0; !client.timeout(0) && n < 1000000; ++n) {
         long x = client.rand();
         client.put(x, x + 1);
     }
@@ -61,6 +61,45 @@ void kvtest_simple(C& client) {
     client.puts_done();
 
     client.report(kvtest_set_time(Json(), "puts", n, tp1 - tp0));
+
+    client.notice("now getting\n");
+    int32_t *a = (int32_t *) malloc(sizeof(int32_t) * n);
+    assert(a);
+    client.rand.seed(kvtest_first_seed + client.id() % 48);
+    for (unsigned i = 0; i < n; ++i) {
+        a[i] = (int32_t) client.rand();
+    }
+    kvrandom_uniform_int_distribution<unsigned> swapd(0, n - 1);
+    for (unsigned i = 0; i < n; ++i) {
+        std::swap(a[i], a[swapd(client.rand)]);
+    }
+
+    double tg0 = client.now();
+    unsigned g;
+#if 0
+#define BATCH 8
+    for(g = 0; g+BATCH < n && !client.timeout(1); g += BATCH){
+      long key[BATCH], expected[BATCH];
+      for(int i = 0; i < BATCH; i++){
+        key[i] = a[g+i];
+        expected[i] = a[g+i] + 1;
+      }
+      client.many_get_check(BATCH, key, expected);
+    }
+#else
+    for (g = 0; g < n && !client.timeout(1); ++g) {
+        client.get_check(a[g], a[g] + 1);
+    }
+#endif
+    client.wait_all();
+    double tg1 = client.now();
+
+    Json result = client.report(Json());
+    kvtest_set_time(result, "gets", g, tg1 - tg0);
+    double delta_puts = n / result["puts_per_sec"].as_d();
+    kvtest_set_time(result, "ops", n + g, delta_puts + (tg1 - tg0));
+    client.report(result);
+    free(a);
 }
 
 template <typename C>
