@@ -65,29 +65,29 @@ private:
   node_type *root_;
 
   void print(FILE* f, node_type *node) const {
-    print(f, "", node, false);
+    print(f, "", node, false, 0);
   }
 
-  void print(FILE* f,const std::string& prefix, const node_type* node, bool isLeft) const {
+  void print(FILE* f,const std::string& prefix, const node_type* node, bool isLeft, int layer) const {
       if (node != nullptr) {
         fprintf(f, "%s", prefix.c_str());
 
-        fprintf(f, "%s", (isLeft ? "├──" : "└──"));
+        fprintf(f, "%s C(%d)= ", (isLeft ? "├──" : "└──"), layer);
 
         // print the value of the node
         for (int i=0; i<P::fanout-1; i++) {
           if (node->values_[i] == nullptr) {
-            fprintf(f, "%d:%s:%s; ", i, "null", "null");
+            fprintf(f, "%d:(%s:%s); ", i, "null", "null");
           } else {
             key_type k(node->keys0_[i], node->keys1_[i]);
-            fprintf(f, "%d:%s:%s; ", i, k.unparse_printable().c_str(), node->values_[i]->data());
+            fprintf(f, "%d:(%s:%s); ", i, k.unparse_printable().c_str(), node->values_[i]->data());
           }
         }
         fprintf(f, "\n");
 
         // print next level
         for (int i=0; i<P::fanout; i++) {
-          print(f, prefix + (isLeft ? "│   " : "    "), node->children_[i], i!=P::fanout-1);
+          print(f, prefix + (isLeft ? "│   " : "    "), node->children_[i], i!=P::fanout-1, i);
         }
       }
     }
@@ -102,9 +102,9 @@ template <typename P> class alignas(CACHE_LINE_SIZE) node {
 public:
   // first cacheline contains first 8 bytes of keys and 4 children
   SpinLock lk_;
-  uint64_t keys1_[P::fanout-1] = {};
-  node<P>* children_[P::fanout] = {};
   uint64_t keys0_[P::fanout-1] = {};
+  node<P>* children_[P::fanout] = {};
+  uint64_t keys1_[P::fanout-1] = {};
   value_type* values_[P::fanout-1] = {};
 
   node(){}
@@ -116,9 +116,9 @@ public:
   }
 
   int compare_with(const key_type& k, size_t index) const {
-    int cmp = ::compare(k.ikey_u.ikey[1], keys1_[index]);
+    int cmp = ::compare(k.ikey_u.ikey[0], keys0_[index]);
     if (cmp == 0) {
-      cmp = ::compare(k.ikey_u.ikey[0], keys0_[index]);
+      cmp = ::compare(k.ikey_u.ikey[1], keys1_[index]);
     }
     return cmp;
   }
@@ -127,8 +127,8 @@ public:
     value_type* pNewValue = (value_type*) ti.pool_allocate(sizeof(value_type), memtag_value);
     new (pNewValue) value_type(v);
     lk_.lock();
-    keys1_[index] = k.ikey_u.ikey[1];
     keys0_[index] = k.ikey_u.ikey[0];
+    keys1_[index] = k.ikey_u.ikey[1];
     values_[index] = pNewValue;
     lk_.unlock();
   }
@@ -146,10 +146,10 @@ public:
   using threadinfo = typename P::threadinfo_type;
 
   cursor(const four_tree<P> &tree, Str key)
-      : parent_(nullptr), node_(nullptr), k_(key), pv_(nullptr), root_(tree.root()) {}
+      : parent_(nullptr), node_(nullptr), index_(0), k_(key), pv_(nullptr), root_(tree.root()) {}
 
   cursor(const four_tree<P> &tree, const char *key)
-      : parent_(nullptr), node_(nullptr), k_(key_type(key)), pv_(nullptr), root_(tree.root()) {}
+      : parent_(nullptr), node_(nullptr), index_(0), k_(key_type(key)), pv_(nullptr), root_(tree.root()) {}
 
   bool find() {
     node_ = const_cast<node_type *>(root_);
@@ -180,6 +180,7 @@ public:
         }
       }
       parent_ = node_;
+      index_ = P::fanout-1;
       node_ = node_->children_[P::fanout-1];
       parent_->lk_.unlock();
     }

@@ -81,9 +81,9 @@ class fix_sized_key {
     template<> struct comparator<true> {
         using key = fix_sized_key<Size, true>;
         static int compare(const key& x, const key& y) {
-            int cmp = ::compare(x.ikey_u.ikey[1], y.ikey_u.ikey[1]);
+            int cmp = ::compare(x.ikey_u.ikey[0], y.ikey_u.ikey[0]);
             if (cmp == 0) {
-                cmp = ::compare(x.ikey_u.ikey[0], y.ikey_u.ikey[0]);
+                cmp = ::compare(x.ikey_u.ikey[1], y.ikey_u.ikey[1]);
             }
             return cmp;
         }
@@ -91,7 +91,7 @@ class fix_sized_key {
     template<> struct comparator<false> {
         using key = fix_sized_key<Size, false>;
         static int compare(const key& x, const key& y) {
-            return strcmp(x->ikey_u.s, y.ikey_u.s);
+            return strcmp(x.ikey_u.s, y.ikey_u.s);
         }
     };
 
