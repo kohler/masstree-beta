@@ -7,6 +7,8 @@
 using lcdf::Str;
 using lcdf::String;
 
+template<size_t Size, bool IntCmp_> struct comparator;
+
 template <size_t Size, bool IntCmp = true>
 class fix_sized_key {
   constexpr static bool int_cmp = IntCmp;
@@ -46,7 +48,7 @@ class fix_sized_key {
     }
 
     int compare(const fix_sized_key<Size, IntCmp> x) const {
-        return comparator<IntCmp>::compare(*this, x);
+        return comparator<Size, IntCmp>::compare(*this, x);
     }
 
 
@@ -77,24 +79,23 @@ class fix_sized_key {
         char s[ikey_size];
     } ikey_u;
 
-    template<bool IntCmp_> struct comparator;
-    template<> struct comparator<true> {
-        using key = fix_sized_key<Size, true>;
-        static int compare(const key& x, const key& y) {
-            int cmp = ::compare(x.ikey_u.ikey[0], y.ikey_u.ikey[0]);
-            if (cmp == 0) {
-                cmp = ::compare(x.ikey_u.ikey[1], y.ikey_u.ikey[1]);
-            }
-            return cmp;
-        }
-    };
-    template<> struct comparator<false> {
-        using key = fix_sized_key<Size, false>;
-        static int compare(const key& x, const key& y) {
-            return strcmp(x.ikey_u.s, y.ikey_u.s);
-        }
-    };
 
+};
+template<size_t Size> struct comparator<Size, true> {
+    using key = fix_sized_key<Size, true>;
+    static int compare(const key& x, const key& y) {
+        int cmp = ::compare(x.ikey_u.ikey[0], y.ikey_u.ikey[0]);
+        if (cmp == 0) {
+            cmp = ::compare(x.ikey_u.ikey[1], y.ikey_u.ikey[1]);
+        }
+        return cmp;
+    }
+};
+template<size_t Size> struct comparator<Size, false> {
+    using key = fix_sized_key<Size, false>;
+    static int compare(const key& x, const key& y) {
+        return strcmp(x.ikey_u.s, y.ikey_u.s);
+    }
 };
 
 template <size_t S, bool C> constexpr int fix_sized_key<S, C>::ikey_size;

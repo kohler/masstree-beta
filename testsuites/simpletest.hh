@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <sys/utsname.h>
+#include <signal.h>
 #include "../clp.h"
 #include "../compiler.hh"
 #include "../misc.hh"

@@ -31,7 +31,6 @@
 #include <fcntl.h>
 #include <math.h>
 #include <pthread.h>
-#include <signal.h>
 #include <string.h>
 #ifdef __linux__
 #include <malloc.h>
