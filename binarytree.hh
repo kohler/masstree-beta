@@ -7,7 +7,6 @@
 #include "mtcounters.hh"
 #include "str.hh"
 #include "string.hh"
-#include <mutex>
 #include <stdio.h>
 #include <string>
 
@@ -15,26 +14,13 @@ namespace binarytree {
 using lcdf::Str;
 using lcdf::String;
 
-template <size_t KeySize> struct tree_params {
+template <size_t KeySize=16> struct tree_params {
   static constexpr int ikey_size = KeySize;
-  // using value_type = Str;
+  static constexpr bool enable_int_cmp = true;
   using value_type = std::string;
   using threadinfo_type = ::threadinfo;
 };
 
-// class SpinLock {
-// private:
-//   std::atomic_flag flag = ATOMIC_FLAG_INIT;
-
-// public:
-//   void lock() {
-//     while (flag.test_and_set(std::memory_order_acquire)) {
-//     }
-//   }
-//   void unlock() { flag.clear(std::memory_order_release); }
-// };
-
-// using scoped_lock =  std::lock_guard<SpinLock>;
 
 template <typename P> class node;
 template <typename P> class cursor;
@@ -44,7 +30,7 @@ public:
   using parameter_type = P;
   using node_type = node<P>;
   using value_type = typename P::value_type;
-  using key_type = fix_sized_key<P::ikey_size>;
+  using key_type = fix_sized_key<P::ikey_size, P::enable_int_cmp>;
   using threadinfo = typename P::threadinfo_type;
   using cursor_type = cursor<P>;
 
@@ -85,7 +71,7 @@ private:
 };
 
 template <typename P> class alignas(CACHE_LINE_SIZE) node {
-  using key_type = fix_sized_key<P::ikey_size>;
+  using key_type = fix_sized_key<P::ikey_size, P::enable_int_cmp>;
   using value_type = typename P::value_type;
   using threadinfo = typename P::threadinfo_type;
   using node_type = node<P>;
@@ -123,7 +109,7 @@ template <typename P> class cursor {
 public:
   using node_type = node<P>;
   using value_type = typename P::value_type;
-  using key_type = fix_sized_key<P::ikey_size>;
+  using key_type = fix_sized_key<P::ikey_size, P::enable_int_cmp>;
   using threadinfo = typename P::threadinfo_type;
 
   cursor(const binary_tree<P> &tree, Str key)

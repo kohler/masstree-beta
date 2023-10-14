@@ -75,6 +75,12 @@ unit-mt: unit-mt.o compiler.o misc.o libjson.a
 dev_binarytree: dev_binarytree.o compiler.o kvthread.o libjson.a
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
+dev_fourtree: dev_fourtree.o compiler.o kvthread.o libjson.a
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+
+dev_OLFIT: dev_OLFIT.o OLFIT/*.o compiler.o kvthread.o libjson.a
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
+
 simpletest: testsuites/simpletest_runner.o testsuites/simpletest.o misc.o $(KVTREES) kvio.o libjson.a
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 

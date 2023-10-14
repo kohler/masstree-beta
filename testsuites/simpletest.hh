@@ -9,8 +9,6 @@
 #include "simpletest_config.hh"
 #include "simpletest_thread.hh"
 #include "simpletest_runner.hh"
-#include "masstree_test.hh"
-#include "binarytree_test.hh"
 
 
 enum { clp_val_normalize = Clp_ValFirstUser, clp_val_suffixdouble };
