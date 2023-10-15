@@ -1,0 +1,26 @@
+{
+  "experiments": {
+    "x0": {
+      "git-revision": "71e616b42374d30637c52ea8a7bbd9cda25bf96dM",
+      "time": "Sat Oct 14 16:28:00 2023",
+      "machine": "ubuntu",
+      "cores": 1,
+      "runs": ["x0\/rw1\/binarytree\/0"]
+    },
+    "x1": {
+      "git-revision": "71e616b42374d30637c52ea8a7bbd9cda25bf96dM",
+      "time": "Sat Oct 14 16:42:38 2023",
+      "machine": "ubuntu",
+      "cores": 1,
+      "runs": ["x1\/rw1\/fourtree\/0"]
+    }
+  },
+  "data": {
+    "x0\/rw1\/binarytree\/0": [
+      {"table":"binarytree","test":"rw1","trial":0,"thread":0}
+    ],
+    "x1\/rw1\/fourtree\/0": [
+      {"table":"fourtree","test":"rw1","trial":0,"thread":0}
+    ]
+  }
+}
